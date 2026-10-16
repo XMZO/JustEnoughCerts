@@ -4,6 +4,11 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # A module nested in x/crypto with no tags of its own: Dependabot takes
+      # x/crypto's tags for its versions and fails to resolve them.
+      # workflows/ca-roots.yml watches it instead.
+      - dependency-name: golang.org/x/crypto/x509roots/fallback
     groups:
       go:
         patterns: ["*"]

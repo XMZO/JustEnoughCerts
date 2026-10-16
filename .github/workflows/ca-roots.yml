@@ -1,0 +1,51 @@
+name: ca-roots
+
+# The binary embeds golang.org/x/crypto/x509roots/fallback so that TLS works in
+# the scratch image. Dependabot cannot update that module, and its version
+# moves with every x/crypto commit, so once a week compare the bundle itself
+# and open an issue when the latest one differs.
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write # open the reminder
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          check-latest: true
+      - name: Compare the embedded bundle with the latest one
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mod=golang.org/x/crypto/x509roots/fallback
+          current=$(go mod download -json "$mod")
+          latest=$(go mod download -json "$mod@latest")
+          if diff -r "$(jq -r .Dir <<<"$current")" "$(jq -r .Dir <<<"$latest")" >/dev/null; then
+            echo "The embedded CA roots are current."
+            exit 0
+          fi
+          version=$(jq -r .Version <<<"$latest")
+          title="Update the embedded CA roots"
+          if [ -n "$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[].number')" ]; then
+            echo "An open issue already tracks the update to $version."
+            exit 0
+          fi
+          body=$(printf 'A newer CA root bundle is available: `%s@%s` (now on %s).\n\n```sh\ngo get %s@%s\ngo mod tidy\n```\n' \
+            "$mod" "$version" "$(jq -r .Version <<<"$current")" "$mod" "$version")
+          gh issue create --title "$title" --body "$body"
