@@ -6,12 +6,18 @@
   },
   "kernel": {
     "error": {
+      "cross_origin": "这个请求来自其他网站，已被拦截。",
       "internal": "服务器出错了。请重试；如果一直出现，请查看服务器日志。",
       "invalid_field": "这一项的值无效。",
       "invalid_request": "请求无效。请检查填写的内容后重试。",
+      "login_failed": "用户名或密码不对。",
       "method_not_allowed": "这里不支持这个操作。",
       "not_found": "要找的内容不存在，可能已被删除。",
-      "too_large": "提交的内容太大，请换一个更小的文件。"
+      "setup_done": "JEC 已经初始化过了，请直接登录。",
+      "setup_token_invalid": "初始化令牌不对，请从服务器日志里重新复制。",
+      "too_large": "提交的内容太大，请换一个更小的文件。",
+      "too_many_attempts": "失败次数太多，请 {minutes, plural, other {# 分钟}}后再试。",
+      "unauthorized": "请先登录。"
     }
   }
 }

@@ -9,10 +9,14 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/buildinfo"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/config"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
@@ -56,7 +60,28 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		return nil, err
 	}
 
-	a := api.New(cfg.BasePath(), buildinfo.Get().Version, set, log)
+	cookiePath := cfg.BasePath()
+	if cookiePath == "" {
+		cookiePath = "/"
+	}
+	accounts, err := auth.New(ctx, st.DB(), log, auth.Options{
+		CookiePath: cookiePath,
+		Secure:     strings.HasPrefix(cfg.BaseURL, "https://"),
+	})
+	if err != nil {
+		return nil, err
+	}
+	a, err := api.New(api.Options{
+		BasePath:      cfg.BasePath(),
+		Origin:        origin(cfg.BaseURL),
+		Version:       buildinfo.Get().Version,
+		Middlewares:   []func(huma.Context, func(huma.Context)){accounts.Middleware},
+		SessionCookie: auth.CookieName,
+	}, set, log)
+	if err != nil {
+		return nil, err
+	}
+	accounts.Register(a.Kernel())
 	for _, m := range set.Modules() {
 		id := m.Manifest().ID
 		r := &module.Registry{
@@ -72,6 +97,15 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	router := chi.NewRouter()
 	router.Mount(cfg.BasePath()+api.Prefix, a.Handler())
 	return &App{store: st, modules: set, handler: router}, nil
+}
+
+// origin returns scheme://host[:port] of the base URL, or "".
+func origin(baseURL string) string {
+	u, err := url.Parse(baseURL)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	return u.Scheme + "://" + u.Host
 }
 
 func migrate(ctx context.Context, st *store.Store, log *slog.Logger, owner string, fsys fs.FS) error {

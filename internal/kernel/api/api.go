@@ -21,36 +21,80 @@ import (
 // Prefix is the path of this API version under the base path.
 const Prefix = "/api/v1"
 
-// API is the HTTP API.
-type API struct {
-	huma   huma.API
-	router chi.Router
+// SessionScheme names the security scheme of the session cookie in the
+// OpenAPI document. Operations require it unless they are Public.
+const SessionScheme = "session"
+
+// Public is the Security of an operation that needs no session.
+var Public = []map[string][]string{}
+
+// Options configure the API.
+type Options struct {
+	// BasePath is the path the UI is served under, "" at the root.
+	BasePath string
+	// Origin is the scheme://host[:port] users open, if known; requests from
+	// it pass the cross-origin check even when a proxy rewrites Host.
+	Origin string
+	// Version is the program version.
+	Version string
+	// Middlewares run for every operation. huma binds them when an operation
+	// is registered, so they cannot be added later.
+	Middlewares []func(huma.Context, func(huma.Context))
+	// SessionCookie is the name of the session cookie, for the document.
+	SessionCookie string
 }
 
-// New builds the API for the modules in set. base is the path the UI is
-// served under ("" at the root) and version the program version.
-func New(base, version string, set *module.Set, log *slog.Logger) *API {
+// API is the HTTP API.
+type API struct {
+	huma    huma.API
+	handler http.Handler
+}
+
+// New builds the API for the modules in set.
+func New(opts Options, set *module.Set, log *slog.Logger) (*API, error) {
 	router := chi.NewRouter()
 	router.Use(recoverer(log), noStore)
 	router.NotFound(statusHandler(http.StatusNotFound))
 	router.MethodNotAllowed(statusHandler(http.StatusMethodNotAllowed))
 
-	cfg := huma.DefaultConfig("Just Enough Certs", version)
-	cfg.Servers = []*huma.Server{{URL: base + Prefix}}
+	cfg := huma.DefaultConfig("Just Enough Certs", opts.Version)
+	cfg.Servers = []*huma.Server{{URL: opts.BasePath + Prefix}}
 	cfg.OpenAPIPath = "/openapi"
 	// The docs UI would load its scripts from a CDN, and the $schema links
 	// add a field to every response; the OpenAPI document is enough.
 	cfg.DocsPath = ""
 	cfg.SchemasPath = ""
 	cfg.CreateHooks = nil
+	cfg.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
+		SessionScheme: {Type: "apiKey", In: "cookie", Name: opts.SessionCookie},
+	}
+	cfg.Security = []map[string][]string{{SessionScheme: {}}}
 
-	a := &API{huma: humachi.New(router, cfg), router: router}
-	a.registerManifest(set, version)
-	return a
+	h := humachi.New(router, cfg)
+	h.UseMiddleware(opts.Middlewares...)
+
+	// Browsers send Sec-Fetch-Site or Origin with every request; a state
+	// changing one from another site is refused before it reaches a handler.
+	csrf := http.NewCrossOriginProtection()
+	if opts.Origin != "" {
+		if err := csrf.AddTrustedOrigin(opts.Origin); err != nil {
+			return nil, err
+		}
+	}
+	csrf.SetDenyHandler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		writeError(w, NewError(http.StatusForbidden, i18n.KernelErrorCrossOrigin, nil))
+	}))
+
+	a := &API{huma: h, handler: csrf.Handler(router)}
+	a.registerManifest(set, opts.Version)
+	return a, nil
 }
 
 // Handler serves the API; mount it at base + Prefix.
-func (a *API) Handler() http.Handler { return a.router }
+func (a *API) Handler() http.Handler { return a.handler }
+
+// Kernel returns the API the kernel registers its own operations with.
+func (a *API) Kernel() huma.API { return a.huma }
 
 // Module returns the API a module registers its operations with: their
 // paths go under /<id>, and they answer 404 while enabled reports false.

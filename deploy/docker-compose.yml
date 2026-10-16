@@ -16,7 +16,9 @@ services:
       - "8080:8080"
     environment:
       TZ: Asia/Shanghai
-      # Set when users reach JEC through a reverse proxy or under a sub-path.
+      # The URL users open, when it differs from http://<host>:8080: behind a
+      # reverse proxy or under a sub-path. With https the session cookie is
+      # sent over HTTPS only.
       # JEC_BASE_URL: "https://certs.example.com"
     volumes:
       - ./data:/data

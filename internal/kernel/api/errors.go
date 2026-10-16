@@ -51,6 +51,7 @@ func (e *Error) ContentType(string) string { return "application/json" }
 // before a handler runs.
 var statusCodes = map[int]i18n.Key{
 	http.StatusBadRequest:            i18n.KernelErrorInvalidRequest,
+	http.StatusUnauthorized:          i18n.KernelErrorUnauthorized,
 	http.StatusNotFound:              i18n.KernelErrorNotFound,
 	http.StatusMethodNotAllowed:      i18n.KernelErrorMethodNotAllowed,
 	http.StatusRequestEntityTooLarge: i18n.KernelErrorTooLarge,
@@ -99,6 +100,13 @@ func writeError(w http.ResponseWriter, e *Error) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(e.status)
 	_ = json.NewEncoder(w).Encode(e)
+}
+
+// WriteError answers ctx with e, for middleware that stops a request.
+func WriteError(ctx huma.Context, e *Error) {
+	ctx.SetHeader("Content-Type", "application/json")
+	ctx.SetStatus(e.status)
+	_ = json.NewEncoder(ctx.BodyWriter()).Encode(e)
 }
 
 func statusHandler(status int) http.HandlerFunc {

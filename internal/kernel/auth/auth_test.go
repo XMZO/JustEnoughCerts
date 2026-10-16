@@ -1,0 +1,362 @@
+package auth
+
+import (
+	"context"
+	"encoding/json"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/danielgtaylor/huma/v2"
+
+	"github.com/XMZO/JustEnoughCerts/i18n"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
+)
+
+// Cheap hashes keep the tests fast; production parameters are tested by
+// TestPasswordDefaults.
+func TestMain(m *testing.M) {
+	argonTime, argonMemory, argonThreads = 1, 64, 1
+	os.Exit(m.Run())
+}
+
+type fixture struct {
+	t     *testing.T
+	srv   *httptest.Server
+	svc   *Service
+	token string
+	clock time.Time
+}
+
+func newFixture(t *testing.T, opts Options) *fixture {
+	t.Helper()
+	st, err := store.Open(t.Context(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	if _, err := st.Migrate(t.Context(), "kernel", migrations.FS); err != nil {
+		t.Fatal(err)
+	}
+	svc, err := New(t.Context(), st.DB(), slog.New(slog.DiscardHandler), opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := &fixture{t: t, svc: svc, token: svc.setupToken, clock: time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC)}
+	svc.now = func() time.Time { return f.clock }
+
+	set, err := module.NewSet()
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := api.New(api.Options{Version: "test", Middlewares: []func(huma.Context, func(huma.Context)){svc.Middleware}, SessionCookie: CookieName},
+		set, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc.Register(a.Kernel())
+	huma.Register(a.Kernel(), huma.Operation{OperationID: "whoami", Method: http.MethodGet, Path: "/whoami"},
+		func(ctx context.Context, _ *struct{}) (*struct{ Body string }, error) {
+			u, ok := UserFrom(ctx)
+			if !ok {
+				t.Error("a protected operation ran without a user")
+			}
+			return &struct{ Body string }{Body: u.Username}, nil
+		})
+	f.srv = httptest.NewServer(a.Handler())
+	t.Cleanup(f.srv.Close)
+	return f
+}
+
+type result struct {
+	status int
+	header http.Header
+	body   string
+	cookie *http.Cookie
+}
+
+func (f *fixture) call(method, path, cookie, body string) result {
+	f.t.Helper()
+	req, err := http.NewRequestWithContext(f.t.Context(), method, f.srv.URL+path, strings.NewReader(body))
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	if body != "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	if cookie != "" {
+		req.AddCookie(&http.Cookie{Name: CookieName, Value: cookie})
+	}
+	resp, err := f.srv.Client().Do(req)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	data, _ := io.ReadAll(resp.Body)
+	r := result{status: resp.StatusCode, header: resp.Header, body: string(data)}
+	for _, c := range resp.Cookies() {
+		if c.Name == CookieName {
+			r.cookie = c
+		}
+	}
+	return r
+}
+
+func code(t *testing.T, body string) i18n.Key {
+	t.Helper()
+	var e struct {
+		Code   i18n.Key       `json:"code"`
+		Params map[string]any `json:"params"`
+	}
+	if err := json.Unmarshal([]byte(body), &e); err != nil {
+		t.Fatalf("not an error: %s", body)
+	}
+	return e.Code
+}
+
+func (f *fixture) setupBody(token string) string {
+	return `{"token": "` + token + `", "username": "admin", "password": "correct horse", "locale": "zh-cn"}`
+}
+
+func TestSetup(t *testing.T) {
+	f := newFixture(t, Options{CookiePath: "/jec", Secure: true})
+	if f.token == "" {
+		t.Fatal("no setup token without an account")
+	}
+	if r := f.call(http.MethodGet, "/setup", "", ""); r.body != "{\"required\":true}\n" {
+		t.Errorf("GET /setup = %s", r.body)
+	}
+	if r := f.call(http.MethodPost, "/setup", "", f.setupBody("wrong")); r.status != http.StatusForbidden || code(t, r.body) != i18n.KernelErrorSetupTokenInvalid {
+		t.Errorf("wrong token = %d %s", r.status, r.body)
+	}
+	short := `{"token": "` + f.token + `", "username": "admin", "password": "short"}`
+	if r := f.call(http.MethodPost, "/setup", "", short); r.status != http.StatusUnprocessableEntity || !strings.Contains(r.body, "body.password") {
+		t.Errorf("short password = %d %s", r.status, r.body)
+	}
+	badLocale := `{"token": "` + f.token + `", "username": "admin", "password": "correct horse", "locale": "not a tag!"}`
+	if r := f.call(http.MethodPost, "/setup", "", badLocale); r.status != http.StatusUnprocessableEntity || !strings.Contains(r.body, "body.locale") {
+		t.Errorf("bad locale = %d %s", r.status, r.body)
+	}
+
+	// The token may come with stray spaces and capitals from a copy.
+	r := f.call(http.MethodPost, "/setup", "", f.setupBody("  "+strings.ToUpper(f.token)+" "))
+	if r.status != http.StatusCreated || r.body != "{\"username\":\"admin\",\"locale\":\"zh-CN\"}\n" {
+		t.Fatalf("setup = %d %s", r.status, r.body)
+	}
+	c := r.cookie
+	if c == nil || !c.HttpOnly || !c.Secure || c.SameSite != http.SameSiteLaxMode || c.Path != "/jec" || c.MaxAge != int(sessionTTL.Seconds()) {
+		t.Errorf("session cookie = %+v", c)
+	}
+	if r := f.call(http.MethodGet, "/session", c.Value, ""); r.status != http.StatusOK || !strings.Contains(r.body, `"username":"admin"`) {
+		t.Errorf("GET /session = %d %s", r.status, r.body)
+	}
+	if r := f.call(http.MethodGet, "/setup", "", ""); r.body != "{\"required\":false}\n" {
+		t.Errorf("GET /setup after setup = %s", r.body)
+	}
+	if r := f.call(http.MethodPost, "/setup", "", f.setupBody(f.token)); r.status != http.StatusConflict || code(t, r.body) != i18n.KernelErrorSetupDone {
+		t.Errorf("second setup = %d %s", r.status, r.body)
+	}
+}
+
+func TestConcurrentSetup(t *testing.T) {
+	f := newFixture(t, Options{CookiePath: "/"})
+	var wg sync.WaitGroup
+	statuses := make([]int, 8)
+	for i := range statuses {
+		wg.Go(func() {
+			body := `{"token": "` + f.token + `", "username": "admin` + string(rune('a'+i)) + `", "password": "correct horse"}`
+			statuses[i] = f.call(http.MethodPost, "/setup", "", body).status
+		})
+	}
+	wg.Wait()
+	created := 0
+	for _, s := range statuses {
+		switch s {
+		case http.StatusCreated:
+			created++
+		case http.StatusConflict:
+		default:
+			t.Errorf("unexpected status %d", s)
+		}
+	}
+	if created != 1 {
+		t.Errorf("%d accounts created, want 1: %v", created, statuses)
+	}
+}
+
+func signedUp(t *testing.T) *fixture {
+	t.Helper()
+	f := newFixture(t, Options{CookiePath: "/"})
+	if r := f.call(http.MethodPost, "/setup", "", f.setupBody(f.token)); r.status != http.StatusCreated {
+		t.Fatalf("setup = %d %s", r.status, r.body)
+	}
+	return f
+}
+
+func TestSignInAndOut(t *testing.T) {
+	f := signedUp(t)
+	for _, body := range []string{
+		`{"username": "admin", "password": "wrong horse"}`,
+		`{"username": "nobody", "password": "correct horse"}`,
+	} {
+		if r := f.call(http.MethodPost, "/session", "", body); r.status != http.StatusUnauthorized || code(t, r.body) != i18n.KernelErrorLoginFailed || r.cookie != nil {
+			t.Errorf("sign in with %s = %d %s", body, r.status, r.body)
+		}
+	}
+	r := f.call(http.MethodPost, "/session", "", `{"username": "admin", "password": "correct horse"}`)
+	if r.status != http.StatusOK || r.cookie == nil || r.cookie.Secure {
+		t.Fatalf("sign in = %d %s %+v", r.status, r.body, r.cookie)
+	}
+	session := r.cookie.Value
+	if r := f.call(http.MethodGet, "/whoami", session, ""); r.body != "\"admin\"\n" {
+		t.Errorf("whoami = %d %s", r.status, r.body)
+	}
+	out := f.call(http.MethodDelete, "/session", session, "")
+	if out.status != http.StatusNoContent || out.cookie == nil || out.cookie.MaxAge >= 0 || out.cookie.Value != "" {
+		t.Errorf("sign out = %d %+v", out.status, out.cookie)
+	}
+	if r := f.call(http.MethodGet, "/whoami", session, ""); r.status != http.StatusUnauthorized || code(t, r.body) != i18n.KernelErrorUnauthorized {
+		t.Errorf("after sign out = %d %s", r.status, r.body)
+	}
+}
+
+func TestProtectedByDefault(t *testing.T) {
+	f := signedUp(t)
+	for _, c := range []string{"", "not-a-session"} {
+		if r := f.call(http.MethodGet, "/whoami", c, ""); r.status != http.StatusUnauthorized {
+			t.Errorf("whoami with cookie %q = %d", c, r.status)
+		}
+		if r := f.call(http.MethodGet, "/manifest", c, ""); r.status != http.StatusUnauthorized {
+			t.Errorf("manifest with cookie %q = %d", c, r.status)
+		}
+	}
+	r := f.call(http.MethodGet, "/openapi.json", "", "")
+	var doc struct {
+		Components struct {
+			SecuritySchemes map[string]struct{ Type, In, Name string } `json:"securitySchemes"`
+		} `json:"components"`
+		Paths map[string]map[string]struct {
+			Security *[]map[string][]string `json:"security"`
+		} `json:"paths"`
+	}
+	if err := json.Unmarshal([]byte(r.body), &doc); err != nil || r.status != http.StatusOK {
+		t.Fatalf("openapi.json = %d, %v", r.status, err)
+	}
+	if s := doc.Components.SecuritySchemes[api.SessionScheme]; s.Type != "apiKey" || s.In != "cookie" || s.Name != CookieName {
+		t.Errorf("security scheme = %+v", s)
+	}
+	// Public operations say so; the rest inherit the global requirement.
+	if sec := doc.Paths["/session"]["post"].Security; sec == nil || len(*sec) != 0 {
+		t.Errorf("POST /session security = %v, want []", sec)
+	}
+	if sec := doc.Paths["/session"]["get"].Security; sec != nil {
+		t.Errorf("GET /session security = %v, want the global one", *sec)
+	}
+}
+
+func TestSessionExpires(t *testing.T) {
+	f := signedUp(t)
+	session := f.call(http.MethodPost, "/session", "", `{"username": "admin", "password": "correct horse"}`).cookie.Value
+	f.clock = f.clock.Add(sessionTTL - time.Minute)
+	if r := f.call(http.MethodGet, "/whoami", session, ""); r.status != http.StatusOK {
+		t.Errorf("before expiry = %d", r.status)
+	}
+	f.clock = f.clock.Add(2 * time.Minute)
+	if r := f.call(http.MethodGet, "/whoami", session, ""); r.status != http.StatusUnauthorized {
+		t.Errorf("after expiry = %d", r.status)
+	}
+}
+
+func TestThrottle(t *testing.T) {
+	f := signedUp(t)
+	wrong := `{"username": "admin", "password": "wrong horse"}`
+	for range maxFailures {
+		f.call(http.MethodPost, "/session", "", wrong)
+	}
+	r := f.call(http.MethodPost, "/session", "", `{"username": "admin", "password": "correct horse"}`)
+	if r.status != http.StatusTooManyRequests || code(t, r.body) != i18n.KernelErrorTooManyAttempts ||
+		!strings.Contains(r.body, `"minutes":10`) || r.header.Get("Retry-After") != "600" {
+		t.Fatalf("after %d failures = %d %s Retry-After %q", maxFailures, r.status, r.body, r.header.Get("Retry-After"))
+	}
+	f.clock = f.clock.Add(failureWindow)
+	if r := f.call(http.MethodPost, "/session", "", `{"username": "admin", "password": "correct horse"}`); r.status != http.StatusOK {
+		t.Errorf("after the window = %d %s", r.status, r.body)
+	}
+}
+
+func TestLimiter(t *testing.T) {
+	l := newLimiter(2, time.Minute)
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	if l.wait("a", now) != 0 {
+		t.Fatal("fresh client must wait")
+	}
+	l.fail("a", now)
+	l.fail("a", now.Add(10*time.Second))
+	if got := l.wait("a", now.Add(20*time.Second)); got != 40*time.Second {
+		t.Errorf("wait = %v, want 40s", got)
+	}
+	if l.wait("b", now) != 0 {
+		t.Error("another client is throttled too")
+	}
+	l.reset("a")
+	if l.wait("a", now.Add(20*time.Second)) != 0 {
+		t.Error("reset did not forget the failures")
+	}
+	l.fail("a", now)
+	l.fail("a", now)
+	if l.wait("a", now.Add(time.Minute)) != 0 {
+		t.Error("failures outlived the window")
+	}
+}
+
+func TestPassword(t *testing.T) {
+	hash, err := hashPassword("correct horse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := checkPassword(hash, "correct horse"); !ok || err != nil {
+		t.Errorf("right password: %v, %v", ok, err)
+	}
+	if ok, err := checkPassword(hash, "wrong horse"); ok || err != nil {
+		t.Errorf("wrong password: %v, %v", ok, err)
+	}
+	other, _ := hashPassword("correct horse")
+	if other == hash {
+		t.Error("two hashes of one password are equal: no salt")
+	}
+	parts := strings.Split(hash, "$")
+	for _, bad := range []string{
+		"",
+		"plain",
+		strings.Replace(hash, "argon2id", "argon2i", 1),
+		strings.Replace(hash, "v=19", "v=16", 1),
+		strings.Join(append(append([]string{}, parts[:3]...), "m=4194304,t=3,p=4", parts[4], parts[5]), "$"), // 4 GiB
+		strings.Join(append(append([]string{}, parts[:5]...), "c2hvcnQ"), "$"),                               // 5-byte key
+		strings.Join(append(append([]string{}, parts[:4]...), "!!", parts[5]), "$"),
+	} {
+		if ok, err := checkPassword(bad, "correct horse"); ok || err == nil {
+			t.Errorf("checkPassword(%q) = %v, %v; want an error", bad, ok, err)
+		}
+	}
+}
+
+func TestPasswordDefaults(t *testing.T) {
+	saved := []any{argonTime, argonMemory, argonThreads}
+	argonTime, argonMemory, argonThreads = 3, 64*1024, 4
+	defer func() {
+		argonTime, argonMemory, argonThreads = saved[0].(uint32), saved[1].(uint32), saved[2].(uint8)
+	}()
+	hash, err := hashPassword("x")
+	if err != nil || !strings.HasPrefix(hash, "$argon2id$v=19$m=65536,t=3,p=4$") {
+		t.Errorf("hash = %q, %v", hash, err)
+	}
+}

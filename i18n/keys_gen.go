@@ -4,10 +4,16 @@ package i18n
 
 // Message keys, from locales/en-US.json.
 const (
-	KernelErrorInternal         Key = "kernel.error.internal"
-	KernelErrorInvalidField     Key = "kernel.error.invalid_field"
-	KernelErrorInvalidRequest   Key = "kernel.error.invalid_request"
-	KernelErrorMethodNotAllowed Key = "kernel.error.method_not_allowed"
-	KernelErrorNotFound         Key = "kernel.error.not_found"
-	KernelErrorTooLarge         Key = "kernel.error.too_large"
+	KernelErrorCrossOrigin       Key = "kernel.error.cross_origin"
+	KernelErrorInternal          Key = "kernel.error.internal"
+	KernelErrorInvalidField      Key = "kernel.error.invalid_field"
+	KernelErrorInvalidRequest    Key = "kernel.error.invalid_request"
+	KernelErrorLoginFailed       Key = "kernel.error.login_failed"
+	KernelErrorMethodNotAllowed  Key = "kernel.error.method_not_allowed"
+	KernelErrorNotFound          Key = "kernel.error.not_found"
+	KernelErrorSetupDone         Key = "kernel.error.setup_done"
+	KernelErrorSetupTokenInvalid Key = "kernel.error.setup_token_invalid"
+	KernelErrorTooLarge          Key = "kernel.error.too_large"
+	KernelErrorTooManyAttempts   Key = "kernel.error.too_many_attempts"
+	KernelErrorUnauthorized      Key = "kernel.error.unauthorized"
 )

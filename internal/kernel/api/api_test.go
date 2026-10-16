@@ -47,7 +47,11 @@ func setup(t *testing.T) (*httptest.Server, *atomic.Bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a := New("/certs", "1.2.3", set, slog.New(slog.DiscardHandler))
+	a, err := New(Options{BasePath: "/certs", Origin: "https://certs.example.com", Version: "1.2.3", SessionCookie: "s"},
+		set, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatal(err)
+	}
 	var on atomic.Bool
 	on.Store(true)
 	m := a.Module("demo", on.Load)
@@ -68,6 +72,40 @@ func setup(t *testing.T) (*httptest.Server, *atomic.Bool) {
 	srv := httptest.NewServer(a.Handler())
 	t.Cleanup(srv.Close)
 	return srv, &on
+}
+
+func TestCrossOrigin(t *testing.T) {
+	srv, _ := setup(t)
+	send := func(headers map[string]string) reply {
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL+"/demo/things", strings.NewReader(`{"name": "long enough"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		resp, err := srv.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		data, _ := io.ReadAll(resp.Body)
+		return reply{status: resp.StatusCode, header: resp.Header, body: data}
+	}
+	if r := send(map[string]string{"Sec-Fetch-Site": "cross-site"}); r.status != http.StatusForbidden || decodeError(t, r.body).Code != i18n.KernelErrorCrossOrigin {
+		t.Errorf("cross-site POST = %d %s", r.status, r.body)
+	}
+	if r := send(map[string]string{"Origin": "https://evil.example"}); r.status != http.StatusForbidden {
+		t.Errorf("POST from another origin = %d %s", r.status, r.body)
+	}
+	// The configured origin passes even when the Host header differs, as
+	// behind a proxy; so do same-origin and non-browser requests.
+	for _, h := range []map[string]string{{"Origin": "https://certs.example.com"}, {"Sec-Fetch-Site": "same-origin"}, {}} {
+		if r := send(h); r.status != http.StatusOK {
+			t.Errorf("POST with %v = %d %s", h, r.status, r.body)
+		}
+	}
 }
 
 // reply is a response with its body read and closed.

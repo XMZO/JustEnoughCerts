@@ -6,12 +6,18 @@
   },
   "kernel": {
     "error": {
+      "cross_origin": "The request came from another site and was blocked.",
       "internal": "The server hit an error. Try again, and check the server log if it keeps happening.",
       "invalid_field": "This value is not valid.",
       "invalid_request": "The request is not valid. Check what you entered and try again.",
+      "login_failed": "The username or password is wrong.",
       "method_not_allowed": "This action is not supported here.",
       "not_found": "This item does not exist. It may have been deleted.",
-      "too_large": "The request is too large. Send a smaller file."
+      "setup_done": "JEC is already set up. Sign in instead.",
+      "setup_token_invalid": "The setup token is wrong. Copy it again from the server log.",
+      "too_large": "The request is too large. Send a smaller file.",
+      "too_many_attempts": "Too many failed attempts. Try again in {minutes, plural, one {# minute} other {# minutes}}.",
+      "unauthorized": "Sign in to continue."
     }
   }
 }
