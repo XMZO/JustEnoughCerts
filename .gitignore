@@ -1,0 +1,10 @@
+# Build output
+/build/
+/dist/
+
+# Local data from "jec serve" or docker compose
+/data/
+/deploy/data/
+
+# Tool caches
+/.cache/

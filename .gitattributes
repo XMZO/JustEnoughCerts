@@ -1,0 +1,3 @@
+# LF everywhere, also in Windows checkouts: the scripts and Dockerfile run
+# on Linux.
+* text=auto eol=lf
