@@ -10,7 +10,7 @@
 
 # Empty directories for the runtime image, created on the build platform:
 # scratch has no shell to make them.
-FROM --platform=$BUILDPLATFORM busybox:1.37@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e AS rootfs
+FROM --platform=$BUILDPLATFORM busybox:1.38@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e AS rootfs
 RUN mkdir -p /rootfs/data /rootfs/tmp \
  && chown 65532:65532 /rootfs/data && chmod 0700 /rootfs/data \
  && chmod 1777 /rootfs/tmp
