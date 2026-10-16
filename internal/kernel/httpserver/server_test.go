@@ -16,10 +16,13 @@ import (
 
 var discard = slog.New(slog.DiscardHandler)
 
+// teapot stands in for the app behind the health check.
+var teapot = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusTeapot) })
+
 func TestHealth(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.BaseURL = "https://example.com/certs"
-	srv := httptest.NewServer(New(cfg, discard).Handler())
+	srv := httptest.NewServer(New(cfg, discard, teapot).Handler())
 	defer srv.Close()
 
 	tests := []struct {
@@ -30,7 +33,8 @@ func TestHealth(t *testing.T) {
 		{http.MethodHead, "/healthz", http.StatusOK},
 		{http.MethodGet, "/certs/healthz", http.StatusOK},
 		{http.MethodPost, "/healthz", http.StatusMethodNotAllowed},
-		{http.MethodGet, "/nope", http.StatusNotFound},
+		{http.MethodGet, "/nope", http.StatusTeapot},
+		{http.MethodPost, "/certs/api/v1/x", http.StatusTeapot},
 	}
 	for _, tt := range tests {
 		req, err := http.NewRequestWithContext(t.Context(), tt.method, srv.URL+tt.path, http.NoBody)
@@ -59,7 +63,7 @@ func TestServeStopsOnCancel(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
-	go func() { done <- New(config.Defaults(), discard).Serve(ctx, ln) }()
+	go func() { done <- New(config.Defaults(), discard, teapot).Serve(ctx, ln) }()
 
 	url := "http://" + ln.Addr().String() + HealthPath
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, url, http.NoBody)
@@ -92,7 +96,7 @@ func TestServeReturnsListenerError(t *testing.T) {
 		t.Fatal(err)
 	}
 	ln.Close()
-	err = New(config.Defaults(), discard).Serve(t.Context(), ln)
+	err = New(config.Defaults(), discard, teapot).Serve(t.Context(), ln)
 	if err == nil || errors.Is(err, http.ErrServerClosed) {
 		t.Fatalf("Serve() on a closed listener = %v, want an accept error", err)
 	}

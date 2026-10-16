@@ -3,5 +3,15 @@
     "name": "English",
     "dir": "ltr",
     "completeness": 100
+  },
+  "kernel": {
+    "error": {
+      "internal": "The server hit an error. Try again, and check the server log if it keeps happening.",
+      "invalid_field": "This value is not valid.",
+      "invalid_request": "The request is not valid. Check what you entered and try again.",
+      "method_not_allowed": "This action is not supported here.",
+      "not_found": "This item does not exist. It may have been deleted.",
+      "too_large": "The request is too large. Send a smaller file."
+    }
   }
 }

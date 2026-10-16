@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/XMZO/JustEnoughCerts/internal/kernel"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/buildinfo"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/config"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/httpserver"
@@ -27,6 +29,7 @@ func runServe(ctx context.Context, args []string, _, stderr io.Writer) int {
 		return exitError
 	}
 	log := newLogger(cfg.Log, stderr)
+	slog.SetDefault(log)
 	if err := serve(ctx, cfg, log); err != nil {
 		log.Error("server failed", "err", err)
 		return exitError
@@ -34,20 +37,24 @@ func runServe(ctx context.Context, args []string, _, stderr io.Writer) int {
 	return exitOK
 }
 
-func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
+func serve(ctx context.Context, cfg config.Config, log *slog.Logger) (err error) {
 	if err := checkDataDir(cfg.DataDir); err != nil {
 		return err
 	}
+	bi := buildinfo.Get()
+	log.Info("starting", "version", bi.Version, "commit", bi.Commit, "data_dir", cfg.DataDir)
+	app, err := kernel.New(ctx, cfg, log, modules)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, app.Close()) }()
 	ln, err := net.Listen("tcp", cfg.Listen)
 	if err != nil {
 		return err
 	}
-	bi := buildinfo.Get()
-	log.Info("starting",
-		"version", bi.Version, "commit", bi.Commit,
-		"listen", ln.Addr().String(), "base_url", cfg.BaseURL, "data_dir", cfg.DataDir)
+	log.Info("listening", "addr", ln.Addr().String(), "base_url", cfg.BaseURL)
 	defer log.Info("stopped")
-	return httpserver.New(cfg, log).Serve(ctx, ln)
+	return httpserver.New(cfg, log, app.Handler()).Serve(ctx, ln)
 }
 
 // newLogger returns the process logger. Timestamps are always UTC, so logs

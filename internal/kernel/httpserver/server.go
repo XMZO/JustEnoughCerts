@@ -31,17 +31,18 @@ type Server struct {
 	log     *slog.Logger
 }
 
-// New builds the server for cfg.
-func New(cfg config.Config, log *slog.Logger) *Server {
+// New builds the server for cfg; app serves every request but the health
+// check.
+func New(cfg config.Config, log *slog.Logger, app http.Handler) *Server {
 	r := chi.NewRouter()
 	paths := []string{HealthPath}
 	if base := cfg.BasePath(); base != "" {
 		paths = append(paths, base+HealthPath)
 	}
 	for _, p := range paths {
-		r.Get(p, health)
-		r.Head(p, health)
+		r.HandleFunc(p, health)
 	}
+	r.Handle("/*", app)
 	return &Server{handler: r, log: log}
 }
 
@@ -76,7 +77,14 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 	return nil
 }
 
-func health(w http.ResponseWriter, _ *http.Request) {
+// health owns its path for every method, so nothing behind it can shadow
+// the check.
+func health(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = io.WriteString(w, "ok\n")
