@@ -7,7 +7,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v/
 LDFLAGS := -s -w -X $(PKG)/internal/kernel/buildinfo.version=$(VERSION)
 IMAGE   ?= jec:dev
 
-.PHONY: help build test lint run image snapshot clean
+.PHONY: help build test lint i18n-check i18n-fix run image snapshot clean
 
 help: ## list the targets
 	@grep -hE '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -20,6 +20,13 @@ test: ## run the tests with the race detector
 
 lint: ## run golangci-lint
 	golangci-lint run
+
+i18n-check: ## run the i18n gates
+	$(GO) run ./tools/i18n check
+	$(GO) run ./tools/i18nlint ./...
+
+i18n-fix: ## put the locale files in canonical form and regenerate the keys
+	$(GO) run ./tools/i18n fix
 
 run: ## run the server with ./data
 	$(GO) run ./cmd/jec serve
