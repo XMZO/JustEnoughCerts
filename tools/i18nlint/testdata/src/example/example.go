@@ -28,7 +28,10 @@ func calls() {
 	_ = message{key: "a.b.c", text: "plain strings are fine"} // want `string literal used as an i18n.Key`
 	_ = message{key: i18n.KernelErrorInternal, text: "ok"}
 
-	// Comparing the text of a key is not making one up.
+	// Comparing the text of a key is not making one up, nor is checking
+	// for the zero key.
 	_ = string(i18n.KernelErrorInternal) == "kernel.error.internal"
 	_ = string(k)
+	_ = k == ""
+	_ = k == "a.b.c" // want `string literal used as an i18n.Key`
 }

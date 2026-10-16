@@ -62,7 +62,8 @@ func run(pass *analysis.Pass) (any, error) {
 		}
 		switch n := n.(type) {
 		case *ast.BasicLit:
-			if n.Kind == token.STRING && !reported[n] && isKey(pass.TypesInfo.TypeOf(n)) {
+			// "" is the zero Key, as in a check for a missing key, not one made up.
+			if n.Kind == token.STRING && n.Value != `""` && !reported[n] && isKey(pass.TypesInfo.TypeOf(n)) {
 				pass.Reportf(n.Pos(), "string literal used as an i18n.Key: use a generated constant")
 			}
 		case *ast.Ident:
