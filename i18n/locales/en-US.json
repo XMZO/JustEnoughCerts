@@ -10,7 +10,7 @@
       "internal": "The server hit an error. Try again, and check the server log if it keeps happening.",
       "invalid_field": "This value is not valid.",
       "invalid_request": "The request is not valid. Check what you entered and try again.",
-      "login_failed": "The username or password is wrong.",
+      "login_failed": "The username or password is wrong. After {attempts, plural, one {# failed attempt} other {# failed attempts}} in a row, sign-in is locked for {minutes, plural, one {# minute} other {# minutes}}.",
       "method_not_allowed": "This action is not supported here.",
       "not_found": "This item does not exist. It may have been deleted.",
       "setup_done": "JEC is already set up. Sign in instead.",

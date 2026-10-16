@@ -37,10 +37,17 @@ import (
 const CookieName = "jec_session"
 
 const (
-	sessionTTL    = 30 * 24 * time.Hour
-	maxFailures   = 10
-	failureWindow = 10 * time.Minute
+	sessionTTL  = 30 * 24 * time.Hour
+	maxFailures = 5
+	lockout     = 15 * time.Minute
 )
+
+// loginFailed is the answer to a wrong username or password; it says how
+// many failures lock the client out, and for how long.
+func loginFailed() error {
+	return api.NewError(http.StatusUnauthorized, i18n.KernelErrorLoginFailed,
+		map[string]any{"attempts": maxFailures, "minutes": int(lockout.Minutes())})
+}
 
 // Options configure the Service.
 type Options struct {
@@ -66,7 +73,7 @@ type Service struct {
 // New starts the account system on db, whose kernel migrations are applied.
 // Without any account it makes a setup token and logs it.
 func New(ctx context.Context, db *sql.DB, log *slog.Logger, opts Options) (*Service, error) {
-	s := &Service{db: db, log: log, opts: opts, now: time.Now, limit: newLimiter(maxFailures, failureWindow)}
+	s := &Service{db: db, log: log, opts: opts, now: time.Now, limit: newLimiter(maxFailures, lockout)}
 	var n int
 	if err := db.QueryRowContext(ctx, "SELECT count(*) FROM kernel_users").Scan(&n); err != nil {
 		return nil, fmt.Errorf("count accounts: %w", err)
@@ -174,6 +181,7 @@ type setupStatus struct {
 	}
 }
 
+// The password limits are MinPasswordLength and MaxPasswordLength.
 type setupInput struct {
 	Body struct {
 		Token    string `json:"token" maxLength:"128" doc:"The one-time setup token from the server log"`
@@ -322,7 +330,7 @@ func (s *Service) signIn(ctx context.Context, in *signInInput) (*sessionOutput, 
 	case errors.Is(err, sql.ErrNoRows):
 		_, _ = checkPassword(dummyHash(), in.Body.Password) // take as long as a wrong password
 		s.limit.fail(client, s.now())
-		return nil, api.NewError(http.StatusUnauthorized, i18n.KernelErrorLoginFailed, nil)
+		return nil, loginFailed()
 	case err != nil:
 		return nil, err
 	}
@@ -332,7 +340,7 @@ func (s *Service) signIn(ctx context.Context, in *signInInput) (*sessionOutput, 
 	}
 	if !ok {
 		s.limit.fail(client, s.now())
-		return nil, api.NewError(http.StatusUnauthorized, i18n.KernelErrorLoginFailed, nil)
+		return nil, loginFailed()
 	}
 	s.limit.reset(client)
 	if _, err := s.db.ExecContext(ctx, "DELETE FROM kernel_sessions WHERE expires_at <= ?", timestamp(s.now())); err != nil {

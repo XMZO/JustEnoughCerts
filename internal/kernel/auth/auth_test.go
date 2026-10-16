@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -279,42 +280,86 @@ func TestSessionExpires(t *testing.T) {
 func TestThrottle(t *testing.T) {
 	f := signedUp(t)
 	wrong := `{"username": "admin", "password": "wrong horse"}`
-	for range maxFailures {
-		f.call(http.MethodPost, "/session", "", wrong)
+	for i := range maxFailures {
+		// Each failure says what too many of them lead to.
+		r := f.call(http.MethodPost, "/session", "", wrong)
+		if r.status != http.StatusUnauthorized || !strings.Contains(r.body, `"attempts":5`) || !strings.Contains(r.body, `"minutes":15`) {
+			t.Fatalf("failure %d = %d %s", i+1, r.status, r.body)
+		}
 	}
-	r := f.call(http.MethodPost, "/session", "", `{"username": "admin", "password": "correct horse"}`)
+	right := `{"username": "admin", "password": "correct horse"}`
+	r := f.call(http.MethodPost, "/session", "", right)
 	if r.status != http.StatusTooManyRequests || code(t, r.body) != i18n.KernelErrorTooManyAttempts ||
-		!strings.Contains(r.body, `"minutes":10`) || r.header.Get("Retry-After") != "600" {
+		!strings.Contains(r.body, `"minutes":15`) || r.header.Get("Retry-After") != "900" {
 		t.Fatalf("after %d failures = %d %s Retry-After %q", maxFailures, r.status, r.body, r.header.Get("Retry-After"))
 	}
-	f.clock = f.clock.Add(failureWindow)
-	if r := f.call(http.MethodPost, "/session", "", `{"username": "admin", "password": "correct horse"}`); r.status != http.StatusOK {
-		t.Errorf("after the window = %d %s", r.status, r.body)
+	f.clock = f.clock.Add(lockout)
+	if r := f.call(http.MethodPost, "/session", "", right); r.status != http.StatusOK {
+		t.Errorf("after the lockout = %d %s", r.status, r.body)
 	}
 }
 
 func TestLimiter(t *testing.T) {
 	l := newLimiter(2, time.Minute)
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	at := func(s int) time.Time { return now.Add(time.Duration(s) * time.Second) }
 	if l.wait("a", now) != 0 {
-		t.Fatal("fresh client must wait")
+		t.Fatal("a fresh client must wait")
 	}
-	l.fail("a", now)
-	l.fail("a", now.Add(10*time.Second))
-	if got := l.wait("a", now.Add(20*time.Second)); got != 40*time.Second {
-		t.Errorf("wait = %v, want 40s", got)
+	l.fail("a", at(0))
+	if l.wait("a", at(0)) != 0 {
+		t.Error("locked out after one failure")
 	}
-	if l.wait("b", now) != 0 {
-		t.Error("another client is throttled too")
+	l.fail("a", at(10))
+	if got := l.wait("a", at(20)); got != 50*time.Second {
+		t.Errorf("wait = %v, want 50s", got)
 	}
+	if l.wait("b", at(20)) != 0 {
+		t.Error("another client is locked out too")
+	}
+	if l.wait("a", at(70)) != 0 {
+		t.Error("the lockout outlasted its minute")
+	}
+
+	// A success ends a streak, and so does a pause as long as a lockout.
 	l.reset("a")
-	if l.wait("a", now.Add(20*time.Second)) != 0 {
-		t.Error("reset did not forget the failures")
+	l.fail("a", at(100))
+	l.reset("a")
+	l.fail("a", at(101))
+	if l.wait("a", at(101)) != 0 {
+		t.Error("failures on both sides of a success were added up")
 	}
-	l.fail("a", now)
-	l.fail("a", now)
-	if l.wait("a", now.Add(time.Minute)) != 0 {
-		t.Error("failures outlived the window")
+	l.fail("a", at(161))
+	if l.wait("a", at(161)) != 0 {
+		t.Error("failures a lockout apart were added up")
+	}
+}
+
+func TestSetPassword(t *testing.T) {
+	f := signedUp(t)
+	ctx := t.Context()
+	db := f.svc.db
+	session := f.call(http.MethodPost, "/session", "", `{"username": "admin", "password": "correct horse"}`).cookie.Value
+	if err := SetPassword(ctx, db, "admin", "short"); err == nil {
+		t.Error("a short password was accepted")
+	}
+	if err := SetPassword(ctx, db, "nobody", "a long password"); !errors.Is(err, ErrNoAccount) {
+		t.Errorf("unknown account: %v", err)
+	}
+	if err := SetPassword(ctx, db, "admin", "brand new password"); err != nil {
+		t.Fatal(err)
+	}
+	if r := f.call(http.MethodGet, "/whoami", session, ""); r.status != http.StatusUnauthorized {
+		t.Errorf("an old session survived the new password: %d", r.status)
+	}
+	if r := f.call(http.MethodPost, "/session", "", `{"username": "admin", "password": "correct horse"}`); r.status != http.StatusUnauthorized {
+		t.Errorf("the old password still works: %d", r.status)
+	}
+	if r := f.call(http.MethodPost, "/session", "", `{"username": "admin", "password": "brand new password"}`); r.status != http.StatusOK {
+		t.Errorf("the new password fails: %d %s", r.status, r.body)
+	}
+	if names, err := Usernames(ctx, db); err != nil || len(names) != 1 || names[0] != "admin" {
+		t.Errorf("Usernames = %v, %v", names, err)
 	}
 }
 
