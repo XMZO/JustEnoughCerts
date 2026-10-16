@@ -100,7 +100,7 @@ flowchart LR
 |---|---|---|
 | 后端语言 | **Go** | lego（ACME + 225 家 DNS）、Namecheap 官方 SDK、各家云平台的 SDK 都是 Go；标准库自带 x509；单个静态二进制，交叉编译方便 |
 | HTTP | `chi` 路由 + `huma` | huma 能从 Go 代码直接生成 OpenAPI 文档，前端类型和 CLI 都可以由此生成 |
-| 数据库 | **SQLite** | 不需要额外服务；数据访问层留接口，以后可以加 PostgreSQL。纯 Go 驱动体积偏大，M0 实测后在 `modernc.org/sqlite` 和 `ncruces/go-sqlite3` 之间选定（见 8.3） |
+| 数据库 | **SQLite** | 不需要额外服务；数据访问层留接口，以后可以加 PostgreSQL。驱动用纯 Go 的 `ncruces/go-sqlite3`（M0 实测后选定，见 8.3） |
 | 迁移 | `goose` | 启动时自动迁移；每个模块带自己的迁移文件，随二进制嵌入 |
 | ACME | `go-acme/lego` v5 | 支持 EAB 和自定义 CA，DNS 服务商最全 |
 | 通用 DNS 记录增删 | `libdns` 生态 + 自己实现 | lego 只会加 ACME 用的 TXT 记录；付费证书要加任意 CNAME/TXT，需要单独一层（见 5.3.2） |
@@ -349,7 +349,12 @@ DNS 验证分成两种能力，实现方式不同：
 
 - JSON，按模块分组嵌套，key 采用“模块.页面.含义”的形式，例如 `certs.list.empty`、`provider.aliyun_esa.field.site_id.label`。
 - 文件开头有一个 `_meta` 段：语言的本地名称（如“简体中文”）、文字方向（为以后支持阿拉伯语等从右到左的语言预留）、翻译完成度。
-- 消息语法采用 ICU MessageFormat 的子集：命名占位符 `{domain}`、复数 `plural`、条件选择 `select`。前端 vue-i18n 配自定义消息编译器，后端用同一套规则的 Go 实现，保证同一句话在两边解析结果一致。具体用哪个库在 M0 选定。
+- 消息语法采用 ICU MessageFormat 的子集：命名占位符 `{domain}`、复数 `plural`、条件选择 `select`。前端 vue-i18n 配自定义消息编译器，后端用同一套规则的 Go 实现，保证同一句话在两边解析结果一致。M0 选定：
+  - 后端：`i18n` 包自己实现这个子集的解析和格式化，复数规则和 `#` 的数字格式用 `golang.org/x/text`。
+  - 前端：用 FormatJS 的 `intl-messageformat` 做 vue-i18n 的消息编译器（开 `ignoreTag`）。
+  - Go 的解析器比 FormatJS 严格（例如不支持 `{n, number}`、`offset`、`selectordinal`），门禁用它校验，所以能通过门禁的消息在两边结果一致。
+  - 撇号按 ICU 的 DOUBLE_OPTIONAL 规则：`don't` 不用转义，`'{'` 表示字面的 `{`，`''` 表示一个撇号。
+  - x/text 的 CLDR 数据比浏览器旧（例如法语没有表示百万的 `many`）。浏览器选到消息里没有的类别时，FormatJS 会回退到 `other`，和后端结果相同。
 - 日期、时间、数字、文件大小的格式**不写进翻译文件**，交给浏览器的 `Intl` 和 Go 的 `golang.org/x/text` 按语言自动格式化。
 
 ### 7.3 各处文字怎么处理
@@ -372,11 +377,11 @@ DNS 验证分成两种能力，实现方式不同：
 在 CI 里单独作为一个检查项，本地用 `make i18n-check` 可以先跑一遍，任何一条不通过，PR 就不能合并：
 
 1. **完整性**：`zh-CN` 和 `en-US` 必须覆盖全部 key，一个都不能少；其他语言允许缺少（会回退到英文），但不允许出现基准文件里没有的 key。
-2. **一致性**：每条翻译的占位符名称、复数和选择分支必须和英文一致；ICU 语法必须能正确解析；不允许空字符串。
+2. **一致性**：每条翻译的占位符名称和用法（普通、复数、选择）、选择分支必须和英文一致；复数分支必须正好是该语言整数会用到的类别（英文 one/other，中文只有 other），可以另加 `=0` 这类精确值；ICU 语法必须能正确解析；不允许空字符串。
 3. **引用检查**：代码里用到、但语言文件里没有的 key → 失败；语言文件里有、但代码里已经不用的 key → 失败。删掉一个模块后，它留下的翻译会被这一条查出来。
 4. **硬编码检查**：
    - 前端：开启 `@intlify/eslint-plugin-vue-i18n` 的规则，禁止模板里出现裸文本（`no-raw-text`），并检查缺失和未使用的 key。
-   - 后端：自写一个 `go/analysis` 静态检查器，所有面向用户的出口（API 错误、通知、Schema 描述、签发日志）只接受翻译 key 类型，不接受普通字符串。
+   - 后端：所有面向用户的出口（API 错误、通知、Schema 描述、签发日志）只接受翻译 key 类型（`i18n.Key`），不接受普通字符串。自写的 `go/analysis` 检查器 `tools/i18nlint` 堵住剩下的口子：在 `i18n` 包和测试之外，用字符串字面量、无类型常量或类型转换得到的 `i18n.Key` 都算失败。
    - 全仓库扫描：中日韩文字只允许出现在 `i18n/locales/` 和测试数据里，出现在其他地方即失败。
 5. **伪语言测试**：测试时自动生成一种伪语言，给每条文字加上首尾标记并加长 40%。用 Playwright 在手机和桌面两种宽度下打开所有页面：
    - 页面上出现没有标记的文字，说明有硬编码，测试失败；
@@ -440,7 +445,11 @@ services:
   1. 和 lego 共用同一份依赖，不重复引入第二套。
   2. 官方 SDK 太重时，自己用轻量的签名实现直接调 HTTP API：阿里云 V3 签名、腾讯云 TC3、AWS SigV4 各写一份，供所有 Provider 共用。
   3. CI 用 `go-size-analyzer` 输出每个依赖占多少体积，超过预算就让构建失败，防止体积慢慢涨上去。
-- **SQLite 驱动**：纯 Go 的 SQLite 驱动会明显增加体积。M0 实测 `modernc.org/sqlite` 和 `ncruces/go-sqlite3` 的体积和性能，选更合适的那个。
+- **SQLite 驱动**：选 `ncruces/go-sqlite3`。2026-10 用 `modernc.org/sqlite` v1.60.1 和 `ncruces/go-sqlite3` v0.35.6（都内置 SQLite 3.53.4）实测，linux/amd64，WAL 模式：
+  - 体积：在同一个程序上，modernc 增加 4.6MB（gzip 后 2.0MB），ncruces 增加 5.4MB（gzip 后 2.5MB）。
+  - 性能：单线程插入、主键查询 ncruces 快 5%–10%，范围查询持平；8 读 1 写并发时，ncruces 读快约 2.2 倍、写快约 3.6 倍。
+  - 内存峰值：modernc 约 22MiB，ncruces 约 25MiB。
+  - 选 ncruces 的理由：并发余量大（调度器、SSE、界面请求同时访问）；SQLite 跑在隔离的 wasm 内存里，C 代码的内存错误不会破坏 Go 的内存。代价是镜像多约 0.5MB。两者的数据库文件格式相同，以后要换驱动只改 import。
 - **前端**：见 6.4。
 - **镜像层压缩**：buildx 输出时用 gzip 最高压缩级别（`compression-level=9`、`force-compression=true`），只增加构建时间，不影响运行。为了兼容旧版 Docker，不用 zstd 压缩层。
 
@@ -556,7 +565,8 @@ JustEnoughCerts/
 │       ├── core/               # 前端内核：布局、路由、请求、i18n 加载
 │       └── modules/            # 与后端模块一一对应的页面，按需加载
 ├── tools/
-│   ├── i18n-check/             # i18n 门禁检查工具
+│   ├── i18n/                   # i18n 门禁、语言文件格式化、key 常量生成（check / fix / gen）
+│   ├── i18nlint/               # 检查代码里的 key 都来自生成的常量
 │   └── new-module/             # 模块脚手架
 ├── deploy/
 │   ├── docker-compose.yml
@@ -586,8 +596,8 @@ JustEnoughCerts/
 ## 14. 待定事项
 
 - [x] 前端框架：Vue 3。
-- [ ] SQLite 驱动：M0 实测 `modernc.org/sqlite` 与 `ncruces/go-sqlite3` 后决定。
-- [ ] ICU 消息格式的前后端实现库：M0 选定。
+- [x] SQLite 驱动：`ncruces/go-sqlite3`（实测数据见 8.3）。
+- [x] ICU 消息格式的前后端实现：后端自己实现子集，前端用 FormatJS（见 7.2）。
 - [ ] 镜像和程序的体积预算：M0 实测后写进 CI。
 - [ ] 除 SQLite 外，何时支持 PostgreSQL。
 - [ ] 文档语言：倾向中英双语（界面语言已定为跟随浏览器，可手动切换）。

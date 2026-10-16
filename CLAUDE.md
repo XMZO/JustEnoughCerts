@@ -17,7 +17,7 @@
 
 ## 技术栈（已定）
 
-- 后端：Go，chi + huma（OpenAPI），SQLite（驱动在 M0 实测 `modernc.org/sqlite` 和 `ncruces/go-sqlite3` 后定），goose 迁移，go-acme/lego v5，log/slog，mvdan.cc/sh 跑钩子脚本。
+- 后端：Go，chi + huma（OpenAPI），SQLite（驱动用 `ncruces/go-sqlite3`，选型数据见 `PLAN.md` 8.3），goose 迁移，go-acme/lego v5，log/slog，mvdan.cc/sh 跑钩子脚本。
 - 前端：Vue 3 + TypeScript + Vite + Tailwind CSS + shadcn-vue，Vue Router，Pinia，TanStack Query，vue-i18n，图标 Lucide（按需引入），不打包网页字体。
 - 发布：GoReleaser + Docker Buildx，cosign 签名，syft 生成 SBOM。
 
@@ -42,5 +42,12 @@
 
 ## 进度
 
-- 已完成：`PLAN.md`；设计系统和全部页面设计稿（`docs/design/`）。
-- 下一步：按 `PLAN.md` 第 13 节做 M0 骨架（仓库结构、CI、发布流水线、`scratch` 镜像和体积检查、模块注册表、i18n 模块和门禁、中英文登录页和初始化向导、SQLite 驱动实测）。
+- 已完成：`PLAN.md`；设计系统和全部页面设计稿（`docs/design/`）；M0 第一段：`jec serve` / `healthcheck` / `version`，分层配置，`scratch` 镜像，GoReleaser，CI 和按标签发布的流水线（`.github/workflows/`）；SQLite 驱动选型；i18n 模块（`i18n/`：语言文件、ICU 子集解析和格式化、key 常量生成）和后端门禁（`go run ./tools/i18n check`、`go run ./tools/i18nlint ./...`，新增或改动文字后跑 `go run ./tools/i18n fix`）。
+- 下一步：M0 其余部分：内核（存储与迁移、模块注册表、事件总线）、API 与错误码、登录和初始化向导、前端骨架（含前端 i18n 门禁和伪语言测试）、模块脚手架、体积预算。
+
+## 工程约定
+
+- 代码、注释、脚本、部署文件都用英文；中文只出现在语言文件和文档里（i18n 门禁会扫描）。命令行输出和运维日志按 `PLAN.md` 7.3 算开发者日志，用英文。
+- Go：`go.mod` 只写最低版本（1.26），CI 和发布用最新稳定版。GitHub Actions 一律钉到 commit SHA 并在注释里写版本号，由 Dependabot 每周更新。
+- 容器默认以 65532:65532 运行，不在启动时切换用户；挂载的数据目录要先 `chown`，启动检查会给出明确报错。
+- 第一次发布后，ghcr.io 上的镜像包默认是私有的，要提醒仓库主人在包设置里改成公开。
