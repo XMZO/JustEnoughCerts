@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>登录</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/jec/tokens.css">
+<link rel="stylesheet" href="ds/jec/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+html body { margin: 0; padding: 0; background: transparent; }
+a { color: var(--brand); } a:hover { color: var(--brand-hover); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.rows > * { border-bottom: 1px solid var(--line); }
+.rows > *:last-child { border-bottom: 0; }
+.mono { font-family: var(--font-mono); font-size: 12px; line-height: 20px; }
+</style>
+</helmet>
+<div data-theme="{{theme}}" style="min-height: 1040px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 32px 16px; box-sizing: border-box; background: var(--surface); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 22px;">
+  <main style="width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;">
+      <svg width="48" height="48" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3c9a3f" fill-rule="evenodd" d="M5 1h6v1H5zM4 2h2v1H4zM10 2h2v1h-2zM3 3h2v4H3zM11 3h2v4h-2zM2 7h12v8H2zM7 9h2v4H7z"></path></svg>
+      <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600;">Just Enough Certs</h1>
+      <p style="margin: 0; color: var(--ink-muted);">刚好够用的证书，让网站一直是绿锁。</p>
+    </div>
+    <form class="jec-panel" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;" onsubmit="return false">
+      <sc-if value="{{err}}" hint-placeholder-val="{{false}}"><div role="alert" style="display: flex; gap: 8px; padding: 8px 10px; border-radius: var(--radius-md); background: var(--danger-soft); color: var(--danger-ink); font-size: 13px; line-height: 20px; font-weight: 600;"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top: 2px; width: 16px; height: 16px; flex: none;"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M15 9l-6 6M9 9l6 6"></path></svg>用户名或密码不对。连续错 5 次会锁定 15 分钟。</div></sc-if>
+      <label class="jec-field" style="max-width: none;"><span class="jec-field__label">用户名</span><input class="jec-input" value="admin" autocomplete="username"></label>
+      <label class="jec-field" style="max-width: none;"><span class="jec-field__label">密码</span><input class="jec-input" type="password" value="password" autocomplete="current-password"></label>
+      <a class="jec-btn jec-btn--primary" href="Main.dc.html" style="text-decoration: none;">登录</a>
+    </form>
+    <div style="display: flex; justify-content: center; gap: 16px; font-size: 13px; line-height: 20px; color: var(--ink-muted);">
+      <a href="#" style="display: inline-flex; align-items: center; gap: 4px;"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width: 14px; height: 14px;"><path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"></path></svg>English</a>
+      <span>忘记密码：在服务器上运行 jec reset-password</span>
+    </div>
+  </main>
+  <div aria-hidden="true" style="display: flex; gap: 4px; padding: 4px; border-radius: var(--radius-md); background: var(--surface-raised); border: 1px solid var(--line);">
+    <sc-for list="{{slots}}" as="s" hint-placeholder-count="9"><span class="{{s.cls}}" style="cursor: default;"><sc-if value="{{s.bar}}" hint-placeholder-val="{{true}}"><span class="jec-slot__bar"><span style="width: {{s.pct}}%;"></span></span></sc-if></span></sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"error":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { err: false }; }
+  renderVals() {
+    var self = this;
+    var slots = [[84, ''], [65, ''], [12, ' jec-slot--warn'], [92, ''], [48, ''], [0, ' jec-slot--empty'], [0, ' jec-slot--empty'], [0, ' jec-slot--empty'], [0, ' jec-slot--empty']];
+    return {
+      theme: this.props.theme ?? 'light',
+      err: this.props.error ?? false,
+      slots: slots.map(function (s) { return { cls: 'jec-slot jec-slot--sm' + s[1], bar: s[0] > 0, pct: s[0] }; })
+    };
+  }
+}
+</script>
+</body>
+</html>

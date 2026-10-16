@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>签发记录 · 手机</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/jec/tokens.css">
+<link rel="stylesheet" href="ds/jec/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+html body { margin: 0; padding: 0; background: transparent; }
+a { color: var(--brand); } a:hover { color: var(--brand-hover); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.rows > * { border-bottom: 1px solid var(--line); }
+.rows > *:last-child { border-bottom: 0; }
+.mono { font-family: var(--font-mono); font-size: 12px; line-height: 20px; }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; color: var(--ink-muted); text-decoration: none; font-size: 12px; line-height: 16px; font-weight: 500; }
+.tab .jec-icon { width: 22px; height: 22px; }
+.tab--active { color: var(--brand); font-weight: 600; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand); }
+.jec-item--info .jec-item__icon .jec-icon { animation: jec-spin 1.2s linear infinite; }
+</style>
+</helmet>
+<div data-theme="{{theme}}" style="position: relative; width: 390px; height: 900px; overflow: hidden; background: var(--surface); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 22px;">
+  <header style="display: flex; align-items: center; gap: 4px; height: 56px; padding: 0 8px 0 16px; background: var(--surface-raised); border-bottom: 1px solid var(--line);">
+    <h1 style="flex: 1; margin: 0; font-size: 18px; line-height: 26px; font-weight: 600;">签发记录</h1>
+    <select class="jec-input" aria-label="时间范围" style="width: auto; height: 36px; min-height: 36px; padding: 0 8px; font-size: 13px;"><option>最近 7 天</option><option>最近 30 天</option><option>最近 90 天</option></select>
+  </header>
+  <div style="padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <div role="group" aria-label="按结果筛选" style="display: flex; gap: 6px; flex: 1; min-width: 0; overflow-x: auto;">
+        <sc-for list="{{filters}}" as="f" hint-placeholder-count="4">
+          <button type="button" class="chip" aria-pressed="{{f.pressed}}" onClick="{{f.pick}}">{{f.label}}<span class="jec-num" style="color: var(--ink-muted); font-weight: 500;">{{f.count}}</span></button>
+        </sc-for>
+      </div>
+    </div>
+    <sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+      <section class="jec-group">
+        <h2 class="jec-group__title">{{g.day}}</h2>
+        <div class="jec-list jec-list--compact" role="list">
+          <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="2">
+            <a class="{{r.item}}" href="IssueMobile.dc.html" role="listitem" aria-label="{{r.aria}}">
+              <span class="jec-item__icon"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.icon}}"></path></svg></span>
+              <span class="jec-item__main"><span class="jec-item__title">{{r.cert}}</span><span class="jec-item__meta"><span class="jec-item__state">{{r.action}}{{r.rtext}}</span>{{r.note}}</span></span>
+              <span class="jec-item__end"><span class="jec-item__days" style="font-weight: 400;">{{r.time}}</span></span>
+            </a>
+          </sc-for>
+        </div>
+      </section>
+    </sc-for>
+    <p class="jec-num" style="margin: 0; font-size: 12px; line-height: 18px; color: var(--ink-muted); text-align: center;">{{summary}}</p>
+  </div>
+  <nav aria-label="主导航" style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; padding: 4px 8px 20px; background: var(--surface-raised); border-top: 1px solid var(--line);">
+    <a class="tab" href="OverviewMobile.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM15 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM15 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM4 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1z"></path></svg>总览</a>
+    <a class="tab" href="CertsMobile.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1zM9 12l2 2 4-4"></path></svg>证书</a>
+    <a class="tab tab--active" href="HistoryMobile.dc.html" aria-current="page"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2"></path></svg>签发记录</a>
+    <a class="tab" href="MoreMobile.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12L20 12M4 6L20 6M4 18L20 18"></path></svg>更多</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":390,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { filter: 'all' };
+  }
+  renderVals() {
+    var self = this;
+    var I = {"circle-check": "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M9 12l2 2 4-4", "octagon-x": "M15 9l-6 6M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586zM9 9l6 6", "loader-circle": "M21 12a9 9 0 1 1-6.219-8.56"};
+    var R = {
+      ok: { text: '成功', badge: 'jec-badge jec-badge--ok', icon: I['circle-check'], item: 'jec-item' },
+      failed: { text: '失败', badge: 'jec-badge jec-badge--danger', icon: I['octagon-x'], item: 'jec-item jec-item--danger' },
+      running: { text: '进行中', badge: 'jec-badge jec-badge--info', icon: I['loader-circle'], item: 'jec-item jec-item--info' }
+    };
+    var runs = [
+      { day: '今天', d: 0, time: '14:20', cert: 'shop.example.com', action: '续期', trigger: '手动', result: 'ok', dur: '2 分 06 秒', note: '已部署到阿里云 ESA 和 Nginx：vps-01' },
+      { day: '今天', d: 0, time: '09:31', cert: 'api.example.net', action: '续期', trigger: '自动', result: 'failed', dur: '10 分 05 秒', note: 'DNS 记录在 10 分钟内没有生效' },
+      { day: '今天', d: 0, time: '09:12', cert: '*.static.example.org', action: '签发', trigger: '手动', result: 'running', dur: '', note: '正在等待 DNS 验证生效' },
+      { day: '昨天', d: 1, time: '02:00', cert: 'api.example.net', action: '续期', trigger: '自动', result: 'failed', dur: '10 分 03 秒', note: 'DNS 记录在 10 分钟内没有生效' },
+      { day: '10 月 14 日', d: 2, time: '03:01', cert: 'home.example.net', action: '部署', trigger: '自动', result: 'ok', dur: '4 秒', note: '已写入本地文件并重载 nginx' },
+      { day: '10 月 14 日', d: 2, time: '03:00', cert: 'home.example.net', action: '续期', trigger: '自动', result: 'ok', dur: '1 分 02 秒', note: "Let's Encrypt 签发，新证书到 2027-01-12" },
+      { day: '10 月 12 日', d: 4, time: '02:00', cert: 'status.example.com', action: '续期', trigger: '自动', result: 'ok', dur: '48 秒', note: '已通知 Webhook' },
+      { day: '10 月 9 日', d: 7, time: '15:44', cert: 'git.example.dev', action: '部署', trigger: '手动', result: 'ok', dur: '6 秒', note: '已部署到 Nginx：vps-01' },
+      { day: '10 月 7 日', d: 9, time: '02:01', cert: 'mail.example.com', action: '续期', trigger: '自动', result: 'ok', dur: '55 秒', note: '已写入本地文件' },
+      { day: '10 月 3 日', d: 13, time: '02:00', cert: 'docs.example.org', action: '续期', trigger: '自动', result: 'ok', dur: '1 分 40 秒', note: '部署到阿里云 ESA 时重试了 1 次' },
+      { day: '9 月 28 日', d: 18, time: '11:20', cert: 'example.com', action: '签发', trigger: '手动', result: 'ok', dur: '2 分 31 秒', note: 'Namecheap 重签，已部署到阿里云 ESA' },
+      { day: '9 月 25 日', d: 21, time: '02:10', cert: 'cdn.example.com', action: '部署', trigger: '自动重试', result: 'ok', dur: '7 秒', note: '已部署到腾讯云 EdgeOne' },
+      { day: '9 月 25 日', d: 21, time: '02:00', cert: 'cdn.example.com', action: '部署', trigger: '自动', result: 'failed', dur: '3 秒', note: 'EdgeOne 接口返回 429（请求太频繁），10 分钟后重试' },
+      { day: '9 月 20 日', d: 26, time: '02:00', cert: 'blog.example.com', action: '续期', trigger: '自动', result: 'ok', dur: '2 分 12 秒', note: 'Namecheap 重签，已部署到阿里云 ESA' }
+    ].filter(function (r) { return r.d <= 7; });
+    var f = this.state.filter;
+    var shown = runs.filter(function (r) { return f === 'all' || r.result === f; });
+    var groups = [];
+    shown.forEach(function (r) {
+      var g = groups.length ? groups[groups.length - 1] : null;
+      if (!g || g.day !== r.day) { g = { day: r.day, rows: [] }; groups.push(g); }
+      g.rows.push({
+        time: r.time, cert: r.cert, action: r.action, trigger: r.trigger, dur: r.dur || '—', note: r.note,
+        badge: R[r.result].badge, rtext: R[r.result].text, icon: R[r.result].icon, item: R[r.result].item,
+        title: r.cert, meta: r.action + '，' + r.trigger,
+        aria: r.day + ' ' + r.time + '，' + r.cert + ' ' + r.action + R[r.result].text + '，' + r.note
+      });
+    });
+    var defs = [['all', '全部'], ['failed', '失败'], ['ok', '成功'], ['running', '进行中']];
+    return {
+      theme: this.props.theme ?? 'light',
+      groups: groups,
+      filters: defs.map(function (d) {
+        return { label: d[1], count: runs.filter(function (r) { return d[0] === 'all' || r.result === d[0]; }).length, pressed: f === d[0] ? 'true' : 'false', pick: function () { self.setState({ filter: d[0] }); } };
+      }),
+      summary: '最近 7 天共 ' + runs.length + ' 次，显示 ' + shown.length + ' 次。要看更早的记录，换一个时间范围。'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

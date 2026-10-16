@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>添加证书 · 手机</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/jec/tokens.css">
+<link rel="stylesheet" href="ds/jec/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+html body { margin: 0; padding: 0; background: transparent; }
+a { color: var(--brand); } a:hover { color: var(--brand-hover); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.rows > * { border-bottom: 1px solid var(--line); }
+.rows > *:last-child { border-bottom: 0; }
+.mono { font-family: var(--font-mono); font-size: 12px; line-height: 20px; }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; color: var(--ink-muted); text-decoration: none; font-size: 12px; line-height: 16px; font-weight: 500; }
+.tab .jec-icon { width: 22px; height: 22px; }
+.tab--active { color: var(--brand); font-weight: 600; }
+.sec { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.sec h2 { margin: 0; font-size: 18px; line-height: 26px; font-weight: 600; }
+.fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px 16px; }
+.fields .jec-field { max-width: none; }
+.help { margin: 0; font-size: 13px; line-height: 20px; color: var(--ink-muted); }
+.tgt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px 16px; }
+.plan { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; counter-reset: s; }
+.plan li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; font-size: 13px; line-height: 20px; }
+.plan .n { display: grid; place-items: center; width: 20px; height: 20px; border-radius: var(--radius-sm); background: var(--surface-sunken); color: var(--ink-muted); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sec.m { padding: 12px; }
+.sec.m h2 { font-size: 16px; line-height: 24px; }
+.src-grid { grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); }
+.m .src-grid, .m .jec-choices { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.m .fields, .m .tgt-grid { grid-template-columns: minmax(0, 1fr) !important; }
+.m .tgt-grid { gap: 10px; }
+.m .tgt-grid > div > label:first-child .jec-check__help { display: none; }
+</style>
+</helmet>
+<div data-theme="{{theme}}" style="position: relative; width: 390px; height: 1880px; overflow: hidden; background: var(--surface); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 22px;">
+  <header style="display: flex; align-items: center; gap: 4px; height: 56px; padding: 0 8px 0 4px; background: var(--surface-raised); border-bottom: 1px solid var(--line);">
+    <a class="jec-btn jec-btn--icon jec-btn--ghost" href="CertsMobile.dc.html" aria-label="取消添加" style="width: 44px; height: 44px; color: var(--ink);"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width: 22px; height: 22px;"><path d="M18 6 6 18M6 6l12 12"></path></svg></a><h1 style="flex: 1; margin: 0; font-size: 18px; line-height: 26px; font-weight: 600;">添加证书</h1>
+  </header>
+  <div style="position: absolute; top: 56px; left: 0; right: 0; bottom: 0; padding: 12px 16px 104px; display: flex; flex-direction: column; gap: 12px;">
+      <section class="jec-panel sec m" aria-labelledby="s-src">
+        <h2 id="s-src">证书来源</h2>
+        <div class="jec-choices src-grid" role="radiogroup" aria-labelledby="s-src">
+          <sc-for list="{{sources}}" as="s" hint-placeholder-count="6">
+            <button type="button" class="jec-choice" role="radio" aria-checked="{{s.checked}}" onClick="{{s.pick}}"><span class="jec-choice__title">{{s.title}}</span><span class="jec-choice__desc">{{s.desc}}</span></button>
+          </sc-for>
+        </div>
+        <div class="fields">
+          <sc-if value="{{isNamecheap}}" hint-placeholder-val="{{true}}">
+            <label class="jec-field"><span class="jec-field__label">Namecheap 账号</span><select class="jec-input"><option>namecheap-main</option><option>添加新凭据…</option></select><span class="jec-field__help">API 只接受白名单里的 IP。这台服务器的 IP 203.0.113.10 已在白名单里。</span></label>
+            <label class="jec-field"><span class="jec-field__label">证书订单</span><select class="jec-input"><option>PositiveSSL，shop.example.com，订阅到 2027-04-22</option><option>PositiveSSL Wildcard，*.example.org，订阅到 2027-01-10</option></select><span class="jec-field__help">列出账号里还能签发或重签的证书。</span></label>
+          </sc-if>
+          <sc-if value="{{isLe}}" hint-placeholder-val="{{false}}">
+            <label class="jec-field"><span class="jec-field__label">联系邮箱（可选）</span><input class="jec-input" type="email" value="admin@example.com"><span class="jec-field__help">CA 用它发送账户和吊销通知。</span></label>
+          </sc-if>
+          <sc-if value="{{isEab}}" hint-placeholder-val="{{false}}">
+            <label class="jec-field"><span class="jec-field__label">EAB Key ID</span><input class="jec-input jec-code" placeholder="例如 kid_1a2b3c"><span class="jec-field__help">{{eabWhere}}</span></label>
+            <label class="jec-field"><span class="jec-field__label">EAB HMAC Key</span><input class="jec-input jec-code" type="password" placeholder="只用一次，保存后不再显示"></label>
+          </sc-if>
+          <sc-if value="{{isAcme}}" hint-placeholder-val="{{false}}">
+            <label class="jec-field"><span class="jec-field__label">ACME 目录地址</span><input class="jec-input jec-code" placeholder="https://acme.example.com/directory"><span class="jec-field__help">CA 的文档里会给出这个地址，通常以 /directory 结尾。</span></label>
+            <label class="jec-field"><span class="jec-field__label">EAB Key ID（可选）</span><input class="jec-input jec-code"></label>
+          </sc-if>
+          <sc-if value="{{isManual}}" hint-placeholder-val="{{false}}">
+            <label class="jec-field" style="max-width: none;"><span class="jec-field__label">证书（PEM，含中间证书）</span><textarea class="jec-input jec-code" rows="4" style="height: auto; padding: 8px 12px;" placeholder="-----BEGIN CERTIFICATE-----"></textarea></label>
+            <label class="jec-field" style="max-width: none;"><span class="jec-field__label">私钥</span><textarea class="jec-input jec-code" rows="3" style="height: auto; padding: 8px 12px;" placeholder="-----BEGIN PRIVATE KEY-----"></textarea><span class="jec-field__help">加密保存在 JEC 的数据目录里。手动上传的证书不能自动续期，到期前 30 天会提醒你。</span></label>
+          </sc-if>
+          <sc-if value="{{notManual}}" hint-placeholder-val="{{true}}">
+            <label class="jec-field"><span class="jec-field__label">密钥类型</span><select class="jec-input"><option>RSA 2048</option><option>ECDSA P-256</option><option>ECDSA P-384</option><option>RSA 4096</option></select><span class="jec-field__help">每次续期都会生成新私钥。老旧客户端多就选 RSA。</span></label>
+          </sc-if>
+        </div>
+      </section>
+
+      <section class="jec-panel sec m" aria-labelledby="s-dom">
+        <h2 id="s-dom">域名</h2>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+          <sc-for list="{{domains}}" as="d" hint-placeholder-count="2">
+            <span class="jec-tag" style="height: 30px; padding: 0 4px 0 10px; gap: 4px; font-size: 13px; color: var(--ink);">{{d.name}}<sc-if value="{{domainsEditable}}" hint-placeholder-val="{{false}}"><button type="button" class="jec-btn jec-btn--ghost jec-btn--icon" aria-label="{{d.removeLabel}}" onClick="{{d.remove}}" style="width: 22px; height: 22px; min-height: 22px;"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width: 14px; height: 14px;"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></sc-if></span>
+          </sc-for>
+          <sc-if value="{{domainsEditable}}" hint-placeholder-val="{{false}}"><input class="jec-input" placeholder="添加域名，回车确认" style="width: 220px; height: 30px; min-height: 30px;"></sc-if>
+        </div>
+        <sc-if value="{{domainsFixed}}" hint-placeholder-val="{{true}}"><p class="help">域名来自证书订单。要改域名，得在 Namecheap 重新下单。</p></sc-if>
+        <sc-if value="{{domainsEditable}}" hint-placeholder-val="{{false}}"><p class="help">第一个是主域名。通配符写成 *.example.com，只能用 DNS 验证。</p></sc-if>
+      </section>
+
+      <sc-if value="{{notManual}}" hint-placeholder-val="{{true}}">
+        <section class="jec-panel sec m" aria-labelledby="s-val">
+          <h2 id="s-val">域名验证</h2>
+          <div class="jec-choices" role="radiogroup" aria-labelledby="s-val" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+            <sc-for list="{{methods}}" as="m" hint-placeholder-count="2">
+              <button type="button" class="jec-choice" role="radio" aria-checked="{{m.checked}}" onClick="{{m.pick}}"><span class="jec-choice__title">{{m.title}}</span><span class="jec-choice__desc">{{m.desc}}</span></button>
+            </sc-for>
+          </div>
+          <sc-if value="{{isDns}}" hint-placeholder-val="{{true}}">
+            <div class="fields">
+              <label class="jec-field"><span class="jec-field__label">DNS 服务商</span><select class="jec-input"><option>DNSPod（dnspod-main）</option><option>Cloudflare（cf-main）</option><option>阿里云 DNS（aliyun-dns）</option><option>添加 DNS 服务商…</option></select>
+                <span class="jec-field__help" style="display: flex; align-items: center; gap: 4px; color: var(--ok-ink); font-weight: 600;"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width: 14px; height: 14px;"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M9 12l2 2 4-4"></path></svg>连接正常，可以管理 example.com</span></label>
+            </div>
+            <p class="help">{{recordNote}}</p>
+          </sc-if>
+          <sc-if value="{{isHttp}}" hint-placeholder-val="{{false}}">
+            <div class="fields">
+              <label class="jec-field"><span class="jec-field__label">验证文件写到</span><input class="jec-input jec-code" value="/var/www/html/.well-known/acme-challenge"><span class="jec-field__help">也可以留空，由 JEC 自己在 80 端口应答。</span></label>
+            </div>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <section class="jec-panel sec m" aria-labelledby="s-tgt">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;"><h2 id="s-tgt">部署到</h2><a href="Targets.dc.html" style="font-size: 13px; line-height: 20px;">管理部署目标</a></div>
+        <div class="tgt-grid">
+          <sc-for list="{{targets}}" as="t" hint-placeholder-count="7">
+            <div>
+              <label class="jec-check"><input type="checkbox" checked="{{t.checked}}" onChange="{{t.toggle}}"><span class="jec-check__text"><span>{{t.name}}</span><span class="jec-check__help">{{t.help}}</span></span></label>
+              <sc-if value="{{t.isEsa}}" hint-placeholder-val="{{false}}">
+                <label class="jec-check" style="margin: 6px 0 0 26px;"><input type="checkbox" checked="{{esaDelete}}" onChange="{{toggleEsaDelete}}"><span class="jec-check__text"><span style="font-size: 13px; line-height: 20px;">部署后删除旧证书</span><span class="jec-check__help">ESA 免费版每个站点最多 2 张自定义证书</span></span></label>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section class="jec-panel sec m" aria-labelledby="s-ren">
+        <h2 id="s-ren">续期和通知</h2>
+        <div class="fields" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+          <label class="jec-field"><span class="jec-field__label">提前续期</span><span style="display: flex; align-items: center; gap: 8px;"><input class="jec-input jec-num" value="30" inputmode="numeric" style="width: 80px;"><span>天</span></span><span class="jec-field__help">Namecheap 200 天的证书建议 30 天。</span></label>
+          <div class="jec-field"><span class="jec-field__label">通知</span>
+            <span style="display: flex; flex-wrap: wrap; gap: 6px 16px;"><label class="jec-check"><input type="checkbox" checked><span>邮件</span></label><label class="jec-check"><input type="checkbox" checked><span>Telegram</span></label><label class="jec-check"><input type="checkbox"><span>只在失败时通知</span></label></span>
+          </div>
+        </div>
+      </section>
+
+  </div>
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 6px; padding: 10px 16px 24px; background: var(--surface-raised); border-top: 1px solid var(--line);">
+    <span style="font-size: 12px; line-height: 16px; color: var(--ink-muted); text-align: center;">{{submitNote}}</span>
+    <a class="jec-btn jec-btn--primary" href="IssueMobile.dc.html" style="text-decoration: none;"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3 L20 12 L6 21 L6 3z"></path></svg>{{submit}}</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":390,"height":1880}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { source: 'namecheap', method: 'dns', key: 'RSA 2048', dns: 'dnspod', targets: { esa: true, nginx: true }, esaDelete: true, domains: ['shop.example.com', 'www.shop.example.com'] };
+  }
+  renderVals() {
+    var self = this;
+    var st = this.state;
+    var SRC = [
+      { id: 'le', title: "Let's Encrypt", desc: '免费，90 天，ACME 自动签发', ca: "Let's Encrypt" },
+      { id: 'zerossl', title: 'ZeroSSL', desc: '免费或付费，ACME + EAB', ca: 'ZeroSSL' },
+      { id: 'gts', title: 'Google Trust Services', desc: '免费，90 天，需要 EAB', ca: 'Google Trust Services' },
+      { id: 'namecheap', title: 'Namecheap', desc: '已购证书，通过 API 重签', ca: 'Namecheap' },
+      { id: 'acme', title: '其他 ACME', desc: '填目录地址，EAB 可选', ca: '自定义 ACME' },
+      { id: 'manual', title: '手动上传', desc: '粘贴证书和私钥，不能自动续期', ca: '' }
+    ];
+    var TG = [
+      { id: 'esa', name: '阿里云 ESA（主账号）', help: '站点 example.com' },
+      { id: 'nginx', name: 'Nginx：vps-01', help: '写入文件后重载 nginx' },
+      { id: 'edgeone', name: '腾讯云 EdgeOne', help: '站点 example.org' },
+      { id: 'api01', name: 'SSH：api-01', help: '写入文件后重载 caddy' },
+      { id: 'gw01', name: 'SSH：gw-01', help: '写入文件后执行自定义命令' },
+      { id: 'local', name: '本地文件', help: '/data/certs/' },
+      { id: 'webhook', name: 'Webhook', help: 'POST 到 hooks.example.com' }
+    ];
+    var DNS = { dnspod: 'DNSPod（dnspod-main）', cf: 'Cloudflare（cf-main）', aliyun: '阿里云 DNS（aliyun-dns）' };
+    var src = SRC.filter(function (s) { return s.id === st.source; })[0];
+    var isManual = st.source === 'manual';
+    var isNamecheap = st.source === 'namecheap';
+    var isEab = st.source === 'zerossl' || st.source === 'gts';
+    var plan = [];
+    if (isManual) {
+      plan.push('检查证书和私钥是否匹配');
+    } else {
+      plan.push('生成 ' + st.key + ' 私钥和 CSR');
+      plan.push(isNamecheap ? '向 Namecheap 申请重签证书订单 #2210587' : '向 ' + src.ca + ' 创建 ACME 订单');
+      if (st.method === 'dns') {
+        plan.push('在 ' + DNS[st.dns].split('（')[0] + ' 添加 ' + (isNamecheap ? 'CNAME' : 'TXT') + ' 验证记录，验证后删除');
+      } else {
+        plan.push('在 80 端口应答 HTTP 文件验证');
+      }
+      plan.push('等待 CA 验证并下载证书');
+    }
+    TG.forEach(function (t) {
+      if (st.targets[t.id]) plan.push('部署到 ' + t.name.replace('（主账号）', '') + (t.id === 'esa' && st.esaDelete ? '，并删除旧证书' : ''));
+    });
+    plan.push(isManual ? '到期前 30 天提醒你上传新证书' : '之后每天 02:00 检查，到期前 30 天自动续期');
+    var targetCount = TG.filter(function (t) { return st.targets[t.id]; }).length;
+    return {
+      theme: this.props.theme ?? 'light',
+      sources: SRC.map(function (s) { return { title: s.title, desc: s.desc, checked: s.id === st.source ? 'true' : 'false', pick: function () { self.setState({ source: s.id, domains: s.id === 'namecheap' ? ['shop.example.com', 'www.shop.example.com'] : self.state.domains }); } }; }),
+      isNamecheap: isNamecheap,
+      isLe: st.source === 'le',
+      isEab: isEab,
+      eabWhere: st.source === 'gts' ? '在 Google Cloud 控制台用 gcloud publicca external-account-keys create 生成。' : '在 ZeroSSL 控制台的 Developer 页面生成。',
+      isAcme: st.source === 'acme',
+      isManual: isManual,
+      notManual: !isManual,
+      domainsEditable: !isNamecheap,
+      domainsFixed: isNamecheap,
+      domains: st.domains.map(function (d, i) { return { name: d, remove: function () { var n = self.state.domains.slice(); n.splice(i, 1); self.setState({ domains: n }); }, removeLabel: '移除 ' + d }; }),
+      methods: [
+        { title: 'DNS 验证', desc: '推荐。支持通配符，不需要开放端口', checked: st.method === 'dns' ? 'true' : 'false', pick: function () { self.setState({ method: 'dns' }); } },
+        { title: 'HTTP 验证', desc: '80 端口要能从公网访问到 JEC', checked: st.method === 'http' ? 'true' : 'false', pick: function () { self.setState({ method: 'http' }); } }
+      ],
+      isDns: st.method === 'dns',
+      isHttp: st.method === 'http',
+      recordNote: isNamecheap ? 'Namecheap 用 CNAME 记录验证域名，JEC 会自动添加，验证完删除。' : 'ACME 用 _acme-challenge 的 TXT 记录验证域名，JEC 会自动添加，验证完删除。',
+      targets: TG.map(function (t) { return { name: t.name, help: t.help, checked: !!st.targets[t.id], isEsa: t.id === 'esa' && !!st.targets[t.id], toggle: function () { var n = Object.assign({}, self.state.targets); n[t.id] = !n[t.id]; self.setState({ targets: n }); } }; }),
+      esaDelete: st.esaDelete,
+      toggleEsaDelete: function () { self.setState({ esaDelete: !self.state.esaDelete }); },
+      plan: plan.map(function (p, i) { return { n: i + 1, text: p }; }),
+      submit: isManual ? '保存证书' : '签发证书',
+      submitNote: isManual ? '保存后部署到 ' + targetCount + ' 个目标' : '大约需要 1 到 3 分钟，签发后部署到 ' + targetCount + ' 个目标'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

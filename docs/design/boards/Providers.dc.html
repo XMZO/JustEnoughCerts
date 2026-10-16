@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>配置 · 桌面</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/jec/tokens.css">
+<link rel="stylesheet" href="ds/jec/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+html body { margin: 0; padding: 0; background: transparent; }
+a { color: var(--brand); } a:hover { color: var(--brand-hover); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.rows > * { border-bottom: 1px solid var(--line); }
+.rows > *:last-child { border-bottom: 0; }
+.mono { font-family: var(--font-mono); font-size: 12px; line-height: 20px; }
+.nav-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border-radius: var(--radius-md); color: var(--ink-muted); text-decoration: none; font-weight: 500; }
+.nav-item:hover { background: var(--surface-sunken); color: var(--ink); }
+.nav-item .jec-icon { width: 18px; height: 18px; }
+.nav-item--active, .nav-item--active:hover { background: var(--brand-soft); color: var(--ink); font-weight: 600; }
+.nav-item--active .jec-icon { color: var(--brand); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.card { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.card-head { display: flex; align-items: center; gap: 10px; }
+.ico { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-md); background: var(--surface-sunken); color: var(--ink-muted); }
+.card .t { flex: 1; min-width: 0; font-weight: 600; font-size: 15px; line-height: 22px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card .sub { margin-left: 6px; font-weight: 400; font-size: 13px; color: var(--ink-muted); }
+.card .detail { font-size: 13px; line-height: 20px; color: var(--ink-muted); }
+.card .status { display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 20px; font-weight: 600; }
+.card .status .jec-icon { width: 14px; height: 14px; }
+.card .used { margin-left: auto; font-weight: 400; color: var(--ink-muted); white-space: nowrap; }
+.card .actions { display: flex; gap: 6px; padding-top: 4px; border-top: 1px solid var(--line); margin-top: 2px; padding-top: 10px; }
+.add-tile { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 120px; border: 1px dashed var(--line-strong); border-radius: var(--radius-lg); background: transparent; color: var(--ink-muted); font: inherit; font-weight: 600; cursor: pointer; }
+.add-tile:hover { background: var(--surface-sunken); color: var(--ink); }
+.mod { display: block; width: 100%; padding: 7px 10px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--ink); font: inherit; font-size: 13px; line-height: 20px; text-align: left; cursor: pointer; }
+.mod:hover { background: var(--surface-sunken); }
+.mod--on, .mod--on:hover { background: var(--brand-soft); font-weight: 600; }
+.dfields { display: grid; gap: 14px; }
+.dfields .jec-field { max-width: none; }
+</style>
+</helmet>
+<div data-theme="{{theme}}" style="position: relative; min-height: 1040px; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 22px;">
+
+  <aside style="flex: 1 1 232px; max-width: 100%; box-sizing: border-box; padding: 20px 12px; display: flex; flex-direction: column; gap: 20px; background: var(--surface-raised); border-right: 1px solid var(--line);">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 10px;">
+      <svg width="28" height="28" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3c9a3f" fill-rule="evenodd" d="M5 1h6v1H5zM4 2h2v1H4zM10 2h2v1h-2zM3 3h2v4H3zM11 3h2v4h-2zM2 7h12v8H2zM7 9h2v4H7z"></path></svg>
+      <span style="font-weight: 600; font-size: 15px;">Just Enough Certs</span>
+    </div>
+    <nav aria-label="主导航" style="display: flex; flex-direction: column; gap: 2px;">
+      <a class="{{nav.overview}}" href="Main.dc.html" aria-current="{{cur.overview}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM15 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM15 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM4 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1z"></path></svg><span>总览</span></a>
+      <a class="{{nav.certs}}" href="Certs.dc.html" aria-current="{{cur.certs}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1zM9 12l2 2 4-4"></path></svg><span>证书</span><span class="jec-num" style="margin-left: auto; font-size: 12px; color: var(--ink-muted);">12</span></a>
+      <a class="{{nav.history}}" href="History.dc.html" aria-current="{{cur.history}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2"></path></svg><span>签发记录</span></a>
+    </nav>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <span style="padding: 0 10px 4px; font-size: 12px; line-height: 16px; color: var(--ink-muted);">配置</span>
+      <a class="{{nav.sources}}" href="Sources.dc.html" aria-current="{{cur.sources}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73zM12 22V12M3.3 7l7.703 4.734a2 2 0 0 0 1.994 0L20.7 7M7.5 4.27l9 5.15"></path></svg><span>证书来源</span></a>
+      <a class="{{nav.dns}}" href="Dns.dc.html" aria-current="{{cur.dns}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"></path></svg><span>域名验证</span></a>
+      <a class="{{nav.targets}}" href="Targets.dc.html" aria-current="{{cur.targets}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2h16a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2zM4 14h16a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2zM6 6L6.01 6M6 18L6.01 18"></path></svg><span>部署目标</span></a>
+      <a class="{{nav.notify}}" href="Notify.dc.html" aria-current="{{cur.notify}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg><span>通知</span></a>
+      <a class="{{nav.credentials}}" href="Credentials.dc.html" aria-current="{{cur.credentials}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4zM16 7.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0"></path></svg><span>凭据</span></a>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <a class="{{nav.modules}}" href="Modules.dc.html" aria-current="{{cur.modules}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H3"></path></svg><span>模块</span></a>
+      <a class="{{nav.settings}}" href="Settings.dc.html" aria-current="{{cur.settings}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2zM9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"></path></svg><span>设置</span></a>
+    </div>
+    <div style="margin-top: auto; padding: 12px 10px 0; border-top: 1px solid var(--line); font-size: 12px; line-height: 16px; color: var(--ink-muted); display: flex; justify-content: space-between;">
+      <span>admin</span><span>v0.1.0</span>
+    </div>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 32px;">
+    <div style="max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
+      <header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px;">
+        <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 360px;">
+          <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600;">{{title}}</h1>
+          <p style="margin: 0; color: var(--ink-muted);">{{desc}}</p>
+        </div>
+        <button type="button" class="jec-btn jec-btn--primary" onClick="{{openDialog}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>{{add}}</button>
+      </header>
+      <div class="cards">
+        <sc-for list="{{items}}" as="it" hint-placeholder-count="5">
+          <article class="jec-panel card">
+            <div class="card-head">
+              <span class="ico"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{kindIcon}}"></path></svg></span>
+              <h2 class="t" style="margin: 0;">{{it.name}}<sc-if value="{{it.hasSub}}" hint-placeholder-val="{{false}}"><span class="sub">{{it.sub}}</span></sc-if></h2>
+              <button type="button" class="jec-btn jec-btn--ghost jec-btn--icon jec-btn--sm" aria-label="{{it.menu}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path></svg></button>
+            </div>
+            <div class="detail">{{it.detail}}</div>
+            <div class="status"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: {{it.stColor}};"><path d="{{it.stIcon}}"></path></svg><span style="color: {{it.stColor}};">{{it.stText}}</span><span class="used">{{it.used}}</span></div>
+            <div class="actions">
+              <sc-if value="{{it.canTest}}" hint-placeholder-val="{{true}}"><button type="button" class="jec-btn jec-btn--sm"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22v-5M9 8V2M15 8V2M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"></path></svg>测试连接</button></sc-if>
+              <button type="button" class="jec-btn jec-btn--sm jec-btn--ghost"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497zM15 5l4 4"></path></svg>编辑</button>
+            </div>
+          </article>
+        </sc-for>
+        <button type="button" class="add-tile" onClick="{{openDialog}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>{{add}}</button>
+      </div>
+      <p style="margin: 0; font-size: 13px; line-height: 20px; color: var(--ink-muted);">{{foot}} <a href="Modules.dc.html">管理模块</a></p>
+    </div>
+  </main>
+  <sc-if value="{{open}}" hint-placeholder-val="{{false}}">
+    <div class="jec-scrim" style="align-items: start; padding-top: 96px;">
+      <div class="jec-dialog" role="dialog" aria-modal="true" aria-labelledby="dlg" style="height: 680px;">
+        <div class="jec-dialog__head"><h2 class="jec-dialog__title" id="dlg">{{dialogTitle}}</h2><button type="button" class="jec-btn jec-btn--ghost jec-btn--icon" aria-label="关闭" onClick="{{closeDialog}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></div>
+        <div class="jec-dialog__body" style="display: flex; overflow: hidden;">
+          <div style="width: 240px; flex: none; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-right: 1px solid var(--line); overflow: auto;">
+            <label style="position: relative; display: block;"><span class="sr-only">搜索模块</span><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; left: 10px; top: 10px; color: var(--ink-muted);"><path d="M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M21 21l-4.3-4.3"></path></svg><input class="jec-input" type="search" placeholder="搜索" style="padding-left: 32px;"></label>
+            <div role="listbox" aria-label="模块">
+              <sc-for list="{{catalog}}" as="m" hint-placeholder-count="10"><button type="button" class="{{m.cls}}" role="option" aria-selected="{{m.cur}}" onClick="{{m.pick}}">{{m.name}}</button></sc-for>
+            </div>
+            <sc-if value="{{hasMore}}" hint-placeholder-val="{{false}}"><p style="margin: 0; padding: 0 10px; font-size: 12px; line-height: 18px; color: var(--ink-muted);">{{more}}</p></sc-if>
+          </div>
+          <div style="flex: 1; min-width: 0; overflow: auto; padding: 16px 20px;">
+            <div class="dfields">
+              <sc-for list="{{fields}}" as="f" hint-placeholder-count="4">
+                <label class="jec-field">
+                  <span class="jec-field__label">{{f.label}}</span>
+                  <sc-if value="{{f.input}}" hint-placeholder-val="{{true}}"><input class="{{f.inputCls}}" type="{{f.type}}" value="{{f.value}}" placeholder="{{f.placeholder}}"></sc-if>
+                  <sc-if value="{{f.select}}" hint-placeholder-val="{{false}}"><select class="jec-input"><option>{{f.value}}</option></select></sc-if>
+                  <sc-if value="{{f.area}}" hint-placeholder-val="{{false}}"><textarea class="jec-input jec-code" rows="4" placeholder="{{f.placeholder}}" style="height: auto; padding: 8px 12px;"></textarea></sc-if>
+                  <sc-if value="{{f.hasHelp}}" hint-placeholder-val="{{false}}"><span class="jec-field__help">{{f.help}}</span></sc-if>
+                </label>
+              </sc-for>
+              <sc-for list="{{checks}}" as="c" hint-placeholder-count="1">
+                <label class="jec-check"><input type="checkbox" checked="{{c.checked}}"><span class="jec-check__text"><span>{{c.label}}</span><sc-if value="{{c.hasHelp}}" hint-placeholder-val="{{false}}"><span class="jec-check__help">{{c.help}}</span></sc-if></span></label>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        <div class="jec-dialog__foot">
+          <sc-if value="{{canTestDialog}}" hint-placeholder-val="{{true}}"><button type="button" class="jec-btn" style="margin-right: auto;"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22v-5M9 8V2M15 8V2M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"></path></svg>测试连接</button></sc-if>
+          <button type="button" class="jec-btn" onClick="{{closeDialog}}">取消</button>
+          <button type="button" class="jec-btn jec-btn--primary" onClick="{{closeDialog}}">保存</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"kind":{"editor":"enum","options":["sources","dns","targets","notify","credentials"],"default":"targets"},"dialog":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { open: null, pick: null };
+  }
+  renderVals() {
+    var self = this;
+    var I = {"circle-check": "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M9 12l2 2 4-4", "triangle-alert": "M21.73 18l-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01", "info": "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M12 16v-4M12 8h.01", "package": "M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73zM12 22V12M3.3 7l7.703 4.734a2 2 0 0 0 1.994 0L20.7 7M7.5 4.27l9 5.15", "globe": "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20", "server": "M4 2h16a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2zM4 14h16a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2zM6 6L6.01 6M6 18L6.01 18", "bell": "M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326", "key-round": "M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4zM16 7.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0"};
+    var KINDS = {
+      sources: {
+        title: '证书来源', icon: 'package', add: '添加证书来源',
+        desc: '证书从哪里来：ACME 证书颁发机构、证书商的 API，或者手动上传。',
+        foot: '已启用 8 个证书来源模块。',
+        items: [
+          { name: "Let's Encrypt", detail: 'ACME，联系邮箱 admin@example.com', st: 'ok', stText: '账户正常', used: '6 张证书' },
+          { name: 'ZeroSSL', detail: 'ACME + EAB，Key ID kid_••••3f2a', st: 'ok', stText: '账户正常', used: '2 张证书' },
+          { name: 'Google Trust Services', detail: 'ACME + EAB，Key ID ••••91ad', st: 'ok', stText: '账户正常', used: '1 张证书' },
+          { name: 'Namecheap', detail: 'API 用户 namecheap-main，白名单 IP 203.0.113.10', st: 'ok', stText: '连接正常，2 个订单可以重签', used: '3 张证书' },
+          { name: '手动上传', detail: '内置，不能自动续期', st: 'none', stText: '不需要连接', used: '1 张证书' }
+        ],
+        catalog: ["Let's Encrypt", 'ZeroSSL', 'Google Trust Services', 'Buypass', 'SSL.com', 'Sectigo（ACME）', 'DigiCert（ACME）', '其他 ACME', 'Namecheap', '手动上传'],
+        more: '',
+        pick: 'SSL.com',
+        fields: [
+          { label: '名称', value: 'SSL.com', help: '' },
+          { label: 'ACME 目录地址', value: 'https://acme.ssl.com/sslcom-dv-rsa', help: '已按 SSL.com 的文档填好，一般不用改。', code: true },
+          { label: 'EAB Key ID', value: '', placeholder: '在 SSL.com 账户的 API 凭据页面复制', help: '', code: true },
+          { label: 'EAB HMAC Key', value: '', placeholder: '只用一次，保存后不再显示', help: '', code: true, secret: true }
+        ]
+      },
+      dns: {
+        title: '域名验证', icon: 'globe', add: '添加 DNS 服务商',
+        desc: 'JEC 用这些 DNS 服务商的 API 自动添加和删除验证记录。',
+        foot: '支持 225 个 DNS 服务商，由 lego 提供；另外可以用 RFC 2136 或脚本对接自建 DNS。',
+        items: [
+          { name: 'DNSPod', sub: 'dnspod-main', detail: '腾讯云 API 密钥 AKID••••9c1e', st: 'ok', stText: '连接正常，能管理 3 个域名', used: '7 张证书' },
+          { name: 'Cloudflare', sub: 'cf-main', detail: 'API Token ••••x7Qp，只有 DNS 编辑权限', st: 'ok', stText: '连接正常，能管理 2 个域名', used: '2 张证书' },
+          { name: '阿里云 DNS', sub: 'aliyun-dns', detail: 'AccessKey LTAI••••Qm3x', st: 'warn', stText: '权限不足：缺少 AliyunDNSFullAccess', used: '1 张证书' }
+        ],
+        catalog: ['腾讯云 DNSPod', '阿里云 DNS', 'Cloudflare', '华为云 DNS', '火山引擎 DNS', 'AWS Route 53', 'Google Cloud DNS', 'Azure DNS', 'DigitalOcean', 'Namecheap DNS', 'GoDaddy', 'Porkbun', 'Hetzner', 'OVH', 'RFC 2136', '自定义脚本'],
+        more: '还有 209 个，用搜索查找',
+        pick: '腾讯云 DNSPod',
+        fields: [
+          { label: '名称', value: 'dnspod-main', help: '' },
+          { label: '凭据', value: '新建：腾讯云 API 密钥', help: '建议在腾讯云访问管理里建一个子用户，只授予 QcloudDNSPodFullAccess。', select: true },
+          { label: 'SecretId', value: '', placeholder: 'AKID 开头', help: '', code: true },
+          { label: 'SecretKey', value: '', placeholder: '保存后不再显示', help: '', code: true, secret: true }
+        ]
+      },
+      targets: {
+        title: '部署目标', icon: 'server', add: '添加部署目标',
+        desc: '证书签发或续期后，自动部署到这些地方。',
+        foot: '已启用 20 个部署模块。没有现成模块的地方，可以用 SSH 命令或 Webhook 对接。',
+        items: [
+          { name: '阿里云 ESA', sub: '主账号', detail: '中国站，站点 example.com，部署后删除旧证书', st: 'ok', stText: '连接正常', used: '4 张证书' },
+          { name: '腾讯云 EdgeOne', detail: '站点 example.org', st: 'ok', stText: '连接正常', used: '2 张证书' },
+          { name: 'Nginx：vps-01', detail: 'SSH root@203.0.113.21，写入文件后重载 nginx', st: 'ok', stText: '连接正常', used: '3 张证书' },
+          { name: 'SSH：api-01', detail: 'SSH deploy@203.0.113.30，写入文件后重载 caddy', st: 'warn', stText: '上次部署失败：连接超时', used: '1 张证书' },
+          { name: 'SSH：gw-01', detail: 'SSH admin@203.0.113.40，执行自定义命令', st: 'ok', stText: '连接正常', used: '1 张证书' },
+          { name: '本地文件', detail: '/data/certs/，按域名分目录', st: 'ok', stText: '目录可写', used: '2 张证书' },
+          { name: 'Webhook', detail: 'POST https://hooks.example.com/jec', st: 'ok', stText: '上次返回 200', used: '1 张证书' }
+        ],
+        catalog: ['阿里云 ESA', '阿里云 CDN', '阿里云 SLB', '阿里云 OSS', '腾讯云 EdgeOne', '腾讯云 CDN', '腾讯云 CLB', '七牛云', '又拍云', '华为云 CDN', 'Cloudflare', 'AWS ACM', 'Kubernetes Secret', 'Docker 容器', '宝塔面板', '1Panel', 'SSH', '本地文件', 'Webhook'],
+        more: '',
+        pick: '阿里云 ESA',
+        fields: [
+          { label: '名称', value: '主账号', help: '' },
+          { label: '接入点', value: '中国站（esa.cn-hangzhou.aliyuncs.com）', help: '国际站选 ap-southeast-1。', select: true },
+          { label: 'AccessKey ID', value: 'LTAI5t••••••••Qm3x', help: '', code: true },
+          { label: 'AccessKey Secret', value: '', placeholder: '保存后不再显示', help: '建议用 RAM 子账号，只授予 esa:ListSites、ListCertificates、SetCertificate、DeleteCertificate。', code: true, secret: true },
+          { label: 'ESA 站点', value: 'example.com', help: '测试连接后列出这个账号下的站点。', select: true }
+        ],
+        checks: [{ label: '部署后删除旧证书', help: 'ESA 免费版每个站点最多 2 张自定义证书，新证书生效后删掉旧的。', checked: true }]
+      },
+      notify: {
+        title: '通知', icon: 'bell', add: '添加通知方式',
+        desc: '签发失败、证书即将到期或部署出错时通知你。',
+        foot: '已启用 12 个通知模块。',
+        items: [
+          { name: '邮件', detail: 'SMTP smtp.example.com:465，发给 admin@example.com', st: 'ok', stText: '上次发送成功', used: '全部事件' },
+          { name: 'Telegram', detail: 'Bot @jec_alert_bot，发到“运维”群', st: 'ok', stText: '上次发送成功', used: '只发失败' }
+        ],
+        catalog: ['邮件', 'Telegram', '企业微信', '钉钉', '飞书', 'Slack', 'Discord', 'Bark', 'ntfy', 'Gotify', 'Server 酱', 'Webhook'],
+        more: '',
+        pick: '企业微信',
+        fields: [
+          { label: '名称', value: '企业微信运维群', help: '' },
+          { label: '群机器人 Webhook 地址', value: '', placeholder: 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=…', help: '在群设置里添加群机器人后复制。', code: true }
+        ],
+        checks: [
+          { label: '签发失败', checked: true }, { label: '部署失败', checked: true }, { label: '证书即将到期', checked: true }, { label: '签发成功', checked: false }
+        ]
+      },
+      credentials: {
+        title: '凭据', icon: 'key-round', add: '添加凭据',
+        desc: 'API 密钥和 SSH 私钥加密保存在数据目录里，可以给多个来源、DNS 服务商和部署目标共用。',
+        foot: '凭据只在调用接口时解密，不会出现在日志和导出文件里。',
+        items: [
+          { name: 'dnspod-main', detail: '腾讯云 API 密钥，AKID••••9c1e', st: 'none', stText: '用于 DNSPod', used: '今天 14:20 用过' },
+          { name: 'aliyun-main', detail: '阿里云 AccessKey，LTAI••••Qm3x', st: 'none', stText: '用于阿里云 ESA、阿里云 DNS', used: '今天 14:21 用过' },
+          { name: 'cf-main', detail: 'Cloudflare API Token，••••x7Qp', st: 'none', stText: '用于 Cloudflare', used: '10 月 12 日用过' },
+          { name: 'namecheap-main', detail: 'Namecheap API Key，••••b21d', st: 'none', stText: '用于 Namecheap', used: '今天 14:20 用过' },
+          { name: 'zerossl-eab', detail: 'ACME EAB，kid_••••3f2a', st: 'none', stText: '用于 ZeroSSL', used: '今天 09:31 用过' },
+          { name: 'vps-ssh', detail: 'SSH 私钥 ED25519，SHA256:••••Ux4', st: 'none', stText: '用于 Nginx：vps-01、SSH：gw-01', used: '今天 14:22 用过' },
+          { name: 'smtp', detail: 'SMTP 用户名和密码', st: 'none', stText: '用于邮件通知', used: '10 月 9 日用过' }
+        ],
+        catalog: ['腾讯云 API 密钥', '阿里云 AccessKey', 'Cloudflare API Token', 'AWS 访问密钥', 'Namecheap API Key', 'ACME EAB', 'SSH 私钥', '用户名和密码', '通用 Token'],
+        more: '',
+        pick: 'SSH 私钥',
+        fields: [
+          { label: '名称', value: 'gw-ssh', help: '' },
+          { label: '私钥', value: '', placeholder: '-----BEGIN OPENSSH PRIVATE KEY-----', help: '也可以让 JEC 生成一对新密钥，再把公钥加到服务器的 authorized_keys。', code: true, area: true },
+          { label: '口令（可选）', value: '', placeholder: '私钥没有口令就留空', help: '', secret: true }
+        ]
+      }
+    };
+
+    var kind = this.props.kind ?? 'targets';
+    var K = KINDS[kind] || KINDS.targets;
+    var open = this.state.open === null ? !!this.props.dialog : this.state.open;
+    var pick = this.state.pick || K.pick;
+    var ST = {
+      ok: { icon: I['circle-check'], color: 'var(--ok-ink)' },
+      warn: { icon: I['triangle-alert'], color: 'var(--warn-ink)' },
+      none: { icon: I['info'], color: 'var(--ink-muted)' }
+    };
+    var nav = {}, cur = {};
+    ['overview', 'certs', 'history', 'sources', 'dns', 'targets', 'notify', 'credentials', 'modules', 'settings'].forEach(function (k) {
+      nav[k] = k === kind ? 'nav-item nav-item--active' : 'nav-item';
+      cur[k] = k === kind ? 'page' : 'false';
+    });
+    var isDefaultPick = pick === K.pick;
+    var fields = isDefaultPick ? K.fields : [
+      { label: '名称', value: pick, help: '' },
+      { label: '凭据', value: '新建凭据', help: '这个模块需要的其他字段由它的配置说明自动生成。', select: true }
+    ];
+    return {
+      theme: this.props.theme ?? 'light',
+      nav: nav, cur: cur,
+      title: K.title, desc: K.desc, add: K.add, foot: K.foot,
+      kindIcon: I[K.icon],
+      isCred: kind === 'credentials',
+      notCred: kind !== 'credentials',
+      items: K.items.map(function (it) {
+        return {
+          name: it.name, sub: it.sub || '', hasSub: !!it.sub, detail: it.detail, stText: it.stText, used: it.used,
+          stIcon: ST[it.st].icon, stColor: ST[it.st].color, canTest: it.st !== 'none',
+          menu: it.name + ' 的更多操作',
+          mCls: it.st === 'warn' ? 'jec-item jec-item--warn' : 'jec-item',
+          mIconColor: it.st === 'none' ? 'color: var(--ink-muted);' : '',
+          mMeta: it.st === 'warn' ? it.stText : it.detail,
+          aria: it.name + '，' + it.stText + '，' + it.used
+        };
+      }),
+      open: open,
+      openDialog: function () { self.setState({ open: true }); },
+      closeDialog: function () { self.setState({ open: false }); },
+      catalog: K.catalog.map(function (c) {
+        return { name: c, cls: c === pick ? 'mod mod--on' : 'mod', cur: c === pick ? 'true' : 'false', pick: function () { self.setState({ pick: c }); } };
+      }),
+      more: K.more, hasMore: !!K.more,
+      pick: pick,
+      dialogTitle: K.add + '：' + pick,
+      fields: fields.map(function (f) {
+        return { label: f.label, value: f.value, placeholder: f.placeholder || '', help: f.help, hasHelp: !!f.help, input: !f.select && !f.area, select: !!f.select, area: !!f.area, inputCls: f.code ? 'jec-input jec-code' : 'jec-input', type: f.secret ? 'password' : 'text' };
+      }),
+      checks: isDefaultPick ? (K.checks || []).map(function (c) { return { label: c.label, help: c.help || '', hasHelp: !!c.help, checked: c.checked }; }) : [],
+      canTestDialog: kind !== 'credentials'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>总览 · 手机</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/jec/tokens.css">
+<link rel="stylesheet" href="ds/jec/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+html body { margin: 0; padding: 0; background: transparent; }
+a { color: var(--brand); } a:hover { color: var(--brand-hover); }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; color: var(--ink-muted); text-decoration: none; font-size: 12px; line-height: 16px; font-weight: 500; }
+.tab .jec-icon { width: 22px; height: 22px; }
+.tab--active { color: var(--brand); font-weight: 600; }
+</style>
+</helmet>
+<div data-theme="{{theme}}" style="position: relative; width: 390px; height: 900px; overflow: hidden; background: var(--surface); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 22px;">
+
+  <header style="display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 8px 0 16px; background: var(--surface-raised); border-bottom: 1px solid var(--line);">
+    <svg width="24" height="24" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3c9a3f" fill-rule="evenodd" d="M5 1h6v1H5zM4 2h2v1H4zM10 2h2v1h-2zM3 3h2v4H3zM11 3h2v4h-2zM2 7h12v8H2zM7 9h2v4H7z"></path></svg>
+    <h1 style="flex: 1; margin: 0; font-size: 18px; line-height: 26px; font-weight: 600;">总览</h1>
+    <button type="button" class="jec-btn jec-btn--icon jec-btn--ghost" aria-label="搜索域名" style="width: 44px; height: 44px;"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width: 20px; height: 20px;"><path d="M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M21 21l-4.3-4.3"></path></svg></button>
+    <a class="jec-btn jec-btn--icon jec-btn--primary" href="AddCertMobile.dc.html" aria-label="添加证书" style="width: 44px; height: 44px;"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width: 20px; height: 20px;"><path d="M5 12h14M12 5v14"></path></svg></a>
+  </header>
+
+  <div style="padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px;">
+
+    <section class="jec-panel" aria-labelledby="m-inv" style="padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <h2 id="m-inv" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600;">全部证书</h2>
+        <span class="jec-num" style="font-size: 13px; color: var(--ink-muted);">12 张，1 张需要处理</span>
+      </div>
+      <div class="jec-slots" role="list" aria-label="证书">
+        <sc-for list="{{slots}}" as="s" hint-placeholder-count="12">
+          <button type="button" class="{{s.cls}}" role="listitem" aria-pressed="{{s.pressed}}" aria-label="{{s.aria}}" onClick="{{s.pick}}">
+            <span class="jec-slot__mono">{{s.mono}}</span>
+            <sc-if value="{{s.flag}}" hint-placeholder-val="{{false}}">
+              <span class="{{s.flagCls}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{s.flagIcon}}"></path></svg></span>
+            </sc-if>
+            <sc-if value="{{s.hasBar}}" hint-placeholder-val="{{true}}">
+              <span class="jec-slot__bar"><span style="width: {{s.pct}}%;"></span></span>
+            </sc-if>
+          </button>
+        </sc-for>
+      </div>
+      <div aria-live="polite" style="padding: 10px 12px; border-radius: var(--radius-md); background: var(--surface-sunken); display: flex; flex-direction: column; gap: 8px;">
+        <div class="jec-card__head">
+          <span class="jec-domain">{{sel.domain}}<small>{{sel.extra}}</small></span>
+          <span class="{{sel.badgeCls}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{sel.badgeIcon}}"></path></svg>{{sel.badgeText}}</span>
+        </div>
+        <sc-if value="{{sel.hasLife}}" hint-placeholder-val="{{true}}">
+          <div class="{{sel.lifeCls}}"><div class="jec-life__bar"><span class="jec-life__fill" style="width: {{sel.pct}}%;"></span></div><span class="jec-life__label">{{sel.lifeText}}</span></div>
+        </sc-if>
+        <p style="margin: 0; font-size: 13px; line-height: 20px; color: var(--ink-muted);">{{sel.plan}}</p>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="jec-btn jec-btn--primary" style="flex: 1;">{{sel.primary}}</button>
+          <a class="jec-btn" href="CertDetailMobile.dc.html" style="flex: 1; text-decoration: none; color: var(--ink);">查看详情</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="jec-panel" aria-labelledby="m-todo" style="padding: 12px 12px 4px; display: flex; flex-direction: column;">
+      <h2 id="m-todo" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600;">需要处理</h2>
+      <a href="#" style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none;">
+        <svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top: 3px; color: var(--danger-ink);"><path d="M15 9l-6 6M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586zM9 9l6 6"></path></svg>
+        <span style="flex: 1; min-width: 0;"><span style="display: block; font-weight: 600;">api.example.net 签发失败</span><span style="display: block; font-size: 13px; line-height: 20px; color: var(--ink-muted);">DNS 记录没有生效，1 小时后自动重试。</span></span>
+        <svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top: 3px; color: var(--ink-muted);"><path d="M9 18l6-6-6-6"></path></svg>
+      </a>
+      <a href="#" style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none;">
+        <svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top: 3px; color: var(--warn-ink);"><path d="M21.73 18l-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01"></path></svg>
+        <span style="flex: 1; min-width: 0;"><span style="display: block; font-weight: 600;">2 张证书进入续期窗口</span><span style="display: block; font-size: 13px; line-height: 20px; color: var(--ink-muted);">今晚 02:00 自动续期，不需要操作。</span></span>
+        <svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top: 3px; color: var(--ink-muted);"><path d="M9 18l6-6-6-6"></path></svg>
+      </a>
+      <a href="#" style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 0 8px; color: var(--ink); text-decoration: none;">
+        <svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top: 3px; color: var(--ink-muted);"><path d="M10.1 2.182a10 10 0 0 1 3.8 0M13.9 21.818a10 10 0 0 1-3.8 0M17.609 3.721a10 10 0 0 1 2.69 2.7M2.182 13.9a10 10 0 0 1 0-3.8M20.279 17.609a10 10 0 0 1-2.7 2.69M21.818 10.1a10 10 0 0 1 0 3.8M3.721 6.391a10 10 0 0 1 2.7-2.69M6.391 20.279a10 10 0 0 1-2.69-2.7"></path></svg>
+        <span style="flex: 1; min-width: 0;"><span style="display: block; font-weight: 600;">vpn.example.net 需要手动更换</span><span style="display: block; font-size: 13px; line-height: 20px; color: var(--ink-muted);">手动上传的证书无法自动续期。</span></span>
+        <svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top: 3px; color: var(--ink-muted);"><path d="M9 18l6-6-6-6"></path></svg>
+      </a>
+    </section>
+
+    <section class="jec-panel" aria-labelledby="m-act" style="padding: 12px 12px 4px; display: flex; flex-direction: column;">
+      <h2 id="m-act" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600;">最近动态</h2>
+      <div style="display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; line-height: 20px;"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top: 2px; color: var(--danger-ink);"><path d="M15 9l-6 6M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586zM9 9l6 6"></path></svg><span style="flex: 1;">api.example.net 签发失败</span><span class="jec-num" style="color: var(--ink-muted);">09:41</span></div>
+      <div style="display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; line-height: 20px;"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top: 2px; color: var(--info-ink);"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg><span style="flex: 1;">*.static.example.org 开始签发</span><span class="jec-num" style="color: var(--ink-muted);">09:12</span></div>
+      <div style="display: flex; gap: 10px; padding: 8px 0; font-size: 13px; line-height: 20px;"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top: 2px; color: var(--ok-ink);"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M9 12l2 2 4-4"></path></svg><span style="flex: 1;">home.example.net 已续期并部署</span><span class="jec-num" style="color: var(--ink-muted);">10 月 14 日</span></div>
+    </section>
+  </div>
+
+  <nav aria-label="主导航" style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; padding: 4px 8px 20px; background: var(--surface-raised); border-top: 1px solid var(--line);">
+    <a class="tab tab--active" href="OverviewMobile.dc.html" aria-current="page"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM15 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM15 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM4 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1z"></path></svg>总览</a>
+    <a class="tab" href="CertsMobile.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1zM9 12l2 2 4-4"></path></svg>证书</a>
+    <a class="tab" href="HistoryMobile.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2"></path></svg>签发记录</a>
+    <a class="tab" href="MoreMobile.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12L20 12M4 6L20 6M4 18L20 18"></path></svg>更多</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":390,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sel: 'api' };
+  }
+  renderVals() {
+    var I = {
+      ok: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M9 12l2 2 4-4',
+      warn: 'M21.73 18l-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01',
+      failed: 'M15 9l-6 6M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586zM9 9l6 6',
+      issuing: 'M21 12a9 9 0 1 1-6.219-8.56'
+    };
+    var S = {
+      ok: { badge: 'jec-badge jec-badge--ok', text: '正常', icon: I.ok },
+      warn: { badge: 'jec-badge jec-badge--warn', text: '即将到期', icon: I.warn },
+      failed: { badge: 'jec-badge jec-badge--danger', text: '失败', icon: I.failed },
+      issuing: { badge: 'jec-badge jec-badge--info', text: '签发中', icon: I.issuing }
+    };
+    var certs = [
+      { id: 'api', domain: 'api.example.net', mono: 'ap', state: 'failed', days: 5, total: 90, plan: 'DNS 记录在 10 分钟内没有生效，1 小时后自动重试。', primary: '重试' },
+      { id: 'shop', domain: 'shop.example.com', mono: 'sh', state: 'warn', days: 23, total: 200, plan: '已进入续期窗口，今晚 02:00 自动续期。' },
+      { id: 'cdn', domain: 'cdn.example.com', mono: 'cd', state: 'warn', days: 28, total: 90, plan: '已进入续期窗口，今晚 02:00 自动续期。' },
+      { id: 'static', domain: '*.static.example.org', mono: '*.', state: 'issuing', plan: '正在等待 DNS 验证生效，通常需要 1 到 3 分钟。', primary: '查看进度' },
+      { id: 'docs', domain: 'docs.example.org', mono: 'do', state: 'ok', days: 52, total: 90, plan: '将在 11 月 7 日自动续期。' },
+      { id: 'git', domain: 'git.example.dev', mono: 'gi', state: 'ok', days: 64, total: 90, plan: '将在 11 月 19 日自动续期。' },
+      { id: 'mail', domain: 'mail.example.com', mono: 'ma', state: 'ok', days: 77, total: 90, plan: '将在 12 月 2 日自动续期。' },
+      { id: 'status', domain: 'status.example.com', mono: 'st', state: 'ok', days: 85, total: 90, plan: '将在 12 月 10 日自动续期。' },
+      { id: 'home', domain: 'home.example.net', mono: 'ho', state: 'ok', days: 88, total: 90, plan: '将在 12 月 13 日自动续期。' },
+      { id: 'blog', domain: 'blog.example.com', mono: 'bl', state: 'ok', days: 131, total: 200, plan: '将在 2027 年 1 月 25 日自动续期。' },
+      { id: 'vpn', domain: 'vpn.example.net', mono: 'vp', state: 'ok', days: 150, total: 200, plan: '手动上传的证书无法自动续期，到期前 30 天会提醒你。', primary: '上传新证书' },
+      { id: 'example', domain: 'example.com', extra: '+1', mono: 'ex', state: 'ok', days: 168, total: 200, plan: '将在 2027 年 3 月 3 日自动续期。' }
+    ];
+    var self = this;
+    var lifeCls = function (d) { return d <= 7 ? 'jec-life jec-life--danger' : (d <= 30 ? 'jec-life jec-life--warn' : 'jec-life'); };
+    var slotCls = function (c) { if (c.state === 'issuing') return 'jec-slot jec-slot--sm'; return c.days <= 7 ? 'jec-slot jec-slot--sm jec-slot--danger' : (c.days <= 30 ? 'jec-slot jec-slot--sm jec-slot--warn' : 'jec-slot jec-slot--sm'); };
+    var pct = function (c) { return c.days ? Math.max(2, Math.round(c.days / c.total * 100)) : 0; };
+    var slots = certs.map(function (c) {
+      return {
+        cls: slotCls(c),
+        mono: c.mono,
+        pressed: self.state.sel === c.id ? 'true' : 'false',
+        aria: c.domain + '，' + S[c.state].text + (c.days ? '，剩 ' + c.days + ' 天' : ''),
+        pick: function () { self.setState({ sel: c.id }); },
+        flag: c.state === 'failed' || c.state === 'issuing',
+        flagCls: c.state === 'failed' ? 'jec-slot__flag jec-slot__flag--danger' : 'jec-slot__flag jec-slot__flag--info',
+        flagIcon: c.state === 'failed' ? I.failed : I.issuing,
+        hasBar: c.state !== 'issuing',
+        pct: pct(c)
+      };
+    });
+    var c = certs.filter(function (x) { return x.id === self.state.sel; })[0] || certs[0];
+    var sel = {
+      domain: c.domain,
+      extra: c.extra || '',
+      badgeCls: S[c.state].badge,
+      badgeText: S[c.state].text,
+      badgeIcon: S[c.state].icon,
+      hasLife: c.state !== 'issuing',
+      lifeCls: c.days ? lifeCls(c.days) : 'jec-life',
+      pct: pct(c),
+      lifeText: c.days ? '剩 ' + c.days + ' 天' : '',
+      plan: c.plan,
+      primary: c.primary || '立即续期'
+    };
+    return { theme: this.props.theme ?? 'light', slots: slots, sel: sel };
+  }
+}
+</script>
+</body>
+</html>

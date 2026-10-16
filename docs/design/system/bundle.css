@@ -1,0 +1,198 @@
+/* Just Enough Certs — component styles. Every value comes from tokens.css. */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; padding: var(--space-4); background: var(--surface); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 22px; -webkit-font-smoothing: antialiased; }
+.jec-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.jec-stack { display: grid; gap: var(--space-3); }
+.jec-muted { color: var(--ink-muted); }
+.jec-num { font-variant-numeric: tabular-nums; }
+.jec-code { font-family: var(--font-mono); font-size: 13px; line-height: 20px; }
+.jec-icon { width: 16px; height: 16px; flex: none; stroke-width: 2; }
+.jec-panel { background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+
+/* Button */
+.jec-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--ink); font: inherit; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.jec-btn:hover { background: var(--surface-sunken); }
+.jec-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.jec-btn--primary { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+.jec-btn--primary:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
+.jec-btn--danger { background: var(--danger-ink); border-color: var(--danger-ink); color: var(--on-danger); }
+.jec-btn--danger:hover { background: var(--danger-ink); filter: brightness(1.08); }
+.jec-btn--ghost { background: transparent; border-color: transparent; }
+.jec-btn--ghost:hover { background: var(--surface-sunken); }
+.jec-btn--sm { height: 30px; padding: 0 var(--space-3); font-size: 13px; }
+.jec-btn--icon { width: 36px; padding: 0; }
+.jec-btn[disabled] { opacity: .45; cursor: not-allowed; }
+@media (max-width: 639px) { .jec-btn { min-height: var(--touch-target); } }
+
+/* StatusBadge */
+.jec-badge { display: inline-flex; align-items: center; gap: var(--space-1); height: 22px; padding: 0 var(--space-2) 0 6px; border-radius: var(--radius-sm); font-size: 12px; line-height: 16px; font-weight: 600; white-space: nowrap; background: var(--surface-sunken); color: var(--ink-muted); }
+.jec-badge .jec-icon { width: 14px; height: 14px; }
+.jec-badge--ok { background: var(--ok-soft); color: var(--ok-ink); }
+.jec-badge--warn { background: var(--warn-soft); color: var(--warn-ink); }
+.jec-badge--danger { background: var(--danger-soft); color: var(--danger-ink); }
+.jec-badge--info { background: var(--info-soft); color: var(--info-ink); }
+.jec-badge--info .jec-icon { animation: jec-spin 1.2s linear infinite; }
+@keyframes jec-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .jec-badge--info .jec-icon { animation: none; } }
+
+/* LifeBar — the certificate's remaining lifetime, drawn like an item durability bar */
+.jec-life { display: flex; flex-direction: column-reverse; gap: var(--space-1); min-width: 64px; }
+.jec-life__bar { height: 6px; padding: 1px; background: var(--bar-track); box-shadow: 0 0 0 1px var(--bar-edge); border-radius: 1px; }
+.jec-life__fill { display: block; height: 100%; background: var(--ok-fill); }
+.jec-life--warn .jec-life__fill { background: var(--warn-fill); }
+.jec-life--danger .jec-life__fill { background: var(--danger-fill); }
+.jec-life__label { font-size: 13px; line-height: 20px; color: var(--ink-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.jec-life--warn .jec-life__label { color: var(--warn-ink); font-weight: 600; }
+.jec-life--danger .jec-life__label { color: var(--danger-ink); font-weight: 600; }
+.jec-life--inline { flex-direction: row; align-items: center; gap: var(--space-2); }
+.jec-life--inline .jec-life__bar { flex: none; width: 88px; }
+
+/* CertSlot — one certificate as an inventory slot */
+.jec-slots { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.jec-slot { position: relative; width: var(--slot-size); height: var(--slot-size); display: grid; place-items: center; border: 0; border-radius: var(--radius-sm); background: var(--surface-sunken); box-shadow: var(--shadow-slot); color: var(--ink); font: inherit; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; cursor: pointer; padding: 0; }
+.jec-slot:hover { background: var(--brand-soft); }
+.jec-slot:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.jec-slot[aria-pressed="true"] { outline: 2px solid var(--brand); outline-offset: 2px; }
+.jec-slot__mono { transform: translateY(-3px); }
+.jec-slot__bar { position: absolute; left: 7px; right: 7px; bottom: 6px; height: 4px; padding: 1px; background: var(--bar-track); box-shadow: 0 0 0 1px var(--bar-edge); }
+.jec-slot__bar > span { display: block; height: 100%; background: var(--ok-fill); }
+.jec-slot--warn .jec-slot__bar > span { background: var(--warn-fill); }
+.jec-slot--danger .jec-slot__bar > span { background: var(--danger-fill); }
+.jec-slot__flag { position: absolute; top: 4px; right: 4px; width: 16px; height: 16px; display: grid; place-items: center; border-radius: var(--radius-sm); background: var(--surface-raised); }
+.jec-slot__flag .jec-icon { width: 12px; height: 12px; }
+.jec-slot__flag--danger { color: var(--danger-ink); }
+.jec-slot__flag--info { color: var(--info-ink); }
+.jec-slot__flag--info .jec-icon { animation: jec-spin 1.2s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .jec-slot__flag--info .jec-icon { animation: none; } }
+.jec-slot--empty { background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--ink-muted); }
+.jec-slot--empty:hover { background: var(--surface-sunken); }
+.jec-slot--sm { width: 48px; height: 48px; font-size: 15px; }
+.jec-slot--sm .jec-slot__bar { left: 6px; right: 6px; bottom: 5px; }
+.jec-slot--sm .jec-slot__flag { top: 3px; right: 3px; width: 14px; height: 14px; }
+.jec-slot--sm .jec-slot__flag .jec-icon { width: 10px; height: 10px; }
+
+/* CertRow — desktop table row and its mobile card */
+.jec-table { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; }
+.jec-table th { text-align: left; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--ink-muted); background: var(--surface-sunken); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); white-space: nowrap; }
+.jec-table td { padding: var(--space-3); border-bottom: 1px solid var(--line); vertical-align: middle; }
+.jec-table tr:last-child td { border-bottom: 0; }
+.jec-table tbody tr:hover td { background: var(--surface-sunken); }
+.jec-domain { font-weight: 600; font-size: 15px; line-height: 22px; }
+.jec-domain small { font-weight: 400; font-size: 13px; color: var(--ink-muted); margin-left: var(--space-1); }
+.jec-tag { display: inline-flex; align-items: center; height: 22px; padding: 0 var(--space-2); border-radius: var(--radius-sm); border: 1px solid var(--line); font-size: 12px; line-height: 16px; color: var(--ink-muted); white-space: nowrap; }
+.jec-card { background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); display: grid; gap: var(--space-2); }
+.jec-card__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-width: 0; }
+.jec-card__head .jec-domain { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jec-table--compact td { padding: 6px var(--space-3); white-space: nowrap; }
+.jec-table--compact .jec-row { flex-wrap: nowrap; }
+.jec-table--compact .jec-domain { font-size: 14px; line-height: 20px; }
+
+/* CertItem — list row for phones and narrow panels */
+.jec-list { background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; }
+.jec-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); min-height: 64px; padding: 10px var(--space-4); border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
+.jec-item:last-child { border-bottom: 0; }
+.jec-item--single { min-height: 52px; padding-top: 6px; padding-bottom: 6px; }
+.jec-item:hover { background: var(--surface-sunken); }
+.jec-item:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+.jec-item__icon { display: grid; color: var(--ok-ink); }
+.jec-item__icon .jec-icon { width: 20px; height: 20px; }
+.jec-item__main { display: grid; gap: 2px; min-width: 0; }
+.jec-item__title { font-weight: 600; font-size: 15px; line-height: 22px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jec-item__meta { font-size: 13px; line-height: 20px; color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jec-item__state { margin-right: var(--space-2); font-weight: 600; color: var(--ok-ink); }
+.jec-item__end { display: grid; justify-items: end; gap: 6px; }
+.jec-item__days { font-size: 14px; line-height: 20px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink-muted); }
+.jec-item__bar { width: 56px; height: 4px; padding: 1px; background: var(--bar-track); box-shadow: 0 0 0 1px var(--bar-edge); }
+.jec-item__bar > span { display: block; height: 100%; background: var(--ok-fill); }
+.jec-item--warn .jec-item__icon, .jec-item--warn .jec-item__state, .jec-item--warn .jec-item__days { color: var(--warn-ink); }
+.jec-item--warn .jec-item__bar > span { background: var(--warn-fill); }
+.jec-item--danger .jec-item__icon, .jec-item--danger .jec-item__state, .jec-item--danger .jec-item__days { color: var(--danger-ink); }
+.jec-item--danger .jec-item__bar > span { background: var(--danger-fill); }
+.jec-item--info .jec-item__icon, .jec-item--info .jec-item__state, .jec-item--info .jec-item__days { color: var(--info-ink); }
+.jec-item--info .jec-item__icon .jec-icon { animation: jec-spin 1.2s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .jec-item--info .jec-item__icon .jec-icon { animation: none; } }
+/* Compact list: same row, tighter */
+.jec-list--compact .jec-item { min-height: 56px; padding: var(--space-2) var(--space-3); }
+.jec-list--compact .jec-item--single { min-height: 44px; padding-top: var(--space-1); padding-bottom: var(--space-1); }
+.jec-list--compact .jec-item__main { gap: 0; }
+.jec-list--compact .jec-item__icon .jec-icon { width: 18px; height: 18px; }
+.jec-list--compact .jec-item__title { font-size: 14px; line-height: 20px; }
+.jec-list--compact .jec-item__meta { font-size: 12px; line-height: 18px; }
+.jec-list--compact .jec-item__end { gap: var(--space-1); }
+.jec-list--compact .jec-item__days { font-size: 13px; line-height: 18px; }
+.jec-list--compact .jec-item__bar { width: 48px; }
+
+/* CertTile — healthy certificates two per row on phones */
+.jec-group { display: grid; gap: var(--space-2); }
+.jec-group__title { display: flex; align-items: baseline; gap: var(--space-2); margin: 0; padding: 0 var(--space-1); font-size: 13px; line-height: 20px; font-weight: 600; color: var(--ink-muted); }
+.jec-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.jec-tile { display: grid; gap: 6px; padding: 10px var(--space-3); background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); color: var(--ink); text-decoration: none; min-width: 0; }
+.jec-tile:hover { background: var(--surface-sunken); }
+.jec-tile:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.jec-tile__title { font-weight: 600; font-size: 14px; line-height: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jec-tile__life { display: flex; align-items: center; gap: var(--space-2); }
+.jec-tile__bar { flex: 1; min-width: 0; height: 4px; padding: 1px; background: var(--bar-track); box-shadow: 0 0 0 1px var(--bar-edge); }
+.jec-tile__bar > span { display: block; height: 100%; background: var(--ok-fill); }
+.jec-tile__days { flex: none; font-size: 13px; line-height: 18px; font-variant-numeric: tabular-nums; color: var(--ink-muted); white-space: nowrap; }
+
+/* Field */
+.jec-field { display: grid; gap: 6px; max-width: 420px; }
+.jec-field__label { font-size: 13px; line-height: 20px; font-weight: 600; }
+.jec-input { height: 36px; width: 100%; padding: 0 var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--ink); font: inherit; }
+.jec-input::placeholder { color: var(--ink-muted); }
+.jec-input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.jec-field__help { font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+.jec-field--error .jec-input { border-color: var(--danger-ink); }
+.jec-field__error { display: flex; align-items: center; gap: var(--space-1); font-size: 12px; line-height: 16px; color: var(--danger-ink); font-weight: 600; }
+.jec-field__error .jec-icon { width: 14px; height: 14px; }
+@media (max-width: 639px) { .jec-input { min-height: var(--touch-target); } }
+
+/* Switch — on/off for modules and settings */
+.jec-switch { position: relative; flex: none; width: 36px; height: 20px; padding: 0; border: 0; border-radius: 999px; background: var(--line-strong); cursor: pointer; transition: background-color .15s; }
+.jec-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface-raised); box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .15s; }
+.jec-switch[aria-checked="true"] { background: var(--brand); }
+.jec-switch[aria-checked="true"]::after { transform: translateX(16px); }
+.jec-switch:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.jec-switch:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ChoiceCard — one-of-many choice with a short explanation */
+.jec-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: var(--space-2); }
+.jec-choice { display: grid; align-content: start; gap: 2px; min-height: 64px; padding: 10px var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--ink); text-align: left; font: inherit; cursor: pointer; }
+.jec-choice:hover { background: var(--surface-sunken); }
+.jec-choice:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.jec-choice[aria-checked="true"] { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); background: var(--brand-soft); }
+.jec-choice__title { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; font-size: 14px; line-height: 20px; }
+.jec-choice__desc { font-size: 12px; line-height: 18px; color: var(--ink-muted); }
+
+/* Check row — checkbox with label and help */
+.jec-check { display: flex; align-items: flex-start; gap: 10px; min-height: 24px; color: var(--ink); cursor: pointer; }
+.jec-check input { flex: none; width: 16px; height: 16px; margin: 3px 0 0; accent-color: var(--brand); }
+.jec-check__text { display: grid; min-width: 0; }
+.jec-check__help { font-size: 12px; line-height: 18px; color: var(--ink-muted); }
+
+/* Segmented — 2 to 4 mutually exclusive views or values */
+.jec-seg { display: inline-flex; justify-self: start; width: max-content; gap: 2px; padding: 2px; border-radius: var(--radius-md); background: var(--surface-sunken); border: 1px solid var(--line); }
+.jec-seg > button { height: 30px; padding: 0 var(--space-3); border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--ink-muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.jec-seg > button:hover { color: var(--ink); }
+.jec-seg > button[aria-pressed="true"] { background: var(--surface-raised); color: var(--ink); box-shadow: 0 0 0 1px var(--line-strong); }
+.jec-seg > button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+/* LogView — live issuance and deployment log */
+.jec-log { margin: 0; padding: var(--space-3) 14px; border-radius: var(--radius-md); background: var(--surface-sunken); border: 1px solid var(--line); font-family: var(--font-mono); font-size: 12px; line-height: 20px; color: var(--ink); overflow: auto; }
+.jec-log__line { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-3); }
+.jec-log__time { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.jec-log__msg { overflow-wrap: anywhere; }
+.jec-log__line--ok .jec-log__msg { color: var(--ok-ink); }
+.jec-log__line--warn .jec-log__msg { color: var(--warn-ink); }
+.jec-log__line--danger .jec-log__msg { color: var(--danger-ink); }
+.jec-log__cursor { display: inline-block; width: 7px; height: 14px; margin-left: 2px; vertical-align: -2px; background: var(--ink-muted); animation: jec-blink 1s steps(1) infinite; }
+@keyframes jec-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .jec-log__cursor { animation: none; } }
+
+/* Dialog — modal for adding and editing configuration */
+.jec-scrim { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; padding: var(--space-6); background: color-mix(in srgb, var(--ink) 45%, transparent); }
+.jec-dialog { width: min(880px, 100%); max-height: 100%; display: flex; flex-direction: column; overflow: hidden; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-popover); color: var(--ink); }
+.jec-dialog__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-3) var(--space-3) 20px; border-bottom: 1px solid var(--line); }
+.jec-dialog__title { margin: 0; font-size: 18px; line-height: 26px; font-weight: 600; }
+.jec-dialog__body { flex: 1; min-height: 0; overflow: auto; }
+.jec-dialog__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); padding: var(--space-3) 20px; border-top: 1px solid var(--line); }

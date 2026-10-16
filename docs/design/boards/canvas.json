@@ -1,0 +1,373 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Main.dc.html": {
+      "h": 1040,
+      "is_interactive": true,
+      "title": "总览 · 桌面",
+      "w": 1440,
+      "x": 0,
+      "y": 0,
+      "expand": "fill"
+    },
+    "Certs.dc.html": {
+      "h": 1040,
+      "is_interactive": true,
+      "title": "证书列表 · 桌面",
+      "w": 1440,
+      "x": 1520,
+      "y": 0,
+      "expand": "fill"
+    },
+    "CertDetail.dc.html": {
+      "h": 1040,
+      "is_interactive": true,
+      "title": "证书详情 · 桌面",
+      "w": 1440,
+      "x": 3040,
+      "y": 0,
+      "expand": "fill"
+    },
+    "AddCert.dc.html": {
+      "h": 1480,
+      "is_interactive": true,
+      "title": "添加证书 · 桌面",
+      "w": 1440,
+      "x": 4560,
+      "y": 0,
+      "expand": "fill"
+    },
+    "Issue.dc.html": {
+      "h": 1040,
+      "is_interactive": true,
+      "title": "签发进度 · 桌面",
+      "w": 1440,
+      "x": 6080,
+      "y": 0,
+      "expand": "fill"
+    },
+    "History.dc.html": {
+      "h": 1200,
+      "is_interactive": true,
+      "title": "签发记录 · 桌面",
+      "w": 1440,
+      "x": 7600,
+      "y": 0,
+      "expand": "fill"
+    },
+    "Sources.dc.html": {
+      "h": 1040,
+      "is_interactive": true,
+      "title": "证书来源 · 桌面",
+      "w": 1440,
+      "x": 0,
+      "y": 1920,
+      "expand": "fill"
+    },
+    "Dns.dc.html": {
+      "h": 1040,
+      "is_interactive": true,
+      "title": "域名验证 · 桌面",
+      "w": 1440,
+      "x": 1520,
+      "y": 1920,
+      "expand": "fill"
+    },
+    "Targets.dc.html": {
+      "h": 1040,
+      "is_interactive": true,
+      "title": "部署目标 · 桌面",
+      "w": 1440,
+      "x": 3040,
+      "y": 1920,
+      "expand": "fill"
+    },
+    "TargetsAdd.dc.html": {
+      "h": 1040,
+      "is_interactive": true,
+      "title": "添加部署目标 · 桌面",
+      "w": 1440,
+      "x": 4560,
+      "y": 1920,
+      "expand": "fill"
+    },
+    "Notify.dc.html": {
+      "h": 1040,
+      "is_interactive": true,
+      "title": "通知 · 桌面",
+      "w": 1440,
+      "x": 6080,
+      "y": 1920,
+      "expand": "fill"
+    },
+    "Credentials.dc.html": {
+      "h": 1040,
+      "is_interactive": true,
+      "title": "凭据 · 桌面",
+      "w": 1440,
+      "x": 7600,
+      "y": 1920,
+      "expand": "fill"
+    },
+    "Providers.dc.html": {
+      "h": 1040,
+      "is_interactive": true,
+      "title": "配置页模板（kind 切换）",
+      "w": 1440,
+      "x": 9120,
+      "y": 1920,
+      "expand": "fill"
+    },
+    "Modules.dc.html": {
+      "h": 1470,
+      "is_interactive": true,
+      "title": "模块 · 桌面",
+      "w": 1440,
+      "x": 0,
+      "y": 3400,
+      "expand": "fill"
+    },
+    "Settings.dc.html": {
+      "h": 1040,
+      "is_interactive": true,
+      "title": "设置 · 桌面",
+      "w": 1440,
+      "x": 1520,
+      "y": 3400,
+      "expand": "fill"
+    },
+    "Login.dc.html": {
+      "h": 1040,
+      "is_interactive": true,
+      "title": "登录",
+      "w": 1440,
+      "x": 3040,
+      "y": 3400,
+      "expand": "fill"
+    },
+    "MainEn.dc.html": {
+      "h": 1040,
+      "is_interactive": true,
+      "title": "Overview · English",
+      "w": 1440,
+      "x": 4560,
+      "y": 3400,
+      "expand": "fill"
+    },
+    "OverviewMobile.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "title": "总览 · 手机",
+      "w": 390,
+      "x": 0,
+      "y": 5310
+    },
+    "CertsMobile.dc.html": {
+      "h": 912,
+      "is_interactive": true,
+      "title": "证书列表 · 手机",
+      "w": 390,
+      "x": 470,
+      "y": 5310
+    },
+    "CertDetailMobile.dc.html": {
+      "h": 1440,
+      "is_interactive": true,
+      "title": "证书详情 · 手机",
+      "w": 390,
+      "x": 940,
+      "y": 5310
+    },
+    "AddCertMobile.dc.html": {
+      "h": 1880,
+      "is_interactive": true,
+      "title": "添加证书 · 手机",
+      "w": 390,
+      "x": 1410,
+      "y": 5310
+    },
+    "IssueMobile.dc.html": {
+      "h": 960,
+      "is_interactive": true,
+      "title": "签发进度 · 手机",
+      "w": 390,
+      "x": 1880,
+      "y": 5310
+    },
+    "HistoryMobile.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "title": "签发记录 · 手机",
+      "w": 390,
+      "x": 2350,
+      "y": 5310
+    },
+    "MoreMobile.dc.html": {
+      "h": 760,
+      "is_interactive": true,
+      "title": "更多 · 手机",
+      "w": 390,
+      "x": 0,
+      "y": 7630
+    },
+    "SourcesMobile.dc.html": {
+      "h": 760,
+      "is_interactive": true,
+      "title": "证书来源 · 手机",
+      "w": 390,
+      "x": 470,
+      "y": 7630
+    },
+    "DnsMobile.dc.html": {
+      "h": 760,
+      "is_interactive": true,
+      "title": "域名验证 · 手机",
+      "w": 390,
+      "x": 940,
+      "y": 7630
+    },
+    "TargetsMobile.dc.html": {
+      "h": 760,
+      "is_interactive": true,
+      "title": "部署目标 · 手机",
+      "w": 390,
+      "x": 1410,
+      "y": 7630
+    },
+    "NotifyMobile.dc.html": {
+      "h": 760,
+      "is_interactive": true,
+      "title": "通知 · 手机",
+      "w": 390,
+      "x": 1880,
+      "y": 7630
+    },
+    "CredentialsMobile.dc.html": {
+      "h": 760,
+      "is_interactive": true,
+      "title": "凭据 · 手机",
+      "w": 390,
+      "x": 2350,
+      "y": 7630
+    },
+    "ModulesMobile.dc.html": {
+      "h": 1730,
+      "is_interactive": true,
+      "title": "模块 · 手机",
+      "w": 390,
+      "x": 2820,
+      "y": 7630
+    },
+    "SettingsMobile.dc.html": {
+      "h": 1680,
+      "is_interactive": true,
+      "title": "设置 · 手机",
+      "w": 390,
+      "x": 3290,
+      "y": 7630
+    },
+    "ProvidersMobile.dc.html": {
+      "h": 760,
+      "is_interactive": true,
+      "title": "配置页模板 · 手机",
+      "w": 390,
+      "x": 3760,
+      "y": 7630
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-16T10:05:00Z",
+    "v": 1
+  },
+  "designSystems": [
+    {
+      "artifact": "https://claude.ai/artifact/3BNJpFxgek9tD4qht5DmL9",
+      "copiedAt": "2026-10-16T12:30:00Z",
+      "namespace": "jec",
+      "title": "Just Enough Certs",
+      "version": "1792148508-33ba"
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "rowDesktop": {
+      "kind": "title1",
+      "maxW": 9040,
+      "text": "桌面端 · 证书（≥ 1024px，侧栏常驻）",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "rowDesktopCfg": {
+      "kind": "title1",
+      "maxW": 10560,
+      "text": "桌面端 · 配置（同一个模板，kind 切换五种）",
+      "w": 240,
+      "x": 0,
+      "y": 1620
+    },
+    "rowDesktopSys": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "桌面端 · 模块、设置、登录、英文版",
+      "w": 240,
+      "x": 0,
+      "y": 3100
+    },
+    "rowMobile": {
+      "kind": "title1",
+      "maxW": 2740,
+      "text": "手机端 · 证书（< 640px，底部标签栏）",
+      "w": 240,
+      "x": 0,
+      "y": 5010
+    },
+    "rowMobileMore": {
+      "kind": "title1",
+      "maxW": 4150,
+      "text": "手机端 · 更多",
+      "w": 240,
+      "x": 0,
+      "y": 7330
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Certs.dc.html",
+    "CertDetail.dc.html",
+    "AddCert.dc.html",
+    "Issue.dc.html",
+    "History.dc.html",
+    "Sources.dc.html",
+    "Dns.dc.html",
+    "Targets.dc.html",
+    "TargetsAdd.dc.html",
+    "Notify.dc.html",
+    "Credentials.dc.html",
+    "Providers.dc.html",
+    "Modules.dc.html",
+    "Settings.dc.html",
+    "Login.dc.html",
+    "MainEn.dc.html",
+    "OverviewMobile.dc.html",
+    "CertsMobile.dc.html",
+    "CertDetailMobile.dc.html",
+    "AddCertMobile.dc.html",
+    "IssueMobile.dc.html",
+    "HistoryMobile.dc.html",
+    "MoreMobile.dc.html",
+    "SourcesMobile.dc.html",
+    "DnsMobile.dc.html",
+    "TargetsMobile.dc.html",
+    "NotifyMobile.dc.html",
+    "CredentialsMobile.dc.html",
+    "ModulesMobile.dc.html",
+    "SettingsMobile.dc.html",
+    "ProvidersMobile.dc.html"
+  ],
+  "pages": [],
+  "title": "JEC 界面设计"
+}

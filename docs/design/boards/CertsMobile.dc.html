@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>证书列表 · 手机</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/jec/tokens.css">
+<link rel="stylesheet" href="ds/jec/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+html body { margin: 0; padding: 0; background: transparent; }
+a { color: var(--brand); } a:hover { color: var(--brand-hover); }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; color: var(--ink-muted); text-decoration: none; font-size: 12px; line-height: 16px; font-weight: 500; }
+.tab .jec-icon { width: 22px; height: 22px; }
+.tab--active { color: var(--brand); font-weight: 600; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface-raised); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--brand-soft); border-color: var(--brand); }
+.chip:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</helmet>
+<div data-theme="{{theme}}" style="position: relative; width: 390px; height: {{rootH}}px; overflow: hidden; background: var(--surface); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 22px;">
+
+  <header style="display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 8px 0 16px; background: var(--surface-raised); border-bottom: 1px solid var(--line);">
+    <h1 style="flex: 1; margin: 0; font-size: 18px; line-height: 26px; font-weight: 600;">证书</h1>
+    <button type="button" class="jec-btn jec-btn--icon jec-btn--ghost" aria-label="导入已有证书" style="width: 44px; height: 44px;"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width: 20px; height: 20px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10 L12 15 L17 10M12 15L12 3"></path></svg></button>
+    <a class="jec-btn jec-btn--icon jec-btn--primary" href="AddCertMobile.dc.html" aria-label="添加证书" style="width: 44px; height: 44px;"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width: 20px; height: 20px;"><path d="M5 12h14M12 5v14"></path></svg></a>
+  </header>
+
+  <div style="padding: 12px 16px 16px; display: flex; flex-direction: column; gap: {{gap}}px;">
+    <label style="position: relative; display: block;">
+      <span class="sr-only">搜索域名</span>
+      <svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="position: absolute; left: 12px; top: 14px; color: var(--ink-muted);"><path d="M3 11a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M21 21l-4.3-4.3"></path></svg>
+      <input class="jec-input" type="search" placeholder="搜索域名" style="padding-left: 36px; height: 44px;">
+    </label>
+    <div role="group" aria-label="按状态筛选" style="display: flex; gap: 8px;">
+      <sc-for list="{{filters}}" as="f" hint-placeholder-count="3">
+        <button type="button" class="chip" aria-pressed="{{f.pressed}}" onClick="{{f.pick}}">{{f.label}}<span class="jec-num" style="color: var(--ink-muted); font-weight: 500;">{{f.count}}</span></button>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{isList}}" hint-placeholder-val="{{false}}">
+      <div class="{{listCls}}" role="list" aria-label="证书">
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="12">
+          <a class="{{r.itemCls}}" href="CertDetailMobile.dc.html" role="listitem" aria-label="{{r.aria}}">
+            <span class="jec-item__icon"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.icon}}"></path></svg></span>
+            <span class="jec-item__main">
+              <span class="jec-item__title">{{r.domain}}<small style="margin-left: 4px; font-weight: 400; font-size: 12px; color: var(--ink-muted);">{{r.extra}}</small></span>
+              <sc-if value="{{r.hasNote}}" hint-placeholder-val="{{false}}"><span class="jec-item__meta"><span class="jec-item__state">{{r.stateText}}</span>{{r.note}}</span></sc-if>
+            </span>
+            <span class="jec-item__end">
+              <sc-if value="{{r.hasBar}}" hint-placeholder-val="{{true}}"><span class="jec-item__days">{{r.daysText}}</span><span class="jec-item__bar"><span style="width: {{r.pct}}%;"></span></span></sc-if>
+            </span>
+          </a>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isTiles}}" hint-placeholder-val="{{true}}">
+      <sc-if value="{{hasAttention}}" hint-placeholder-val="{{true}}">
+        <section class="jec-group" aria-labelledby="g-todo">
+          <h2 id="g-todo" class="jec-group__title">需要处理<span class="jec-num">{{attentionCount}}</span></h2>
+          <div class="jec-list" role="list">
+            <sc-for list="{{attention}}" as="r" hint-placeholder-count="4">
+              <a class="{{r.itemCls}}" href="CertDetailMobile.dc.html" role="listitem" aria-label="{{r.aria}}">
+                <span class="jec-item__icon"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{r.icon}}"></path></svg></span>
+                <span class="jec-item__main">
+                  <span class="jec-item__title">{{r.domain}}<small style="margin-left: 4px; font-weight: 400; font-size: 12px; color: var(--ink-muted);">{{r.extra}}</small></span>
+                  <sc-if value="{{r.hasNote}}" hint-placeholder-val="{{false}}"><span class="jec-item__meta"><span class="jec-item__state">{{r.stateText}}</span>{{r.note}}</span></sc-if>
+                </span>
+                <span class="jec-item__end">
+                  <sc-if value="{{r.hasBar}}" hint-placeholder-val="{{true}}"><span class="jec-item__days">{{r.daysText}}</span><span class="jec-item__bar"><span style="width: {{r.pct}}%;"></span></span></sc-if>
+                </span>
+              </a>
+            </sc-for>
+          </div>
+        </section>
+      </sc-if>
+      <sc-if value="{{hasHealthy}}" hint-placeholder-val="{{true}}">
+        <section class="jec-group" aria-labelledby="g-ok">
+          <h2 id="g-ok" class="jec-group__title">正常<span class="jec-num">{{healthyCount}}</span></h2>
+          <div class="jec-tiles" role="list">
+            <sc-for list="{{healthy}}" as="t" hint-placeholder-count="8">
+              <a class="jec-tile" href="CertDetailMobile.dc.html" role="listitem" aria-label="{{t.aria}}">
+                <span class="jec-tile__title">{{t.domain}}<small style="margin-left: 4px; font-weight: 400; font-size: 12px; color: var(--ink-muted);">{{t.extra}}</small></span>
+                <span class="jec-tile__life"><span class="jec-tile__bar"><span style="width: {{t.pct}}%;"></span></span><span class="jec-tile__days">{{t.daysText}}</span></span>
+              </a>
+            </sc-for>
+          </div>
+        </section>
+      </sc-if>
+    </sc-if>
+  </div>
+
+  <nav aria-label="主导航" style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; padding: 4px 8px 20px; background: var(--surface-raised); border-top: 1px solid var(--line);">
+    <a class="tab" href="OverviewMobile.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM15 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM15 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM4 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1z"></path></svg>总览</a>
+    <a class="tab tab--active" href="CertsMobile.dc.html" aria-current="page"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1zM9 12l2 2 4-4"></path></svg>证书</a>
+    <a class="tab" href="HistoryMobile.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2"></path></svg>签发记录</a>
+    <a class="tab" href="MoreMobile.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12L20 12M4 6L20 6M4 18L20 18"></path></svg>更多</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"density":{"editor":"enum","options":["tiles","standard","compact"],"default":"tiles"},"$preview":{"width":390,"height":912}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { filter: 'all' };
+  }
+  renderVals() {
+    var I = {
+      ok: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M9 12l2 2 4-4',
+      warn: 'M21.73 18l-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01',
+      failed: 'M15 9l-6 6M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586zM9 9l6 6',
+      issuing: 'M21 12a9 9 0 1 1-6.219-8.56'
+    };
+    var S = {
+      ok: { badge: 'jec-badge jec-badge--ok', text: '正常', icon: I.ok },
+      warn: { badge: 'jec-badge jec-badge--warn', text: '即将到期', icon: I.warn },
+      failed: { badge: 'jec-badge jec-badge--danger', text: '失败', icon: I.failed },
+      issuing: { badge: 'jec-badge jec-badge--info', text: '签发中', icon: I.issuing }
+    };
+    var certs = [
+      { domain: 'api.example.net', state: 'failed', note: 'DNS 记录没有生效，稍后重试', days: 5, total: 90, source: 'ZeroSSL', targets: ['SSH：api-01'] },
+      { domain: 'shop.example.com', state: 'warn', note: '今晚 02:00 自动续期', days: 23, total: 200, source: 'Namecheap（Sectigo）', targets: ['阿里云 ESA', 'Nginx：vps-01'] },
+      { domain: 'cdn.example.com', state: 'warn', note: '今晚 02:00 自动续期', days: 28, total: 90, source: "Let's Encrypt", targets: ['腾讯云 EdgeOne'] },
+      { domain: '*.static.example.org', state: 'issuing', note: '正在等待 DNS 验证生效', source: 'Google Trust Services', targets: ['腾讯云 EdgeOne'] },
+      { domain: 'docs.example.org', state: 'ok', days: 52, total: 90, source: "Let's Encrypt", targets: ['阿里云 ESA'] },
+      { domain: 'git.example.dev', state: 'ok', days: 64, total: 90, source: "Let's Encrypt", targets: ['Nginx：vps-01'] },
+      { domain: 'mail.example.com', state: 'ok', days: 77, total: 90, source: "Let's Encrypt", targets: ['本地文件'] },
+      { domain: 'status.example.com', state: 'ok', days: 85, total: 90, source: 'ZeroSSL', targets: ['Webhook'] },
+      { domain: 'home.example.net', state: 'ok', days: 88, total: 90, source: "Let's Encrypt", targets: ['本地文件'] },
+      { domain: 'blog.example.com', state: 'ok', days: 131, total: 200, source: 'Namecheap（Sectigo）', targets: ['阿里云 ESA'] },
+      { domain: 'vpn.example.net', state: 'ok', days: 150, total: 200, source: '手动上传', targets: ['SSH：gw-01'] },
+      { domain: 'example.com', extra: '+1', state: 'ok', days: 168, total: 200, source: 'Namecheap（Sectigo）', targets: ['阿里云 ESA'] }
+    ];
+    var self = this;
+    var attention = function (c) { return c.state !== 'ok'; };
+    var shown = certs.filter(function (c) {
+      if (self.state.filter === 'attention') return attention(c);
+      if (self.state.filter === 'ok') return !attention(c);
+      return true;
+    });
+    var density = this.props.density ?? 'tiles';
+    var itemCls = { ok: 'jec-item jec-item--single', warn: 'jec-item jec-item--warn', failed: 'jec-item jec-item--danger', issuing: 'jec-item jec-item--info' };
+    var toRow = function (c) {
+      var daysText = c.days ? '剩 ' + c.days + ' 天' : '';
+      return {
+        domain: c.domain,
+        extra: c.extra || '',
+        itemCls: itemCls[c.state],
+        icon: S[c.state].icon,
+        stateText: S[c.state].text,
+        hasNote: !!c.note,
+        note: c.note || '',
+        daysText: daysText,
+        hasBar: !!c.days,
+        pct: c.days ? Math.max(2, Math.round(c.days / c.total * 100)) : 0,
+        aria: c.domain + '，' + S[c.state].text + (c.days ? '，' + daysText : '') + (c.note ? '，' + c.note : '')
+      };
+    };
+    var rows = shown.map(toRow);
+    var attentionRows = shown.filter(attention).map(toRow);
+    var healthy = shown.filter(function (c) { return !attention(c); }).map(toRow);
+    var defs = [
+      { id: 'all', label: '全部', count: certs.length },
+      { id: 'attention', label: '需要处理', count: certs.filter(attention).length },
+      { id: 'ok', label: '正常', count: certs.filter(function (c) { return !attention(c); }).length }
+    ];
+    var filters = defs.map(function (f) {
+      return { label: f.label, count: f.count, pressed: self.state.filter === f.id ? 'true' : 'false', pick: function () { self.setState({ filter: f.id }); } };
+    });
+    return {
+      theme: this.props.theme ?? 'light',
+      rows: rows,
+      isList: density !== 'tiles',
+      isTiles: density === 'tiles',
+      listCls: density === 'compact' ? 'jec-list jec-list--compact' : 'jec-list',
+      attention: attentionRows,
+      hasAttention: attentionRows.length > 0,
+      attentionCount: attentionRows.length,
+      healthy: healthy,
+      hasHealthy: healthy.length > 0,
+      healthyCount: healthy.length,
+      gap: density === 'compact' ? 12 : 16,
+      rootH: density === 'compact' ? 848 : (density === 'standard' ? 960 : 912),
+      filters: filters
+    };
+  }
+}
+</script>
+</body>
+</html>

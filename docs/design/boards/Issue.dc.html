@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>签发进度 · 桌面</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/jec/tokens.css">
+<link rel="stylesheet" href="ds/jec/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+html body { margin: 0; padding: 0; background: transparent; }
+a { color: var(--brand); } a:hover { color: var(--brand-hover); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.rows > * { border-bottom: 1px solid var(--line); }
+.rows > *:last-child { border-bottom: 0; }
+.mono { font-family: var(--font-mono); font-size: 12px; line-height: 20px; }
+.nav-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border-radius: var(--radius-md); color: var(--ink-muted); text-decoration: none; font-weight: 500; }
+.nav-item:hover { background: var(--surface-sunken); color: var(--ink); }
+.nav-item .jec-icon { width: 18px; height: 18px; }
+.nav-item--active, .nav-item--active:hover { background: var(--brand-soft); color: var(--ink); font-weight: 600; }
+.nav-item--active .jec-icon { color: var(--brand); }
+.spin { animation: jec-spin 1.2s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+.steps { list-style: none; margin: 0; padding: 0; }
+.steps li { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+</style>
+</helmet>
+<div data-theme="{{theme}}" style="position: relative; min-height: 1040px; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 22px;">
+
+  <aside style="flex: 1 1 232px; max-width: 100%; box-sizing: border-box; padding: 20px 12px; display: flex; flex-direction: column; gap: 20px; background: var(--surface-raised); border-right: 1px solid var(--line);">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 10px;">
+      <svg width="28" height="28" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3c9a3f" fill-rule="evenodd" d="M5 1h6v1H5zM4 2h2v1H4zM10 2h2v1h-2zM3 3h2v4H3zM11 3h2v4h-2zM2 7h12v8H2zM7 9h2v4H7z"></path></svg>
+      <span style="font-weight: 600; font-size: 15px;">Just Enough Certs</span>
+    </div>
+    <nav aria-label="主导航" style="display: flex; flex-direction: column; gap: 2px;">
+      <a class="nav-item" href="Main.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM15 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM15 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM4 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1z"></path></svg><span>总览</span></a>
+      <a class="nav-item nav-item--active" href="Certs.dc.html" aria-current="page"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1zM9 12l2 2 4-4"></path></svg><span>证书</span><span class="jec-num" style="margin-left: auto; font-size: 12px; color: var(--ink-muted);">12</span></a>
+      <a class="nav-item" href="History.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2"></path></svg><span>签发记录</span></a>
+    </nav>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <span style="padding: 0 10px 4px; font-size: 12px; line-height: 16px; color: var(--ink-muted);">配置</span>
+      <a class="nav-item" href="Sources.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73zM12 22V12M3.3 7l7.703 4.734a2 2 0 0 0 1.994 0L20.7 7M7.5 4.27l9 5.15"></path></svg><span>证书来源</span></a>
+      <a class="nav-item" href="Dns.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"></path></svg><span>域名验证</span></a>
+      <a class="nav-item" href="Targets.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2h16a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2zM4 14h16a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2zM6 6L6.01 6M6 18L6.01 18"></path></svg><span>部署目标</span></a>
+      <a class="nav-item" href="Notify.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg><span>通知</span></a>
+      <a class="nav-item" href="Credentials.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4zM16 7.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0"></path></svg><span>凭据</span></a>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <a class="nav-item" href="Modules.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H3"></path></svg><span>模块</span></a>
+      <a class="nav-item" href="Settings.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2zM9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"></path></svg><span>设置</span></a>
+    </div>
+    <div style="margin-top: auto; padding: 12px 10px 0; border-top: 1px solid var(--line); font-size: 12px; line-height: 16px; color: var(--ink-muted); display: flex; justify-content: space-between;">
+      <span>admin</span><span>v0.1.0</span>
+    </div>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 32px;">
+    <div style="max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
+      <nav aria-label="位置" style="display: flex; align-items: center; gap: 4px; font-size: 13px; line-height: 20px; color: var(--ink-muted);">
+        <a href="Certs.dc.html" style="text-decoration: none;">证书</a><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width: 14px; height: 14px;"><path d="M9 18l6-6-6-6"></path></svg><a href="CertDetail.dc.html" style="text-decoration: none;">shop.example.com</a><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width: 14px; height: 14px;"><path d="M9 18l6-6-6-6"></path></svg><span aria-current="page">签发</span>
+      </nav>
+      <header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px;">
+        <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+          <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600;">{{title}} shop.example.com</h1>
+          <p style="margin: 0; color: var(--ink-muted);">来源 Namecheap（PositiveSSL），用 DNSPod 验证，部署到阿里云 ESA 和 Nginx：vps-01。</p>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <sc-if value="{{running}}" hint-placeholder-val="{{true}}"><a class="jec-btn" href="Certs.dc.html" style="text-decoration: none; color: var(--ink);">在后台继续</a></sc-if>
+          <sc-if value="{{done}}" hint-placeholder-val="{{false}}"><button type="button" class="jec-btn jec-btn--ghost" onClick="{{replay}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5"></path></svg>重新播放</button><a class="jec-btn jec-btn--primary" href="CertDetail.dc.html" style="text-decoration: none;">查看证书</a></sc-if>
+        </div>
+      </header>
+      <sc-if value="{{done}}" hint-placeholder-val="{{false}}">
+        <section role="status" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 12px 16px; border-radius: var(--radius-lg); background: var(--ok-soft);">
+          <svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width: 20px; height: 20px; color: var(--ok-ink);"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M9 12l2 2 4-4"></path></svg>
+          <div style="flex: 1 1 320px; min-width: 0;">
+            <strong style="color: var(--ok-ink);">shop.example.com 已签发，并部署到 2 个目标。</strong>
+            <div style="font-size: 13px; line-height: 20px;">新证书到 2027-05-04 到期，JEC 会在 2027-04-04 02:00 自动续期。</div>
+          </div>
+          <div class="jec-life" style="width: 200px;"><div class="jec-life__bar"><span class="jec-life__fill" style="width: 100%;"></span></div><span class="jec-life__label">剩 200 天</span></div>
+        </section>
+      </sc-if>
+      <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;">
+        <section class="jec-panel" aria-labelledby="st-title" style="flex: 1 1 300px; min-width: 0; padding: 16px;">
+          <h2 id="st-title" style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600;">步骤</h2>
+          <p class="jec-num" style="margin: 0 0 4px; font-size: 13px; line-height: 20px; color: var(--ink-muted);" aria-live="polite">{{progress}}</p>
+            <ol class="steps rows" aria-label="步骤">
+              <sc-for list="{{steps}}" as="s" hint-placeholder-count="8">
+                <li><svg class="{{s.spin}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: {{s.color}};"><path d="{{s.icon}}"></path></svg><span style="flex: 1; min-width: 0; color: {{s.titleColor}}; font-weight: {{s.weight}};">{{s.title}}</span><span class="jec-num" style="font-size: 13px; color: var(--ink-muted);">{{s.time}}</span></li>
+              </sc-for>
+            </ol>
+        </section>
+        <section class="jec-panel" aria-labelledby="lg-title" style="flex: 2 1 520px; min-width: 0; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;"><h2 id="lg-title" style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600;">日志</h2><button type="button" class="jec-btn jec-btn--ghost jec-btn--sm"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10 L12 15 L17 10M12 15L12 3"></path></svg>下载完整日志</button></div>
+            <div class="jec-log" role="log" aria-live="polite" ref="{{logRef}}" style="height: 400px;">
+              <sc-for list="{{lines}}" as="l" hint-placeholder-count="6">
+                <div class="{{l.cls}}"><span class="jec-log__time">{{l.time}}</span><span class="jec-log__msg">{{l.msg}}</span></div>
+              </sc-for>
+              <sc-if value="{{running}}" hint-placeholder-val="{{true}}"><div class="jec-log__line"><span class="jec-log__time">        </span><span class="jec-log__msg"><span class="jec-log__cursor"></span></span></div></sc-if>
+            </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tick: 1 };
+    this.logEl = null;
+  }
+  componentDidMount() { this.start(); }
+  componentWillUnmount() { clearInterval(this.timer); }
+  componentDidUpdate() { if (this.logEl) this.logEl.scrollTop = this.logEl.scrollHeight; }
+  start() {
+    var self = this;
+    clearInterval(this.timer);
+    this.timer = setInterval(function () {
+      if (self.state.tick >= 19) { clearInterval(self.timer); return; }
+      self.setState({ tick: self.state.tick + 1 });
+    }, 650);
+  }
+  renderVals() {
+    var self = this;
+    var I = {"circle-check": "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M9 12l2 2 4-4", "loader-circle": "M21 12a9 9 0 1 1-6.219-8.56", "circle": "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"};
+    var STEPS = ['生成私钥和 CSR', '向 Namecheap 申请重签', '添加 DNS 验证记录', '等待 CA 验证', '下载证书', '部署到阿里云 ESA', '部署到 Nginx：vps-01', '清理验证记录'];
+    var L = [
+      [0, '14:20:02', '生成 RSA 2048 私钥', ''],
+      [0, '14:20:02', '生成 CSR：shop.example.com，www.shop.example.com', ''],
+      [1, '14:20:03', 'Namecheap：申请重签证书订单 #2210587', ''],
+      [1, '14:20:05', 'Namecheap：重签已受理，新证书 ID 2214630', ''],
+      [2, '14:20:05', 'Namecheap：返回 2 条 CNAME 验证记录', ''],
+      [2, '14:20:06', 'DNSPod：添加 CNAME _8f3a….shop.example.com', ''],
+      [2, '14:20:07', 'DNSPod：添加 CNAME _c71d….www.shop.example.com', ''],
+      [3, '14:20:21', '1 个权威 DNS 还没查到记录，20 秒后再查', 'warn'],
+      [3, '14:20:41', '2 个权威 DNS 都查到了记录', ''],
+      [3, '14:20:42', 'Sectigo 正在验证域名', ''],
+      [3, '14:21:21', '证书已签发，序列号 1F:A0:…:9C:07', 'ok'],
+      [4, '14:21:40', '下载证书链（3 张），有效期到 2027-05-04', ''],
+      [5, '14:21:45', '阿里云 ESA：上传新证书到站点 example.com', ''],
+      [5, '14:21:52', '阿里云 ESA：新证书已生效', 'ok'],
+      [5, '14:21:53', '阿里云 ESA：删除旧证书 18442031', ''],
+      [6, '14:22:01', 'Nginx：vps-01：写入 /etc/nginx/ssl/shop.example.com.pem', ''],
+      [6, '14:22:07', 'Nginx：vps-01：配置检查通过，已重载 nginx', 'ok'],
+      [7, '14:22:08', 'DNSPod：删除 2 条临时 CNAME 记录', ''],
+      [7, '14:22:08', '全部完成，用时 2 分 06 秒', 'ok']
+    ];
+    var tick = Math.min(this.state.tick, L.length);
+    var done = tick >= L.length;
+    var shown = L.slice(0, tick);
+    var cur = done ? STEPS.length : L[tick - 1][0];
+    var steps = STEPS.map(function (t, i) {
+      var lastIdx = -1, firstIdx = -1;
+      L.forEach(function (l, j) { if (l[0] === i) { if (firstIdx < 0) firstIdx = j; lastIdx = j; } });
+      var state = done || tick > lastIdx + 1 || (tick === lastIdx + 1 && i < cur) ? 'done' : (tick > firstIdx ? 'running' : 'pending');
+      if (!done && i === cur) state = 'running';
+      if (!done && i < cur) state = 'done';
+      var times = L.filter(function (l, j) { return l[0] === i && j < tick; });
+      return {
+        title: t,
+        icon: state === 'done' ? I['circle-check'] : (state === 'running' ? I['loader-circle'] : I['circle']),
+        color: state === 'done' ? 'var(--ok-ink)' : (state === 'running' ? 'var(--info-ink)' : 'var(--ink-muted)'),
+        titleColor: state === 'pending' ? 'var(--ink-muted)' : 'var(--ink)',
+        weight: state === 'running' ? '600' : '400',
+        spin: state === 'running' ? 'jec-icon spin' : 'jec-icon',
+        time: times.length ? times[times.length - 1][1] : ''
+      };
+    });
+    return {
+      theme: this.props.theme ?? 'light',
+      lines: shown.map(function (l) { return { time: l[1], msg: l[2], cls: 'jec-log__line' + (l[3] ? ' jec-log__line--' + l[3] : '') }; }),
+      steps: steps,
+      running: !done,
+      done: done,
+      title: done ? '已签发并部署' : '正在签发',
+      progress: done ? '8 步全部完成' : '第 ' + (cur + 1) + ' 步，共 8 步：' + STEPS[cur],
+      logRef: function (el) { self.logEl = el; },
+      replay: function () { self.setState({ tick: 1 }); self.start(); }
+    };
+  }
+}
+
+</script>
+</body>
+</html>

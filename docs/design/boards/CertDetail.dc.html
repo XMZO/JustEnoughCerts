@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>证书详情 · 桌面</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/jec/tokens.css">
+<link rel="stylesheet" href="ds/jec/components/bundle.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+html body { margin: 0; padding: 0; background: transparent; }
+a { color: var(--brand); } a:hover { color: var(--brand-hover); }
+.nav-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border-radius: var(--radius-md); color: var(--ink-muted); text-decoration: none; font-weight: 500; }
+.nav-item:hover { background: var(--surface-sunken); color: var(--ink); }
+.nav-item .jec-icon { width: 18px; height: 18px; }
+.nav-item--active, .nav-item--active:hover { background: var(--brand-soft); color: var(--ink); font-weight: 600; }
+.nav-item--active .jec-icon { color: var(--brand); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.rows > * { border-bottom: 1px solid var(--line); }
+.rows > *:last-child { border-bottom: 0; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 4px; }
+.panel-head h2 { margin: 0; font-size: 18px; line-height: 26px; font-weight: 600; }
+.mono { font-family: var(--font-mono); font-size: 12px; line-height: 20px; }
+</style>
+</helmet>
+<div data-theme="{{theme}}" style="min-height: 1040px; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 22px;">
+
+  <aside style="flex: 1 1 232px; max-width: 100%; box-sizing: border-box; padding: 20px 12px; display: flex; flex-direction: column; gap: 20px; background: var(--surface-raised); border-right: 1px solid var(--line);">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 10px;">
+      <svg width="28" height="28" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3c9a3f" fill-rule="evenodd" d="M5 1h6v1H5zM4 2h2v1H4zM10 2h2v1h-2zM3 3h2v4H3zM11 3h2v4h-2zM2 7h12v8H2zM7 9h2v4H7z"></path></svg>
+      <span style="font-weight: 600; font-size: 15px;">Just Enough Certs</span>
+    </div>
+    <nav aria-label="主导航" style="display: flex; flex-direction: column; gap: 2px;">
+      <a class="nav-item" href="Main.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM15 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM15 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM4 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1z"></path></svg><span>总览</span></a>
+      <a class="nav-item nav-item--active" href="Certs.dc.html" aria-current="page"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1zM9 12l2 2 4-4"></path></svg><span>证书</span><span class="jec-num" style="margin-left: auto; font-size: 12px; color: var(--ink-muted);">12</span></a>
+      <a class="nav-item" href="History.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2"></path></svg><span>签发记录</span></a>
+    </nav>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <span style="padding: 0 10px 4px; font-size: 12px; line-height: 16px; color: var(--ink-muted);">配置</span>
+      <a class="nav-item" href="Sources.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73zM12 22V12M3.3 7l7.703 4.734a2 2 0 0 0 1.994 0L20.7 7M7.5 4.27l9 5.15"></path></svg><span>证书来源</span></a>
+      <a class="nav-item" href="Dns.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"></path></svg><span>域名验证</span></a>
+      <a class="nav-item" href="Targets.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2h16a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2zM4 14h16a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-16a2 2 0 0 1 -2 -2v-4a2 2 0 0 1 2 -2zM6 6L6.01 6M6 18L6.01 18"></path></svg><span>部署目标</span></a>
+      <a class="nav-item" href="Notify.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg><span>通知</span></a>
+      <a class="nav-item" href="Credentials.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4zM16 7.5a0.5 0.5 0 1 0 1 0a0.5 0.5 0 1 0 -1 0"></path></svg><span>凭据</span></a>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <a class="nav-item" href="Modules.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h5a1 1 0 0 1 1 1v5a1 1 0 0 1 -1 1h-5a1 1 0 0 1 -1 -1v-5a1 1 0 0 1 1 -1zM10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H3"></path></svg><span>模块</span></a>
+      <a class="nav-item" href="Settings.dc.html"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2zM9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"></path></svg><span>设置</span></a>
+    </div>
+    <div style="margin-top: auto; padding: 12px 10px 0; border-top: 1px solid var(--line); font-size: 12px; line-height: 16px; color: var(--ink-muted); display: flex; justify-content: space-between;">
+      <span>admin</span><span>v0.1.0</span>
+    </div>
+  </aside>
+
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 20px 32px 32px;">
+    <div style="max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
+
+      <nav aria-label="位置" style="display: flex; align-items: center; gap: 4px; font-size: 13px; line-height: 20px; color: var(--ink-muted);">
+        <a href="Certs.dc.html" style="text-decoration: none;">证书</a>
+        <svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width: 14px; height: 14px;"><path d="M9 18l6-6-6-6"></path></svg>
+        <span aria-current="page">{{c.domain}}</span>
+      </nav>
+
+      <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px;">
+        <span class="{{slotCls}}" aria-hidden="true" style="cursor: default;"><span class="jec-slot__mono">{{c.mono}}</span><span class="jec-slot__bar"><span style="width: {{pct}}%;"></span></span></span>
+        <div style="flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;">
+            <h1 style="margin: 0; font-size: 24px; line-height: 32px; font-weight: 600; overflow-wrap: anywhere;">{{c.domain}}</h1>
+            <span class="{{badgeCls}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{badgeIcon}}"></path></svg>{{badgeText}}</span>
+          </div>
+          <sc-if value="{{hasAlso}}" hint-placeholder-val="{{true}}"><p style="margin: 0; color: var(--ink-muted);">{{c.also}}</p></sc-if>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+          <button type="button" class="jec-btn"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10 L12 15 L17 10M12 15L12 3"></path></svg>下载</button>
+          <button type="button" class="jec-btn"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 13v8M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242M8 17l4-4 4 4"></path></svg>部署</button>
+          <a class="jec-btn jec-btn--primary" href="Issue.dc.html" style="text-decoration: none;"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5"></path></svg>{{c.primary}}</a>
+          <button type="button" class="jec-btn jec-btn--icon" aria-label="更多操作"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0M18 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0M4 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path></svg></button>
+        </div>
+      </header>
+
+      <sc-if value="{{isFailed}}" hint-placeholder-val="{{false}}">
+        <section role="alert" style="display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-radius: var(--radius-lg); background: var(--danger-soft); color: var(--ink);">
+          <svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top: 3px; color: var(--danger-ink); width: 18px; height: 18px;"><path d="M15 9l-6 6M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586zM9 9l6 6"></path></svg>
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+            <strong style="color: var(--danger-ink);">签发失败：{{c.error}}</strong>
+            <span style="font-size: 13px; line-height: 20px;">{{c.hint}}</span>
+          </div>
+          <button type="button" class="jec-btn jec-btn--sm">查看日志</button>
+        </section>
+      </sc-if>
+
+      <section class="jec-panel" aria-label="有效期" style="padding: 16px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 32px;">
+        <div class="{{lifeCls}}" style="flex: 2 1 280px;"><div class="jec-life__bar" style="height: 10px;"><span class="jec-life__fill" style="width: {{pct}}%;"></span></div><span class="jec-life__label" style="font-size: 15px; line-height: 22px;">{{lifeText}}</span></div>
+        <dl style="flex: 3 1 420px; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px;">
+          <div><dt style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">签发时间</dt><dd class="jec-num" style="margin: 2px 0 0; font-weight: 600;">{{c.issued}}</dd></div>
+          <div><dt style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">到期时间</dt><dd class="jec-num" style="margin: 2px 0 0; font-weight: 600;">{{c.expires}}</dd></div>
+          <div><dt style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">有效期</dt><dd class="jec-num" style="margin: 2px 0 0; font-weight: 600;">{{c.validity}}</dd></div>
+          <div><dt style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">{{c.nextNote}}</dt><dd class="jec-num" style="margin: 2px 0 0; font-weight: 600;">{{c.next}}</dd></div>
+        </dl>
+      </section>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;">
+        <div style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+
+          <section class="jec-panel" aria-labelledby="t-title" style="padding: 16px;">
+            <div class="panel-head"><h2 id="t-title">部署目标</h2><button type="button" class="jec-btn jec-btn--ghost jec-btn--sm"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5v14"></path></svg>添加目标</button></div>
+            <div class="rows">
+              <sc-for list="{{targets}}" as="t" hint-placeholder-count="2">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 10px 0;">
+                  <div style="flex: 1 1 260px; min-width: 0;">
+                    <div style="font-weight: 600;">{{t.name}}</div>
+                    <div style="font-size: 13px; line-height: 20px; color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{t.detail}}</div>
+                  </div>
+                  <span class="{{t.badge}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.icon}}"></path></svg>{{t.stateText}}</span>
+                  <span class="jec-num" style="width: 104px; font-size: 13px; color: var(--ink-muted);">{{t.when}}</span>
+                  <button type="button" class="jec-btn jec-btn--sm" aria-label="{{t.action}}">重新部署</button>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+
+          <section class="jec-panel" aria-labelledby="r-title" style="padding: 16px;">
+            <div class="panel-head"><h2 id="r-title">{{c.run.title}}</h2><a href="History.dc.html" style="font-size: 13px; line-height: 20px;">完整日志</a></div>
+            <p style="margin: 0 0 4px; font-size: 13px; line-height: 20px; color: var(--ink-muted);">{{c.run.summary}}</p>
+            <ol class="rows" style="list-style: none; margin: 0; padding: 0;">
+              <sc-for list="{{steps}}" as="s" hint-placeholder-count="7">
+                <li style="display: flex; gap: 12px; align-items: flex-start; padding: 8px 0;">
+                  <svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-top: 3px; color: {{s.color}};"><path d="{{s.icon}}"></path></svg>
+                  <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 600; color: {{s.titleColor}};">{{s.title}}</div>
+                    <div style="font-size: 13px; line-height: 20px; color: {{s.detailColor}};">{{s.detail}}</div>
+                  </div>
+                  <span class="jec-num" style="font-size: 13px; color: var(--ink-muted);">{{s.time}}</span>
+                </li>
+              </sc-for>
+            </ol>
+          </section>
+        </div>
+
+        <div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+          <section class="jec-panel" aria-labelledby="i-title" style="padding: 16px;">
+            <div class="panel-head"><h2 id="i-title">证书信息</h2></div>
+            <dl style="margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; font-size: 13px; line-height: 20px;">
+              <sc-for list="{{info}}" as="r" hint-placeholder-count="7">
+                <dt style="color: var(--ink-muted); white-space: nowrap;">{{r.k}}</dt>
+                <dd style="margin: 0; display: flex; align-items: flex-start; gap: 4px; min-width: 0;">
+                  <sc-if value="{{r.plain}}" hint-placeholder-val="{{true}}"><span style="overflow-wrap: anywhere;">{{r.v}}</span></sc-if>
+                  <sc-if value="{{r.mono}}" hint-placeholder-val="{{false}}"><span class="mono" style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{r.v}}</span></sc-if>
+                  <sc-if value="{{r.copy}}" hint-placeholder-val="{{false}}"><button type="button" class="jec-btn jec-btn--ghost jec-btn--icon jec-btn--sm" aria-label="{{r.copyLabel}}" style="width: 24px; height: 20px;"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width: 14px; height: 14px;"><path d="M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2zM4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg></button></sc-if>
+                </dd>
+              </sc-for>
+            </dl>
+          </section>
+
+          <section class="jec-panel" aria-labelledby="s-title" style="padding: 16px;">
+            <div class="panel-head"><h2 id="s-title">续期设置</h2><button type="button" class="jec-btn jec-btn--ghost jec-btn--sm"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497zM15 5l4 4"></path></svg>编辑</button></div>
+            <dl style="margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; font-size: 13px; line-height: 20px;">
+              <sc-for list="{{settings}}" as="r" hint-placeholder-count="3">
+                <dt style="color: var(--ink-muted); white-space: nowrap;">{{r.k}}</dt>
+                <dd style="margin: 0;">{{r.v}}</dd>
+              </sc-for>
+            </dl>
+          </section>
+
+          <section class="jec-panel" aria-labelledby="h-title" style="padding: 16px;">
+            <div class="panel-head"><h2 id="h-title">签发历史</h2></div>
+            <ol class="rows" style="list-style: none; margin: 0; padding: 0; font-size: 13px; line-height: 20px;">
+              <sc-for list="{{history}}" as="h" hint-placeholder-count="3">
+                <li style="display: flex; align-items: center; gap: 8px; padding: 8px 0;">
+                  <div style="flex: 1; min-width: 0;">
+                    <div class="jec-num">{{h.range}}</div>
+                    <div style="color: var(--ink-muted);">{{h.note}}</div>
+                  </div>
+                  <button type="button" class="jec-btn jec-btn--ghost jec-btn--icon jec-btn--sm" aria-label="{{h.dl}}"><svg class="jec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10 L12 15 L17 10M12 15L12 3"></path></svg></button>
+                </li>
+              </sc-for>
+            </ol>
+          </section>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"cert":{"editor":"enum","options":["shop","api"],"default":"shop"},"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var I = {"circle-check": "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M9 12l2 2 4-4", "triangle-alert": "M21.73 18l-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01", "octagon-x": "M15 9l-6 6M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586zM9 9l6 6", "circle": "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0"};
+    var S = {
+      ok: { badge: 'jec-badge jec-badge--ok', text: '正常', icon: I['circle-check'] },
+      warn: { badge: 'jec-badge jec-badge--warn', text: '即将到期', icon: I['triangle-alert'] },
+      failed: { badge: 'jec-badge jec-badge--danger', text: '失败', icon: I['octagon-x'] }
+    };
+    var STEP = {
+      done: { icon: I['circle-check'], color: 'var(--ok-ink)', title: 'var(--ink)', detail: 'var(--ink-muted)', chip: 'jec-badge jec-badge--ok' },
+      failed: { icon: I['octagon-x'], color: 'var(--danger-ink)', title: 'var(--danger-ink)', detail: 'var(--danger-ink)', chip: 'jec-badge jec-badge--danger' },
+      skipped: { icon: I['circle'], color: 'var(--ink-muted)', title: 'var(--ink-muted)', detail: 'var(--ink-muted)', chip: 'jec-badge' }
+    };
+    var TARGET = {
+      ok: { badge: 'jec-badge jec-badge--ok', icon: I['circle-check'] },
+      warn: { badge: 'jec-badge jec-badge--warn', icon: I['triangle-alert'] }
+    };
+    var certs = {
+      shop: {
+        domain: 'shop.example.com', also: '另含 www.shop.example.com', mono: 'sh', state: 'warn', days: 23, total: 200,
+        issued: '2026-04-22', expires: '2026-11-08', validity: '200 天', next: '今晚 02:00', nextNote: '自动续期',
+        primary: '立即续期',
+        info: [
+          { k: '域名', v: 'shop.example.com，www.shop.example.com' },
+          { k: '颁发者', v: 'Sectigo RSA Domain Validation' },
+          { k: '来源', v: 'Namecheap（PositiveSSL）' },
+          { k: '订阅', v: '2027-04-22 到期，还可重签 1 次' },
+          { k: '密钥', v: 'RSA 2048' },
+          { k: '序列号', v: '7C:1E:93:0A:5F:…:4B:D2', mono: true, copy: true },
+          { k: 'SHA-256', v: '9F:2A:61:C4:08:…:E0:17:5B', mono: true, copy: true }
+        ],
+        settings: [
+          { k: '域名验证', v: 'DNSPod，CNAME 记录（凭据 dnspod-main）' },
+          { k: '自动续期', v: '到期前 30 天，每天 02:00 检查' },
+          { k: '通知', v: '邮件，Telegram' }
+        ],
+        targets: [
+          { name: '阿里云 ESA', detail: '站点 example.com，证书 ID 18442031', state: 'ok', stateText: '已部署', when: '4 月 22 日 03:02' },
+          { name: 'Nginx：vps-01', detail: '/etc/nginx/ssl/shop.example.com.pem，部署后重载 nginx', state: 'ok', stateText: '已部署', when: '4 月 22 日 03:02' }
+        ],
+        run: { title: '上次续期', summary: '2026-04-22 03:00 开始，用时 2 分 05 秒，全部成功。', steps: [
+          { s: 'done', title: '生成私钥和 CSR', detail: 'RSA 2048', time: '03:00:02', chip: 'CSR' },
+          { s: 'done', title: '向 Namecheap 申请重签', detail: '证书订单 #2210587', time: '03:00:05', chip: '重签' },
+          { s: 'done', title: '添加 DNS 验证记录', detail: 'DNSPod：CNAME _8f3a….shop.example.com', time: '03:00:09', chip: 'DNS 验证' },
+          { s: 'done', title: '等待 CA 验证', detail: '用时 1 分 12 秒', time: '03:01:21', chip: 'CA 验证' },
+          { s: 'done', title: '下载证书', detail: '证书链 3 张', time: '03:01:40', chip: '下载' },
+          { s: 'done', title: '部署到阿里云 ESA', detail: '上传新证书，删除旧证书', time: '03:01:58', chip: 'ESA' },
+          { s: 'done', title: '部署到 Nginx：vps-01', detail: '写入文件并重载 nginx', time: '03:02:07', chip: 'Nginx' }
+        ] },
+        history: [
+          { range: '2026-04-22 至 2026-11-08', note: '当前', current: true },
+          { range: '2025-11-03 至 2026-05-22', note: '4 月 22 日被替换' },
+          { range: '2024-11-03 至 2025-11-04', note: '已过期' }
+        ]
+      },
+      api: {
+        domain: 'api.example.net', also: '', mono: 'ap', state: 'failed', days: 5, total: 90,
+        issued: '2026-07-23', expires: '2026-10-21', validity: '90 天', next: '10:41', nextNote: '自动重试（第 2 次）',
+        primary: '重试',
+        error: 'DNS 记录 _acme-challenge.api.example.net 在 10 分钟内没有生效。',
+        hint: '请确认 api.example.net 的 NS 记录指向 DNSPod；如果这个域名在别的 DNS 服务商，到“域名验证”里换一个。旧证书还能用 5 天。',
+        info: [
+          { k: '域名', v: 'api.example.net' },
+          { k: '颁发者', v: 'ZeroSSL ECC Domain Secure Site CA' },
+          { k: '来源', v: 'ZeroSSL（ACME + EAB）' },
+          { k: '密钥', v: 'ECDSA P-256' },
+          { k: '序列号', v: '0B:44:E1:7D:22:…:9A:31', mono: true, copy: true },
+          { k: 'SHA-256', v: '31:C8:5E:02:AF:…:6D:90:E4', mono: true, copy: true }
+        ],
+        settings: [
+          { k: '域名验证', v: 'DNSPod，TXT 记录（凭据 dnspod-main）' },
+          { k: '自动续期', v: '到期前 30 天，每天 02:00 检查' },
+          { k: '通知', v: '邮件' }
+        ],
+        targets: [
+          { name: 'SSH：api-01', detail: '/etc/ssl/api/fullchain.pem，部署后重载 caddy', state: 'warn', stateText: '旧证书在用', when: '7 月 23 日 02:01' }
+        ],
+        run: { title: '最近一次签发', summary: '今天 09:31 开始，在“等待 DNS 生效”这一步失败。', steps: [
+          { s: 'done', title: '生成私钥和 CSR', detail: 'ECDSA P-256', time: '09:31:02', chip: 'CSR' },
+          { s: 'done', title: '创建 ACME 订单', detail: 'ZeroSSL，已用 EAB 凭据', time: '09:31:04', chip: '订单' },
+          { s: 'done', title: '添加 DNS 验证记录', detail: 'DNSPod：TXT _acme-challenge.api.example.net', time: '09:31:06', chip: '添加记录' },
+          { s: 'failed', title: '等待 DNS 生效', detail: '10 分钟内没有在权威 DNS 上查到这条记录', time: '09:41:06', chip: '等待生效' },
+          { s: 'done', title: '清理 DNS 验证记录', detail: '已删除临时记录', time: '09:41:07', chip: '清理' },
+          { s: 'skipped', title: '签发证书', detail: '未执行', time: '', chip: '签发' },
+          { s: 'skipped', title: '部署到 SSH：api-01', detail: '未执行', time: '', chip: '部署' }
+        ] },
+        history: [
+          { range: '2026-07-23 至 2026-10-21', note: '当前', current: true },
+          { range: '2026-04-24 至 2026-07-23', note: '7 月 23 日被替换' },
+          { range: '2026-01-24 至 2026-04-24', note: '已过期' }
+        ]
+      }
+    };
+    var c = certs[this.props.cert ?? 'shop'] || certs.shop;
+    var lifeCls = c.days <= 7 ? 'jec-life jec-life--danger' : (c.days <= 30 ? 'jec-life jec-life--warn' : 'jec-life');
+    var slotCls = (c.days <= 7 ? 'jec-slot jec-slot--danger' : (c.days <= 30 ? 'jec-slot jec-slot--warn' : 'jec-slot')) + '';
+    var steps = c.run.steps.map(function (st, i) {
+      var k = STEP[st.s];
+      return { title: st.title, detail: st.detail, time: st.time, icon: k.icon, color: k.color, titleColor: k.title, detailColor: k.detail, chip: st.chip, chipCls: k.chip, isFailed: st.s === 'failed', last: i === c.run.steps.length - 1 };
+    });
+    var failedStep = steps.filter(function (s) { return s.isFailed; })[0];
+    return {
+      theme: this.props.theme ?? 'light',
+      c: c,
+      badgeCls: S[c.state].badge,
+      badgeText: S[c.state].text,
+      badgeIcon: S[c.state].icon,
+      slotCls: slotCls,
+      lifeCls: lifeCls,
+      pct: Math.max(2, Math.round(c.days / c.total * 100)),
+      lifeText: '剩 ' + c.days + ' 天',
+      hasAlso: !!c.also,
+      isFailed: c.state === 'failed',
+      hasFailedStep: !!failedStep,
+      failedStep: failedStep || {},
+      info: c.info.map(function (r) { return { k: r.k, v: r.v, mono: !!r.mono, plain: !r.mono, copy: !!r.copy, copyLabel: '复制' + r.k }; }),
+      settings: c.settings,
+      targets: c.targets.map(function (t) { return { name: t.name, detail: t.detail, stateText: t.stateText, when: t.when, badge: TARGET[t.state].badge, icon: TARGET[t.state].icon, action: '重新部署到 ' + t.name }; }),
+      steps: steps,
+      history: c.history.map(function (h) { return { range: h.range, note: h.note, current: !!h.current, past: !h.current, dl: '下载 ' + h.range + ' 的证书' }; })
+    };
+  }
+}
+
+</script>
+</body>
+</html>
