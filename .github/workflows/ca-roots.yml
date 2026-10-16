@@ -46,6 +46,8 @@ jobs:
             echo "An open issue already tracks the update to $version."
             exit 0
           fi
-          body=$(printf 'A newer CA root bundle is available: `%s@%s` (now on %s).\n\n```sh\ngo get %s@%s\ngo mod tidy\n```\n' \
-            "$mod" "$version" "$(jq -r .Version <<<"$current")" "$mod" "$version")
+          body="A newer CA root bundle is available: $mod@$version (the binary embeds $(jq -r .Version <<<"$current")). To update:
+
+              go get $mod@$version
+              go mod tidy"
           gh issue create --title "$title" --body "$body"
