@@ -42,8 +42,8 @@
 
 ## 进度
 
-- 已完成：`PLAN.md`；设计系统和全部页面设计稿（`docs/design/`）；M0 第一段：`jec serve` / `healthcheck` / `version`，分层配置，`scratch` 镜像，GoReleaser，CI 和按标签发布的流水线（`.github/workflows/`）；SQLite 驱动选型；i18n 模块（`i18n/`：语言文件、ICU 子集解析和格式化、key 常量生成）和后端门禁（`go run ./tools/i18n check`、`go run ./tools/i18nlint ./...`，新增或改动文字后跑 `go run ./tools/i18n fix`）；内核：`internal/kernel/store`（SQLite + goose，内核和每个模块各有一张迁移版本表）、`internal/kernel/module`（Manifest、按依赖排序、启用状态存在 `kernel_modules` 表）、`internal/kernel/api`（huma，`/api/v1`，错误一律是 `{"code": key, "params", "fields"}`，`GET /api/v1/manifest`），模块在 `cmd/jec/modules.go` 说明的方式注册。
-- 下一步：M0 其余部分：登录和初始化向导（账号、会话、CSRF、一次性初始化令牌）、前端骨架（含前端 i18n 门禁和伪语言测试）、模块脚手架、体积预算。事件总线和调度器放到 M1，和签发状态机一起设计（通知、部署要求事件可靠送达）。
+- 已完成：`PLAN.md`；设计系统和全部页面设计稿（`docs/design/`）；M0 第一段：`jec serve` / `healthcheck` / `version`，分层配置，`scratch` 镜像，GoReleaser，CI 和按标签发布的流水线（`.github/workflows/`）；SQLite 驱动选型；i18n 模块（`i18n/`：语言文件、ICU 子集解析和格式化、key 常量生成）和后端门禁（`go run ./tools/i18n check`、`go run ./tools/i18nlint ./...`，新增或改动文字后跑 `go run ./tools/i18n fix`）；内核：`internal/kernel/store`（SQLite + goose，内核和每个模块各有一张迁移版本表）、`internal/kernel/module`（Manifest、按依赖排序、启用状态存在 `kernel_modules` 表）、`internal/kernel/api`（huma，`/api/v1`，错误一律是 `{"code": key, "params", "fields"}`，`GET /api/v1/manifest`），模块在 `cmd/jec/modules.go` 说明的方式注册；账号：`internal/kernel/auth`（一次性初始化令牌打印在日志里，`/api/v1/setup`、`/api/v1/session`，argon2id，会话 Cookie，CSRF 防护，登录限速，API 默认要求登录，公开接口用 `api.Public`）。
+- 下一步：M0 其余部分：前端骨架（Vue，登录页和初始化向导，含前端 i18n 门禁和伪语言测试，`go:embed` 进二进制）、模块脚手架、体积预算，然后打 `v0.0.1`。事件总线和调度器放到 M1，和签发状态机一起设计（通知、部署要求事件可靠送达）。
 
 ## 工程约定
 

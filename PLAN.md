@@ -503,7 +503,11 @@ services:
 ## 10. 安全
 
 - **凭据和私钥加密存储**：AES-256-GCM，主密钥来自 `JEC_SECRET_KEY` 或数据目录里的密钥文件。界面上不回显已保存的密钥，下载私钥前需要重新输入密码。
-- **登录**：本地账号，密码用 argon2id 哈希，支持 TOTP 两步验证；以后支持 OIDC 单点登录。Cookie 设 `HttpOnly`、`Secure`、`SameSite`，带 CSRF 防护；登录接口限速。
+- **登录**：本地账号，密码用 argon2id 哈希（RFC 9106 第二组推荐参数：64 MiB、3 轮、4 线程，同时最多算 2 个），支持 TOTP 两步验证；以后支持 OIDC 单点登录。
+  - 会话是随机令牌，库里只存 SHA-256，有效期 30 天。Cookie 设 `HttpOnly`、`SameSite=Lax`；base URL 是 https 时再加 `Secure`（纯 HTTP 访问时浏览器不收 Secure Cookie，局域网直连会登不上）。
+  - CSRF 防护用 Go 标准库的 `http.CrossOriginProtection`，按 `Sec-Fetch-Site` 和 `Origin` 拒绝跨站的写请求；base URL 的 origin 被信任，反向代理改写 Host 时也能通过。
+  - 登录和初始化按客户端 IP 限速：10 分钟内失败 10 次就要等到窗口结束。
+  - 所有 API 默认要求登录，只有初始化和登录接口在 OpenAPI 里标成公开。
 - **API 令牌**：可以按权限范围生成，用于 CLI 和自动化。
 - **审计日志**：谁在什么时候改了什么、下载了哪个私钥。
 - **安全响应头**：CSP、HSTS（由用户选择是否开启）等。
