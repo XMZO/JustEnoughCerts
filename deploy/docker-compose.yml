@@ -1,0 +1,22 @@
+# Just Enough Certs, single-file deployment.
+#
+#   mkdir -p data && sudo chown 65532:65532 data
+#   docker compose up -d
+#
+# The container runs as 65532:65532 and keeps everything in ./data, so that
+# directory must be writable by that user, or set "user:" to its owner.
+services:
+  jec:
+    image: ghcr.io/xmzo/justenoughcerts:latest
+    container_name: jec
+    restart: unless-stopped
+    # Run as the owner of ./data instead of 65532:65532.
+    # user: "1000:1000"
+    ports:
+      - "8080:8080"
+    environment:
+      TZ: Asia/Shanghai
+      # Set when users reach JEC through a reverse proxy or under a sub-path.
+      # JEC_BASE_URL: "https://certs.example.com"
+    volumes:
+      - ./data:/data

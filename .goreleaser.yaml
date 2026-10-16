@@ -1,0 +1,88 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+#
+# Binaries, archives, checksums, SBOMs and the draft GitHub release. The
+# container image is built from these binaries by the release workflow.
+version: 2
+
+project_name: jec
+
+builds:
+  - id: jec
+    main: ./cmd/jec
+    binary: jec
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/XMZO/JustEnoughCerts/internal/kernel/buildinfo.version={{ .Version }}
+      - -X github.com/XMZO/JustEnoughCerts/internal/kernel/buildinfo.commit={{ .FullCommit }}
+      - -X github.com/XMZO/JustEnoughCerts/internal/kernel/buildinfo.date={{ .CommitDate }}
+    # Reproducible builds: file times come from the commit, not the clock.
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: jec
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+sboms:
+  - artifacts: archive
+
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args: ["sign-blob", "--bundle=${signature}", "${artifact}", "--yes"]
+    artifacts: checksum
+
+report_sizes: true
+
+changelog:
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: Bug fixes
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    - title: Performance
+      regexp: '^.*?perf(\(.+\))??!?:.+$'
+      order: 2
+    - title: Others
+      order: 999
+  filters:
+    exclude:
+      - '^.*?(docs|test|ci|chore|style|build)(\(.+\))??!?:.+$'
+
+release:
+  # The release workflow publishes the draft once the image is pushed and
+  # the sizes are added to the notes.
+  draft: true
+  replace_existing_draft: true
+  prerelease: auto
+  footer: |
+    ## Container image
+
+    ```sh
+    docker pull ghcr.io/xmzo/justenoughcerts:{{ .Version }}
+    ```
+
+    ## Verify
+
+    ```sh
+    cosign verify-blob checksums.txt --bundle checksums.txt.sigstore.json \
+      --certificate-identity-regexp '^https://github\.com/XMZO/JustEnoughCerts/\.github/workflows/release\.yml@refs/tags/' \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com
+    sha256sum --ignore-missing -c checksums.txt
+
+    cosign verify ghcr.io/xmzo/justenoughcerts:{{ .Version }} \
+      --certificate-identity-regexp '^https://github\.com/XMZO/JustEnoughCerts/\.github/workflows/release\.yml@refs/tags/' \
+      --certificate-oidc-issuer https://token.actions.githubusercontent.com
+    ```
