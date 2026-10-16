@@ -17,14 +17,22 @@ CA/Browser Forum 的 SC-081 提案把证书最长有效期逐年缩短：2026-03
 
 现有工具的空白：
 
-- acme.sh、certbot、Certimate 等只支持 **ACME** 免费证书，处理不了 Namecheap 这类**付费证书**按 200 天周期的重签。
-- Namecheap 自带的自动化（SSL Proxy、SSL Manager）要么要求用它家 DNS，要么只能装到本机的 nginx/apache，**推不到阿里云 ESA 这类 CDN**。
+- acme.sh、certbot、Certimate 等基本只管 **ACME** 证书。付费证书如果要走 CA 或经销商的专有 API 重签，就没有现成工具。
+- 各家 CA 和经销商的自动化工具（例如 Namecheap 的 SSL Manager、SSL.com 的 SSL Manager）都是私有的，只服务自家证书，而且大多只能装到本机的 nginx/apache，**推不到 CDN 这类云产品**。
 
-JEC 要把“证书从哪来”“怎么验证域名”“部署到哪去”三件事拆开，每一块都能自由组合。
+业界真正通用的自动化标准是 **ACME（RFC 8555）+ EAB**：CA 给出 ACME 地址、Key ID 和 HMAC 密钥，任何 ACME 客户端都能用。免费 CA 和越来越多的商业 CA 都已支持。
 
-**第一个验收场景**（作者自己的环境）：
+所以 JEC 的定位是**通用**的证书管理面板：
 
-> Namecheap 付费证书 → 通过 DNSPod 自动加 CNAME 完成验证 → 上传到阿里云 ESA（国内站）→ 确认生效后删除旧证书 → 每个 200 天周期自动重复。
+- 证书来源以 **ACME + EAB** 和**手动上传 / 导入**为主，覆盖绝大多数 CA；
+- 各家的专有 API 只是可选模块，彼此地位相同；
+- “证书从哪来”“怎么验证域名”“部署到哪去”三件事拆开，每一块都能自由组合。
+
+**第一个验收场景**：
+
+> 付费证书 → 通过 DNS API 自动完成域名验证 → 部署到 CDN → 确认生效后删除旧证书 → 每个有效期周期自动重复。
+
+首个测试环境是作者自己的：Namecheap 证书 + DNSPod + 阿里云 ESA（国内站）。
 
 ## 2. 目标与非目标
 
@@ -32,7 +40,7 @@ JEC 要把“证书从哪来”“怎么验证域名”“部署到哪去”三�
 
 - **所有功能模块化、可插拔**（见 4.2）：内核只保留最基础的部分，其余功能都是独立模块，增加或删除一个功能不影响其他部分。
 - 来源、验证、部署、通知四类都做成**可插拔的 Provider**，新增一种来源或目标不需要改核心代码，也不需要改前端。
-- **尽量覆盖市面上的证书和 DNS 服务商**（见 5.3）：ACME 类 CA 全部通用支持，DNS 服务商借助 lego 一次覆盖 225 家。
+- **尽量覆盖市面上的证书和 DNS 服务商**（见 5.3）：证书来源以通用的 ACME + EAB 为主，支持 ACME 的 CA 都能直接用；DNS 服务商借助 lego 一次覆盖 225 家。
 - **国际化严格独立**（见第 7 节）：每种语言一个文件，代码里不写死任何界面文字；先实现简体中文和英文；测试设 i18n 门禁。
 - **好看、能在各种屏幕上用**的 Web 界面：手机、平板、桌面都能顺畅操作，支持深色模式。
 - **一个 `docker-compose.yml` 就能部署**，也提供原生二进制文件。
@@ -52,9 +60,9 @@ JEC 要把“证书从哪来”“怎么验证域名”“部署到哪去”三�
 | 概念 | 说明 | 例子 |
 |---|---|---|
 | **Module**（模块） | 一个可以独立启用、停用、删除的功能单元 | 证书管理、巡检、审计日志、阿里云 ESA 部署 |
-| **Certificate**（证书） | 一张逻辑证书：域名列表、密钥类型、来源、部署目标、续期策略。对应一份 Namecheap 订阅或一组 ACME 域名 | `example.com, www.example.com` |
+| **Certificate**（证书） | 一张逻辑证书：域名列表、密钥类型、来源、部署目标、续期策略。对应一份付费证书订阅或一组 ACME 域名 | `example.com, www.example.com` |
 | **Issuance**（签发记录） | 某一次签发或重签的完整过程，有自己的状态和日志 | 2026-10 那次 200 天重签 |
-| **Source**（证书来源） | 从哪里拿证书 | Namecheap API、ACME、手动上传 |
+| **Source**（证书来源） | 从哪里拿证书 | ACME（含 EAB）、手动上传、厂商专有 API |
 | **Solver**（验证执行器） | 完成域名验证（DCV） | DNSPod、阿里云 DNS、Cloudflare DNS、HTTP 文件 |
 | **Target**（部署目标） | 证书装到哪里 | 阿里云 ESA、本地文件 + 重载命令、SSH、Webhook |
 | **Credential**（凭据） | 各家平台的访问密钥，加密存储，可被多个 Provider 引用 | 阿里云 RAM 子账号 AK |
@@ -81,7 +89,7 @@ flowchart LR
     Reg --> M2[Provider 模块<br/>来源 / 验证 / 部署 / 通知]
     Reg --> M3[巡检 / 钩子 / 外部插件 / 审计 …]
   end
-  M2 --> NC[Namecheap / 云厂商证书 / ACME CA]
+  M2 --> NC[ACME CA / 厂商证书 API]
   M2 --> DNS[225 家 DNS 服务商]
   M2 --> ESA[阿里云 ESA / CDN / 服务器 …]
 ```
@@ -148,7 +156,7 @@ type Module interface {
 stateDiagram-v2
   [*] --> Pending
   Pending --> KeyReady: 生成私钥
-  KeyReady --> Submitted: 提交 CSR（Namecheap reissue / ACME order）
+  KeyReady --> Submitted: 提交 CSR（ACME order / 厂商 API）
   Submitted --> ChallengesReady: 取得验证要求
   ChallengesReady --> ChallengesPublished: Solver 发布 DNS 记录 / 文件
   ChallengesPublished --> Validating: 等待生效后通知 CA
@@ -182,9 +190,9 @@ Provider 是模块的一种：每个 Provider 都是一个独立模块，按 4.2
 // 前端根据 Schema 自动生成表单，所以新增 Provider 不需要写前端代码。
 // 名字、字段标签、帮助说明都只写翻译 key，不写文字本身（见第 7 节）。
 type Descriptor struct {
-    ID           string          // "namecheap-api"
+    ID           string          // "aliyun-esa"
     Kind         Kind            // Source / Solver / Target / Notifier
-    NameKey      i18n.Key        // "provider.namecheap_api.name"
+    NameKey      i18n.Key        // "provider.aliyun_esa.name"
     Icon         string
     ConfigSchema json.RawMessage // 由 Go 结构体 + 标签生成，标签里是翻译 key
     Experimental bool
@@ -233,15 +241,17 @@ type Target interface {
 
 #### 5.3.1 证书来源（SSL）
 
+**推荐顺序**：CA 支持 ACME 就用 ACME；不支持时用它的专有 API 模块；都没有就手动上传，由 JEC 负责部署和到期提醒。
+
 | 类别 | 服务商 | 接入方式 | 阶段 |
 |---|---|---|---|
-| ACME 免费证书 | Let's Encrypt、ZeroSSL、Google Trust Services、SSL.com、Actalis | ACME（部分需要 EAB 凭据） | M1 |
-| ACME 商业证书 | Sectigo、DigiCert、GlobalSign、HARICA、TrustAsia（亚洲诚信）等提供 ACME 的 CA；Namecheap 的 ACME（官方计划 2026 年 11–12 月上线） | 自定义 ACME 地址 + EAB，**任何支持 ACME 的 CA 都能接**，逐家验证后列入兼容表 | M1（通用能力） |
-| 厂商 API | **Namecheap 官方 API**（`ssl.reissue` / `ssl.getInfo` / `ssl.activate`） | 官方 API，需满足开通条件和 IP 白名单 | M2 |
-| 国内云平台 | 阿里云数字证书管理服务、腾讯云 SSL 证书 | 云 API：申请免费证书、拉取已购证书 | M3 |
-| 其他付费证书 API | ZeroSSL REST API、GoGetSSL、TheSSLStore、DigiCert CertCentral 等 | 各自的 API，按需求排期 | 以后 |
-| 实验性 | Namecheap SSL Manager 后端 | 非公开接口，默认关闭，界面标注“可能随时失效” | 以后 |
-| 导入 | 手动上传（PEM / PFX）；扫描 acme.sh、certbot 的目录 | 只读导入，避免和原工具冲突 | M1 |
+| **通用：ACME 免费证书** | Let's Encrypt、ZeroSSL、Google Trust Services、SSL.com、Actalis | ACME（部分需要 EAB 凭据） | M1 |
+| **通用：ACME 商业证书** | Sectigo、DigiCert、GlobalSign、HARICA、TrustAsia（亚洲诚信）等提供 ACME 的 CA，以及经销商提供的 ACME（如 Namecheap，官方计划 2026 年 11–12 月上线） | 自定义 ACME 地址 + EAB，**任何支持 ACME 的 CA 都能接**，逐家验证后列入兼容表 | M1 |
+| **通用：手动上传 / 导入** | 任何 CA 的证书（PEM / PFX）；扫描 acme.sh、certbot 的目录 | 只读导入，避免和原工具冲突 | M1 |
+| 厂商专有 API（可选模块） | Namecheap 官方 API（`ssl.reissue` / `ssl.getInfo` / `ssl.activate`） | 官方 API，需满足开通条件和 IP 白名单 | M2 |
+| 厂商专有 API（可选模块） | 阿里云数字证书管理服务、腾讯云 SSL 证书 | 云 API：申请免费证书、拉取已购证书 | M3 |
+| 厂商专有 API（可选模块） | ZeroSSL REST API、GoGetSSL、TheSSLStore、DigiCert CertCentral 等 | 各自的 API，按需求排期 | 以后 |
+| 实验性 | Namecheap / Spaceship 的 SSL Manager 后端（仅适用于这两家的证书） | 非公开接口，默认关闭，界面标注“可能随时失效” | 以后 |
 
 #### 5.3.2 DNS 服务商（域名验证）
 
@@ -253,7 +263,7 @@ DNS 验证分成两种能力，实现方式不同：
 - **国际**：Cloudflare、AWS Route 53、Google Cloud DNS、Azure DNS、DigitalOcean、Linode、Vultr、Hetzner、OVH、Gandi、GoDaddy、Namecheap、Spaceship、Porkbun、Name.com、NameSilo、Dynadot、deSEC、DuckDNS、Netlify、Vercel、Bunny、NS1 等
 - **自建 / 通用**：PowerDNS、RFC 2136 动态更新（BIND 等）、acme-dns、HTTP 请求、执行外部脚本、手动模式
 
-**② 任意记录增删（付费证书验证用）**：Namecheap / Sectigo 这类付费证书的 DNS 验证是加一条 CNAME，例如 `_<哈希>.example.com CNAME <哈希>.sectigo.com`，而 lego 的接口只能加 ACME 的 TXT 记录。所以这部分单独做一层“DNS 记录管理”：
+**② 任意记录增删（厂商 API 验证用）**：付费证书走厂商专有 API 时，DNS 验证通常要加 CNAME 或 TXT，例如 Sectigo 系证书的 `_<哈希>.example.com CNAME <哈希>.sectigo.com`，而 lego 的接口只能加 ACME 的 TXT 记录。所以这部分单独做一层“DNS 记录管理”：
 
 - 优先复用 **libdns** 生态（Caddy 使用的通用 DNS 记录接口，支持任意记录类型）。首批：DNSPod / 腾讯云、阿里云 DNS、Cloudflare、AWS Route 53、华为云、火山引擎、西部数码，libdns 都已有实现。
 - 其余服务商按需求补；暂时补不到的用**手动模式**：界面显示要加的记录，加好后点“已添加”，JEC 用公共 DNS 核实后继续。
@@ -493,7 +503,7 @@ services:
 - **模块权限**：每个模块声明自己需要的权限点，停用的模块不暴露任何 API。
 - **最小权限**：文档里给每个云平台提供最小权限策略模板。
 - **不收集遥测**；检查更新可以关闭。
-- **非官方接口隔离**：Namecheap SSL Manager 后端这类非公开接口，放在实验性模块里，默认关闭，界面上明确标注“可能随时失效”。
+- **非官方接口隔离**：Namecheap / Spaceship SSL Manager 后端这类非公开接口，放在实验性模块里，默认关闭，界面上明确标注“可能随时失效”。
 
 ## 11. 兼容性与自定义清单
 
@@ -533,7 +543,7 @@ JustEnoughCerts/
 │   │   ├── backup/             # 备份与恢复
 │   │   └── …
 │   ├── providers/              # Provider 模块（每个服务商一个目录）
-│   │   ├── source/             # manual, acme, namecheap, aliyun_cas, tencent_ssl, namecheap_sslmanager(实验)
+│   │   ├── source/             # acme, manual, namecheap, aliyun_cas, tencent_ssl, spaceship_sslmanager(实验) …
 │   │   ├── solver/             # lego 适配层、dnsrecord、http、email、manual
 │   │   ├── target/             # aliyun_esa, local, ssh, docker, webhook …
 │   │   └── notify/             # telegram, smtp, webhook …
@@ -566,10 +576,10 @@ JustEnoughCerts/
 |---|---|---|
 | **M0 骨架** | 仓库、CI、发布流水线、`scratch` 镜像、体积检查；内核与模块注册表、模块脚手架；**i18n 模块和全部门禁**（从第一行界面文字开始就不允许硬编码）；空的前端、登录和初始化向导（中英文）；SQLite（含驱动选型实测） | 打一个 `v0.0.1` 标签，能自动产出全部二进制和镜像，`docker compose up` 能打开中英文登录页，i18n 门禁和体积检查在 CI 里生效 |
 | **M1 最小可用** | 证书模块、状态机、调度器；手动上传和导入；ACME（任意 CA + EAB）+ lego 的 225 家 DNS；阿里云 ESA、本地文件、SSH、Webhook 部署；Telegram、邮件、Webhook 通知；总览和证书页 | 用免费证书完整跑通“签发 → 部署到 ESA → 删除旧证书 → 到期自动续” |
-| **M2 Namecheap** | Namecheap 官方 API 来源（重签 + CNAME 验证）；DNS 记录管理层（DNSPod、阿里云 DNS、Cloudflare 等）和手动模式；导入已有的 Namecheap 证书；Namecheap ACME 上线后验证兼容性 | 第 1 节的验收场景全自动跑通一个周期 |
+| **M2 厂商 API 与付费证书** | 厂商专有 API 来源的通用框架，第一个实现是 Namecheap 官方 API（重签 + CNAME 验证）；DNS 记录管理层（DNSPod、阿里云 DNS、Cloudflare 等）和手动模式；导入已有的付费证书；逐家验证商业 CA 的 ACME + EAB（含 Namecheap ACME 上线后） | 第 1 节的验收场景全自动跑通一个周期 |
 | **M3 扩展** | 国内云平台证书来源；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子、YAML 导入导出；线上巡检；运行时启用 / 停用模块的界面 | 不改核心代码，写一个外部插件接入新平台；停用任意模块后其余功能正常 |
 | **M4 打磨** | 两步验证、OIDC、审计日志、PWA、文档站、翻译指南、服务商兼容表 | 发布 `v1.0.0` |
-| **以后** | Namecheap SSL Manager 后端（实验性）、其他付费证书 API、更多语言（社区贡献）、多用户和角色、PostgreSQL、私有 CA | 按需求排期 |
+| **以后** | Namecheap / Spaceship SSL Manager 后端（实验性）、其他厂商证书 API、更多语言（社区贡献）、多用户和角色、PostgreSQL、私有 CA | 按需求排期 |
 
 先做 M0，是为了尽早把“打标签 → 自动发布”这条链路跑通，同时让模块化和 i18n 门禁从第一天就生效，之后每个功能都能随时发版试用。
 
@@ -581,4 +591,4 @@ JustEnoughCerts/
 - [ ] 镜像和程序的体积预算：M0 实测后写进 CI。
 - [ ] 除 SQLite 外，何时支持 PostgreSQL。
 - [ ] 文档语言：倾向中英双语（界面语言已定为跟随浏览器，可手动切换）。
-- [ ] Namecheap 官方 API 需要满足开通条件（20 个域名，或账户余额 / 近两年消费达 $50）并设置 IP 白名单：在 README 里写清楚，并提供不需要 API 的替代路径（ACME 或手动上传）。
+- [ ] 各厂商 API 的开通门槛要在文档里写清楚（例如 Namecheap 需要 20 个域名，或账户余额 / 近两年消费达 $50，并设置 IP 白名单），并提示优先使用 ACME + EAB 或手动上传。
