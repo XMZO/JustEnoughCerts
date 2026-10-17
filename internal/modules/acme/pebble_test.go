@@ -37,6 +37,11 @@ func TestPebble(t *testing.T) {
 	m.skipPropagation = true
 	src := &source{m: m, in: providers.Instance{ID: 1, Config: map[string]string{"ca": custom, "directory": directory, "email": "admin@example.com"}}}
 
+	// A test registers the account, as the first issuance would.
+	if msg, err := src.Test(t.Context()); err != nil || msg.Key != i18n.AcmeTestOk {
+		t.Fatalf("test: %+v, %v", msg, err)
+	}
+
 	for round := range 2 {
 		key := cryptoxtest.NewKey(t)
 		solver := &fakeSolver{}
@@ -56,9 +61,8 @@ func TestPebble(t *testing.T) {
 		if !slices.Contains(solver.calls, "present jec.example.com") || !slices.Contains(solver.calls, "cleanup jec.example.com") {
 			t.Errorf("round %d: solver calls %v (does Pebble run with PEBBLE_AUTHZREUSE=0?)", round, solver.calls)
 		}
-		// The account is registered once.
-		registered := slices.Contains(steps, i18n.AcmeLogRegister)
-		if registered != (round == 0) || steps[len(steps)-1] != i18n.AcmeLogIssued {
+		// The account was registered by the test.
+		if slices.Contains(steps, i18n.AcmeLogRegister) || steps[len(steps)-1] != i18n.AcmeLogIssued {
 			t.Errorf("round %d: steps %v", round, steps)
 		}
 	}

@@ -389,3 +389,17 @@ func TestQuote(t *testing.T) {
 		}
 	}
 }
+
+func TestTest(t *testing.T) {
+	key, pub := clientKey(t, "")
+	srv := newServer(t, pub)
+	msg, err := open(t, settings(srv, nil), map[string]string{"private_key": key}).Test(t.Context())
+	if err != nil || msg.Key != i18n.SshTestOk || msg.Params["user"] != "deploy" {
+		t.Errorf("test: %+v, %v", msg, err)
+	}
+	var p *contracts.Problem
+	_, err = open(t, settings(srv, map[string]string{"host_key": ""}), map[string]string{"private_key": key}).Test(t.Context())
+	if !errors.As(err, &p) || p.Key != i18n.SshErrorHostKeyUnknown || p.Params["fingerprint"] != gossh.FingerprintSHA256(srv.host) {
+		t.Errorf("no host key set: %v", err)
+	}
+}

@@ -124,3 +124,25 @@ func read(t *testing.T, dir, name string) []byte {
 	}
 	return data
 }
+
+func TestTest(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "new", "certs")
+	msg, err := open(t, map[string]string{"directory": dir}).Test(t.Context())
+	if err != nil || msg.Key != i18n.FilesTestOk {
+		t.Fatalf("test: %+v, %v", msg, err)
+	}
+	if entries, err := os.ReadDir(dir); err != nil || len(entries) != 0 {
+		t.Errorf("the directory after the test: %v %v", entries, err)
+	}
+	var p *contracts.Problem
+	if _, err := open(t, map[string]string{"directory": "certs"}).Test(t.Context()); !errors.As(err, &p) || p.Key != i18n.FilesErrorRelative {
+		t.Errorf("a relative directory: %v", err)
+	}
+	blocked := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(blocked, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := open(t, map[string]string{"directory": blocked}).Test(t.Context()); !errors.As(err, &p) || p.Key != i18n.FilesErrorWrite {
+		t.Errorf("a file in the way: %v", err)
+	}
+}

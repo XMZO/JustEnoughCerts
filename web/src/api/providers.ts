@@ -54,6 +54,13 @@ function useProvidersMutation<V, R>(fn: (vars: V) => Promise<R>) {
   })
 }
 
+/** Tests a configured provider of a testable type; it fails with the provider's own error. */
+export function useProviderTest() {
+  return useMutation({
+    mutationFn: (id: number) => unwrap(api.POST('/providers/{id}/test', { params: { path: { id } } })),
+  })
+}
+
 export function useCreateProvider() {
   return useProvidersMutation((body: ProviderSettings & { type: string }) => unwrap(api.POST('/providers', { body })))
 }

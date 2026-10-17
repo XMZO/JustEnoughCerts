@@ -56,6 +56,7 @@
 - 证书状态多了 `deploy_failed`（和签发失败的 `failed` 分开）。伪语言测试的标记检查以前被 `<html lang>` 整个豁免掉了，已修正：真实页面的文字现在确实会检查。
 - M1 还完成了：SSH 部署目标 `internal/modules/ssh`（`PLAN.md` 5.3.3：经 SSH 执行命令写文件、一起改名，再执行设置的命令；主机公钥必须核对）。M1 计划里的部署目标和通知渠道都已具备。
 - M1 还完成了：签发记录页 `/history`（`GET /api/v1/certs/runs`，签发、续期、部署合在一起，按天分组、筛选、导出 CSV）和总览的“最近动态”；手机底部标签栏是总览、证书、签发记录、更多。
+- M1 还完成了：测试连接（`POST /api/v1/providers/{id}/test`，类型标 `testable`，provider 实现 `contracts.Tester`）：阿里云 ESA、SSH、本地目录、ACME 账号。
 - 下一步：用真实的阿里云 ESA 账号验证部署和删除旧证书（M1 验收要用户提供账号）；续期时间窗口（`PLAN.md` 14 的待定事项）。
 
 ## 工程约定

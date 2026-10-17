@@ -234,3 +234,17 @@ func certIDs(list []certificate) []string {
 	}
 	return ids
 }
+
+func TestTest(t *testing.T) {
+	api := &fakeAPI{site: "example.com", held: []certificate{{ID: "a"}, {ID: "b"}}}
+	msg, err := newTarget(api, true).Test(t.Context())
+	if err != nil || msg.Key != i18n.EsaTestOk || msg.Params["count"] != 2 || msg.Params["site"] != "example.com" {
+		t.Errorf("test: %+v, %v", msg, err)
+	}
+	api.site = "other.example"
+	_, err = newTarget(api, true).Test(t.Context())
+	var p *contracts.Problem
+	if !errors.As(err, &p) || p.Key != i18n.EsaErrorSite || !retry.IsPermanent(err) {
+		t.Errorf("a site that is not there: %v", err)
+	}
+}

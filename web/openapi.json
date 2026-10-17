@@ -1194,6 +1194,19 @@
         ],
         "type": "object"
       },
+      "TestOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "message": {
+            "$ref": "#/components/schemas/Message",
+            "description": "What the test found"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
       "Type": {
         "additionalProperties": false,
         "properties": {
@@ -1241,6 +1254,9 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "testable": {
+            "type": "boolean"
           },
           "url": {
             "type": "string"
@@ -1295,6 +1311,10 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "testable": {
+            "description": "Its instances can be tested",
+            "type": "boolean"
           },
           "url": {
             "type": "string"
@@ -2492,6 +2512,46 @@
           }
         },
         "summary": "Change a configured provider"
+      }
+    },
+    "/providers/{id}/test": {
+      "post": {
+        "description": "Checks its settings without changing anything, for types marked testable. A provider that fails answers 502 with its own message.",
+        "operationId": "providers-test",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Test a configured provider"
       }
     },
     "/session": {

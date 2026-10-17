@@ -13,6 +13,7 @@ import (
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 )
 
@@ -27,6 +28,7 @@ type TypeSummary struct {
 	URL          string         `json:"url,omitempty"`
 	Tags         []string       `json:"tags,omitempty"`
 	NeedsSolver  bool           `json:"needsSolver,omitempty" doc:"For a source: issuing needs a solver"`
+	Testable     bool           `json:"testable,omitempty" doc:"Its instances can be tested"`
 	Experimental bool           `json:"experimental,omitempty"`
 }
 
@@ -82,6 +84,12 @@ type instanceOutput struct {
 	Body InstanceBody
 }
 
+type testOutput struct {
+	Body struct {
+		Message contracts.Message `json:"message" doc:"What the test found"`
+	}
+}
+
 type createInput struct {
 	Body struct {
 		Type    string            `json:"type" minLength:"1"`
@@ -111,7 +119,7 @@ func Register(a huma.API, r *providers.Registry) {
 		for _, t := range r.Types(providers.Kind(in.Kind)) {
 			out.Body.Types = append(out.Body.Types, TypeSummary{
 				ID: t.ID, Kind: t.Kind, Module: t.Module, Name: t.Name, Description: t.Description,
-				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, Experimental: t.Experimental,
+				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, Testable: t.Testable, Experimental: t.Experimental,
 			})
 		}
 		return out, nil
@@ -173,11 +181,66 @@ func Register(a huma.API, r *providers.Registry) {
 	})
 
 	huma.Register(a, huma.Operation{
+		OperationID: "providers-test", Method: http.MethodPost, Path: "/providers/{id}/test",
+		Summary:     "Test a configured provider",
+		Description: "Checks its settings without changing anything, for types marked testable. A provider that fails answers 502 with its own message.",
+	}, func(ctx context.Context, in *idInput) (*testOutput, error) {
+		return test(ctx, r, in.ID)
+	})
+
+	huma.Register(a, huma.Operation{
 		OperationID: "providers-delete", Method: http.MethodDelete, Path: "/providers/{id}", DefaultStatus: http.StatusNoContent,
 		Summary: "Delete a configured provider, unless a certificate uses it",
 	}, func(ctx context.Context, in *idInput) (*struct{}, error) {
 		return nil, apiError(r.Delete(ctx, in.ID))
 	})
+}
+
+// testTimeout bounds a test, which may reach a server across the world.
+const testTimeout = time.Minute
+
+func test(ctx context.Context, r *providers.Registry, id int64) (*testOutput, error) {
+	scope := r.Scope("kernel")
+	t, err := scope.Type(ctx, id)
+	if err != nil {
+		return nil, apiError(err)
+	}
+	if !t.Testable {
+		return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorProviderUntestable, nil)
+	}
+	p, _, err := scope.Open(ctx, id)
+	if err != nil {
+		return nil, testError(err)
+	}
+	if c, ok := p.(interface{ Close() error }); ok {
+		defer func() { _ = c.Close() }()
+	}
+	tester, ok := p.(contracts.Tester)
+	if !ok {
+		return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorProviderUntestable, nil)
+	}
+	ctx, cancel := context.WithTimeout(ctx, testTimeout)
+	defer cancel()
+	msg, err := tester.Test(ctx)
+	if err != nil {
+		return nil, testError(err)
+	}
+	out := &testOutput{}
+	out.Body.Message = msg
+	return out, nil
+}
+
+// testError turns a failed test into a response: the provider's own
+// message where it has one.
+func testError(err error) error {
+	var p *contracts.Problem
+	switch {
+	case errors.As(err, &p):
+		return api.NewError(http.StatusBadGateway, p.Key, p.Params)
+	case errors.Is(err, providers.ErrNotFound), errors.Is(err, providers.ErrUnavailable):
+		return apiError(err)
+	}
+	return api.NewError(http.StatusBadGateway, i18n.KernelErrorProviderTest, nil)
 }
 
 func output(ctx context.Context, r *providers.Registry, id int64) (*instanceOutput, error) {

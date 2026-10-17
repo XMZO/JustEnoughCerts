@@ -68,6 +68,9 @@
     "module": {
       "description": "Gets certificates from any CA that speaks ACME, such as Let's Encrypt, ZeroSSL and Google Trust Services.",
       "name": "ACME"
+    },
+    "test": {
+      "ok": "Reached {directory}; the account works."
     }
   },
   "certs": {
@@ -543,6 +546,9 @@
     "site": {
       "description": "Uploads certificates to a site of ESA. The free plan holds two custom certificates per site, so by default the old one goes once the new one is in place.",
       "name": "Alibaba Cloud ESA site"
+    },
+    "test": {
+      "ok": "Connected: site {site} holds {count, plural, one {# certificate} other {# certificates}}."
     }
   },
   "files": {
@@ -569,6 +575,9 @@
     "module": {
       "description": "Writes certificates to a directory on JEC's machine, for a web server there or a mounted volume to read.",
       "name": "Local files"
+    },
+    "test": {
+      "ok": "JEC can write to {directory}."
     }
   },
   "kernel": {
@@ -605,7 +614,9 @@
       "not_found": "This item does not exist. It may have been deleted.",
       "password_wrong": "The password is wrong.",
       "provider_in_use": "Certificates still use this, so it cannot be deleted. Change those certificates first.",
+      "provider_test": "The test failed for a reason JEC cannot tell; the server's log has more.",
       "provider_type_unknown": "This service is not available. The module it belongs to may be switched off.",
+      "provider_untestable": "There is no test for this kind of provider.",
       "setup_done": "JEC is already set up. Sign in instead.",
       "setup_token_invalid": "The setup token is wrong. Copy it again from the server log.",
       "too_large": "The request is too large. Send a smaller file.",
@@ -685,6 +696,7 @@
         "intro": "Where certificates go once issued or renewed.",
         "title": "Deploy targets"
       },
+      "test": "Test",
       "type_gone": "Type not available; its module may be off",
       "uses": "{count, plural, =0 {Used by no certificate} one {Used by # certificate} other {Used by # certificates}}"
     },
@@ -820,6 +832,9 @@
     "server": {
       "description": "Writes the files to a directory on the server as certbot names them, then runs your command. The server needs a POSIX shell, as Linux and BSD have.",
       "name": "SSH server"
+    },
+    "test": {
+      "ok": "Signed in to {address} as {user}; the host key matches."
     }
   },
   "telegram": {

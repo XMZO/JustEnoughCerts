@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Pencil, Plus, Send, Trash2 } from '@lucide/vue'
+import { Pencil, PlugZap, Plus, Send, Trash2 } from '@lucide/vue'
 import { useQueries } from '@tanstack/vue-query'
 import { computed, ref } from 'vue'
 
@@ -7,7 +7,7 @@ import { useCertificates } from '../api/certs'
 import { api, ApiError, networkError, unwrap } from '../api/client'
 import { useApiError } from '../api/errors'
 import { useSends, useSendTest } from '../api/notify'
-import { useDeleteProvider, useProviders, useProviderTypes, type Provider } from '../api/providers'
+import { useDeleteProvider, useProviders, useProviderTest, useProviderTypes, type Provider } from '../api/providers'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
@@ -20,8 +20,9 @@ import { kindPages, summary, typeName, type PageKind } from '../providers/fields
 // The configured providers of one kind (docs/design/boards/Providers):
 // certificate sources, DNS providers for the domain validation, deploy
 // targets or notifiers. Each card says what it is, what it is set to and
-// how many certificates use it; a notifier's card says instead what it
-// tells about and how its last note went, and can send a test.
+// how many certificates use it, and tests it when its type can be; a
+// notifier's card says instead what it tells about and how its last note
+// went, and sends a test note.
 const props = defineProps<{ kind: PageKind }>()
 
 const { t } = useT()
@@ -61,18 +62,38 @@ function events(p: Provider): string {
   return on.length ? t('notify.card.events', { events: intl.list(on) }) : t('notify.card.no_events')
 }
 const errorText = (e?: { key: string; params?: Record<string, unknown> }) => (e ? t(e.key as MessageKey, (e.params ?? {}) as Params) : '')
+
+// Tests: a note through a notifier, or a check of the settings of any
+// other provider whose type has one. Each card keeps what its last test
+// said: the words of success, or the error.
 const sendTest = useSendTest()
-const tested = ref<Record<number, ApiError | 'ok'>>({})
+const providerTest = useProviderTest()
+const testing = ref<number>()
+const tested = ref<Record<number, ApiError | string>>({})
 const testError = (id: number) => {
   const r = tested.value[id]
   return r instanceof ApiError ? r : undefined
 }
+const testPassed = (id: number) => {
+  const r = tested.value[id]
+  return typeof r === 'string' ? r : undefined
+}
 async function test(id: number) {
+  testing.value = id
   try {
-    await sendTest.mutateAsync(id)
-    tested.value = { ...tested.value, [id]: 'ok' }
+    let said: string
+    if (notifiers.value) {
+      await sendTest.mutateAsync(id)
+      said = t('notify.test.sent')
+    } else {
+      const { message } = await providerTest.mutateAsync(id)
+      said = t(message.key as MessageKey, (message.params ?? {}) as Params)
+    }
+    tested.value = { ...tested.value, [id]: said }
   } catch (err) {
     tested.value = { ...tested.value, [id]: err instanceof ApiError ? err : networkError }
+  } finally {
+    testing.value = undefined
   }
 }
 
@@ -92,6 +113,7 @@ const cards = computed(() =>
       uses,
       events: notifiers.value ? events(p) : '',
       send: sends.data.value?.find((s) => s.notifier === p.id),
+      testable: notifiers.value || !!summaryType?.testable,
     }
   }),
 )
@@ -176,24 +198,21 @@ async function confirmDelete() {
         </p>
         <template v-if="notifiers">
           <p class="m-0 text-small text-ink-muted">{{ c.events }}</p>
-          <!-- A test just sent says how it went; otherwise the last note does. -->
-          <p v-if="tested[c.provider.id] === 'ok'" role="status" class="m-0 text-small text-ok-ink">{{ t('notify.test.sent') }}</p>
-          <JecAlert v-else-if="testError(c.provider.id)" :code="testError(c.provider.id)!.code" :params="testError(c.provider.id)!.params" />
-          <p v-else-if="!c.send" class="m-0 text-small text-ink-muted">{{ t('notify.card.never') }}</p>
-          <p v-else-if="c.send.state === 'sent'" class="m-0 text-small text-ok-ink">
-            {{ t('notify.card.sent') }} <time :datetime="c.send.at">{{ intl.dateTime(c.send.at) }}</time>
-          </p>
-          <p v-else class="m-0 text-small text-danger-ink [overflow-wrap:anywhere]">{{ t('notify.card.failed', { error: errorText(c.send.error) }) }}</p>
+          <!-- Until a test says how it went, the last note does. -->
+          <template v-if="!tested[c.provider.id]">
+            <p v-if="!c.send" class="m-0 text-small text-ink-muted">{{ t('notify.card.never') }}</p>
+            <p v-else-if="c.send.state === 'sent'" class="m-0 text-small text-ok-ink">
+              {{ t('notify.card.sent') }} <time :datetime="c.send.at">{{ intl.dateTime(c.send.at) }}</time>
+            </p>
+            <p v-else class="m-0 text-small text-danger-ink [overflow-wrap:anywhere]">{{ t('notify.card.failed', { error: errorText(c.send.error) }) }}</p>
+          </template>
         </template>
         <p v-else class="m-0 text-small text-ink-muted">{{ t('kernel.providers.uses', { count: c.uses }) }}</p>
+        <p v-if="testPassed(c.provider.id)" role="status" class="m-0 text-small text-ok-ink [overflow-wrap:anywhere]">{{ testPassed(c.provider.id) }}</p>
+        <JecAlert v-else-if="testError(c.provider.id)" :code="testError(c.provider.id)!.code" :params="testError(c.provider.id)!.params" />
         <div class="mt-auto flex flex-wrap gap-2 pt-1">
-          <JecButton
-            v-if="notifiers"
-            size="sm"
-            :busy="sendTest.isPending.value && sendTest.variables.value === c.provider.id"
-            @click="test(c.provider.id)"
-          >
-            <Send class="size-4" aria-hidden="true" />{{ t('notify.action.test') }}
+          <JecButton v-if="c.testable" size="sm" :busy="testing === c.provider.id" @click="test(c.provider.id)">
+            <component :is="notifiers ? Send : PlugZap" class="size-4" aria-hidden="true" />{{ t(notifiers ? 'notify.action.test' : 'kernel.providers.test') }}
           </JecButton>
           <JecButton size="sm" @click="editing = c.provider"><Pencil class="size-4" aria-hidden="true" />{{ t('kernel.action.edit') }}</JecButton>
           <JecButton size="sm" variant="ghost" @click="startDelete(c.provider)"><Trash2 class="size-4" aria-hidden="true" />{{ t('kernel.action.delete') }}</JecButton>

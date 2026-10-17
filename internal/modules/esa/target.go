@@ -26,7 +26,7 @@ var regions = []providers.Option{
 func siteType() providers.Type {
 	return providers.Type{
 		ID: "esa.site", Kind: providers.Target, Name: i18n.EsaSiteName, Description: i18n.EsaSiteDescription,
-		Tags: []string{"china"},
+		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "region", Label: i18n.EsaFieldRegion, Kind: providers.Select, Required: true, Default: regionChina, Options: regions},
 			{Key: "access_key_id", Label: i18n.EsaFieldAccessKeyId, Kind: providers.Text, Required: true},
@@ -45,7 +45,10 @@ type target struct {
 	deleteOld bool
 }
 
-var _ contracts.Target = (*target)(nil)
+var (
+	_ contracts.Target = (*target)(nil)
+	_ contracts.Tester = (*target)(nil)
+)
 
 func (m *Module) factory(_ context.Context, in providers.Instance) (any, error) {
 	api, err := m.newAPI(in)
@@ -57,6 +60,20 @@ func (m *Module) factory(_ context.Context, in providers.Instance) (any, error) 
 
 // Close has nothing to release.
 func (*target) Close() error { return nil }
+
+// Test finds the site and reads its certificates, which takes the
+// permissions a deployment needs to begin with.
+func (t *target) Test(ctx context.Context) (contracts.Message, error) {
+	site, err := t.api.siteID(ctx, t.site)
+	if err != nil {
+		return contracts.Message{}, t.explain(err)
+	}
+	held, err := t.api.certificates(ctx, site)
+	if err != nil {
+		return contracts.Message{}, t.explain(err)
+	}
+	return contracts.Message{Key: i18n.EsaTestOk, Params: map[string]any{"site": t.site, "count": len(held)}}, nil
+}
 
 // Deploy uploads the certificate to the site, unless an earlier attempt
 // did, then removes the versions deployed before when set to. A site that

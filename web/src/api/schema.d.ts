@@ -331,6 +331,26 @@ export interface paths {
         patch: operations["providers-update"];
         trace?: never;
     };
+    "/providers/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test a configured provider
+         * @description Checks its settings without changing anything, for types marked testable. A provider that fails answers 502 with its own message.
+         */
+        post: operations["providers-test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/session": {
         parameters: {
             query?: never;
@@ -818,6 +838,10 @@ export interface components {
             /** @enum {string} */
             step: "key" | "order" | "challenge" | "validate" | "cleanup" | "download";
         };
+        TestOutputBody: {
+            /** @description What the test found */
+            message: components["schemas"]["Message"];
+        };
         Type: {
             brand?: string;
             description?: string;
@@ -831,6 +855,7 @@ export interface components {
             name?: string;
             needsSolver?: boolean;
             tags?: string[];
+            testable?: boolean;
             url?: string;
         };
         TypeSummary: {
@@ -847,6 +872,8 @@ export interface components {
             /** @description For a source: issuing needs a solver */
             needsSolver?: boolean;
             tags?: string[];
+            /** @description Its instances can be tested */
+            testable?: boolean;
             url?: string;
         };
         TypesOutputBody: {
@@ -1661,6 +1688,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstanceBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "providers-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestOutputBody"];
                 };
             };
             /** @description Error */

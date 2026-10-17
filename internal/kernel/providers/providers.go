@@ -116,7 +116,10 @@ type Type struct {
 	Fields []Field  `json:"fields"`
 	// NeedsSolver is set on a source that proves control of the domains
 	// through a solver, as ACME does.
-	NeedsSolver  bool `json:"needsSolver,omitempty"`
+	NeedsSolver bool `json:"needsSolver,omitempty"`
+	// Testable types make providers that can check their settings
+	// (contracts.Tester), through POST /api/v1/providers/{id}/test.
+	Testable     bool `json:"testable,omitempty"`
 	Experimental bool `json:"experimental,omitempty"`
 }
 

@@ -25,7 +25,7 @@ const (
 func directoryType() providers.Type {
 	return providers.Type{
 		ID: "files.directory", Kind: providers.Target, Name: i18n.FilesDirectoryName, Description: i18n.FilesDirectoryDescription,
-		Tags: []string{"self_hosted"},
+		Tags: []string{"self_hosted"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "directory", Label: i18n.FilesFieldDirectory, Help: i18n.FilesFieldDirectoryHelp, Kind: providers.Text, Required: true},
 			{Key: "layout", Label: i18n.FilesFieldLayout, Kind: providers.Select, Required: true, Default: byDomain, Options: []providers.Option{
@@ -42,7 +42,10 @@ type directory struct {
 	layout string
 }
 
-var _ contracts.Target = (*directory)(nil)
+var (
+	_ contracts.Target = (*directory)(nil)
+	_ contracts.Tester = (*directory)(nil)
+)
 
 func factory(_ context.Context, in providers.Instance) (any, error) {
 	return &directory{path: strings.TrimSpace(in.Config["directory"]), layout: in.Config["layout"]}, nil
@@ -50,6 +53,26 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 
 // Close has nothing to release.
 func (*directory) Close() error { return nil }
+
+// Test makes the directory, as the first deployment would, and writes and
+// removes a file there.
+func (d *directory) Test(context.Context) (contracts.Message, error) {
+	if !filepath.IsAbs(d.path) {
+		return contracts.Message{}, retry.Permanent(&contracts.Problem{Key: i18n.FilesErrorRelative, Params: map[string]any{"directory": d.path}})
+	}
+	if err := os.MkdirAll(d.path, 0o755); err != nil { //nolint:gosec // G301: a web server has to reach the files
+		return contracts.Message{}, fail(d.path, err)
+	}
+	f, err := os.CreateTemp(d.path, ".jec-test-*")
+	if err != nil {
+		return contracts.Message{}, fail(d.path, err)
+	}
+	_ = f.Close()
+	if err := os.Remove(f.Name()); err != nil {
+		return contracts.Message{}, fail(d.path, err)
+	}
+	return contracts.Message{Key: i18n.FilesTestOk, Params: map[string]any{"directory": d.path}}, nil
+}
 
 // Deploy writes the files, each through a temporary file renamed over the
 // old one, so that a reader never sees half a file. The private key is

@@ -33,7 +33,7 @@ const maxOutput = 4000
 func serverType() providers.Type {
 	return providers.Type{
 		ID: "ssh.server", Kind: providers.Target, Name: i18n.SshServerName, Description: i18n.SshServerDescription,
-		Tags: []string{"self_hosted"},
+		Tags: []string{"self_hosted"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "host", Label: i18n.SshFieldHost, Kind: providers.Text, Required: true},
 			{Key: "port", Label: i18n.SshFieldPort, Kind: providers.Number, Default: "22"},
@@ -61,7 +61,10 @@ type server struct {
 	command             string
 }
 
-var _ contracts.Target = (*server)(nil)
+var (
+	_ contracts.Target = (*server)(nil)
+	_ contracts.Tester = (*server)(nil)
+)
 
 func factory(_ context.Context, in providers.Instance) (any, error) {
 	s := &server{
@@ -110,6 +113,17 @@ func parseKey(pem []byte, passphrase string) (gossh.Signer, error) {
 // Close has nothing to release: each deployment has a connection of its
 // own.
 func (*server) Close() error { return nil }
+
+// Test connects, checks the host key and signs in. With no host key set,
+// it fails showing the server's, for someone to check.
+func (s *server) Test(ctx context.Context) (contracts.Message, error) {
+	client, err := s.dial(ctx)
+	if err != nil {
+		return contracts.Message{}, err
+	}
+	_ = client.Close()
+	return contracts.Message{Key: i18n.SshTestOk, Params: map[string]any{"user": s.user, "address": s.addr}}, nil
+}
 
 // Deploy writes the files to temporary names, renames them over the old
 // ones in one command, and then runs the command set to run afterwards.

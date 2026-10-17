@@ -30,7 +30,10 @@ type source struct {
 	in providers.Instance
 }
 
-var _ contracts.Source = (*source)(nil)
+var (
+	_ contracts.Source = (*source)(nil)
+	_ contracts.Tester = (*source)(nil)
+)
 
 func (m *Module) factory(_ context.Context, in providers.Instance) (any, error) {
 	return &source{m: m, in: in}, nil
@@ -50,38 +53,9 @@ func (s *source) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509
 	if req.Solver == nil {
 		return nil, retry.Permanent(fmt.Errorf("ACME needs a solver for %s", strings.Join(req.Domains, ", ")))
 	}
-	directory, err := directoryOf(s.in)
-	if err != nil {
-		return nil, retry.Permanent(err)
-	}
-	key, location, err := s.m.account(ctx, s.in.ID, directory)
+	client, _, err := s.connect(ctx, log)
 	if err != nil {
 		return nil, err
-	}
-	u := &user{email: s.in.Config["email"], key: key}
-	if location != "" {
-		u.reg = &legoacme.ExtendedAccount{Location: location}
-	}
-	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.AcmeLogConnect, Params: map[string]any{"directory": directory}})
-	cfg := lego.NewConfig(u)
-	cfg.CADirURL = directory
-	cfg.UserAgent = "JustEnoughCerts/" + buildinfo.Get().Version
-	cfg.HTTPClient = s.m.client()
-	client, err := lego.NewClient(cfg)
-	if err != nil {
-		return nil, &contracts.Problem{Key: i18n.AcmeErrorDirectory, Params: map[string]any{"directory": directory}, Err: err}
-	}
-
-	if u.reg == nil {
-		log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.AcmeLogRegister, Params: map[string]any{"directory": directory}})
-		reg, err := s.register(ctx, client)
-		if err != nil {
-			return nil, err
-		}
-		if err := s.m.registered(ctx, s.in.ID, reg.Location); err != nil {
-			return nil, err
-		}
-		u.reg = reg
 	}
 
 	p := &dnsProvider{solver: req.Solver, log: log, skipCheck: s.m.skipPropagation, missed: map[string]bool{}}
@@ -105,6 +79,55 @@ func (s *source) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509
 	}
 	log(contracts.LogLine{Level: contracts.OK, Step: contracts.StepDownload, Key: i18n.AcmeLogIssued})
 	return chain, nil
+}
+
+// Test reaches the CA and registers the account if it is new, as the
+// first issuance would.
+func (s *source) Test(ctx context.Context) (contracts.Message, error) {
+	_, directory, err := s.connect(ctx, func(contracts.LogLine) {})
+	if err != nil {
+		return contracts.Message{}, err
+	}
+	return contracts.Message{Key: i18n.AcmeTestOk, Params: map[string]any{"directory": directory}}, nil
+}
+
+// connect makes the client of the account at its CA, registering the
+// account first if the CA does not know it yet, and returns the client
+// with the CA's directory URL.
+func (s *source) connect(ctx context.Context, log func(contracts.LogLine)) (*lego.Client, string, error) {
+	directory, err := directoryOf(s.in)
+	if err != nil {
+		return nil, "", retry.Permanent(err)
+	}
+	key, location, err := s.m.account(ctx, s.in.ID, directory)
+	if err != nil {
+		return nil, "", err
+	}
+	u := &user{email: s.in.Config["email"], key: key}
+	if location != "" {
+		u.reg = &legoacme.ExtendedAccount{Location: location}
+	}
+	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.AcmeLogConnect, Params: map[string]any{"directory": directory}})
+	cfg := lego.NewConfig(u)
+	cfg.CADirURL = directory
+	cfg.UserAgent = "JustEnoughCerts/" + buildinfo.Get().Version
+	cfg.HTTPClient = s.m.client()
+	client, err := lego.NewClient(cfg)
+	if err != nil {
+		return nil, "", &contracts.Problem{Key: i18n.AcmeErrorDirectory, Params: map[string]any{"directory": directory}, Err: err}
+	}
+	if u.reg == nil {
+		log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.AcmeLogRegister, Params: map[string]any{"directory": directory}})
+		reg, err := s.register(ctx, client)
+		if err != nil {
+			return nil, "", err
+		}
+		if err := s.m.registered(ctx, s.in.ID, reg.Location); err != nil {
+			return nil, "", err
+		}
+		u.reg = reg
+	}
+	return client, directory, nil
 }
 
 // register makes the account known to the CA, with External Account

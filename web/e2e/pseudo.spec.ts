@@ -236,6 +236,9 @@ test('every page is translated and fits', async ({ page }, info) => {
   await dialog.locator('button[type=submit]').click()
   await expect(page.locator('dialog[open]')).toHaveCount(0)
   expect.soft(await problems(page), 'deploy targets with one').toEqual([])
+  await page.getByRole('button', { name: label('kernel.providers.test') }).click()
+  await expect(page.getByRole('status')).toBeVisible()
+  expect.soft(await problems(page), 'deploy targets: a test that passed').toEqual([])
 
   // An uploaded certificate deployed there.
   await page.goto('./certificates/1')
@@ -265,6 +268,9 @@ test('every page is translated and fits', async ({ page }, info) => {
   await dialog.getByLabel(label('files.field.directory')).fill('relative/certs')
   await dialog.locator('button[type=submit]').click()
   await expect(page.locator('dialog[open]')).toHaveCount(0)
+  await page.getByRole('article').filter({ hasText: 'e2e relative' }).getByRole('button', { name: label('kernel.providers.test') }).click()
+  await expect(page.getByRole('alert')).toBeVisible()
+  expect.soft(await problems(page), 'deploy targets: a test that failed').toEqual([])
   await page.goto('./certificates/2')
   await page.getByRole('button', { name: label('certs.action.choose_targets') }).click()
   await expect(dialog).toBeVisible()

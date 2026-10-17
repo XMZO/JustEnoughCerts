@@ -255,3 +255,13 @@ func TestPrecheck(t *testing.T) {
 		t.Errorf("skipping the check: %v, %v", ok, err)
 	}
 }
+
+func TestTestUnreachable(t *testing.T) {
+	m := newModule(t)
+	src := &source{m: m, in: providers.Instance{ID: 1, Config: map[string]string{"ca": custom, "directory": "https://127.0.0.1:9/directory"}}}
+	_, err := src.Test(t.Context())
+	var p *contracts.Problem
+	if !errors.As(err, &p) || p.Key != i18n.AcmeErrorDirectory {
+		t.Errorf("a CA that is not there: %v", err)
+	}
+}

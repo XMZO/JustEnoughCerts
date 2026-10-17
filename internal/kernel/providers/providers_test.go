@@ -13,6 +13,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2/humatest"
 
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers/providersapi"
@@ -99,6 +100,11 @@ func newFixture(t *testing.T) *fixture {
 		func(context.Context, providers.Instance) (any, error) { return nil, errors.New("not here") }); err != nil {
 		t.Fatal(err)
 	}
+	if err := f.reg.Scope("probe").Add(providers.Type{ID: "probe.target", Kind: providers.Target, Brand: "Probe", Testable: true,
+		Fields: []providers.Field{{Key: "RESULT", Kind: providers.Text}}},
+		func(_ context.Context, in providers.Instance) (any, error) { return probe(in.Config["RESULT"]), nil }); err != nil {
+		t.Fatal(err)
+	}
 	f.reg.Scope("certs").UsedBy(func(_ context.Context, id int64) (bool, error) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
@@ -123,6 +129,19 @@ func (f *fixture) create(body map[string]any) providersapi.InstanceBody {
 	return out
 }
 
+// probe is a target whose test goes as its setting says.
+type probe string
+
+func (p probe) Test(context.Context) (contracts.Message, error) {
+	switch p {
+	case "refused":
+		return contracts.Message{}, &contracts.Problem{Key: "probe.error.refused", Params: map[string]any{"why": "no"}}
+	case "odd":
+		return contracts.Message{}, errors.New("something odd")
+	}
+	return contracts.Message{Key: "probe.test.ok", Params: map[string]any{"n": 1}}, nil
+}
+
 type errorBody struct {
 	Code   string `json:"code"`
 	Fields []struct {
@@ -138,7 +157,11 @@ func (f *fixture) fails(method, path string, body any, status int) errorBody {
 	}
 	switch method {
 	case http.MethodPost:
-		resp = f.api.Post(path, body)
+		if body == nil {
+			resp = f.api.Post(path) // humatest cannot send a nil body
+		} else {
+			resp = f.api.Post(path, body)
+		}
 	case http.MethodPatch:
 		resp = f.api.Patch(path, body)
 	case http.MethodDelete:
@@ -347,5 +370,36 @@ func TestDeleteAndOpen(t *testing.T) {
 	f.fails(http.MethodDelete, path, nil, http.StatusNotFound)
 	if len(f.opened) != 1 {
 		t.Errorf("the factory ran %d times, want once", len(f.opened))
+	}
+}
+
+func TestTest(t *testing.T) {
+	f := newFixture(t)
+	path := func(id int64) string { return "/providers/" + strconv.FormatInt(id, 10) + "/test" }
+	ok := f.create(map[string]any{"type": "probe.target", "name": "ok", "config": map[string]string{"RESULT": "fine"}})
+	resp := f.api.Post(path(ok.ID))
+	var out struct{ Message contracts.Message }
+	if err := json.Unmarshal(resp.Body.Bytes(), &out); err != nil || resp.Code != http.StatusOK || out.Message.Key != "probe.test.ok" || out.Message.Params["n"] != float64(1) {
+		t.Errorf("a passing test: %d %s", resp.Code, resp.Body)
+	}
+
+	refused := f.create(map[string]any{"type": "probe.target", "name": "refused", "config": map[string]string{"RESULT": "refused"}})
+	if e := f.fails(http.MethodPost, path(refused.ID), nil, http.StatusBadGateway); e.Code != "probe.error.refused" {
+		t.Errorf("a refusal: %+v", e)
+	}
+	odd := f.create(map[string]any{"type": "probe.target", "name": "odd", "config": map[string]string{"RESULT": "odd"}})
+	if e := f.fails(http.MethodPost, path(odd.ID), nil, http.StatusBadGateway); e.Code != "kernel.error.provider_test" {
+		t.Errorf("an error without a message: %+v", e)
+	}
+
+	solver := f.create(map[string]any{"type": "dns.acme_dns", "name": "x", "config": map[string]string{"API_USER": "u"}, "secrets": map[string]string{"API_KEY": "k"}})
+	if e := f.fails(http.MethodPost, path(solver.ID), nil, http.StatusUnprocessableEntity); e.Code != "kernel.error.provider_untestable" {
+		t.Errorf("a type without a test: %+v", e)
+	}
+	f.fails(http.MethodPost, path(999), nil, http.StatusNotFound)
+
+	var list struct{ Types []providersapi.TypeSummary }
+	if err := json.Unmarshal(f.api.Get("/providers/types?kind=target").Body.Bytes(), &list); err != nil || len(list.Types) != 1 || !list.Types[0].Testable {
+		t.Errorf("types %+v: %v", list.Types, err)
 	}
 }
