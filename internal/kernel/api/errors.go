@@ -78,7 +78,11 @@ func codeFor(status int) i18n.Key {
 // Every error huma builds, from request validation to a handler returning
 // a plain error, goes through these hooks, so that all of them take the
 // form of Error. The details of a server error go to the log only.
+//
+// Arrays are never null in the API: handlers return empty slices, and the
+// schema says so, so that clients need no null checks.
 func init() {
+	huma.DefaultArrayNullable = false
 	huma.NewErrorWithContext = func(ctx huma.Context, status int, msg string, errs ...error) huma.StatusError {
 		e := &Error{status: status, Code: codeFor(status)}
 		for _, err := range errs {

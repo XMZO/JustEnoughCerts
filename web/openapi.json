@@ -60,10 +60,7 @@
             "items": {
               "type": "string"
             },
-            "type": [
-              "array",
-              "null"
-            ]
+            "type": "array"
           },
           "id": {
             "format": "int64",
@@ -138,20 +135,14 @@
             "items": {
               "$ref": "#/components/schemas/ChainEntry"
             },
-            "type": [
-              "array",
-              "null"
-            ]
+            "type": "array"
           },
           "versions": {
             "description": "Every version, the newest first",
             "items": {
               "$ref": "#/components/schemas/VersionBody"
             },
-            "type": [
-              "array",
-              "null"
-            ]
+            "type": "array"
           }
         },
         "required": [
@@ -173,10 +164,7 @@
             "items": {
               "$ref": "#/components/schemas/FieldError"
             },
-            "type": [
-              "array",
-              "null"
-            ]
+            "type": "array"
           },
           "params": {
             "additionalProperties": {},
@@ -215,10 +203,7 @@
             "items": {
               "$ref": "#/components/schemas/CertificateBody"
             },
-            "type": [
-              "array",
-              "null"
-            ]
+            "type": "array"
           }
         },
         "required": [
@@ -234,10 +219,7 @@
             "items": {
               "$ref": "#/components/schemas/ModuleInfo"
             },
-            "type": [
-              "array",
-              "null"
-            ]
+            "type": "array"
           },
           "version": {
             "description": "Program version",
@@ -291,10 +273,7 @@
             "items": {
               "type": "string"
             },
-            "type": [
-              "array",
-              "null"
-            ]
+            "type": "array"
           },
           "switched": {
             "description": "Switched on by itself",
@@ -436,10 +415,7 @@
             "items": {
               "type": "string"
             },
-            "type": [
-              "array",
-              "null"
-            ]
+            "type": "array"
           },
           "notAfter": {
             "format": "date-time",

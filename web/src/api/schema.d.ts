@@ -138,7 +138,7 @@ export interface components {
             /** @description The version in use */
             current?: components["schemas"]["VersionBody"];
             /** @description The domains, the primary first */
-            domains: string[] | null;
+            domains: string[];
             /** Format: int64 */
             id: number;
             /** @description Type and size of the key, such as rsa-2048 or ecdsa-p256 */
@@ -168,15 +168,15 @@ export interface components {
         DetailOutputBody: {
             certificate: components["schemas"]["CertificateBody"];
             /** @description The chain of the current version, the leaf first */
-            chain: components["schemas"]["ChainEntry"][] | null;
+            chain: components["schemas"]["ChainEntry"][];
             /** @description Every version, the newest first */
-            versions: components["schemas"]["VersionBody"][] | null;
+            versions: components["schemas"]["VersionBody"][];
         };
         Error: {
             /** @description Message key, rendered by the client in the viewer's language */
             code: string;
             /** @description The request fields at fault */
-            fields?: components["schemas"]["FieldError"][] | null;
+            fields?: components["schemas"]["FieldError"][];
             /** @description Arguments of the message */
             params?: {
                 [key: string]: unknown;
@@ -190,11 +190,11 @@ export interface components {
         };
         ListOutputBody: {
             /** @description The soonest to expire first */
-            certificates: components["schemas"]["CertificateBody"][] | null;
+            certificates: components["schemas"]["CertificateBody"][];
         };
         ManifestBody: {
             /** @description Every module compiled in, by category and ID */
-            modules: components["schemas"]["ModuleInfo"][] | null;
+            modules: components["schemas"]["ModuleInfo"][];
             /** @description Program version */
             version: string;
         };
@@ -213,7 +213,7 @@ export interface components {
             /** @description Always on */
             required?: boolean;
             /** @description Modules this one needs */
-            requires?: string[] | null;
+            requires?: string[];
             /** @description Switched on by itself */
             switched: boolean;
         };
@@ -254,7 +254,7 @@ export interface components {
             issuer: string;
             keyType: string;
             /** @description The names the certificate is valid for */
-            names: string[] | null;
+            names: string[];
             /** Format: date-time */
             notAfter: string;
             /** Format: date-time */
