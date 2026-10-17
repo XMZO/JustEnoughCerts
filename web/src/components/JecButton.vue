@@ -16,8 +16,11 @@ withDefaults(
   { variant: 'default', type: 'button', size: 'md', to: undefined },
 )
 
+// A label stays on one line while there is room. A button that alone is
+// wider than its row, as with a long translation, wraps its label rather
+// than spill out.
 const base = [
-  'inline-flex items-center justify-center gap-1.5 rounded-md border font-semibold whitespace-nowrap no-underline',
+  'inline-flex max-w-full items-center justify-center gap-1.5 rounded-md border text-center font-semibold no-underline',
   'transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-45',
 ]
 const variants = {
@@ -27,7 +30,7 @@ const variants = {
   danger: 'border-danger-ink bg-danger-ink text-on-danger hover:text-on-danger hover:brightness-110',
 }
 // Phones get the 44px touch target.
-const sizes = { md: 'h-9 px-4 max-sm:min-h-11', sm: 'h-[30px] px-3 text-small max-sm:min-h-11' }
+const sizes = { md: 'min-h-9 px-4 py-1.5 max-sm:min-h-11', sm: 'min-h-[30px] px-3 py-1 text-small max-sm:min-h-11' }
 </script>
 
 <template>
