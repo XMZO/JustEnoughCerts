@@ -238,6 +238,15 @@
             "format": "date-time",
             "type": "string"
           },
+          "reason": {
+            "description": "Why it started: a new version came, the target was added, or someone asked",
+            "enum": [
+              "version",
+              "target",
+              "manual"
+            ],
+            "type": "string"
+          },
           "ref": {
             "description": "What the target holds, such as a certificate ID at a CDN",
             "type": "string"
@@ -276,6 +285,7 @@
           "id",
           "target",
           "versionId",
+          "reason",
           "state",
           "attempts",
           "createdAt"
@@ -908,6 +918,121 @@
         },
         "required": [
           "certificate"
+        ],
+        "type": "object"
+      },
+      "RunBody": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "description": "renew: an issuance because the current version entered its renewal window",
+            "enum": [
+              "issue",
+              "renew",
+              "deploy"
+            ],
+            "type": "string"
+          },
+          "attempts": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "certificate": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "domain": {
+            "description": "The certificate's primary domain",
+            "type": "string"
+          },
+          "error": {
+            "$ref": "#/components/schemas/MessageBody",
+            "description": "Why the last attempt failed"
+          },
+          "finishedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "issuance",
+              "deployment"
+            ],
+            "type": "string"
+          },
+          "notAfter": {
+            "description": "The end of the version issued or deployed",
+            "format": "date-time",
+            "type": "string"
+          },
+          "startedAt": {
+            "description": "Of the last attempt",
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "running",
+              "done",
+              "failed",
+              "canceled"
+            ],
+            "type": "string"
+          },
+          "target": {
+            "description": "The target of a deployment",
+            "format": "int64",
+            "type": "integer"
+          },
+          "trigger": {
+            "description": "manual: someone added the certificate or a target, or asked for it",
+            "enum": [
+              "auto",
+              "manual"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "certificate",
+          "domain",
+          "action",
+          "trigger",
+          "state",
+          "attempts",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "RunsOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "more": {
+            "description": "There are older ones in the time asked for than one answer holds",
+            "type": "boolean"
+          },
+          "runs": {
+            "description": "The newest first",
+            "items": {
+              "$ref": "#/components/schemas/RunBody"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "runs",
+          "more"
         ],
         "type": "object"
       },
@@ -1938,6 +2063,54 @@
           }
         },
         "summary": "Get an issuance with its steps and log",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/runs": {
+      "get": {
+        "description": "Those created in the last days, the newest first, at most 500.",
+        "operationId": "certs-runs",
+        "parameters": [
+          {
+            "description": "How many days back to list; 0 for all",
+            "explode": false,
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "default": 30,
+              "description": "How many days back to list; 0 for all",
+              "format": "int64",
+              "maximum": 36500,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunsOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the issuances and deployments",
         "tags": [
           "certs"
         ]

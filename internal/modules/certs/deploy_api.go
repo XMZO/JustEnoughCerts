@@ -19,6 +19,7 @@ type DeploymentBody struct {
 	ID         int64        `json:"id"`
 	Target     int64        `json:"target" doc:"The target provider instance"`
 	VersionID  int64        `json:"versionId" doc:"The version deployed"`
+	Reason     string       `json:"reason" enum:"version,target,manual" doc:"Why it started: a new version came, the target was added, or someone asked"`
 	State      string       `json:"state" enum:"pending,running,done,failed,canceled" doc:"pending: the next attempt starts at nextAt, a retry when error is set; failed: no attempt follows unless someone starts one; canceled: the target was taken off, or a newer version came"`
 	Attempts   int          `json:"attempts"`
 	NextAt     *time.Time   `json:"nextAt,omitempty"`
@@ -32,7 +33,7 @@ type DeploymentBody struct {
 
 func deploymentBody(d *Deployment) DeploymentBody {
 	b := DeploymentBody{
-		ID: d.ID, Target: d.Target, VersionID: d.VersionID, State: d.State, Attempts: d.Attempts,
+		ID: d.ID, Target: d.Target, VersionID: d.VersionID, Reason: d.Reason, State: d.State, Attempts: d.Attempts,
 		Ref: d.Ref, Removed: d.Removed, CreatedAt: d.CreatedAt,
 	}
 	if d.State == issuancePending {

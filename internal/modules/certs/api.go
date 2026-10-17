@@ -147,6 +147,7 @@ type updateInput struct {
 func registerAPI(a huma.API, s *service, confirm func(context.Context, string) error) {
 	registerIssueAPI(a, s)
 	registerDeployAPI(a, s)
+	registerHistoryAPI(a, s)
 
 	huma.Register(a, huma.Operation{
 		OperationID: "certs-list", Method: http.MethodGet, Path: "/certificates",

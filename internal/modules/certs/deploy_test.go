@@ -61,7 +61,7 @@ func TestDeployUpload(t *testing.T) {
 	if !slices.Equal(c.Targets, []int64{target}) || len(c.Deployments) != 1 || c.State != "deploying" {
 		t.Fatalf("added %+v", c)
 	}
-	if d := c.Deployments[0]; d.State != "pending" || d.Target != target || d.VersionID != c.Current.ID {
+	if d := c.Deployments[0]; d.State != "pending" || d.Target != target || d.VersionID != c.Current.ID || d.Reason != "version" {
 		t.Errorf("deployment %+v", d)
 	}
 
@@ -167,7 +167,7 @@ func TestDeployPermanentFailure(t *testing.T) {
 	f.call(f.api.Post("/certificates/"+strconv.FormatInt(c.ID, 10)+"/deploy", map[string]any{}), http.StatusAccepted, nil)
 	f.runDeploys()
 	c = f.certificate(c.ID)
-	if d := c.Deployments[0]; d.State != "done" || c.State != "ok" {
+	if d := c.Deployments[0]; d.State != "done" || d.Reason != "manual" || c.State != "ok" {
 		t.Errorf("after deploying by hand: %s %+v", c.State, d)
 	}
 }
@@ -186,7 +186,7 @@ func TestTargetsChange(t *testing.T) {
 	// cancels what waits for it.
 	f.fake.deploy = nil
 	f.call(f.api.Patch(path, map[string]any{"targets": []int64{two}}), http.StatusOK, &c)
-	if !slices.Equal(c.Targets, []int64{two}) || len(c.Deployments) != 1 || c.Deployments[0].Target != two || c.RenewBeforeDays != 30 {
+	if !slices.Equal(c.Targets, []int64{two}) || len(c.Deployments) != 1 || c.Deployments[0].Target != two || c.Deployments[0].Reason != "target" || c.RenewBeforeDays != 30 {
 		t.Fatalf("after the change: %+v", c)
 	}
 	var state string

@@ -186,6 +186,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certs/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the issuances and deployments
+         * @description Those created in the last days, the newest first, at most 500.
+         */
+        get: operations["certs-runs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/manifest": {
         parameters: {
             query?: never;
@@ -449,6 +469,11 @@ export interface components {
             id: number;
             /** Format: date-time */
             nextAt?: string;
+            /**
+             * @description Why it started: a new version came, the target was added, or someone asked
+             * @enum {string}
+             */
+            reason: "version" | "target" | "manual";
             /** @description What the target holds, such as a certificate ID at a CDN */
             ref?: string;
             /** @description A later deployment removed it from the target */
@@ -689,6 +714,57 @@ export interface components {
             certificate: string;
             /** @description The PEM private key, unless it is in certificate */
             privateKey?: string;
+        };
+        RunBody: {
+            /**
+             * @description renew: an issuance because the current version entered its renewal window
+             * @enum {string}
+             */
+            action: "issue" | "renew" | "deploy";
+            /** Format: int64 */
+            attempts: number;
+            /** Format: int64 */
+            certificate: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description The certificate's primary domain */
+            domain: string;
+            /** @description Why the last attempt failed */
+            error?: components["schemas"]["MessageBody"];
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            kind: "issuance" | "deployment";
+            /**
+             * Format: date-time
+             * @description The end of the version issued or deployed
+             */
+            notAfter?: string;
+            /**
+             * Format: date-time
+             * @description Of the last attempt
+             */
+            startedAt?: string;
+            /** @enum {string} */
+            state: "pending" | "running" | "done" | "failed" | "canceled";
+            /**
+             * Format: int64
+             * @description The target of a deployment
+             */
+            target?: number;
+            /**
+             * @description manual: someone added the certificate or a target, or asked for it
+             * @enum {string}
+             */
+            trigger: "auto" | "manual";
+        };
+        RunsOutputBody: {
+            /** @description There are older ones in the time asked for than one answer holds */
+            more: boolean;
+            /** @description The newest first */
+            runs: components["schemas"]["RunBody"][];
         };
         SendBody: {
             /** Format: date-time */
@@ -1245,6 +1321,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IssuanceDetailOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-runs": {
+        parameters: {
+            query?: {
+                /** @description How many days back to list; 0 for all */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunsOutputBody"];
                 };
             };
             /** @description Error */

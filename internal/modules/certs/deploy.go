@@ -24,6 +24,13 @@ const (
 	deployTimeout = 10 * time.Minute // bounds an attempt
 )
 
+// Why a deployment started.
+const (
+	deployVersion = "version" // a new version came
+	deployTarget  = "target"  // the target was added to the certificate
+	deployManual  = "manual"  // someone asked to deploy now
+)
+
 // Deployment installs a version of a certificate at one of its targets.
 // Its states are an issuance's, and canceled: its target was taken off the
 // certificate, or a newer version took its place.
@@ -32,6 +39,7 @@ type Deployment struct {
 	CertificateID int64
 	VersionID     int64
 	Target        int64 // the provider instance
+	Reason        string
 	State         string
 	Attempts      int
 	NextAt        time.Time // for a pending deployment
@@ -46,7 +54,7 @@ type Deployment struct {
 	FinishedAt time.Time
 }
 
-const deploymentColumns = `d.id, d.certificate_id, d.version_id, d.provider_id, d.state, d.attempts, d.next_at, d.ref,
+const deploymentColumns = `d.id, d.certificate_id, d.version_id, d.provider_id, d.reason, d.state, d.attempts, d.next_at, d.ref,
 	d.removed_at, d.error_key, d.error_params, d.created_at, d.started_at, d.finished_at`
 
 func (s *service) queryDeployments(ctx context.Context, q querier, where string, args ...any) ([]*Deployment, error) {
@@ -61,7 +69,7 @@ func (s *service) queryDeployments(ctx context.Context, q querier, where string,
 		var nextAt, created int64
 		var removed, started, finished sql.NullInt64
 		var params string
-		if err := rows.Scan(&d.ID, &d.CertificateID, &d.VersionID, &d.Target, &d.State, &d.Attempts, &nextAt, &d.Ref,
+		if err := rows.Scan(&d.ID, &d.CertificateID, &d.VersionID, &d.Target, &d.Reason, &d.State, &d.Attempts, &nextAt, &d.Ref,
 			&removed, &d.Error.Key, &params, &created, &started, &finished); err != nil {
 			return nil, err
 		}
@@ -167,7 +175,7 @@ func (s *service) setTargets(ctx context.Context, tx *sql.Tx, c *Certificate, ta
 	}
 	for _, target := range targets {
 		if !slices.Contains(c.Targets, target) {
-			if err := s.queueDeployment(ctx, tx, c.ID, c.Current.ID, target); err != nil {
+			if err := s.queueDeployment(ctx, tx, c.ID, c.Current.ID, target, deployTarget); err != nil {
 				return err
 			}
 		}
@@ -195,7 +203,7 @@ func (s *service) queueDeployments(ctx context.Context, tx *sql.Tx, id, version 
 		return err
 	}
 	for _, target := range targets {
-		if err := s.queueDeployment(ctx, tx, id, version, target); err != nil {
+		if err := s.queueDeployment(ctx, tx, id, version, target, deployVersion); err != nil {
 			return err
 		}
 	}
@@ -203,13 +211,14 @@ func (s *service) queueDeployments(ctx context.Context, tx *sql.Tx, id, version 
 }
 
 // queueDeployment makes the deployment of version of certificate id to
-// target due now, in tx: a deployment waiting for that target takes the
-// version on, as a fresh start, and otherwise a new one is added.
-func (s *service) queueDeployment(ctx context.Context, tx *sql.Tx, id, version, target int64) error {
+// target due now, for reason, in tx: a deployment waiting for that target
+// takes the version on, as a fresh start, and otherwise a new one is
+// added.
+func (s *service) queueDeployment(ctx context.Context, tx *sql.Tx, id, version, target int64, reason string) error {
 	now := s.now().UnixMilli()
 	res, err := tx.ExecContext(ctx,
-		`UPDATE certs_deployments SET version_id = ?, attempts = 0, next_at = ?, error_key = '', error_params = '', created_at = ?
-		 WHERE certificate_id = ? AND provider_id = ? AND state = 'pending'`, version, now, now, id, target)
+		`UPDATE certs_deployments SET version_id = ?, reason = ?, attempts = 0, next_at = ?, error_key = '', error_params = '', created_at = ?
+		 WHERE certificate_id = ? AND provider_id = ? AND state = 'pending'`, version, reason, now, now, id, target)
 	if err != nil {
 		return err
 	}
@@ -217,8 +226,8 @@ func (s *service) queueDeployment(ctx context.Context, tx *sql.Tx, id, version, 
 		return nil
 	}
 	_, err = tx.ExecContext(ctx,
-		`INSERT INTO certs_deployments (certificate_id, version_id, provider_id, state, attempts, next_at, ref, error_key, error_params, created_at)
-		 VALUES (?, ?, ?, 'pending', 0, ?, '', '', '', ?)`, id, version, target, now, now)
+		`INSERT INTO certs_deployments (certificate_id, version_id, provider_id, reason, state, attempts, next_at, ref, error_key, error_params, created_at)
+		 VALUES (?, ?, ?, ?, 'pending', 0, ?, '', '', '', ?)`, id, version, target, reason, now, now)
 	return err
 }
 
@@ -242,7 +251,7 @@ func (s *service) deployNow(ctx context.Context, id, target int64) error {
 	}
 	for _, t := range c.Targets {
 		if target == 0 || t == target {
-			if err := s.queueDeployment(ctx, tx, id, c.Current.ID, t); err != nil {
+			if err := s.queueDeployment(ctx, tx, id, c.Current.ID, t, deployManual); err != nil {
 				return err
 			}
 		}
