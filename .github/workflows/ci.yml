@@ -191,5 +191,5 @@ jobs:
           {
             echo "## Sizes"
             echo
-            ./scripts/release-sizes.sh
+            ./scripts/release-sizes.sh --packages
           } >>"$GITHUB_STEP_SUMMARY"
