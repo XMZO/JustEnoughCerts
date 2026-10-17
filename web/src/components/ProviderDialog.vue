@@ -33,7 +33,7 @@ const props = defineProps<{
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ saved: [provider: Provider] }>()
 
-const { t } = useT()
+const { t, locale } = useT()
 // Several dialogs may be on a page at once, as for adding and editing.
 const uid = useId()
 const types = useProviderTypes(() => props.kind)
@@ -94,7 +94,7 @@ watch(
   () => type.data.value,
   (full) => {
     if (!full || full.id !== picked.value) return
-    values.value = initialValues(full, props.instance)
+    values.value = initialValues(full, props.instance, locale.value)
     const n = typeName(full)
     name.value = props.instance?.name ?? n.brand ?? (n.key ? t(n.key) : full.id)
   },

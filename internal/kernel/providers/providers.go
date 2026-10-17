@@ -53,9 +53,10 @@ const (
 	Email     FieldKind = "email"
 	Select    FieldKind = "select"
 	Switch    FieldKind = "switch" // "true" or "false"
+	Locale    FieldKind = "locale" // a language JEC speaks, by its tag, such as zh-CN
 )
 
-var fieldKinds = []FieldKind{Text, Multiline, Number, URL, Email, Select, Switch}
+var fieldKinds = []FieldKind{Text, Multiline, Number, URL, Email, Select, Switch, Locale}
 
 // Option is a choice of a Select field.
 type Option struct {
@@ -74,7 +75,7 @@ type Field struct {
 	Help i18n.Key `json:"help,omitempty"`
 	// Doc is a third party's own description, in English, shown as it is.
 	Doc  string    `json:"doc,omitempty"`
-	Kind FieldKind `json:"kind" enum:"text,multiline,number,url,email,select,switch"`
+	Kind FieldKind `json:"kind" enum:"text,multiline,number,url,email,select,switch,locale"`
 	// Secret values are sealed, and never sent back once saved.
 	Secret   bool     `json:"secret,omitempty"`
 	Required bool     `json:"required,omitempty"`
@@ -296,6 +297,13 @@ func (s *Scope) Open(ctx context.Context, id int64) (any, Instance, error) {
 	return p, in, nil
 }
 
+// List returns the instances of kind as listed, for a module that works
+// with each of them, such as the one sending notifications.
+func (s *Scope) List(ctx context.Context, kind Kind) ([]Summary, error) { return s.reg.List(ctx, kind) }
+
+// Get returns instance id as listed, for a module naming it.
+func (s *Scope) Get(ctx context.Context, id int64) (Summary, error) { return s.reg.Get(ctx, id) }
+
 // Type returns the type of instance id, for a module deciding what the
 // instance can do.
 func (s *Scope) Type(ctx context.Context, id int64) (Type, error) {
@@ -454,11 +462,26 @@ func valid(f Field, v string) bool {
 		return v == "true" || v == "false"
 	case Select:
 		return slices.ContainsFunc(f.Options, func(o Option) bool { return o.Value == v })
+	case Locale:
+		return slices.Contains(localeTags(), v)
 	case Text:
 		return !strings.ContainsAny(v, "\r\n")
 	}
 	return true
 }
+
+// localeTags are the languages a Locale field may name.
+var localeTags = sync.OnceValue(func() []string {
+	c, err := i18n.Default()
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, t := range c.Tags() {
+		out = append(out, t.String())
+	}
+	return out
+})
 
 // Create stores a new instance of type typ.
 func (r *Registry) Create(ctx context.Context, typ, name string, config, secrets map[string]string) (int64, error) {

@@ -85,6 +85,9 @@ type Registry struct {
 	// provider or a deploy target, and opens configured instances of any
 	// module's types.
 	Providers *providers.Scope
+	// BaseURL is the URL users open JEC at, such as
+	// https://certs.example.com, for links in messages; "" when unknown.
+	BaseURL string
 	// ConfirmPassword checks the password of the account a request is
 	// signed in as, before something sensitive such as a private key
 	// download. Its error is an API response: a wrong body.password, or

@@ -49,12 +49,16 @@ export function applies(field: ProviderField, values: Record<string, string>, fi
   return (values[field.when.key] || other?.default || '') === field.when.value
 }
 
-/** initialValues are the values a form starts with: an instance's settings, or the defaults. */
-export function initialValues(type: ProviderType, instance?: Provider): Record<string, string> {
+/**
+ * initialValues are the values a form starts with: an instance's settings,
+ * or the defaults, where a language is the one the UI speaks.
+ */
+export function initialValues(type: ProviderType, instance?: Provider, locale?: string): Record<string, string> {
   const values: Record<string, string> = {}
   for (const f of type.fields) {
     if (f.secret) values[f.key] = ''
-    else values[f.key] = instance ? (instance.config[f.key] ?? '') : (f.default ?? '')
+    else if (instance) values[f.key] = instance.config[f.key] ?? ''
+    else values[f.key] = (f.kind === 'locale' && locale) || (f.default ?? '')
   }
   return values
 }
@@ -88,14 +92,14 @@ export interface Shown {
 
 /**
  * summary lists the plain settings of instance worth showing on its card:
- * the ones with a label, outside the advanced ones, at most two.
+ * the ones with a value to read, outside the advanced ones, at most two.
  */
 export function summary(type: ProviderType | undefined, instance: Provider): Shown[] {
   if (!type) return []
   const out: Shown[] = []
   for (const f of type.fields) {
     const v = instance.config[f.key]
-    if (f.secret || f.advanced || !v || !applies(f, instance.config, type.fields)) continue
+    if (f.secret || f.advanced || f.kind === 'switch' || f.kind === 'locale' || !v || !applies(f, instance.config, type.fields)) continue
     const option = f.options?.find((o) => o.value === v)
     out.push({ label: f.label as MessageKey | undefined, key: f.key, value: option ? undefined : v, option: option?.label as MessageKey | undefined })
     if (out.length === 2) break

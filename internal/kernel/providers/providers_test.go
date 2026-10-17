@@ -46,6 +46,7 @@ var dnsType = providers.Type{
 		{Key: "MODE", Kind: providers.Select, Options: []providers.Option{{Value: "fast", Label: "dns.mode.fast"}, {Value: "safe", Label: "dns.mode.safe"}}},
 		{Key: "DEBUG", Kind: providers.Switch},
 		{Key: "NOTE", Kind: providers.Multiline},
+		{Key: "LANG", Kind: providers.Locale},
 	},
 }
 
@@ -225,12 +226,12 @@ func TestTypes(t *testing.T) {
 func TestCreateAndValidate(t *testing.T) {
 	f := newFixture(t)
 	e := f.fails(http.MethodPost, "/providers", map[string]any{"type": "dns.acme_dns", "name": "x",
-		"config":  map[string]string{"TTL": "soon", "ENDPOINT": "ftp://x", "MAIL": "nobody", "MODE": "slow", "DEBUG": "yes", "API_KEY": "plain", "OTHER": "1", "NOTE": "a\nb"},
+		"config":  map[string]string{"TTL": "soon", "ENDPOINT": "ftp://x", "MAIL": "nobody", "MODE": "slow", "DEBUG": "yes", "API_KEY": "plain", "OTHER": "1", "NOTE": "a\nb", "LANG": "tlh"},
 		"secrets": map[string]string{"API_USER": "secret?"},
 	}, http.StatusUnprocessableEntity)
 	want := "body.config.API_KEY=kernel.error.invalid_field body.config.API_USER=kernel.error.field_required " +
 		"body.config.DEBUG=kernel.error.invalid_field body.config.ENDPOINT=kernel.error.invalid_field " +
-		"body.config.MAIL=kernel.error.invalid_field body.config.MODE=kernel.error.invalid_field " +
+		"body.config.LANG=kernel.error.invalid_field body.config.MAIL=kernel.error.invalid_field body.config.MODE=kernel.error.invalid_field " +
 		"body.config.OTHER=kernel.error.invalid_field body.config.TTL=kernel.error.invalid_field " +
 		"body.secrets.API_KEY=kernel.error.field_required body.secrets.API_USER=kernel.error.invalid_field"
 	if got := locations(e); got != want {
@@ -240,11 +241,11 @@ func TestCreateAndValidate(t *testing.T) {
 	f.fails(http.MethodPost, "/providers", map[string]any{"type": "dns.acme_dns", "name": ""}, http.StatusUnprocessableEntity)
 
 	in := f.create(map[string]any{"type": "dns.acme_dns", "name": " main ",
-		"config":  map[string]string{"API_USER": " admin ", "MODE": "safe", "DEBUG": "true", "MAIL": "a@example.com", "NOTE": "line 1\nline 2"},
+		"config":  map[string]string{"API_USER": " admin ", "MODE": "safe", "DEBUG": "true", "MAIL": "a@example.com", "NOTE": "line 1\nline 2", "LANG": "zh-CN"},
 		"secrets": map[string]string{"API_KEY": "s3cret", "TOKEN2": ""},
 	})
 	if in.Name != "main" || in.Kind != "solver" || in.Config["API_USER"] != "admin" || in.Config["TTL"] != "120" ||
-		in.Config["NOTE"] != "line 1\nline 2" || strings.Join(in.SecretKeys, ",") != "API_KEY" {
+		in.Config["NOTE"] != "line 1\nline 2" || in.Config["LANG"] != "zh-CN" || strings.Join(in.SecretKeys, ",") != "API_KEY" {
 		t.Errorf("created %+v", in)
 	}
 	var sealed []byte

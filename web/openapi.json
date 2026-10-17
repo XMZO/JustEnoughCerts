@@ -400,7 +400,8 @@
               "url",
               "email",
               "select",
-              "switch"
+              "switch",
+              "locale"
             ],
             "type": "string"
           },

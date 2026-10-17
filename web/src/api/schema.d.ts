@@ -468,7 +468,7 @@ export interface components {
             help?: string;
             key: string;
             /** @enum {string} */
-            kind: "text" | "multiline" | "number" | "url" | "email" | "select" | "switch";
+            kind: "text" | "multiline" | "number" | "url" | "email" | "select" | "switch" | "locale";
             label?: string;
             options?: components["schemas"]["Option"][];
             required?: boolean;

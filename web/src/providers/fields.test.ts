@@ -59,6 +59,24 @@ describe('initialValues', () => {
       TTL: '',
     })
   })
+
+  it('starts a language in the one the UI speaks, and leaves switches and languages off the cards', () => {
+    const notifier: ProviderType = {
+      ...type,
+      kind: 'notifier',
+      fields: [
+        { key: 'chat', kind: 'text', label: 'telegram.field.chat' },
+        { key: 'locale', kind: 'locale', label: 'kernel.notify.field.locale', default: 'en-US' },
+        { key: 'on_issued', kind: 'switch', label: 'kernel.notify.event.issued', default: 'false' },
+      ],
+    }
+    expect(initialValues(notifier, undefined, 'zh-CN')).toEqual({ chat: '', locale: 'zh-CN', on_issued: 'false' })
+    expect(initialValues(notifier)).toEqual({ chat: '', locale: 'en-US', on_issued: 'false' })
+    expect(initialValues(notifier, instance({ chat: '-100', locale: 'en-US', on_issued: 'true' }), 'zh-CN').locale).toBe('en-US')
+    expect(summary(notifier, instance({ chat: '-100', locale: 'en-US', on_issued: 'true' }))).toEqual([
+      { label: 'telegram.field.chat', key: 'chat', value: '-100', option: undefined },
+    ])
+  })
 })
 
 describe('settings', () => {

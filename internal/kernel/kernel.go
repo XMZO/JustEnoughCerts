@@ -123,6 +123,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 
 			Providers: registry.Scope(id),
 
+			BaseURL:         cfg.BaseURL,
 			ConfirmPassword: accounts.ConfirmPassword,
 		}
 		if err := m.Register(r); err != nil {

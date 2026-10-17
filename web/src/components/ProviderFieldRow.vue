@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ProviderField } from '../api/providers'
-import { useT, type MessageKey } from '../i18n'
+import { locales, useT, type MessageKey } from '../i18n'
 import JecInput from './JecInput.vue'
 import JecTextarea from './JecTextarea.vue'
 
@@ -48,6 +48,16 @@ const inputType = props.field.secret ? 'password' : (types[props.field.kind] ?? 
         class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink aria-invalid:border-danger-ink max-sm:h-11"
       >
         <option v-for="o in field.options" :key="o.value" :value="o.value">{{ t(o.label as MessageKey) }}</option>
+      </select>
+      <!-- Each language by its own name. -->
+      <select
+        v-else-if="field.kind === 'locale'"
+        :id="id"
+        v-model="value"
+        :aria-invalid="!!error || undefined"
+        class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink aria-invalid:border-danger-ink max-sm:h-11"
+      >
+        <option v-for="l in locales" :key="l.tag" :value="l.tag" :lang="l.tag">{{ l.name }}</option>
       </select>
       <JecTextarea
         v-else-if="field.kind === 'multiline'"
