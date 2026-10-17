@@ -43,11 +43,13 @@
 ## 进度
 
 - 已完成：`PLAN.md`；设计系统和全部页面设计稿（`docs/design/`）；M0 第一段：`jec serve` / `healthcheck` / `version`，分层配置，`scratch` 镜像，GoReleaser，CI 和按标签发布的流水线（`.github/workflows/`）；SQLite 驱动选型；i18n 模块（`i18n/`：语言文件、ICU 子集解析和格式化、key 常量生成）和后端门禁（`go run ./tools/i18n check`、`go run ./tools/i18nlint ./...`，新增或改动文字后跑 `go run ./tools/i18n fix`）；内核：`internal/kernel/store`（SQLite + goose，内核和每个模块各有一张迁移版本表）、`internal/kernel/module`（Manifest、按依赖排序、启用状态存在 `kernel_modules` 表）、`internal/kernel/api`（huma，`/api/v1`，错误一律是 `{"code": key, "params", "fields"}`，`GET /api/v1/manifest`）；模块：一个 ID 一个目录 `internal/modules/<id>/`，注册文件 `internal/modules/all/<id>.go`（build tag `!no_<id>`），新模块用 `make new-module id=xxx category=source` 生成（`PLAN.md` 4.2），模块之间、内核和模块之间不能 import（`internal/modules` 的架构测试）；账号：`internal/kernel/auth`（一次性初始化令牌打印在日志里，`/api/v1/setup`、`/api/v1/session`，argon2id，会话 Cookie，CSRF 防护，连续失败 5 次锁 15 分钟，API 默认要求登录，公开接口用 `api.Public`；`jec reset-password` 改密码）；前端骨架：`web/`（Vue 3 + Vite + Tailwind，登录页、初始化向导、总览占位页，`go:embed` 进二进制，详见 `PLAN.md` 6.3），前端用到的 key 也算进"未使用 key"检查，`MessageKey` 类型和语言列表由 `go generate ./i18n` 生成到 `web/src/i18n/generated.ts`；改了 API 要跑 `make gen`（或 `go run ./tools/openapi` 再 `pnpm -C web gen:api`）；伪语言测试（`web/e2e/`，`PLAN.md` 7.4 第 5 条）：新页面要在里面走到，截断的文字要带完整内容的 `title`；体积预算：程序 20 MiB，压缩包和镜像 8 MiB，在 `scripts/release-sizes.sh`，超出时 CI 失败，要提高就在那次改动里说明原因（`PLAN.md` 8.3）。
-- 下一步：打 `v0.0.1` 标签（发布是对外的动作，要仓库主人确认）。README 有中英两份（`README.md`、`README.zh-CN.md`），改一份要同步另一份。事件总线和调度器放到 M1，和签发状态机一起设计（通知、部署要求事件可靠送达）。
+- `v0.0.1` 已于 2026-10-17 发布（M0 完成）。README 有中英两份（`README.md`、`README.zh-CN.md`），改一份要同步另一份。
+- M1 进行中：已完成事件总线 `internal/kernel/events`（`PLAN.md` 4.5，事件和业务变化在同一个事务里写入，至少送达一次）、调度器 `internal/kernel/jobs`、重试规则 `internal/kernel/retry`（`PLAN.md` 4.4），模块通过 `r.Events`、`r.Jobs` 使用。
+- 下一步：证书模块和签发状态机（先做手动上传和导入），然后接 ACME + lego。事件总线和调度器放到 M1，和签发状态机一起设计（通知、部署要求事件可靠送达）。
 
 ## 工程约定
 
 - 代码、注释、脚本、部署文件都用英文；中文只出现在语言文件和文档里（i18n 门禁会扫描）。命令行输出和运维日志按 `PLAN.md` 7.3 算开发者日志，用英文。
 - Go：`go.mod` 只写最低版本（1.26），CI 和发布用最新稳定版。GitHub Actions 一律钉到 commit SHA 并在注释里写版本号，由 Dependabot 每周更新。
 - 容器默认以 65532:65532 运行，不在启动时切换用户；挂载的数据目录要先 `chown`，启动检查会给出明确报错。
-- 第一次发布后，ghcr.io 上的镜像包默认是私有的，要提醒仓库主人在包设置里改成公开。
+- ghcr.io 上的镜像包从 v0.0.1 起就是公开的（发布后实测匿名能拉取），不需要手动改可见性。
