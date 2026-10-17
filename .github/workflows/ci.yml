@@ -89,7 +89,8 @@ jobs:
           check-latest: true
       - name: Start Pebble, the test CA of Let's Encrypt
         run: |
-          docker run -d --name pebble -p 14000:14000 -e PEBBLE_VA_ALWAYS_VALID=1             ghcr.io/letsencrypt/pebble:2.10.1@sha256:ddf230642b1a584f519f32e347de1b05a6e4c1f6c35c1863b33effeab5f78199
+          docker run -d --name pebble -p 14000:14000 -e PEBBLE_VA_ALWAYS_VALID=1 -e PEBBLE_AUTHZREUSE=0 \
+            ghcr.io/letsencrypt/pebble:2.10.1@sha256:ddf230642b1a584f519f32e347de1b05a6e4c1f6c35c1863b33effeab5f78199
           docker cp pebble:/test/certs/pebble.minica.pem "$RUNNER_TEMP/pebble-root.pem"
           for _ in $(seq 30); do
             curl -fs --cacert "$RUNNER_TEMP/pebble-root.pem" https://localhost:14000/dir >/dev/null && exit 0

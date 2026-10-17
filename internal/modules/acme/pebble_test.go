@@ -16,7 +16,10 @@ import (
 // Encrypt. It runs when JEC_TEST_PEBBLE names Pebble's directory URL and
 // JEC_TEST_PEBBLE_ROOT the PEM file of its root (test/certs/pebble.minica.pem
 // in its image), as CI sets them. Pebble must run with
-// PEBBLE_VA_ALWAYS_VALID=1: no DNS record really appears.
+// PEBBLE_VA_ALWAYS_VALID=1, as no DNS record really appears, and
+// PEBBLE_AUTHZREUSE=0, so that the second order is validated again rather
+// than reusing the first one's authorizations, which Pebble does half the
+// time by default.
 func TestPebble(t *testing.T) {
 	directory, rootFile := os.Getenv("JEC_TEST_PEBBLE"), os.Getenv("JEC_TEST_PEBBLE_ROOT")
 	if directory == "" || rootFile == "" {
@@ -51,7 +54,7 @@ func TestPebble(t *testing.T) {
 			t.Errorf("round %d: leaf for %v, chain of %d", round, leaf.DNSNames, len(chain))
 		}
 		if !slices.Contains(solver.calls, "present jec.example.com") || !slices.Contains(solver.calls, "cleanup jec.example.com") {
-			t.Errorf("round %d: solver calls %v", round, solver.calls)
+			t.Errorf("round %d: solver calls %v (does Pebble run with PEBBLE_AUTHZREUSE=0?)", round, solver.calls)
 		}
 		// The account is registered once.
 		registered := slices.Contains(steps, i18n.AcmeLogRegister)
