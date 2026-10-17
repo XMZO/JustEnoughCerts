@@ -243,6 +243,9 @@
       "Field": {
         "additionalProperties": false,
         "properties": {
+          "advanced": {
+            "type": "boolean"
+          },
           "default": {
             "type": "string"
           },
@@ -256,6 +259,15 @@
             "type": "string"
           },
           "kind": {
+            "enum": [
+              "text",
+              "multiline",
+              "number",
+              "url",
+              "email",
+              "select",
+              "switch"
+            ],
             "type": "string"
           },
           "label": {
@@ -272,6 +284,9 @@
           },
           "secret": {
             "type": "boolean"
+          },
+          "when": {
+            "$ref": "#/components/schemas/When"
           }
         },
         "required": [
@@ -860,6 +875,12 @@
             "type": "string"
           },
           "kind": {
+            "enum": [
+              "source",
+              "solver",
+              "target",
+              "notifier"
+            ],
             "type": "string"
           },
           "module": {
@@ -1057,6 +1078,22 @@
           "notBefore",
           "notAfter",
           "createdAt"
+        ],
+        "type": "object"
+      },
+      "When": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "value"
         ],
         "type": "object"
       }

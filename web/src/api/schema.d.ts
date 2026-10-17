@@ -371,15 +371,18 @@ export interface components {
             };
         };
         Field: {
+            advanced?: boolean;
             default?: string;
             doc?: string;
             help?: string;
             key: string;
-            kind: string;
+            /** @enum {string} */
+            kind: "text" | "multiline" | "number" | "url" | "email" | "select" | "switch";
             label?: string;
             options?: components["schemas"]["Option"][];
             required?: boolean;
             secret?: boolean;
+            when?: components["schemas"]["When"];
         };
         FieldError: {
             /** @description Message key */
@@ -586,7 +589,8 @@ export interface components {
             experimental?: boolean;
             fields: components["schemas"]["Field"][];
             id: string;
-            kind: string;
+            /** @enum {string} */
+            kind: "source" | "solver" | "target" | "notifier";
             module: string;
             name?: string;
             needsSolver?: boolean;
@@ -649,6 +653,10 @@ export interface components {
             origin: "upload" | "issued";
             /** @description Serial number, lowercase hex */
             serial: string;
+        };
+        When: {
+            key: string;
+            value: string;
         };
     };
     responses: never;

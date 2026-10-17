@@ -74,12 +74,25 @@ type Field struct {
 	Help i18n.Key `json:"help,omitempty"`
 	// Doc is a third party's own description, in English, shown as it is.
 	Doc  string    `json:"doc,omitempty"`
-	Kind FieldKind `json:"kind"`
+	Kind FieldKind `json:"kind" enum:"text,multiline,number,url,email,select,switch"`
 	// Secret values are sealed, and never sent back once saved.
 	Secret   bool     `json:"secret,omitempty"`
 	Required bool     `json:"required,omitempty"`
 	Default  string   `json:"default,omitempty"`
 	Options  []Option `json:"options,omitempty"`
+	// Advanced settings are those few people change, such as timeouts:
+	// the form keeps them apart.
+	Advanced bool `json:"advanced,omitempty"`
+	// When limits the field to configurations where another field has a
+	// value. Elsewhere the field keeps no value and is not required.
+	When *When `json:"when,omitempty"`
+}
+
+// When is the condition of a field: the plain field Key, which comes
+// before it, holds Value.
+type When struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 // Type is a kind of provider a module offers.
@@ -87,7 +100,7 @@ type Type struct {
 	// ID is <module>.<name>, made of lowercase letters, digits, dots,
 	// underscores and hyphens. Instances refer to it, so it never changes.
 	ID     string `json:"id"`
-	Kind   Kind   `json:"kind"`
+	Kind   Kind   `json:"kind" enum:"source,solver,target,notifier"`
 	Module string `json:"module"`
 	// Name and Description are message keys, for types JEC describes.
 	Name        i18n.Key `json:"name,omitempty"`
@@ -223,7 +236,7 @@ func (s *Scope) Add(t Type, f Factory) error {
 	case f == nil:
 		return fmt.Errorf("provider type %s has no factory", t.ID)
 	}
-	seen := map[string]bool{}
+	seen, plain := map[string]bool{}, map[string]bool{}
 	for _, field := range t.Fields {
 		switch {
 		case !keyPattern.MatchString(field.Key) || seen[field.Key]:
@@ -232,11 +245,14 @@ func (s *Scope) Add(t Type, f Factory) error {
 			return fmt.Errorf("provider type %s: field %s has unknown kind %q", t.ID, field.Key, field.Kind)
 		case field.Kind == Select && len(field.Options) == 0:
 			return fmt.Errorf("provider type %s: select field %s has no options", t.ID, field.Key)
+		case field.When != nil && !plain[field.When.Key]:
+			return fmt.Errorf("provider type %s: field %s depends on %q, which is not a plain field before it", t.ID, field.Key, field.When.Key)
 		}
 		seen[field.Key] = true
+		plain[field.Key] = !field.Secret
 	}
 	t.Module = s.module
-	t.Fields = slices.Clone(t.Fields)
+	t.Fields = append([]Field{}, t.Fields...) // never nil: the API sends a list
 	t.Tags = slices.Clone(t.Tags)
 
 	r := s.reg
@@ -394,6 +410,11 @@ func validate(t Type, config, secrets map[string]string) error {
 		values, where := config, "body.config."
 		if f.Secret {
 			values, where = secrets, "body.secrets."
+		}
+		// The field f depends on came before it, so it holds its final value.
+		if f.When != nil && config[f.When.Key] != f.When.Value {
+			delete(values, f.Key)
+			continue
 		}
 		v := strings.TrimSpace(values[f.Key])
 		if v == "" {
@@ -610,7 +631,8 @@ func (r *Registry) summary(s stored) (Summary, error) {
 	}
 	sum := Summary{
 		ID: s.id, Type: s.typ, Name: s.name, Config: in.Config,
-		SecretKeys: slices.Sorted(maps.Keys(in.Secrets)),
+		// Never nil, so that the API sends a list even when there are none.
+		SecretKeys: append([]string{}, slices.Sorted(maps.Keys(in.Secrets))...),
 		CreatedAt:  time.UnixMilli(s.created).UTC(), UpdatedAt: time.UnixMilli(s.updated).UTC(),
 	}
 	if e := r.available(s.typ); e != nil {

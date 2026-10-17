@@ -66,7 +66,8 @@ func (p catalogProvider) keys() []catalogKey {
 }
 
 // providerType describes p for the registry. lego's descriptions are its
-// own English text, which the UI shows as it is.
+// own English text, which the UI shows as it is. Its additional keys, such
+// as timeouts and TTLs, are advanced settings.
 func providerType(p catalogProvider) providers.Type {
 	t := providers.Type{
 		ID: "lego." + p.Code, Kind: providers.Solver,
@@ -81,8 +82,10 @@ func providerType(p catalogProvider) providers.Type {
 	case slices.Contains(selfHosted, p.Code):
 		t.Tags = []string{"self_hosted"}
 	}
-	for _, k := range p.keys() {
-		t.Fields = append(t.Fields, providers.Field{Key: k.Key, Doc: k.Doc, Kind: providers.Text, Secret: k.Secret})
+	for i, k := range p.keys() {
+		t.Fields = append(t.Fields, providers.Field{
+			Key: k.Key, Doc: k.Doc, Kind: providers.Text, Secret: k.Secret, Advanced: i >= len(p.Credentials),
+		})
 	}
 	return t
 }

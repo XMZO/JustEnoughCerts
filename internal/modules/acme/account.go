@@ -53,7 +53,8 @@ func accountType() providers.Type {
 		Fields: []providers.Field{
 			{Key: "ca", Label: i18n.AcmeFieldCa, Help: i18n.AcmeFieldCaHelp, Kind: providers.Select, Required: true,
 				Default: lego.CodeLetsEncrypt, Options: cas},
-			{Key: "directory", Label: i18n.AcmeFieldDirectory, Help: i18n.AcmeFieldDirectoryHelp, Kind: providers.URL},
+			{Key: "directory", Label: i18n.AcmeFieldDirectory, Help: i18n.AcmeFieldDirectoryHelp, Kind: providers.URL, Required: true,
+				When: &providers.When{Key: "ca", Value: custom}},
 			{Key: "email", Label: i18n.AcmeFieldEmail, Help: i18n.AcmeFieldEmailHelp, Kind: providers.Email},
 			{Key: "eab_kid", Label: i18n.AcmeFieldEabKid, Help: i18n.AcmeFieldEabKidHelp, Kind: providers.Text},
 			{Key: "eab_hmac", Label: i18n.AcmeFieldEabHmac, Help: i18n.AcmeFieldEabHmacHelp, Kind: providers.Text, Secret: true},

@@ -49,6 +49,18 @@ var dnsType = providers.Type{
 	},
 }
 
+// customType has a field that applies to one choice of another only.
+var customType = providers.Type{
+	ID: "dns.custom", Kind: providers.Solver, Brand: "Custom DNS",
+	Fields: []providers.Field{
+		{Key: "SERVER", Kind: providers.Select, Default: "public", Options: []providers.Option{
+			{Value: "public", Label: "dns.server.public"}, {Value: "own", Label: "dns.server.own"},
+		}},
+		{Key: "ADDRESS", Kind: providers.URL, Required: true, When: &providers.When{Key: "SERVER", Value: "own"}},
+		{Key: "TIMEOUT", Kind: providers.Number, Advanced: true},
+	},
+}
+
 func newFixture(t *testing.T) *fixture {
 	t.Helper()
 	dir := t.TempDir()
@@ -77,6 +89,9 @@ func newFixture(t *testing.T) *fixture {
 		f.opened = append(f.opened, in)
 		return "solver for " + in.Name, nil
 	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := scope.Add(customType, func(context.Context, providers.Instance) (any, error) { return nil, nil }); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.reg.Scope("mail").Add(providers.Type{ID: "mail.smtp", Kind: providers.Notifier, Name: "mail.type.name", Fields: []providers.Field{}},
@@ -165,6 +180,12 @@ func TestAddChecks(t *testing.T) {
 		"repeated key":   {ID: "dns.x", Kind: providers.Solver, Brand: "X", Fields: []providers.Field{{Key: "A", Kind: providers.Text}, {Key: "A", Kind: providers.Text}}},
 		"bad field kind": {ID: "dns.x", Kind: providers.Solver, Brand: "X", Fields: []providers.Field{{Key: "A", Kind: "date"}}},
 		"empty select":   {ID: "dns.x", Kind: providers.Solver, Brand: "X", Fields: []providers.Field{{Key: "A", Kind: providers.Select}}},
+		"when later": {ID: "dns.x", Kind: providers.Solver, Brand: "X", Fields: []providers.Field{
+			{Key: "A", Kind: providers.Text, When: &providers.When{Key: "B", Value: "1"}}, {Key: "B", Kind: providers.Text},
+		}},
+		"when secret": {ID: "dns.x", Kind: providers.Solver, Brand: "X", Fields: []providers.Field{
+			{Key: "B", Kind: providers.Text, Secret: true}, {Key: "A", Kind: providers.Text, When: &providers.When{Key: "B", Value: "1"}},
+		}},
 	} {
 		if err := s.Add(typ, factory); err == nil {
 			t.Errorf("%s: added", name)
@@ -182,7 +203,7 @@ func TestTypes(t *testing.T) {
 	f := newFixture(t)
 	var out struct{ Types []providersapi.TypeSummary }
 	resp := f.api.Get("/providers/types?kind=solver")
-	if err := json.Unmarshal(resp.Body.Bytes(), &out); err != nil || len(out.Types) != 1 || out.Types[0].ID != "dns.acme_dns" || out.Types[0].Module != "dns" {
+	if err := json.Unmarshal(resp.Body.Bytes(), &out); err != nil || len(out.Types) != 2 || out.Types[0].ID != "dns.acme_dns" || out.Types[0].Module != "dns" {
 		t.Errorf("solver types: %s", resp.Body.String())
 	}
 	if resp := f.api.Get("/providers/types"); !strings.Contains(resp.Body.String(), "mail.smtp") {
@@ -232,6 +253,27 @@ func TestCreateAndValidate(t *testing.T) {
 	}
 	if resp := f.api.Get("/providers/" + strconv.FormatInt(in.ID, 10)); strings.Contains(resp.Body.String(), "s3cret") {
 		t.Error("the API sent a secret back")
+	}
+}
+
+func TestConditionalFields(t *testing.T) {
+	f := newFixture(t)
+	// ADDRESS applies to an own server only: dropped otherwise, required then.
+	in := f.create(map[string]any{"type": "dns.custom", "name": "public", "config": map[string]string{"ADDRESS": "https://dns.example"}})
+	if in.Config["SERVER"] != "public" || in.Config["ADDRESS"] != "" {
+		t.Errorf("created %+v", in.Config)
+	}
+	// Without secrets, the list of them is empty, not missing.
+	if body := f.api.Get("/providers/" + strconv.FormatInt(in.ID, 10)).Body.String(); !strings.Contains(body, `"secretKeys":[]`) {
+		t.Errorf("an instance without secrets: %s", body)
+	}
+	e := f.fails(http.MethodPost, "/providers", map[string]any{"type": "dns.custom", "name": "own", "config": map[string]string{"SERVER": "own"}}, http.StatusUnprocessableEntity)
+	if got := locations(e); got != "body.config.ADDRESS=kernel.error.field_required" {
+		t.Errorf("errors %s", got)
+	}
+	in = f.create(map[string]any{"type": "dns.custom", "name": "own", "config": map[string]string{"SERVER": "own", "ADDRESS": "https://dns.example"}})
+	if in.Config["ADDRESS"] != "https://dns.example" {
+		t.Errorf("created %+v", in.Config)
 	}
 }
 
