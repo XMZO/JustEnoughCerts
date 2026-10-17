@@ -352,6 +352,46 @@
       "title": "Upload a new certificate"
     }
   },
+  "esa": {
+    "error": {
+      "api": "Alibaba Cloud ESA returned the error {code}. The full log says why.",
+      "auth": "Alibaba Cloud refused the AccessKey, or it lacks the permissions needed.",
+      "quota": "The site {site} holds all the custom certificates it may. Remove unused ones in ESA, or turn on removing the old certificate.",
+      "site": "This account has no site {site}. Check the site name and the endpoint.",
+      "throttled": "Alibaba Cloud refused for now: too many requests. JEC tries again later."
+    },
+    "field": {
+      "access_key_id": "AccessKey ID",
+      "access_key_secret": "AccessKey secret",
+      "access_key_secret_help": "Best from a RAM user granted esa:ListSites, esa:ListCertificates, esa:SetCertificate and esa:DeleteCertificate only.",
+      "delete_old": "Remove the old certificate after deploying",
+      "delete_old_help": "Only the versions JEC deployed here before go; other certificates stay.",
+      "region": "Endpoint",
+      "site": "Site",
+      "site_help": "The site's name in ESA, usually the registered domain, such as example.com."
+    },
+    "log": {
+      "delete": "Removing the old certificate {id}",
+      "delete_failed": "Could not remove the old certificate {id}; the next deployment tries again",
+      "make_room": "The site is full; removing the oldest, {id}, first",
+      "reuse": "The site holds this certificate already ({id}); no upload needed",
+      "site": "Looking up the site {site}",
+      "upload": "Uploading the new certificate {name}",
+      "uploaded": "New certificate uploaded, ID {id}"
+    },
+    "module": {
+      "description": "Deploys certificates to sites of Alibaba Cloud ESA (Edge Security Acceleration), and removes the old ones afterwards.",
+      "name": "Alibaba Cloud ESA"
+    },
+    "region": {
+      "china": "China (esa.cn-hangzhou.aliyuncs.com)",
+      "global": "International (esa.ap-southeast-1.aliyuncs.com)"
+    },
+    "site": {
+      "description": "Uploads certificates to a site of ESA. The free plan holds two custom certificates per site, so by default the old one goes once the new one is in place.",
+      "name": "Alibaba Cloud ESA site"
+    }
+  },
   "files": {
     "directory": {
       "description": "Writes cert.pem, chain.pem, fullchain.pem and privkey.pem as certbot does; a new version replaces the files.",

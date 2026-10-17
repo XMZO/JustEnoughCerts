@@ -4,7 +4,10 @@ go 1.26.0
 
 require (
 	github.com/BurntSushi/toml v1.6.0
+	github.com/alibabacloud-go/darabonba-openapi/v2 v2.2.4
+	github.com/alibabacloud-go/tea v1.5.3
 	github.com/danielgtaylor/huma/v2 v2.39.1
+	github.com/go-acme/esa-20240910/v3 v3.13.0
 	github.com/go-acme/lego/v5 v5.5.2
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/ncruces/go-sqlite3 v0.35.6
@@ -35,9 +38,7 @@ require (
 	github.com/akamai/AkamaiOPEN-edgegrid-golang/v13 v13.4.0 // indirect
 	github.com/alexbrainman/sspi v0.0.0-20250919150558-7d374ff0d59e // indirect
 	github.com/alibabacloud-go/alibabacloud-gateway-spi v0.0.5 // indirect
-	github.com/alibabacloud-go/darabonba-openapi/v2 v2.2.4 // indirect
 	github.com/alibabacloud-go/debug v1.0.1 // indirect
-	github.com/alibabacloud-go/tea v1.5.3 // indirect
 	github.com/alibabacloud-go/tea-utils/v2 v2.0.9 // indirect
 	github.com/aliyun/credentials-go v1.4.7 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.47.0 // indirect
@@ -74,7 +75,6 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-acme/alidns-20150109/v5 v5.6.1 // indirect
-	github.com/go-acme/esa-20240910/v3 v3.13.0 // indirect
 	github.com/go-acme/jdcloud-sdk-go v1.64.0 // indirect
 	github.com/go-acme/tencentclouddnspod v1.3.131 // indirect
 	github.com/go-acme/tencentedgdeone v1.3.170 // indirect

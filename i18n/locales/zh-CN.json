@@ -352,6 +352,46 @@
       "title": "上传新证书"
     }
   },
+  "esa": {
+    "error": {
+      "api": "阿里云 ESA 返回了错误 {code}。完整日志里有原因。",
+      "auth": "阿里云拒绝了这个 AccessKey，或者它没有需要的权限。",
+      "quota": "站点 {site} 的自定义证书已满。请在 ESA 里删掉不用的证书，或者打开“部署后删除旧证书”。",
+      "site": "这个账号下没有站点 {site}。请检查站点名和接入点。",
+      "throttled": "请求太频繁，阿里云暂时拒绝了，稍后会自动重试。"
+    },
+    "field": {
+      "access_key_id": "AccessKey ID",
+      "access_key_secret": "AccessKey Secret",
+      "access_key_secret_help": "建议用 RAM 子账号，只授予 esa:ListSites、esa:ListCertificates、esa:SetCertificate、esa:DeleteCertificate。",
+      "delete_old": "部署后删除旧证书",
+      "delete_old_help": "只删除 JEC 以前部署到这里的版本，不动其他证书。",
+      "region": "接入点",
+      "site": "站点",
+      "site_help": "ESA 里的站点名，通常是主域名，例如 example.com。"
+    },
+    "log": {
+      "delete": "删除旧证书 {id}",
+      "delete_failed": "没能删除旧证书 {id}，下次部署时再试",
+      "make_room": "站点的证书已满，先删除最旧的 {id}",
+      "reuse": "站点里已经有这张证书（{id}），不再上传",
+      "site": "查找站点 {site}",
+      "upload": "上传新证书 {name}",
+      "uploaded": "新证书已上传，ID {id}"
+    },
+    "module": {
+      "description": "把证书部署到阿里云边缘安全加速（ESA）的站点，部署后删除旧证书。",
+      "name": "阿里云 ESA"
+    },
+    "region": {
+      "china": "中国站（esa.cn-hangzhou.aliyuncs.com）",
+      "global": "国际站（esa.ap-southeast-1.aliyuncs.com）"
+    },
+    "site": {
+      "description": "上传证书到 ESA 的一个站点。免费版每个站点最多 2 张自定义证书，所以默认在新证书生效后删除旧的。",
+      "name": "阿里云 ESA 站点"
+    }
+  },
   "files": {
     "directory": {
       "description": "按 certbot 的方式写入 cert.pem、chain.pem、fullchain.pem 和 privkey.pem，新版本覆盖旧文件。",
