@@ -847,6 +847,9 @@ export interface components {
         };
         Type: {
             brand?: string;
+            /** @enum {string} */
+            challenge?: "dns" | "http";
+            challenges?: ("dns" | "http")[];
             description?: string;
             doc?: string;
             experimental?: boolean;
@@ -864,6 +867,13 @@ export interface components {
         TypeSummary: {
             /** @description A third party's name for the type, shown as it is */
             brand?: string;
+            /**
+             * @description For a solver: how it proves control of a domain, through DNS records or files on the web server
+             * @enum {string}
+             */
+            challenge?: "dns" | "http";
+            /** @description For a source that needs a solver: the challenges of the solvers it can use */
+            challenges?: ("dns" | "http")[];
             description?: string;
             experimental?: boolean;
             id: string;

@@ -30,35 +30,47 @@ const (
 // maxOutput bounds the output of a command kept in the log.
 const maxOutput = 4000
 
+// connFields are the settings of how to reach a machine.
+func connFields() []providers.Field {
+	return []providers.Field{
+		{Key: "host", Label: i18n.SshFieldHost, Kind: providers.Text, Required: true},
+		{Key: "port", Label: i18n.SshFieldPort, Kind: providers.Number, Default: "22"},
+		{Key: "user", Label: i18n.SshFieldUser, Kind: providers.Text, Required: true},
+		{Key: "private_key", Label: i18n.SshFieldPrivateKey, Help: i18n.SshFieldPrivateKeyHelp, Kind: providers.Multiline, Secret: true},
+		{Key: "passphrase", Label: i18n.SshFieldPassphrase, Kind: providers.Text, Secret: true, Advanced: true},
+		{Key: "password", Label: i18n.SshFieldPassword, Help: i18n.SshFieldPasswordHelp, Kind: providers.Text, Secret: true},
+		{Key: "host_key", Label: i18n.SshFieldHostKey, Help: i18n.SshFieldHostKeyHelp, Kind: providers.Text},
+	}
+}
+
 func serverType() providers.Type {
 	return providers.Type{
 		ID: "ssh.server", Kind: providers.Target, Name: i18n.SshServerName, Description: i18n.SshServerDescription,
 		Tags: []string{"self_hosted"}, Testable: true,
-		Fields: []providers.Field{
-			{Key: "host", Label: i18n.SshFieldHost, Kind: providers.Text, Required: true},
-			{Key: "port", Label: i18n.SshFieldPort, Kind: providers.Number, Default: "22"},
-			{Key: "user", Label: i18n.SshFieldUser, Kind: providers.Text, Required: true},
-			{Key: "private_key", Label: i18n.SshFieldPrivateKey, Help: i18n.SshFieldPrivateKeyHelp, Kind: providers.Multiline, Secret: true},
-			{Key: "passphrase", Label: i18n.SshFieldPassphrase, Kind: providers.Text, Secret: true, Advanced: true},
-			{Key: "password", Label: i18n.SshFieldPassword, Help: i18n.SshFieldPasswordHelp, Kind: providers.Text, Secret: true},
-			{Key: "host_key", Label: i18n.SshFieldHostKey, Help: i18n.SshFieldHostKeyHelp, Kind: providers.Text},
-			{Key: "directory", Label: i18n.SshFieldDirectory, Help: i18n.SshFieldDirectoryHelp, Kind: providers.Text, Required: true},
-			{Key: "layout", Label: i18n.SshFieldLayout, Kind: providers.Select, Required: true, Default: byDomain, Options: []providers.Option{
+		Fields: append(connFields(),
+			providers.Field{Key: "directory", Label: i18n.SshFieldDirectory, Help: i18n.SshFieldDirectoryHelp, Kind: providers.Text, Required: true},
+			providers.Field{Key: "layout", Label: i18n.SshFieldLayout, Kind: providers.Select, Required: true, Default: byDomain, Options: []providers.Option{
 				{Value: byDomain, Label: i18n.SshLayoutByDomain},
 				{Value: flat, Label: i18n.SshLayoutFlat},
 			}},
-			{Key: "command", Label: i18n.SshFieldCommand, Help: i18n.SshFieldCommandHelp, Kind: providers.Text},
-		},
+			providers.Field{Key: "command", Label: i18n.SshFieldCommand, Help: i18n.SshFieldCommandHelp, Kind: providers.Text},
+		),
 	}
+}
+
+// conn is how to reach a machine over SSH, for the server target and the
+// web root solver alike.
+type conn struct {
+	addr, user, hostKey string
+	auth                []gossh.AuthMethod
 }
 
 // server is a machine reached over SSH, where certificates are written as
 // certbot lays them out.
 type server struct {
-	addr, user, hostKey string
-	auth                []gossh.AuthMethod
-	directory, layout   string
-	command             string
+	conn
+	directory, layout string
+	command           string
 }
 
 var (
@@ -67,27 +79,38 @@ var (
 )
 
 func factory(_ context.Context, in providers.Instance) (any, error) {
-	s := &server{
-		addr:      net.JoinHostPort(strings.TrimSpace(in.Config["host"]), cmp.Or(strings.TrimSpace(in.Config["port"]), "22")),
-		user:      strings.TrimSpace(in.Config["user"]),
-		hostKey:   strings.TrimSpace(in.Config["host_key"]),
+	c, err := newConn(in)
+	if err != nil {
+		return nil, err
+	}
+	return &server{
+		conn:      c,
 		directory: strings.TrimSpace(in.Config["directory"]), layout: in.Config["layout"],
 		command: strings.TrimSpace(in.Config["command"]),
+	}, nil
+}
+
+// newConn reads the settings of connFields.
+func newConn(in providers.Instance) (conn, error) {
+	c := conn{
+		addr:    net.JoinHostPort(strings.TrimSpace(in.Config["host"]), cmp.Or(strings.TrimSpace(in.Config["port"]), "22")),
+		user:    strings.TrimSpace(in.Config["user"]),
+		hostKey: strings.TrimSpace(in.Config["host_key"]),
 	}
 	if key := strings.TrimSpace(in.Value("private_key")); key != "" {
 		signer, err := parseKey([]byte(key), in.Value("passphrase"))
 		if err != nil {
-			return nil, err
+			return c, err
 		}
-		s.auth = append(s.auth, gossh.PublicKeys(signer))
+		c.auth = append(c.auth, gossh.PublicKeys(signer))
 	}
 	if pw := in.Value("password"); pw != "" {
-		s.auth = append(s.auth, gossh.Password(pw))
+		c.auth = append(c.auth, gossh.Password(pw))
 	}
-	if len(s.auth) == 0 {
-		return nil, retry.Permanent(&contracts.Problem{Key: i18n.SshErrorNoAuth})
+	if len(c.auth) == 0 {
+		return c, retry.Permanent(&contracts.Problem{Key: i18n.SshErrorNoAuth})
 	}
-	return s, nil
+	return c, nil
 }
 
 // parseKey reads a private key in OpenSSH or PEM form.
@@ -116,13 +139,13 @@ func (*server) Close() error { return nil }
 
 // Test connects, checks the host key and signs in. With no host key set,
 // it fails showing the server's, for someone to check.
-func (s *server) Test(ctx context.Context) (contracts.Message, error) {
-	client, err := s.dial(ctx)
+func (c *conn) Test(ctx context.Context) (contracts.Message, error) {
+	client, err := c.dial(ctx)
 	if err != nil {
 		return contracts.Message{}, err
 	}
 	_ = client.Close()
-	return contracts.Message{Key: i18n.SshTestOk, Params: map[string]any{"user": s.user, "address": s.addr}}, nil
+	return contracts.Message{Key: i18n.SshTestOk, Params: map[string]any{"user": c.user, "address": c.addr}}, nil
 }
 
 // Deploy writes the files to temporary names, renames them over the old
@@ -210,42 +233,42 @@ func (s *server) Deploy(ctx context.Context, req contracts.DeployRequest) (contr
 }
 
 // dial connects and signs in, checking the server's host key.
-func (s *server) dial(ctx context.Context) (*gossh.Client, error) {
+func (c *conn) dial(ctx context.Context) (*gossh.Client, error) {
 	var seen string // the fingerprint the server showed
 	config := &gossh.ClientConfig{
-		User: s.user, Auth: s.auth, Timeout: 15 * time.Second,
+		User: c.user, Auth: c.auth, Timeout: 15 * time.Second,
 		HostKeyCallback: func(_ string, _ net.Addr, key gossh.PublicKey) error {
 			seen = gossh.FingerprintSHA256(key)
-			if !s.knows(key) {
+			if !c.knows(key) {
 				return errHostKey
 			}
 			return nil
 		},
 	}
-	conn, err := (&net.Dialer{Timeout: 15 * time.Second}).DialContext(ctx, "tcp", s.addr)
+	conn, err := (&net.Dialer{Timeout: 15 * time.Second}).DialContext(ctx, "tcp", c.addr)
 	if err != nil {
-		return nil, &contracts.Problem{Key: i18n.SshErrorConnect, Params: map[string]any{"address": s.addr}, Err: err}
+		return nil, &contracts.Problem{Key: i18n.SshErrorConnect, Params: map[string]any{"address": c.addr}, Err: err}
 	}
 	deadline, ok := ctx.Deadline()
 	if !ok || time.Until(deadline) > time.Minute {
 		deadline = time.Now().Add(time.Minute)
 	}
 	_ = conn.SetDeadline(deadline) // for the handshake; cleared once in
-	c, chans, reqs, err := gossh.NewClientConn(conn, s.addr, config)
+	cc, chans, reqs, err := gossh.NewClientConn(conn, c.addr, config)
 	if err != nil {
 		_ = conn.Close()
 		switch {
-		case errors.Is(err, errHostKey) && s.hostKey == "":
+		case errors.Is(err, errHostKey) && c.hostKey == "":
 			return nil, retry.Permanent(&contracts.Problem{Key: i18n.SshErrorHostKeyUnknown, Params: map[string]any{"fingerprint": seen}})
 		case errors.Is(err, errHostKey):
 			return nil, retry.Permanent(&contracts.Problem{Key: i18n.SshErrorHostKey, Params: map[string]any{"fingerprint": seen}})
 		case strings.Contains(err.Error(), "unable to authenticate"):
-			return nil, retry.Permanent(&contracts.Problem{Key: i18n.SshErrorAuth, Params: map[string]any{"user": s.user, "address": s.addr}, Err: err})
+			return nil, retry.Permanent(&contracts.Problem{Key: i18n.SshErrorAuth, Params: map[string]any{"user": c.user, "address": c.addr}, Err: err})
 		}
-		return nil, &contracts.Problem{Key: i18n.SshErrorConnect, Params: map[string]any{"address": s.addr}, Err: err}
+		return nil, &contracts.Problem{Key: i18n.SshErrorConnect, Params: map[string]any{"address": c.addr}, Err: err}
 	}
 	_ = conn.SetDeadline(time.Time{})
-	return gossh.NewClient(c, chans, reqs), nil
+	return gossh.NewClient(cc, chans, reqs), nil
 }
 
 var errHostKey = errors.New("ssh: the host key is not the one set")
@@ -253,8 +276,8 @@ var errHostKey = errors.New("ssh: the host key is not the one set")
 // knows reports whether key is the host key set: its SHA-256
 // fingerprint, as ssh-keygen -l shows it, or the key itself, as in
 // known_hosts or a .pub file.
-func (s *server) knows(key gossh.PublicKey) bool {
-	set := s.hostKey
+func (c *conn) knows(key gossh.PublicKey) bool {
+	set := c.hostKey
 	if set == "" {
 		return false
 	}
@@ -274,7 +297,7 @@ func (s *server) knows(key gossh.PublicKey) bool {
 
 // writeFailed explains a failure to write the files: a refusal of the
 // server, such as a missing permission, ends the deployment.
-func (s *server) writeFailed(ctx context.Context, dir string, out []byte, err error) error {
+func (c *conn) writeFailed(ctx context.Context, dir string, out []byte, err error) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -282,7 +305,7 @@ func (s *server) writeFailed(ctx context.Context, dir string, out []byte, err er
 	if errors.As(err, &exit) {
 		return retry.Permanent(&contracts.Problem{Key: i18n.SshErrorWrite, Params: map[string]any{"directory": dir, "output": strings.TrimSpace(string(tail(out)))}, Err: err})
 	}
-	return &contracts.Problem{Key: i18n.SshErrorConnect, Params: map[string]any{"address": s.addr}, Err: err}
+	return &contracts.Problem{Key: i18n.SshErrorConnect, Params: map[string]any{"address": c.addr}, Err: err}
 }
 
 // run runs command in a session of its own, with stdin as its input, and

@@ -11,6 +11,7 @@
 package providers
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -115,12 +116,38 @@ type Type struct {
 	Tags   []string `json:"tags,omitempty"`
 	Fields []Field  `json:"fields"`
 	// NeedsSolver is set on a source that proves control of the domains
-	// through a solver, as ACME does.
-	NeedsSolver bool `json:"needsSolver,omitempty"`
+	// through a solver, as ACME does; Challenges are the ways it can have
+	// them proven, ChallengeDNS when left out.
+	NeedsSolver bool     `json:"needsSolver,omitempty"`
+	Challenges  []string `json:"challenges,omitempty" enum:"dns,http"`
+	// Challenge is how the providers of a solver type prove control of a
+	// domain, ChallengeDNS when left out.
+	Challenge string `json:"challenge,omitempty" enum:"dns,http"`
 	// Testable types make providers that can check their settings
 	// (contracts.Tester), through POST /api/v1/providers/{id}/test.
 	Testable     bool `json:"testable,omitempty"`
 	Experimental bool `json:"experimental,omitempty"`
+}
+
+// Challenges: how a solver proves control of a domain.
+const (
+	ChallengeDNS  = "dns"  // records in the domain's DNS, by a contracts.Solver
+	ChallengeHTTP = "http" // files on the domain's web server, by a contracts.FileSolver
+)
+
+var challenges = []string{ChallengeDNS, ChallengeHTTP}
+
+// Solves returns how the providers of solver type t prove control of a
+// domain.
+func (t Type) Solves() string { return cmp.Or(t.Challenge, ChallengeDNS) }
+
+// Accepts reports whether source type t can have control of its domains
+// proven by a solver whose challenge is c.
+func (t Type) Accepts(c string) bool {
+	if len(t.Challenges) == 0 {
+		return c == ChallengeDNS
+	}
+	return slices.Contains(t.Challenges, c)
 }
 
 // Instance is a configured provider with its secrets opened, as a Factory
@@ -239,6 +266,10 @@ func (s *Scope) Add(t Type, f Factory) error {
 		return fmt.Errorf("provider type %s needs a name or a brand", t.ID)
 	case f == nil:
 		return fmt.Errorf("provider type %s has no factory", t.ID)
+	case t.Challenge != "" && (t.Kind != Solver || !slices.Contains(challenges, t.Challenge)):
+		return fmt.Errorf("provider type %s: challenge %q is for solvers, one of %v", t.ID, t.Challenge, challenges)
+	case len(t.Challenges) > 0 && (t.Kind != Source || !t.NeedsSolver || slices.ContainsFunc(t.Challenges, func(c string) bool { return !slices.Contains(challenges, c) })):
+		return fmt.Errorf("provider type %s: challenges %v are for sources that need a solver, out of %v", t.ID, t.Challenges, challenges)
 	}
 	seen, plain := map[string]bool{}, map[string]bool{}
 	for _, field := range t.Fields {
@@ -258,6 +289,7 @@ func (s *Scope) Add(t Type, f Factory) error {
 	t.Module = s.module
 	t.Fields = append([]Field{}, t.Fields...) // never nil: the API sends a list
 	t.Tags = slices.Clone(t.Tags)
+	t.Challenges = slices.Clone(t.Challenges)
 
 	r := s.reg
 	r.mu.Lock()

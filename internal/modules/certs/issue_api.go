@@ -221,14 +221,25 @@ func (s *service) addIssued(ctx context.Context, in *IssueRequest) (int64, error
 	for _, i := range bad {
 		invalid = invalid.WithField(fmt.Sprintf("body.domains[%d]", i), i18n.CertsErrorBadDomain)
 	}
+	var source *providers.Type
 	if code := s.checkProvider(ctx, in.SourceProvider, providers.Source); code != "" {
 		invalid = invalid.WithField("body.sourceProvider", code)
-	} else if typ, err := s.providers.Type(ctx, in.SourceProvider); err == nil && typ.NeedsSolver && in.SolverProvider == 0 {
-		invalid = invalid.WithField("body.solverProvider", i18n.KernelErrorFieldRequired)
+	} else if typ, err := s.providers.Type(ctx, in.SourceProvider); err == nil {
+		source = &typ
+		if typ.NeedsSolver && in.SolverProvider == 0 {
+			invalid = invalid.WithField("body.solverProvider", i18n.KernelErrorFieldRequired)
+		}
 	}
 	if in.SolverProvider != 0 {
 		if code := s.checkProvider(ctx, in.SolverProvider, providers.Solver); code != "" {
 			invalid = invalid.WithField("body.solverProvider", code)
+		} else if typ, err := s.providers.Type(ctx, in.SolverProvider); err == nil {
+			switch {
+			case source != nil && source.NeedsSolver && !source.Accepts(typ.Solves()):
+				invalid = invalid.WithField("body.solverProvider", i18n.CertsErrorSolverChallenge)
+			case typ.Solves() == providers.ChallengeHTTP && slices.ContainsFunc(domains, isWildcard):
+				invalid = invalid.WithField("body.solverProvider", i18n.CertsErrorWildcardHttp)
+			}
 		}
 	}
 	targets, badTargets := s.checkTargets(ctx, in.Targets)

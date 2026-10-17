@@ -40,13 +40,16 @@ const types = useProviderTypes(() => props.kind)
 const picked = ref<string>()
 const type = useProviderType(picked)
 
-// The groups lego's DNS providers come in, as tags.
-const tags = [
+// The groups types come in, as tags: lego's DNS providers by region and
+// use, solvers over HTTP apart. Only the groups of this kind show.
+const allTags = [
   { id: '', label: 'kernel.providers.tag.all' },
   { id: 'china', label: 'kernel.providers.tag.china' },
   { id: 'popular', label: 'kernel.providers.tag.popular' },
   { id: 'self_hosted', label: 'kernel.providers.tag.self_hosted' },
+  { id: 'http', label: 'kernel.providers.tag.http' },
 ] as const
+const tags = computed(() => allTags.filter((g) => !g.id || types.data.value?.some((s) => s.tags?.includes(g.id))))
 const tag = ref('')
 const query = ref('')
 const label = (s: ProviderTypeSummary) => {

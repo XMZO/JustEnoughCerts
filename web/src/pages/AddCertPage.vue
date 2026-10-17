@@ -19,8 +19,9 @@ import { typeName } from '../providers/fields'
 
 // Adding a certificate: one page, no wizard (docs/design/boards/AddCert).
 // The source is an upload or a configured source, such as an ACME account;
-// one that proves control of the domains asks for the DNS provider to do
-// it with. The plan on the side says what JEC will do.
+// one that proves control of the domains asks for the solver to do it
+// with, a DNS provider or a website directory, of a kind the source takes.
+// The plan on the side says what JEC will do.
 const { t } = useT()
 const router = useRouter()
 
@@ -40,7 +41,13 @@ const source = computed<'upload' | number | undefined>(() => {
   return sources.data.value?.[0]?.id ?? 'upload'
 })
 const provider = computed(() => (typeof source.value === 'number' ? sources.data.value?.find((p) => p.id === source.value) : undefined))
-const needsSolver = computed(() => !!sourceTypes.data.value?.find((s) => s.id === provider.value?.type)?.needsSolver)
+const sourceType = computed(() => sourceTypes.data.value?.find((s) => s.id === provider.value?.type))
+const needsSolver = computed(() => !!sourceType.value?.needsSolver)
+// How the solvers prove control of the domains: through DNS or files on the website.
+type Challenge = 'dns' | 'http'
+const accepted = computed<Challenge[]>(() => sourceType.value?.challenges ?? ['dns'])
+const challengeOf = (p: Provider): Challenge => solverTypes.data.value?.find((s) => s.id === p.type)?.challenge ?? 'dns'
+const usable = computed(() => (solvers.data.value ?? []).filter((p) => accepted.value.includes(challengeOf(p))))
 
 const typeLabel = (p: Provider, types: typeof sourceTypes) => {
   const n = typeName(types.data.value?.find((s) => s.id === p.type))
@@ -55,8 +62,19 @@ const pem = ref({ certificate: '', privateKey: '' })
 const issue = useIssueCertificate()
 const domains = ref<string[]>([])
 const pickedSolver = ref<number>()
-const solver = computed(() => pickedSolver.value ?? solvers.data.value?.[0]?.id)
-const solverName = computed(() => solvers.data.value?.find((s) => s.id === solver.value)?.name ?? '')
+const solver = computed(() => usable.value.find((p) => p.id === pickedSolver.value)?.id ?? usable.value[0]?.id)
+const solverProvider = computed(() => usable.value.find((p) => p.id === solver.value))
+// The words of the solver field: for the kind the source takes, or the one picked.
+const only = computed<Challenge | undefined>(() => (accepted.value.length === 1 ? accepted.value[0] : undefined))
+const solverLabel = computed<MessageKey>(() =>
+  only.value === 'dns' ? 'certs.add.dns' : only.value === 'http' ? 'certs.add.http' : 'certs.add.solver',
+)
+const solverHint = computed<MessageKey>(() =>
+  solverProvider.value && challengeOf(solverProvider.value) === 'http' ? 'certs.add.http_help' : 'certs.add.dns_help',
+)
+const noSolver = computed<MessageKey>(() =>
+  only.value === 'dns' ? 'certs.add.no_dns' : only.value === 'http' ? 'certs.add.no_http' : 'certs.add.no_solver',
+)
 const keyTypes: KeyType[] = ['rsa-2048', 'ecdsa-p256', 'ecdsa-p384', 'rsa-3072', 'rsa-4096']
 const keyType = ref<KeyType>('rsa-2048')
 const keyLabel = (k: string) => {
@@ -86,7 +104,10 @@ const plan = computed(() => {
     return [t('certs.plan.check'), t('certs.plan.store'), ...deploySteps.value, t('certs.plan.remind', { days: renewDays.value })]
   }
   const steps = [t('certs.plan.key', { key: keyLabel(keyType.value) }), t('certs.plan.order', { source: provider.value?.name ?? '' })]
-  if (needsSolver.value) steps.push(t('certs.plan.dns', { dns: solverName.value }))
+  if (needsSolver.value && solverProvider.value) {
+    const name = solverProvider.value.name
+    steps.push(challengeOf(solverProvider.value) === 'http' ? t('certs.plan.http', { solver: name }) : t('certs.plan.dns', { dns: name }))
+  }
   steps.push(t('certs.plan.download'))
   steps.push(...deploySteps.value, t('certs.plan.renew', { days: renewDays.value }))
   return steps
@@ -207,23 +228,23 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
 
         <section v-if="needsSolver" aria-labelledby="validation" class="flex flex-col gap-3 rounded-lg border border-line bg-surface-raised p-4">
           <h2 id="validation" class="m-0 text-section-title font-semibold">{{ t('certs.add.validation') }}</h2>
-          <template v-if="solvers.data.value?.length">
-            <JecField id="solver" label="certs.add.dns" hint="certs.add.dns_help" :error="fieldError('solverProvider')">
+          <template v-if="usable.length">
+            <JecField id="solver" :label="solverLabel" :hint="solverHint" :error="fieldError('solverProvider')">
               <select
                 id="solver"
                 :value="solver"
                 class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11 sm:max-w-96"
                 @change="pickedSolver = Number(($event.target as HTMLSelectElement).value)"
               >
-                <option v-for="s in solvers.data.value" :key="s.id" :value="s.id" translate="no">
+                <option v-for="s in usable" :key="s.id" :value="s.id" translate="no">
                   {{ s.name }} · {{ typeLabel(s, solverTypes).text }}
                 </option>
               </select>
             </JecField>
-            <RouterLink to="/dns" class="self-start text-small">{{ t('certs.add.manage_dns') }}</RouterLink>
+            <RouterLink to="/dns" class="self-start text-small">{{ t('certs.add.manage_solvers') }}</RouterLink>
           </template>
           <div v-else class="flex flex-col items-start gap-2">
-            <p :class="['m-0', fieldError('solverProvider') ? 'text-danger-ink' : 'text-ink-muted']">{{ t('certs.add.no_dns') }}</p>
+            <p :class="['m-0', fieldError('solverProvider') ? 'text-danger-ink' : 'text-ink-muted']">{{ t(noSolver) }}</p>
             <JecButton to="/dns" size="sm"><Plus class="size-4" aria-hidden="true" />{{ t('kernel.providers.solver.add') }}</JecButton>
           </div>
         </section>

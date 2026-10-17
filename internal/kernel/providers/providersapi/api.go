@@ -28,6 +28,8 @@ type TypeSummary struct {
 	URL          string         `json:"url,omitempty"`
 	Tags         []string       `json:"tags,omitempty"`
 	NeedsSolver  bool           `json:"needsSolver,omitempty" doc:"For a source: issuing needs a solver"`
+	Challenges   []string       `json:"challenges,omitempty" enum:"dns,http" doc:"For a source that needs a solver: the challenges of the solvers it can use"`
+	Challenge    string         `json:"challenge,omitempty" enum:"dns,http" doc:"For a solver: how it proves control of a domain, through DNS records or files on the web server"`
 	Testable     bool           `json:"testable,omitempty" doc:"Its instances can be tested"`
 	Experimental bool           `json:"experimental,omitempty"`
 }
@@ -117,10 +119,22 @@ func Register(a huma.API, r *providers.Registry) {
 		out := &typesOutput{}
 		out.Body.Types = []TypeSummary{}
 		for _, t := range r.Types(providers.Kind(in.Kind)) {
-			out.Body.Types = append(out.Body.Types, TypeSummary{
+			sum := TypeSummary{
 				ID: t.ID, Kind: t.Kind, Module: t.Module, Name: t.Name, Description: t.Description,
 				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, Testable: t.Testable, Experimental: t.Experimental,
-			})
+			}
+			switch {
+			case t.Kind == providers.Solver:
+				sum.Challenge = t.Solves()
+			case t.NeedsSolver:
+				sum.Challenges = []string{}
+				for _, c := range []string{providers.ChallengeDNS, providers.ChallengeHTTP} {
+					if t.Accepts(c) {
+						sum.Challenges = append(sum.Challenges, c)
+					}
+				}
+			}
+			out.Body.Types = append(out.Body.Types, sum)
 		}
 		return out, nil
 	})

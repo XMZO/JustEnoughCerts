@@ -30,6 +30,9 @@ func normalizeDomain(name string) (string, bool) {
 	return ascii, true
 }
 
+// isWildcard reports whether a normalized domain is a wildcard.
+func isWildcard(domain string) bool { return strings.HasPrefix(domain, "*.") }
+
 // normalizeDomains normalizes names and drops repeats, keeping the order.
 // bad lists the indexes of the malformed names.
 func normalizeDomains(names []string) (out []string, bad []int) {

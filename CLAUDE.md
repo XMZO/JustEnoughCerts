@@ -58,7 +58,8 @@
 - M1 还完成了：签发记录页 `/history`（`GET /api/v1/certs/runs`，签发、续期、部署合在一起，按天分组、筛选、导出 CSV）和总览的“最近动态”；手机底部标签栏是总览、证书、签发记录、更多。
 - M1 还完成了：测试连接（`POST /api/v1/providers/{id}/test`，类型标 `testable`，provider 实现 `contracts.Tester`）：阿里云 ESA、SSH、本地目录、ACME 账号。
 - M2 进行中：厂商来源的通用框架已完成（`PLAN.md` 4.3 的“等待来源”：来源返回 `contracts.Wait` 时签发进入 `waiting`，私钥和来源的状态加密存在签发记录里，跨多次检查；彻底失败但来源还有订单时，下一次签发接着做）。
-- 下一步：用真实的阿里云 ESA 账号验证部署和删除旧证书（M1 验收要用户提供账号）；续期时间窗口（`PLAN.md` 14 的待定事项）；M2：HTTP 文件验证、`namecheap` 模块（协议见 `PLAN.md` 5.6）。
+- M2 还完成了：HTTP 文件验证（`PLAN.md` 5.3.2 ④）：`contracts.FileSolver`，验证类型的 `challenge`（`dns`/`http`）和来源类型的 `challenges`，文件只能放在 `/.well-known/` 下；`files.webroot`（本地网站目录）、`ssh.webroot`（SSH 网站目录）；ACME 用网站目录时走 HTTP-01。
+- 下一步：用真实的阿里云 ESA 账号验证部署和删除旧证书（M1 验收要用户提供账号）；续期时间窗口（`PLAN.md` 14 的待定事项）；M2：`namecheap` 模块（协议见 `PLAN.md` 5.6），由 JEC 自己应答 HTTP 验证。
 
 ## 工程约定
 

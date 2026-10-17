@@ -342,7 +342,7 @@ func TestHostKeyForms(t *testing.T) {
 		"":                                false,
 		"not a key":                       false,
 	} {
-		if got := (&server{hostKey: set}).knows(pub); got != want {
+		if got := (&conn{hostKey: set}).knows(pub); got != want {
 			t.Errorf("knows(%q) = %v", set, got)
 		}
 	}

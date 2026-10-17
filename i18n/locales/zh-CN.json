@@ -36,6 +36,7 @@
       "eab_required": "这家证书颁发机构要求 EAB。请在账号里填写 EAB Key ID 和 HMAC Key。",
       "present": "没能为 {domain} 添加验证记录。请检查 DNS 服务商的凭据和权限。",
       "propagation": "等了很久，仍然查不到 {domains} 的验证记录。请确认 DNS 服务商管理的正是这些域名。",
+      "put_file": "没能为 {domain} 放验证文件。请检查验证方式的设置。",
       "rate_limited": "请求太频繁，证书颁发机构暂时拒绝了。JEC 会按它要求的时间再试。",
       "register": "证书颁发机构没有接受账号注册。请检查账号设置，比如 EAB 和邮箱。",
       "rejected": "证书颁发机构不为这些域名签发证书。",
@@ -62,7 +63,10 @@
       "not_visible": "还没查到 {domain} 的验证记录，稍后再查",
       "order": "正在申请 {domains} 的证书",
       "present": "正在为 {domain} 添加验证记录",
+      "put_file": "正在为 {domain} 放验证文件",
       "register": "正在向 {directory} 注册账号",
+      "remove_file": "正在删除 {domain} 的验证文件",
+      "remove_file_failed": "没能删除 {domain} 的验证文件，可以到网站上手动删除",
       "wait": "等待验证记录在 DNS 里生效，最多 {seconds, plural, other {# 秒}}"
     },
     "module": {
@@ -118,22 +122,27 @@
       "dns_help": "JEC 在这里添加 TXT 验证记录，验证后删除。它必须管理上面的域名。",
       "domains": "域名",
       "domains_help": "每输入一个按回车。第一个是主域名，通配符写成 *.example.com。",
+      "http": "网站目录",
+      "http_help": "JEC 把验证文件放到这里（/.well-known/ 下），验证后删除。证书颁发机构要能通过 HTTP 从这些域名取到它们。",
       "intro": "选好证书来源，再填写需要的内容。",
       "key": "私钥",
       "key_help": "加密保存在 JEC 的数据目录里。如果上面已经包含私钥，这里留空。",
       "key_type": "密钥类型",
       "key_type_help": "每次续期都会生成新私钥。老旧客户端多就选 RSA。",
-      "manage_dns": "管理 DNS 服务商",
+      "manage_solvers": "管理验证方式",
       "manage_targets": "管理部署目标",
       "new_source": "添加证书来源",
       "new_source_desc": "ACME 账号，例如 Let's Encrypt。",
       "no_dns": "还没有 DNS 服务商。先添加管理这些域名的那一家。",
+      "no_http": "还没有网站目录。先添加这些域名所用的网站目录。",
+      "no_solver": "还没有验证方式。先添加 DNS 服务商或网站目录。",
       "no_targets": "还没有部署目标。证书只保存在 JEC 里，也可以以后再选。",
       "plan": "接下来的步骤",
       "reminder": "到期提醒",
       "renew_days": "提前续期",
       "renew_days_help": "证书只剩这么多天时自动续期，可以填 1 到 365。",
       "renewal": "续期",
+      "solver": "验证方式",
       "source": "证书来源",
       "targets": "部署到",
       "validation": "域名验证"
@@ -232,7 +241,9 @@
       "provider_missing": "证书用到的服务已被删除。",
       "provider_unavailable": "证书用到的服务现在不能用，它所属的模块可能已经停用。模块重新启用后会继续重试。",
       "several_keys": "粘贴了不止一个私钥。只保留这张证书的私钥。",
+      "solver_challenge": "这个证书来源不能用这种方式验证域名。",
       "unsupported_key": "不支持这种私钥。请使用 RSA、ECDSA 或 Ed25519 私钥。",
+      "wildcard_http": "通配符证书只能通过 DNS 验证。",
       "wrong_provider": "这项服务不能用在这里，请换一个。"
     },
     "field": {
@@ -354,6 +365,7 @@
       "dns": "在 {dns} 添加验证记录，验证后删除",
       "download": "证书颁发机构验证域名后，下载证书",
       "expired": "这张证书已经过期，请上传新证书替换它。",
+      "http": "把验证文件放到 {solver}，验证后删除",
       "key": "生成新私钥：{key}",
       "order": "向 {source} 申请证书",
       "remind": "到期前 {days, plural, other {# 天}}提醒你上传新证书",
@@ -562,13 +574,17 @@
       "name": "本地目录"
     },
     "error": {
+      "file_path": "来源要放的文件不在 /.well-known/ 下，JEC 不会写：{path}",
       "relative": "目录必须是绝对路径：{directory}",
       "write": "没能写入 {directory}。请检查目录是否存在、JEC 有没有写入权限。"
     },
     "field": {
       "directory": "目录",
       "directory_help": "JEC 能写入的绝对路径。在容器里运行时，填挂载进来的目录，比如 /data/certs。",
-      "layout": "文件放在哪里"
+      "layout": "文件放在哪里",
+      "webroot": "网站目录",
+      "webroot_help": "Web 服务器给这些域名用的网站根目录（root 设置的那个），绝对路径，比如 /var/www/html。在容器里运行时，填挂载进来的目录。",
+      "webroot_layout": "哪个目录对应哪个域名"
     },
     "layout": {
       "by_domain": "每张证书一个子目录，以主域名命名",
@@ -582,7 +598,14 @@
       "name": "本地文件"
     },
     "test": {
-      "ok": "{directory} 可以写入。"
+      "ok": "{directory} 可以写入。",
+      "webroot_ok": "{directory} 可以放文件。"
+    },
+    "webroot": {
+      "description": "通过 HTTP 验证域名：把验证文件放进 JEC 所在机器上 Web 服务器的网站目录（/.well-known/ 下），验证后删除。",
+      "name": "网站目录",
+      "per_domain": "每个域名一个子目录，以域名命名",
+      "shared": "所有域名都用这个目录"
     }
   },
   "kernel": {
@@ -678,9 +701,9 @@
       "secret_saved": "已保存，留空不修改",
       "secrets_saved": "已保存 {count, plural, other {# 项}}保密设置",
       "solver": {
-        "add": "添加 DNS 服务商",
-        "empty": "还没有 DNS 服务商。签发证书前，先添加管理你的域名的那一家。",
-        "intro": "JEC 用这些 DNS 服务商的 API 自动添加和删除验证记录。",
+        "add": "添加验证方式",
+        "empty": "还没有验证方式。签发证书前，先添加管理你的域名的 DNS 服务商，或者网站的目录。",
+        "intro": "JEC 通过 DNS 服务商的 API 添加验证记录，或者把验证文件放进网站目录，验证后删除。",
         "title": "域名验证"
       },
       "source": {
@@ -692,6 +715,7 @@
       "tag": {
         "all": "全部",
         "china": "国内",
+        "http": "网站文件",
         "popular": "常用",
         "self_hosted": "自建"
       },
@@ -794,6 +818,7 @@
       "auth": "{address} 拒绝了 {user} 的登录，请检查用户名、私钥或密码。",
       "command": "命令执行失败，退出码 {status}，输出见日志。",
       "connect": "连不上 {address}。",
+      "file_path": "来源要放的文件不在 /.well-known/ 下，JEC 不会写：{path}",
       "host_key": "服务器的主机公钥和设置的不一样（服务器出示的是 {fingerprint}）。服务器重装过就更新设置；否则可能有人冒充它，先别部署。",
       "host_key_unknown": "还没有核对服务器的主机公钥。服务器出示的指纹是 {fingerprint}，确认它就是你的服务器后，把它填进“主机公钥”。",
       "key": "私钥格式不对，要 OpenSSH 或 PEM 格式。",
@@ -818,7 +843,10 @@
       "port": "端口",
       "private_key": "私钥",
       "private_key_help": "OpenSSH 或 PEM 格式。建议给 JEC 单独生成一对密钥（ssh-keygen -t ed25519），把公钥加到服务器上这个用户的 ~/.ssh/authorized_keys。保存后不再显示。",
-      "user": "用户名"
+      "user": "用户名",
+      "webroot": "网站目录",
+      "webroot_help": "Web 服务器给这些域名用的网站根目录（root 设置的那个），绝对路径，比如 /var/www/html。登录的用户要能写入。",
+      "webroot_layout": "哪个目录对应哪个域名"
     },
     "layout": {
       "by_domain": "每张证书一个子目录，以主域名命名",
@@ -839,7 +867,14 @@
       "name": "SSH 服务器"
     },
     "test": {
-      "ok": "以 {user} 登录 {address} 成功，主机公钥核对无误。"
+      "ok": "以 {user} 登录 {address} 成功，主机公钥核对无误。",
+      "webroot_ok": "以 {user} 登录 {address} 成功，{directory} 可以写入。"
+    },
+    "webroot": {
+      "description": "通过 HTTP 验证域名：经 SSH 把验证文件放进服务器上的网站目录（/.well-known/ 下），验证后删除。服务器要有 POSIX shell。",
+      "name": "SSH 网站目录",
+      "per_domain": "每个域名一个子目录，以域名命名",
+      "shared": "所有域名都用这个目录"
     }
   },
   "telegram": {

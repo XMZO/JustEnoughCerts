@@ -1216,6 +1216,23 @@
           "brand": {
             "type": "string"
           },
+          "challenge": {
+            "enum": [
+              "dns",
+              "http"
+            ],
+            "type": "string"
+          },
+          "challenges": {
+            "items": {
+              "enum": [
+                "dns",
+                "http"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
           "description": {
             "type": "string"
           },
@@ -1279,6 +1296,25 @@
           "brand": {
             "description": "A third party's name for the type, shown as it is",
             "type": "string"
+          },
+          "challenge": {
+            "description": "For a solver: how it proves control of a domain, through DNS records or files on the web server",
+            "enum": [
+              "dns",
+              "http"
+            ],
+            "type": "string"
+          },
+          "challenges": {
+            "description": "For a source that needs a solver: the challenges of the solvers it can use",
+            "items": {
+              "enum": [
+                "dns",
+                "http"
+              ],
+              "type": "string"
+            },
+            "type": "array"
           },
           "description": {
             "type": "string"

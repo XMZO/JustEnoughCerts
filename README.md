@@ -24,7 +24,8 @@ Working on the main branch:
 - Certificates from any ACME CA, with External Account Binding, or
   uploaded by hand.
 - Domain validation through DNS records at any of the 221 providers that
-  [lego](https://github.com/go-acme/lego) supports.
+  [lego](https://github.com/go-acme/lego) supports, or through files in a
+  website's directory, local or over SSH.
 - Deployment of each new certificate to Alibaba Cloud ESA (removing the one
   it replaces), to local directories, to servers over SSH (with a command
   afterwards, such as reloading nginx) and to webhooks.
@@ -38,8 +39,8 @@ Working on the main branch:
 - One small container image or one static binary, with SQLite.
 
 Planned: Namecheap's paid certificates through its SSL Manager, with JEC
-acting as its client, HTTP and manual validation, hooks, and more CDNs,
-panels and notification channels.
+acting as its client, manual validation, hooks, and more CDNs, panels and
+notification channels.
 
 ## Quick start
 

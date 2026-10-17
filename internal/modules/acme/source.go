@@ -13,6 +13,7 @@ import (
 	legoacme "github.com/go-acme/lego/v5/acme"
 	"github.com/go-acme/lego/v5/certificate"
 	"github.com/go-acme/lego/v5/challenge/dns01"
+	"github.com/go-acme/lego/v5/challenge/http01"
 	"github.com/go-acme/lego/v5/lego"
 	"github.com/go-acme/lego/v5/registration"
 
@@ -43,14 +44,15 @@ func (m *Module) factory(_ context.Context, in providers.Instance) (any, error) 
 func (*source) Close() error { return nil }
 
 // Issue registers the account if it is new, then orders the certificate
-// for req.Key, with req.Solver answering the DNS-01 challenges. Its errors
-// are Problems where the cause is known, marked for retrying or not.
+// for req.Key, with req.Solver answering DNS-01 challenges or req.Files
+// HTTP-01 ones. Its errors are Problems where the cause is known, marked
+// for retrying or not.
 func (s *source) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509.Certificate, error) {
 	log := req.Log
 	if log == nil {
 		log = func(contracts.LogLine) {}
 	}
-	if req.Solver == nil {
+	if req.Solver == nil && req.Files == nil {
 		return nil, retry.Permanent(fmt.Errorf("ACME needs a solver for %s", strings.Join(req.Domains, ", ")))
 	}
 	client, _, err := s.connect(ctx, log)
@@ -59,7 +61,11 @@ func (s *source) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509
 	}
 
 	p := &dnsProvider{solver: req.Solver, log: log, skipCheck: s.m.skipPropagation, missed: map[string]bool{}}
-	if err := client.Challenge.SetDNS01Provider(p, dns01.WrapPreCheck(p.precheck)); err != nil {
+	if req.Files != nil {
+		if err := client.Challenge.SetHTTP01Provider(&fileProvider{files: req.Files, log: log}); err != nil {
+			return nil, err
+		}
+	} else if err := client.Challenge.SetDNS01Provider(p, dns01.WrapPreCheck(p.precheck)); err != nil {
 		return nil, err
 	}
 	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.AcmeLogOrder, Params: map[string]any{"domains": strings.Join(req.Domains, ", ")}})
@@ -272,6 +278,39 @@ func (p *dnsProvider) precheck(ctx context.Context, domain, fqdn, value string, 
 		p.log(contracts.LogLine{Level: contracts.Warn, Step: contracts.StepValidate, Key: i18n.AcmeLogNotVisible, Params: map[string]any{"domain": domain}, Detail: detail})
 	}
 	return found, err
+}
+
+// fileProvider answers lego's HTTP-01 challenges through a
+// contracts.FileSolver: the CA fetches /.well-known/acme-challenge/<token>
+// from the domain and gets the key authorization.
+type fileProvider struct {
+	files contracts.FileSolver
+	log   func(contracts.LogLine)
+}
+
+func challengeFile(domain, token, keyAuth string) contracts.File {
+	return contracts.File{Domain: domain, Path: http01.ChallengePath(token), Content: []byte(keyAuth)}
+}
+
+func (p *fileProvider) Present(ctx context.Context, domain, token, keyAuth string) error {
+	p.log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepChallenge, Key: i18n.AcmeLogPutFile, Params: map[string]any{"domain": domain}})
+	err := p.files.PutFile(ctx, challengeFile(domain, token, keyAuth))
+	var problem *contracts.Problem
+	if err != nil && !errors.As(err, &problem) {
+		err = &contracts.Problem{Key: i18n.AcmeErrorPutFile, Params: map[string]any{"domain": domain}, Err: err}
+	}
+	return err
+}
+
+// CleanUp removes a file. lego only logs a failure, so it shows in the
+// issuance's log here.
+func (p *fileProvider) CleanUp(ctx context.Context, domain, token, keyAuth string) error {
+	p.log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepCleanup, Key: i18n.AcmeLogRemoveFile, Params: map[string]any{"domain": domain}})
+	err := p.files.RemoveFile(ctx, challengeFile(domain, token, keyAuth))
+	if err != nil {
+		p.log(contracts.LogLine{Level: contracts.Warn, Step: contracts.StepCleanup, Key: i18n.AcmeLogRemoveFileFailed, Params: map[string]any{"domain": domain}, Detail: err.Error()})
+	}
+	return err
 }
 
 // unseen returns the domains whose answers never showed, in order.

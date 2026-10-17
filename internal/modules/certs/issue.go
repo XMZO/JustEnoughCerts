@@ -377,22 +377,27 @@ func (s *service) obtain(ctx context.Context, cl *claimed, log func(contracts.Lo
 		return nil, err
 	}
 	defer closeProvider(source, s)
-	var solver contracts.Solver
+	req := contracts.IssueRequest{Domains: c.Domains, Log: log}
 	if c.SolverProvider != 0 {
-		if solver, err = openProvider[contracts.Solver](ctx, s.providers, c.SolverProvider); err != nil {
+		solver, err := openProvider[io.Closer](ctx, s.providers, c.SolverProvider)
+		if err != nil {
 			return nil, err
 		}
 		defer closeProvider(solver, s)
+		req.Solver, _ = solver.(contracts.Solver)
+		req.Files, _ = solver.(contracts.FileSolver)
+		if req.Solver == nil && req.Files == nil {
+			return nil, retry.Permanent(fmt.Errorf("provider %d is no solver", c.SolverProvider))
+		}
 	}
-	key, state, err := s.kept(ctx, cl, c.KeyType, log)
+	if req.Key, req.State, err = s.kept(ctx, cl, c.KeyType, log); err != nil {
+		return nil, err
+	}
+	chain, err := source.Issue(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	chain, err := source.Issue(ctx, contracts.IssueRequest{Domains: c.Domains, Key: key, Solver: solver, State: state, Log: log})
-	if err != nil {
-		return nil, err
-	}
-	b, err := cryptox.NewBundle(chain, key)
+	b, err := cryptox.NewBundle(chain, req.Key)
 	if err != nil {
 		return nil, fmt.Errorf("the certificate the source returned: %w", err)
 	}

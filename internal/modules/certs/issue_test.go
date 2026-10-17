@@ -38,19 +38,23 @@ func (f *fixture) addFakes() {
 	for _, typ := range []providers.Type{
 		{ID: "fake.ca", Kind: providers.Source, Brand: "Fake CA", NeedsSolver: true},
 		{ID: "fake.free", Kind: providers.Source, Brand: "Fake CA without validation"},
+		{ID: "fake.vendor", Kind: providers.Source, Brand: "Fake vendor", NeedsSolver: true, Challenges: []string{providers.ChallengeHTTP}},
 		{ID: "fake.dns", Kind: providers.Solver, Brand: "Fake DNS"},
+		{ID: "fake.web", Kind: providers.Solver, Brand: "Fake web root", Challenge: providers.ChallengeHTTP},
 		{ID: "fake.hook", Kind: providers.Target, Brand: "Fake target"},
 	} {
 		err := scope.Add(typ, func(context.Context, providers.Instance) (any, error) {
 			f.fake.mu.Lock()
 			defer f.fake.mu.Unlock()
 			f.fake.opened++
-			switch typ.Kind {
-			case providers.Source:
+			switch {
+			case typ.Kind == providers.Source:
 				return &fakeSource{f}, nil
-			case providers.Solver:
+			case typ.Challenge == providers.ChallengeHTTP:
+				return &fakeFiles{f}, nil
+			case typ.Kind == providers.Solver:
 				return &fakeSolver{f}, nil
-			case providers.Target:
+			case typ.Kind == providers.Target:
 				return &fakeTarget{f}, nil
 			}
 			return struct{}{}, nil
@@ -147,6 +151,21 @@ func (s *fakeSolver) CleanUp(_ context.Context, ch contracts.Challenge) error {
 
 func (*fakeSolver) Wait() (time.Duration, time.Duration) { return time.Minute, time.Second }
 func (s *fakeSolver) Close() error                       { return s.f.closed() }
+
+// fakeFiles is a solver that validates over HTTP.
+type fakeFiles struct{ f *fixture }
+
+func (s *fakeFiles) PutFile(_ context.Context, file contracts.File) error {
+	(&fakeSolver{s.f}).record("put " + file.Domain + file.Path)
+	return nil
+}
+
+func (s *fakeFiles) RemoveFile(_ context.Context, file contracts.File) error {
+	(&fakeSolver{s.f}).record("remove " + file.Domain + file.Path)
+	return nil
+}
+
+func (s *fakeFiles) Close() error { return s.f.closed() }
 
 // issueNew adds a certificate issued by the fake CA through the fake DNS.
 func (f *fixture) issueNew(domains ...string) CertificateBody {
@@ -321,6 +340,46 @@ func TestIssueChecks(t *testing.T) {
 	var n int
 	if err := f.db.QueryRowContext(t.Context(), "SELECT count(*) FROM certs_certificates").Scan(&n); err != nil || n != 0 {
 		t.Errorf("%d certificates added, %v", n, err)
+	}
+}
+
+func TestIssueChallenges(t *testing.T) {
+	f := newFixture(t)
+	ca, vendor, dns, web := f.provider("fake.ca"), f.provider("fake.vendor"), f.provider("fake.dns"), f.provider("fake.web")
+	for name, tt := range map[string]struct {
+		domains        []string
+		source, solver int64
+		code           i18n.Key
+	}{
+		"dns for a source of http": {[]string{"example.com"}, vendor, dns, i18n.CertsErrorSolverChallenge},
+		"http for a source of dns": {[]string{"example.com"}, ca, web, i18n.CertsErrorSolverChallenge},
+		"wildcard over http":       {[]string{"example.com", "*.example.com"}, vendor, web, i18n.CertsErrorWildcardHttp},
+	} {
+		e := f.apiError(f.api.Post("/certificates/issue", map[string]any{"domains": tt.domains, "sourceProvider": tt.source, "solverProvider": tt.solver}),
+			http.StatusUnprocessableEntity)
+		if len(e.Fields) != 1 || e.Fields[0].Location != "body.solverProvider" || e.Fields[0].Code != string(tt.code) {
+			t.Errorf("%s: %+v", name, e.Fields)
+		}
+	}
+
+	// The solver over HTTP comes as Files.
+	var got contracts.IssueRequest
+	f.fake.issue = func(ctx context.Context, req contracts.IssueRequest) ([]*x509.Certificate, error) {
+		got = req
+		if err := req.Files.PutFile(ctx, contracts.File{Domain: req.Domains[0], Path: "/.well-known/x"}); err != nil {
+			return nil, err
+		}
+		return f.issueAll(ctx, req)
+	}
+	var c CertificateBody
+	f.call(f.api.Post("/certificates/issue", map[string]any{"domains": []string{"example.com"}, "sourceProvider": vendor, "solverProvider": web}),
+		http.StatusCreated, &c)
+	f.run()
+	if got.Files == nil || got.Solver != nil || f.certificate(c.ID).State != "ok" || !slices.Equal(f.fake.calls, []string{"put example.com/.well-known/x"}) {
+		t.Errorf("request %+v, calls %v", got, f.fake.calls)
+	}
+	if f.fake.opened != 0 {
+		t.Errorf("%d providers left open", f.fake.opened)
 	}
 }
 

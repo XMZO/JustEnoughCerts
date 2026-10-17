@@ -210,6 +210,11 @@ func TestAddChecks(t *testing.T) {
 		"when secret": {ID: "dns.x", Kind: providers.Solver, Brand: "X", Fields: []providers.Field{
 			{Key: "B", Kind: providers.Text, Secret: true}, {Key: "A", Kind: providers.Text, When: &providers.When{Key: "B", Value: "1"}},
 		}},
+		"bad challenge":          {ID: "dns.x", Kind: providers.Solver, Brand: "X", Challenge: "email"},
+		"challenge of a source":  {ID: "dns.x", Kind: providers.Source, Brand: "X", Challenge: providers.ChallengeHTTP},
+		"challenges, no solver":  {ID: "dns.x", Kind: providers.Source, Brand: "X", Challenges: []string{providers.ChallengeHTTP}},
+		"bad challenges":         {ID: "dns.x", Kind: providers.Source, Brand: "X", NeedsSolver: true, Challenges: []string{"email"}},
+		"challenges of a solver": {ID: "dns.x", Kind: providers.Solver, Brand: "X", NeedsSolver: true, Challenges: []string{providers.ChallengeDNS}},
 	} {
 		if err := s.Add(typ, factory); err == nil {
 			t.Errorf("%s: added", name)

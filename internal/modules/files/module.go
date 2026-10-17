@@ -1,7 +1,8 @@
-// Package files is the module of local files as a deploy target: each new
+// Package files is the module of local files: as a deploy target, each new
 // version of a certificate is written to a directory, laid out as certbot
 // does (cert.pem, chain.pem, fullchain.pem and privkey.pem), for a web
-// server on the same machine or a mounted volume to read.
+// server on the same machine or a mounted volume to read; as a solver, the
+// files of validations over HTTP go to the web root of the domains.
 package files
 
 import (
@@ -30,7 +31,10 @@ func (*Module) Manifest() module.Manifest {
 // Migrations returns nil: the module keeps nothing of its own.
 func (*Module) Migrations() fs.FS { return nil }
 
-// Register adds the directory type.
+// Register adds the directory and web root types.
 func (*Module) Register(r *module.Registry) error {
-	return r.Providers.Add(directoryType(), factory)
+	if err := r.Providers.Add(directoryType(), factory); err != nil {
+		return err
+	}
+	return r.Providers.Add(webrootType(), webrootFactory)
 }
