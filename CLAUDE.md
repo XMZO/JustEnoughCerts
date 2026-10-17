@@ -38,7 +38,8 @@
 - **Namecheap API**：`namecheap.ssl.reissue` / `ssl.activate` / `ssl.getInfo`，域名验证用 `DNSDCValidation=CNAME`。开通门槛：账号里有 20 个域名，或余额 $50，或近两年消费满 $50；必须设置 IPv4 白名单。重签后证书 ID 会变。
 - **Namecheap SSL Manager**：Namecheap / Spaceship 自有的闭源工具（后端 externalautossl.service.spaceship.com），不是通用协议。只作为实验模块，默认关闭。
 - **阿里云 ESA API（2024-09-10 版）**：`SetCertificate`（Type=upload）、`ListCertificates`、`DeleteCertificate`。免费版每个站点最多 2 张自定义证书，所以部署新证书后要删旧证书。RAM 子账号最小权限：`esa:ListSites`、`ListCertificates`、`SetCertificate`、`DeleteCertificate`。
-- **通用路线**：以 ACME + EAB（RFC 8555）为核心，大多数 CA 都支持；lego 内置 225 个 DNS 服务商。厂商专有 API（如 Namecheap）是可选模块。
+- **通用路线**：以 ACME + EAB（RFC 8555）为核心，大多数 CA 都支持；lego v5.5.2 内置 223 个 DNS 服务商（去掉 `manual`、`exec` 后 221 个可用）。lego v5 删除了旧的 `dnspod`，DNSPod 用腾讯云 API 密钥（`tencentcloud`）。厂商专有 API（如 Namecheap）是可选模块。
+- **lego 的坑**（`PLAN.md` 5.5）：DNS 服务商只能靠环境变量配置，所以放在子进程里跑；全部服务商会让程序涨到约 69 MiB；lego 会改写传入的 `http.Client`；依赖里已有阿里云 ESA 2024-09-10 版的 Go SDK（`github.com/go-acme/esa-20240910/v3`），ESA 部署目标可以直接用。
 
 ## 进度
 

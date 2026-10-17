@@ -40,7 +40,7 @@ CA/Browser Forum 的 SC-081 提案把证书最长有效期逐年缩短：2026-03
 
 - **所有功能模块化、可插拔**（见 4.2）：内核只保留最基础的部分，其余功能都是独立模块，增加或删除一个功能不影响其他部分。
 - 来源、验证、部署、通知四类都做成**可插拔的 Provider**，新增一种来源或目标不需要改核心代码，也不需要改前端。
-- **尽量覆盖市面上的证书和 DNS 服务商**（见 5.3）：证书来源以通用的 ACME + EAB 为主，支持 ACME 的 CA 都能直接用；DNS 服务商借助 lego 一次覆盖 225 家。
+- **尽量覆盖市面上的证书和 DNS 服务商**（见 5.3）：证书来源以通用的 ACME + EAB 为主，支持 ACME 的 CA 都能直接用；DNS 服务商借助 lego 一次覆盖 221 家（lego v5.5.2 共 223 家，去掉 `manual` 和 `exec`）。
 - **国际化严格独立**（见第 7 节）：每种语言一个文件，代码里不写死任何界面文字；先实现简体中文和英文；测试设 i18n 门禁。
 - **好看、能在各种屏幕上用**的 Web 界面：手机、平板、桌面都能顺畅操作，支持深色模式。
 - **一个 `docker-compose.yml` 就能部署**，也提供原生二进制文件。
@@ -90,7 +90,7 @@ flowchart LR
     Reg --> M3[巡检 / 钩子 / 外部插件 / 审计 …]
   end
   M2 --> NC[ACME CA / 厂商证书 API]
-  M2 --> DNS[225 家 DNS 服务商]
+  M2 --> DNS[221 家 DNS 服务商]
   M2 --> ESA[阿里云 ESA / CDN / 服务器 …]
 ```
 
@@ -98,7 +98,7 @@ flowchart LR
 
 | 部分 | 选择 | 理由 |
 |---|---|---|
-| 后端语言 | **Go** | lego（ACME + 225 家 DNS）、Namecheap 官方 SDK、各家云平台的 SDK 都是 Go；标准库自带 x509；单个静态二进制，交叉编译方便 |
+| 后端语言 | **Go** | lego（ACME + 221 家 DNS）、Namecheap 官方 SDK、各家云平台的 SDK 都是 Go；标准库自带 x509；单个静态二进制，交叉编译方便 |
 | HTTP | `chi` 路由 + `huma` | huma 能从 Go 代码直接生成 OpenAPI 文档，前端类型和 CLI 都可以由此生成 |
 | 数据库 | **SQLite** | 不需要额外服务；数据访问层留接口，以后可以加 PostgreSQL。驱动用纯 Go 的 `ncruces/go-sqlite3`（M0 实测后选定，见 8.3） |
 | 迁移 | `goose` | 启动时自动迁移；每个模块带自己的迁移文件，随二进制嵌入 |
@@ -288,11 +288,11 @@ type Target interface {
 
 DNS 验证分成两种能力，实现方式不同：
 
-**① ACME DNS-01（添加 `_acme-challenge` TXT 记录）**：直接复用 lego，**225 家服务商全部可用**（lego v5.5，2026-10 统计）。界面按地区分组展示，常用的放前面：
+**① ACME DNS-01（添加 `_acme-challenge` TXT 记录）**：直接复用 lego。lego v5.5.2 有 **223 家**服务商（2026-10 核对源码），去掉需要在终端里手动操作的 `manual` 和执行外部程序的 `exec`，**221 家可用**。注意 lego v5 删除了旧的 `dnspod`（DNSPod Token），DNSPod 要用腾讯云 API 密钥（`tencentcloud`，SecretId / SecretKey）。界面按地区分组展示，常用的放前面：
 
 - **国内**：阿里云 DNS、阿里云 ESA、腾讯云 / DNSPod、腾讯云 EdgeOne、华为云、百度智能云、京东云、火山引擎、西部数码、新网、DNS.LA、雨云、UCloud、时代互联
 - **国际**：Cloudflare、AWS Route 53、Google Cloud DNS、Azure DNS、DigitalOcean、Linode、Vultr、Hetzner、OVH、Gandi、GoDaddy、Namecheap、Spaceship、Porkbun、Name.com、NameSilo、Dynadot、deSEC、DuckDNS、Netlify、Vercel、Bunny、NS1 等
-- **自建 / 通用**：PowerDNS、RFC 2136 动态更新（BIND 等）、acme-dns、HTTP 请求、执行外部脚本、手动模式
+- **自建 / 通用**：PowerDNS、RFC 2136 动态更新（BIND 等，lego v5 里叫 `dnsupdate`）、acme-dns、HTTP 请求；执行外部脚本和手动模式由 JEC 自己实现（外部插件协议和手动验证），不用 lego 的那两个
 
 **② 任意记录增删（厂商 API 验证用）**：付费证书走厂商专有 API 时，DNS 验证通常要加 CNAME 或 TXT，例如 Sectigo 系证书的 `_<哈希>.example.com CNAME <哈希>.sectigo.com`，而 lego 的接口只能加 ACME 的 TXT 记录。所以这部分单独做一层“DNS 记录管理”：
 
@@ -326,6 +326,29 @@ DNS 验证分成两种能力，实现方式不同：
 - 免费版每个站点最多只能放 **2 张**自定义证书。部署前先查容量：有空位就“先传后删”；满了就先删最旧的那张不在用的。
 - 同一域名有多张证书能匹配时，ESA 优先返回**最后配置**的那张，所以上传后通常立刻生效，但仍要握手验证一次。
 - 文档里给出所需 RAM 权限的最小模板（`esa:ListSites`、`esa:ListCertificates`、`esa:SetCertificate`、`esa:DeleteCertificate`），DNSPod 同理。
+
+### 5.5 实现：Provider 注册表、lego 和 ACME
+
+依据 2026-10 对 lego v5.5.2 源码的核对。
+
+**Provider 注册表**（内核 `internal/kernel/providers`）：
+
+- **类型**由模块在 `Register` 里登记：ID、类别（来源 / 验证 / 部署目标 / 通知）、名称、说明、配置字段。字段写明键名、标签和帮助的翻译 key、是否必填、是否保密。来自第三方的说明（lego 的英文原文）作为数据原样显示，带 `lang="en"`，不进语言文件。
+- **实例**是用户配置出来的一份：名称（如“主账号”）、普通配置、加密的保密字段，存在内核表里。界面只回显普通配置，保密字段只告诉是否已填。表单由字段自动生成，新增一类 Provider 不用写前端代码。
+- 各类 Provider 的接口（5.1 的 Source、Solver、Target，以及 Notifier）定义在 `internal/kernel/contracts`。模块登记类型时附带构造函数，证书模块通过注册表拿到实例，不 import 任何具体服务商。
+
+**lego 的 DNS 服务商**（模块 `lego`，验证类）：
+
+- lego 没有通用的、不经过环境变量的配置方式：每家都有自己的 `Config` 结构，统一的入口 `NewDNSChallengeProviderByName` 只读环境变量，有几家甚至在 `Present` 时才读。所以**每家服务商都在子进程里运行**：同一个 `jec` 二进制以内部子命令启动，环境变量只放这家服务商需要的键（不继承 JEC 自己的环境，`JEC_SECRET_KEY` 不会传过去，也不允许 `_FILE` 结尾的键去读任意文件），通过 stdin / stdout 交换 JSON 完成 `Present` 和 `CleanUp`。一次签发用同一个子进程，因为有的服务商（如 Cloudflare）在 `Present` 和 `CleanUp` 之间要记住记录 ID。这样不需要全局锁，某家服务商出问题也只影响它自己的子进程。
+- 表单所需的信息（名称、官网、凭据键、附加配置键和说明）在构建时从 lego 模块目录里的 `providers/dns/<code>/<code>.toml` 生成，嵌进程序。TOML 不标明哪些键必填，所以凭据键默认按必填、按保密处理，附加键按可选处理。
+- 传播检查用 lego 的：先跟随 CNAME，再要求递归解析器和权威服务器都查到 TXT（v5 默认两者都要）。递归解析器可以设置；没有 `/etc/resolv.conf` 的环境要显式指定（如 223.5.5.5、119.29.29.29、1.1.1.1）。
+- 体积：带上全部服务商，程序约 69 MiB、压缩后约 23 MiB（2026-10 实测：lego 核心 +2.2 MiB，三家常用 +4.2 MiB，全部 +53.6 MiB）。这和 8.3 的预期一致，加入时按实测提高预算。
+
+**ACME 来源**（模块 `acme`，来源类）：
+
+- ACME 账号是一个 Provider 实例：CA 目录地址（内置 Let's Encrypt 和它的测试环境、ZeroSSL、Google Trust Services 等 lego 已知的 CA，也可以填任意地址）、联系邮箱、EAB（Key ID 和 HMAC，HMAC 只用一次，注册后不再保存）。账号私钥加密保存。
+- 签发用 lego 的 `Obtain`：私钥由证书模块生成并加密保存，每次续期都换新私钥；验证由证书选定的 Solver 实例完成。CA 支持 ARI（RFC 9773）时，按 CA 给的时间续期。
+- lego 会把传给它的 `http.Client` 改成只允许 HTTPS，所以给它单独的 client；本地测试用 Pebble，同样要走 HTTPS。
 
 ## 6. Web 界面
 
@@ -493,7 +516,7 @@ services:
 
 **目标**：镜像大小 ≈ 程序本身大小，而且**不阉割任何功能**，官方发布的镜像始终包含全部模块和服务商。
 
-**参考基准**：lego v5.5.2 带全部 225 家 DNS 服务商，官方 Linux 压缩包 amd64 为 20.2MB、arm64 为 18.3MB。JEC 包含 lego 的全部服务商，所以镜像压缩后预计也在 20MB 出头这个量级。
+**参考基准**：lego v5.5.2 带全部 223 家 DNS 服务商，官方 Linux 压缩包 amd64 为 20.2MB、arm64 为 18.3MB。JEC 包含 lego 的全部服务商，所以镜像压缩后预计也在 20MB 出头这个量级。
 
 **预算**：2026-10 实测 M0（内核、账号、前端，还没有 lego），linux/amd64 程序 15.3 MiB、压缩包 6.8 MiB，arm64 是 14.3 MiB 和 6.2 MiB；最大的是 SQLite 的 wasm（4.3MB，约占 27%）。预算定为程序 20 MiB，压缩包和镜像 8 MiB，写在 `scripts/release-sizes.sh` 里。CI 的发布演练和正式发布都检查，超出就失败。加入 lego 和各家服务商时按实测提高预算，并在那次改动里写明原因。
 
@@ -502,7 +525,7 @@ services:
 - **编译参数**：`CGO_ENABLED=0`、`-trimpath`、`-ldflags "-s -w"`（去掉符号表和调试信息）。这些只影响程序文件大小，不影响运行性能。
 - **依赖控制**：体积大头是各家云平台的 SDK。规则：
   1. 和 lego 共用同一份依赖，不重复引入第二套。
-  2. 官方 SDK 太重时，自己用轻量的签名实现直接调 HTTP API：阿里云 V3 签名、腾讯云 TC3、AWS SigV4 各写一份，供所有 Provider 共用。
+  2. 官方 SDK 太重时，自己用轻量的签名实现直接调 HTTP API：阿里云 V3 签名、腾讯云 TC3、AWS SigV4 各写一份，供所有 Provider 共用。不过带上 lego 的全部服务商后，阿里云、腾讯云、AWS 等 SDK 本来就在程序里，这时直接复用 lego 已经依赖的 SDK（如 ESA 2024-09-10 版），自己写签名反而不省体积。
   3. CI 的发布演练用 `go-size-analyzer` 在摘要里列出 linux/amd64 程序里最大的 15 个包；整个程序和压缩包超过预算就让构建失败，防止体积慢慢涨上去。
 - **SQLite 驱动**：选 `ncruces/go-sqlite3`。2026-10 用 `modernc.org/sqlite` v1.60.1 和 `ncruces/go-sqlite3` v0.35.6（都内置 SQLite 3.53.4）实测，linux/amd64，WAL 模式：
   - 体积：在同一个程序上，modernc 增加 4.6MB（gzip 后 2.0MB），ncruces 增加 5.4MB（gzip 后 2.5MB）。
@@ -651,7 +674,7 @@ JustEnoughCerts/
 | 阶段 | 内容 | 完成标准 |
 |---|---|---|
 | **M0 骨架** | 仓库、CI、发布流水线、`scratch` 镜像、体积检查；内核与模块注册表、模块脚手架；**i18n 模块和全部门禁**（从第一行界面文字开始就不允许硬编码）；空的前端、登录和初始化向导（中英文）；SQLite（含驱动选型实测） | 打一个 `v0.0.1` 标签，能自动产出全部二进制和镜像，`docker compose up` 能打开中英文登录页，i18n 门禁和体积检查在 CI 里生效 |
-| **M1 最小可用** | 证书模块、状态机、调度器；手动上传和导入；ACME（任意 CA + EAB）+ lego 的 225 家 DNS；阿里云 ESA、本地文件、SSH、Webhook 部署；Telegram、邮件、Webhook 通知；总览和证书页 | 用免费证书完整跑通“签发 → 部署到 ESA → 删除旧证书 → 到期自动续” |
+| **M1 最小可用** | 证书模块、状态机、调度器；手动上传和导入；ACME（任意 CA + EAB）+ lego 的 221 家 DNS；阿里云 ESA、本地文件、SSH、Webhook 部署；Telegram、邮件、Webhook 通知；总览和证书页 | 用免费证书完整跑通“签发 → 部署到 ESA → 删除旧证书 → 到期自动续” |
 | **M2 厂商 API 与付费证书** | 厂商专有 API 来源的通用框架，第一个实现是 Namecheap 官方 API（重签 + CNAME 验证）；DNS 记录管理层（DNSPod、阿里云 DNS、Cloudflare 等）和手动模式；导入已有的付费证书；逐家验证商业 CA 的 ACME + EAB（含 Namecheap ACME 上线后） | 第 1 节的验收场景全自动跑通一个周期 |
 | **M3 扩展** | 国内云平台证书来源；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子、YAML 导入导出；线上巡检；运行时启用 / 停用模块的界面 | 不改核心代码，写一个外部插件接入新平台；停用任意模块后其余功能正常 |
 | **M4 打磨** | 两步验证、OIDC、审计日志、PWA、文档站、翻译指南、服务商兼容表 | 发布 `v1.0.0` |
