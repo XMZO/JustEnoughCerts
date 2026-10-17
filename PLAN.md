@@ -326,12 +326,23 @@ DNS 验证分成两种能力，实现方式不同：
 
 **本地文件的实现**（`internal/modules/files`，M1）：部署目标类型 `files.directory`：目录（绝对路径）和放法（每张证书一个以主域名命名的子目录，`*` 写成 `star`；或者直接放在这个目录里）。按 certbot 的文件名写 `cert.pem`、`chain.pem`、`fullchain.pem`、`privkey.pem`（私钥只有所有者可读），每个文件先写到临时文件再改名，读的程序不会读到写了一半的文件；新版本直接覆盖，没有旧版本要删。目录是相对路径、没有写入权限时不自动重试。部署后重载 Web 服务器的命令还没有做，和钩子（5.2）一起做。
 
+**Webhook 部署的实现**（`internal/modules/webhook`，M1）：部署目标类型 `webhook.deploy`：URL（必须是 https，因为请求里有私钥）、签名密钥、额外的请求头（保密保存）、允许内网地址。每个新版本 POST 一个 JSON：`event`（`certificate.deploy`）、`certificate`（证书 ID）、`domains`、`serial`、`fingerprint`（叶子证书的 SHA-256，十六进制）、`not_before`、`not_after`，`cert`、`chain`、`fullchain`、`privkey`（PEM，和 certbot 的文件同名），`previous`（以前部署时接口回的 ref，新的在前）。接口回 2xx 就算成功，可以回 `{"ref": "…", "removed": […]}`：JEC 记下 ref，下次放进 `previous`，`removed` 里的记为已删除。请求头带 `X-JEC-Event`；设了签名密钥时带 `X-JEC-Signature: sha256=<用密钥对请求体算的 HMAC-SHA256>`。不跟随跳转；4xx（408、429 除外）不重试，5xx、408、429 按 `Retry-After` 或退避重试。
+
 #### 5.3.4 通知渠道
 
 | 阶段 | 渠道 |
 |---|---|
 | M1 | Telegram、SMTP 邮件、通用 Webhook |
 | M3 | Server酱、Bark、钉钉、飞书、企业微信、ntfy、Gotify |
+
+**实现**（M1）：
+
+- **分发**（`internal/modules/notify`）：订阅 `certificate.issue_failed`、`deploy_failed`、`expiring`、`issued`、`deployed`；对每个想要这个事件的通知渠道（类型为 notifier 的 Provider 实例），按渠道设置的语言渲染一条消息（`contracts.Note`：标题、正文、JEC 里对应页面的链接，以及事件的原始数据），交给渠道发送。链接要设置了 `JEC_BASE_URL` 才有。每种渠道的设置最后都有同样两组（`contracts.NotifierFields`）：消息语言（字段类型 `locale`，表单默认填当前界面语言）和每种事件一个开关，默认只开签发失败、部署失败、快到期。
+- **发送记录**在 `notify_sends`（事件 × 渠道，保留 30 天）：同一事件再次投递时跳过已经发出的渠道；可能自己恢复的失败（网络、服务端 5xx、限流）让事件总线退避重试，恢复不了的（Token 错、被拒收）直接记为失败。超过 3 天的事件不再发。`GET /api/v1/notify/sends` 返回每个渠道最近一次发送；`POST /api/v1/notify/notifiers/{id}/test` 立即用渠道的语言发一条测试消息，失败时返回渠道自己的错误信息（502）。
+- **Telegram**（`telegram.bot`）：Bot Token（保密）、Chat ID；高级设置里有代理（http、https、socks5，国内网络连 Telegram 要用）和自建的 Bot API 地址。消息用 HTML 格式，标题加粗。Token 错、找不到聊天、没有权限不重试，429 按 `retry_after` 重试。Token 在 URL 路径里，所以错误信息只保留底层原因，不带 URL。
+- **邮件**（`email.smtp`）：服务器、加密方式（SSL/TLS、STARTTLS、不加密）、端口（留空时按加密方式取 465、587、25）、用户名、密码或授权码、发件人、收件人（逗号分隔）。按服务器提供的方式用 PLAIN 或 LOGIN 登录（net/smtp 没有 LOGIN，自己实现），两者都不会在不加密的连接上发送密码（发往本机除外）。UTF-8 纯文本，quoted-printable 编码。登录失败、收件人被拒、证书不受信任、加密方式和端口对不上都不重试。
+- **Webhook**（`webhook.notify`）：把 `contracts.Note` 原样 POST 成 JSON；签名、请求头、内网限制和重试规则同 Webhook 部署。
+- 共用的 HTTP 客户端在 `internal/lib/httpx`：超时、单独设置的代理（不读环境变量里的代理），以及“只连公网地址”（第 10 节）。
 
 ### 5.4 阿里云 ESA 目标的注意点（来自实际调研）
 
@@ -628,6 +639,7 @@ services:
 - **审计日志**：谁在什么时候改了什么、下载了哪个私钥。
 - **安全响应头**：CSP、HSTS（由用户选择是否开启）等。
 - **Webhook 防 SSRF**：默认禁止请求内网地址，可配置白名单。
+  - 实现：`internal/lib/httpx` 在建立连接时检查实际要连的地址，回环、私有、链路本地、组播、运营商级 NAT（100.64.0.0/10）、内嵌 IPv4 的 IPv6 前缀等都算内网，所以跳转和 DNS 重绑定也绕不过去；Webhook 不跟随跳转。白名单做成了每个 Webhook 的“允许内网地址”开关，接收方在本机或内网时打开。
 - **Docker API**：只有用户主动挂载 `docker.sock` 并在界面里开启后才会使用，且只允许对指定容器发信号或重启。
 - **模块权限**：每个模块声明自己需要的权限点，停用的模块不暴露任何 API。
 - **最小权限**：文档里给每个云平台提供最小权限策略模板。

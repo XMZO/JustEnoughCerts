@@ -706,5 +706,44 @@
       "description": "Sends notes to a chat, a group or a channel through a Telegram bot.",
       "name": "Telegram"
     }
+  },
+  "webhook": {
+    "deploy": {
+      "description": "Posts each new version of a certificate, with its private key, as JSON to an HTTPS endpoint of yours, which installs it.",
+      "name": "Webhook deployment"
+    },
+    "error": {
+      "headers": "Not a header: {line}. Write one per line, as Name: value.",
+      "https": "A deployment webhook needs an https:// address, as its requests carry the private key.",
+      "network": "Could not reach {host}.",
+      "private": "{host} is a private address. To reach it, turn on “Allow private addresses” in the advanced settings.",
+      "redirect": "The endpoint redirects (HTTP {status}) to {location}; use that address instead.",
+      "status": "The endpoint answered HTTP {status}.",
+      "url": "Not a valid URL: {url}"
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "By default only public addresses are reached, so that a webhook cannot probe your network. Turn it on for a receiver on this machine or on your network.",
+      "deploy_url_help": "Must be an https:// address, as the requests carry the private key. The endpoint may answer '{\"ref\": \"…\"}', which JEC passes back in previous with the next deployment, so that the old certificate can go.",
+      "headers": "Extra headers",
+      "headers_help": "One per line, such as Authorization: Bearer xxx. Not shown again once saved.",
+      "secret": "Signing secret",
+      "secret_help": "When set, each request carries X-JEC-Signature: sha256= and the HMAC-SHA256 of the body with this secret, so the receiver can tell it comes from JEC.",
+      "url": "URL",
+      "url_help": "JEC sends it POST requests with JSON bodies."
+    },
+    "log": {
+      "accepted": "The endpoint took it",
+      "post": "Posting to {url}",
+      "ref": "The endpoint took it, as {ref}"
+    },
+    "module": {
+      "description": "Posts notes, or new certificates, to an HTTP endpoint of your own.",
+      "name": "Webhooks"
+    },
+    "notify": {
+      "description": "Posts each note as JSON to a URL, for any system that takes HTTP requests.",
+      "name": "Webhook"
+    }
   }
 }

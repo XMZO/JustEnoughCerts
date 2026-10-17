@@ -706,5 +706,44 @@
       "description": "通过 Telegram 机器人把通知发到私聊、群或频道。",
       "name": "Telegram"
     }
+  },
+  "webhook": {
+    "deploy": {
+      "description": "把每个新版本的证书和私钥以 JSON 发到你的 HTTPS 接口，由你的程序完成安装。",
+      "name": "Webhook 部署"
+    },
+    "error": {
+      "headers": "请求头格式不对：{line}。每行写成“名称: 值”。",
+      "https": "部署用的 Webhook 必须是 https:// 地址，因为请求里有私钥。",
+      "network": "连不上 {host}。",
+      "private": "{host} 是内网地址。要发到内网，请在高级设置里打开“允许内网地址”。",
+      "redirect": "接口要求跳转（HTTP {status}）到 {location}，请直接填写跳转后的地址。",
+      "status": "接口返回了 HTTP {status}。",
+      "url": "URL 不对：{url}"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "默认只发到公网地址，防止被用来探测内网。接收方在本机或内网里时打开。",
+      "deploy_url_help": "必须是 https:// 地址，因为请求里有私钥。接口可以回 '{\"ref\": \"…\"}'，下次部署时 JEC 会把它放在 previous 里传回来，方便删除旧证书。",
+      "headers": "额外的请求头",
+      "headers_help": "每行一个，比如 Authorization: Bearer xxx。保存后不再显示。",
+      "secret": "签名密钥",
+      "secret_help": "填写后，每个请求带 X-JEC-Signature 头，值是 sha256= 加上用这个密钥对请求体算的 HMAC-SHA256，接收方据此确认请求来自 JEC。",
+      "url": "URL",
+      "url_help": "JEC 会向它发 POST 请求，内容是 JSON。"
+    },
+    "log": {
+      "accepted": "接口已接收",
+      "post": "发送到 {url}",
+      "ref": "接口已接收，标识 {ref}"
+    },
+    "module": {
+      "description": "用 HTTP POST 把通知或新证书发到你自己的接口。",
+      "name": "Webhook"
+    },
+    "notify": {
+      "description": "把每条通知以 JSON 发到一个 URL，可以接入任何能收 HTTP 请求的系统。",
+      "name": "Webhook"
+    }
   }
 }
