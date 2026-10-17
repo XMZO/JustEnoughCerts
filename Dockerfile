@@ -29,7 +29,7 @@ FROM runtime AS release
 ARG TARGETPLATFORM
 COPY $TARGETPLATFORM/jec /jec
 
-FROM --platform=$BUILDPLATFORM node:24-alpine AS web
+FROM --platform=$BUILDPLATFORM node:25-alpine AS web
 WORKDIR /src/web
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable
