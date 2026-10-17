@@ -1,5 +1,8 @@
 # Build output
 /build/
+# go build ./cmd/jec in the repository root
+/jec
+/jec.exe
 /dist/
 /web/dist/*
 !/web/dist/.gitkeep
