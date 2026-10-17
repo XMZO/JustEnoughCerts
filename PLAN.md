@@ -694,6 +694,7 @@ services:
 - **模块依赖检查**：`internal/modules` 的架构测试禁止模块之间互相 import、禁止内核 import 模块；`scripts/check-modules.sh` 逐个去掉每个模块后编译，并检查脚手架生成的新模块能编译、测试通过。
 - **体积检查**：发布演练输出各平台的程序和压缩包体积、最大的包，前端任务输出首屏 JS 大小，超过预算就失败（预算见 8.3 和 6.4）。和 main 分支对比并评论到 PR 以后再做：fork 来的 PR 没有写权限，要另配 `workflow_run`。
 - 用 `ubuntu-24.04-arm` 原生 ARM 运行器（公开仓库免费）再跑一遍测试，确保 ARM 上行为一致。
+- **编译缓存**：Go 由 `.github/actions/setup-go` 安装，每个任务有自己的编译缓存（键是任务名、Go 版本和 `go.sum`，换了 `go.sum` 从这个任务上一次的缓存接着用）。不用 setup-go 自带的缓存：它每个 `go.sum` 只有一份、所有任务共用，最先跑完的任务（往往编译得最少）存进去，其他任务每次都从头编译 lego 那一大堆依赖。只有 main 上的运行写缓存，PR 和标签只读，免得把 main 的缓存挤出仓库 10 GB 的上限。发布演练和正式发布共用一份。
 
 ### 9.2 `release.yml`：推送 `v*.*.*` 标签时
 
@@ -714,7 +715,7 @@ services:
 
 ### 9.3 其他
 
-- Renovate 或 Dependabot 自动更新依赖。
+- Dependabot 每周更新依赖，Actions 的版本包括 `.github/actions/` 下组合动作里的。
 - 版本号遵循 SemVer；`jec version` 显示版本号、提交哈希和构建时间。
 
 ## 10. 安全

@@ -1,0 +1,58 @@
+name: Set up Go
+description: >-
+  Installs Go, with a build cache of the job's own. setup-go's cache is one
+  per go.sum for every job: the first job to finish saves what it built,
+  usually the least, and the others build everything again each time.
+inputs:
+  go-version:
+    description: The version of Go to install.
+    default: stable
+  cache:
+    description: >-
+      The name of the build cache, the job's ID when empty. Jobs that build
+      the same things can share one, as the release does with its dry run.
+    default: ""
+runs:
+  using: composite
+  steps:
+    - id: go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version: ${{ inputs.go-version }}
+        check-latest: true
+        cache: false
+    # A new go.sum or Go starts from the job's last cache of the same Go:
+    # Go tells the entries still good by their content, and trims those
+    # left unused for days.
+    - id: cache
+      shell: bash
+      env:
+        NAME: ${{ inputs.cache || github.job }}
+        GO: ${{ steps.go.outputs.go-version }}
+        SUM: ${{ hashFiles('go.sum') }}
+      run: |
+        {
+          echo "build=$(go env GOCACHE)"
+          echo "modules=$(go env GOMODCACHE)"
+          echo "prefix=go-$RUNNER_OS-$RUNNER_ARCH-$NAME-$GO-"
+          echo "key=go-$RUNNER_OS-$RUNNER_ARCH-$NAME-$GO-$SUM"
+        } >>"$GITHUB_OUTPUT"
+    # Only runs on main save the cache. Pull requests and tags restore it,
+    # so their caches do not push those of main out of the repository's
+    # 10 GB.
+    - if: github.ref == 'refs/heads/main'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ steps.cache.outputs.build }}
+          ${{ steps.cache.outputs.modules }}
+        key: ${{ steps.cache.outputs.key }}
+        restore-keys: ${{ steps.cache.outputs.prefix }}
+    - if: github.ref != 'refs/heads/main'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ${{ steps.cache.outputs.build }}
+          ${{ steps.cache.outputs.modules }}
+        key: ${{ steps.cache.outputs.key }}
+        restore-keys: ${{ steps.cache.outputs.prefix }}

@@ -28,6 +28,7 @@ jobs:
         with:
           go-version: stable
           check-latest: true
+          cache: false # it builds nothing
       - name: Compare the embedded bundle with the latest one
         env:
           GH_TOKEN: ${{ github.token }}
