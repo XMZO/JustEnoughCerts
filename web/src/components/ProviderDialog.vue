@@ -63,6 +63,8 @@ const choices = computed(() => {
     .filter((s) => !q || label(s).toLowerCase().includes(q) || s.id.toLowerCase().includes(q))
     .sort((a, b) => label(a).localeCompare(label(b)))
 })
+// Types that may break, such as those on an API that is not public.
+const experimentalTag = 'inline-block max-w-full flex-none truncate rounded-sm bg-warn-soft px-1.5 text-[11px] leading-[18px] font-semibold text-warn-ink'
 const single = computed(() => !props.instance && types.data.value?.length === 1)
 const hasTags = computed(() => (types.data.value ?? []).some((s) => s.tags?.length))
 
@@ -155,13 +157,13 @@ async function submit() {
             role="option"
             :aria-selected="picked === s.id ? 'true' : 'false'"
             :class="[
-              'min-h-9 cursor-pointer border-0 border-b border-line px-3 py-1.5 text-left last:border-b-0 max-sm:min-h-11',
+              'flex min-h-9 cursor-pointer items-center gap-1.5 border-0 border-b border-line px-3 py-1.5 text-left last:border-b-0 max-sm:min-h-11',
               picked === s.id ? 'bg-brand-soft font-semibold text-ink' : 'bg-transparent text-ink hover:bg-surface-sunken',
             ]"
-            :translate="typeName(s).brand ? 'no' : undefined"
             @click="picked = s.id"
           >
-            {{ label(s) }}
+            <span class="min-w-0 [overflow-wrap:anywhere]" :translate="typeName(s).brand ? 'no' : undefined">{{ label(s) }}</span>
+            <span v-if="s.experimental" :class="experimentalTag" :title="t('kernel.modules.experimental')">{{ t('kernel.modules.experimental') }}</span>
           </button>
           <p v-if="types.isSuccess.value && !choices.length" class="m-0 p-3 text-small text-ink-muted">{{ t('kernel.providers.no_match') }}</p>
         </div>
@@ -187,7 +189,12 @@ async function submit() {
             <ArrowLeft class="size-4" aria-hidden="true" />{{ t('kernel.providers.choose_other') }}
           </button>
           <div class="flex flex-col gap-0.5">
-            <h3 class="m-0 text-heading font-semibold" :translate="type.data.value.brand ? 'no' : undefined">{{ label(type.data.value) }}</h3>
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <h3 class="m-0 text-heading font-semibold" :translate="type.data.value.brand ? 'no' : undefined">{{ label(type.data.value) }}</h3>
+              <span v-if="type.data.value.experimental" :class="experimentalTag" :title="t('kernel.modules.experimental')">
+                {{ t('kernel.modules.experimental') }}
+              </span>
+            </div>
             <p v-if="type.data.value.description" class="m-0 text-small text-ink-muted">{{ t(type.data.value.description as MessageKey) }}</p>
             <p v-else-if="type.data.value.doc" lang="en" class="m-0 text-small text-ink-muted">{{ type.data.value.doc }}</p>
           </div>

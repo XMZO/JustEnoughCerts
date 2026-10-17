@@ -366,6 +366,19 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page.getByText(label('kernel.modules.no_match'))).toBeVisible()
   expect.soft(await problems(page), 'modules with no match').toEqual([])
 
+  // An experimental module, switched on, brings its type, marked as such.
+  await page.getByRole('searchbox').fill('')
+  const namecheap = page.locator('li', { hasText: label('namecheap.module.name') }).getByRole('switch')
+  await namecheap.click()
+  await expect(namecheap).toHaveAttribute('aria-checked', 'true')
+  await page.goto('./sources')
+  await page.getByRole('button', { name: label('kernel.providers.source.add') }).filter({ visible: true }).first().click()
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('option', { name: label('namecheap.ssl_manager.name') }).click()
+  await expect(dialog.getByLabel(label('namecheap.field.token'))).toBeVisible()
+  expect.soft(await problems(page), 'add a source: Namecheap').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
+
   await page.goto('./more')
   expect.soft(await problems(page), 'more').toEqual([])
   await page.getByRole('button', { name: label('kernel.shell.sign_out') }).filter({ visible: true }).first().click()

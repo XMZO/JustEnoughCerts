@@ -23,6 +23,9 @@ Working on the main branch:
 
 - Certificates from any ACME CA, with External Account Binding, or
   uploaded by hand.
+- Namecheap's paid certificates, such as PositiveSSL, with JEC acting as
+  the client of Namecheap's SSL Manager. Experimental and off until you
+  switch it on; not yet tried against a real account.
 - Domain validation through DNS records at any of the 221 providers that
   [lego](https://github.com/go-acme/lego) supports, or through files in a
   website's directory, local or over SSH.
@@ -34,13 +37,12 @@ Working on the main branch:
 - Notifications through Telegram, email (SMTP) and webhooks, each in the
   language you choose for it.
 - A history of every issuance, renewal and deployment, with its full log.
-- Everything beyond the kernel is a module that can be switched off at run
-  time or left out at build time.
+- Everything beyond the kernel is a module, switched on and off on the
+  Modules page or left out at build time.
 - One small container image or one static binary, with SQLite.
 
-Planned: Namecheap's paid certificates through its SSL Manager, with JEC
-acting as its client, manual validation, hooks, and more CDNs, panels and
-notification channels.
+Planned: manual validation, hooks, and more CDNs, panels and notification
+channels.
 
 ## Quick start
 

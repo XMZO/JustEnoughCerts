@@ -775,6 +775,55 @@
       "name": "DNS providers (lego)"
     }
   },
+  "namecheap": {
+    "error": {
+      "api": "Namecheap's API answered with an error (status {status}); the log has the details.",
+      "auth": "Namecheap no longer accepts JEC's credentials. Make a new token in Namecheap's panel and enter it.",
+      "connect": "Could not reach Namecheap's API.",
+      "key_mismatch": "The certificate Namecheap issued does not match this issuance's private key.",
+      "key_type": "Namecheap's SSL Manager issues RSA certificates only. Add the certificate again with an RSA key type.",
+      "methods": "Namecheap asks to validate the domain by {methods}; for now JEC validates through files on the website only.",
+      "no_token": "Enter the one-time token first.",
+      "order_failed": "Namecheap's order for {domain} failed. See why in Namecheap's panel, reissue there, then issue again.",
+      "put_file": "Could not put the validation file of {domain} in place. Check the settings of the validation method.",
+      "revoked": "Namecheap revoked the certificate of {domain}. Sort it out in Namecheap's panel, then issue again.",
+      "token": "Namecheap refused the token: it may be mistyped, used already or expired after 24 hours. Make a new one in Namecheap's panel.",
+      "url": "The API address must start with https:// : {url}"
+    },
+    "field": {
+      "token": "One-time token",
+      "token_help": "The security token Namecheap's panel shows. It works once, within 24 hours: save, then choose Test connection to register with it. With a new token, JEC registers again.",
+      "url": "API address",
+      "url_help": "The address of the SSL Manager API. There is rarely a reason to change it."
+    },
+    "log": {
+      "confirm_failed": "Could not tell Namecheap the certificate is installed, which changes nothing here",
+      "issued": "Namecheap issued the certificate",
+      "mark_failed": "Could not put SSL Manager's marks on {domain}, which Namecheap may look for",
+      "next": "Namecheap's newest certificate for {domain} is still the one before; waiting for Namecheap to ready the next one.",
+      "none": "Namecheap has no certificate for {domain} yet. Activate it in Namecheap's panel with Server-side automation; JEC keeps looking.",
+      "not_ours": "The CSR of Namecheap's certificate did not come from this issuance. Reissue it in Namecheap's panel and JEC carries on.",
+      "not_served": "{url} does not serve the validation file from here, so the CA may not get it either. Check the CDN and the website.",
+      "put_file": "Putting the validation file {path} on {domain}",
+      "register": "Registering with Namecheap with the one-time token",
+      "remove_failed": "Could not remove the validation file {path} from {domain}; you can remove it from the website",
+      "remove_file": "Removing the validation file {path} from {domain}",
+      "request": "Sending the CSR for {domain} to Namecheap",
+      "state": "State at Namecheap: {state}",
+      "validate": "The validation files are in place; waiting for the certificate authority to check them"
+    },
+    "module": {
+      "description": "Gets the certificates bought at Namecheap, such as PositiveSSL, through Namecheap's SSL Manager. It uses an API that is not public and may break at any time.",
+      "name": "Namecheap"
+    },
+    "ssl_manager": {
+      "description": "JEC acts as the client of Namecheap's server-side automation (SSL Manager) and gets each certificate of the subscription. When you activate or reissue the certificate in Namecheap's panel, choose Server-side automation and enter the one-time token it shows here. The API is not public and may break at any time.",
+      "name": "Namecheap SSL Manager"
+    },
+    "test": {
+      "ok": "Connected to Namecheap; {count, plural, one {# certificate} other {# certificates}} in sight."
+    }
+  },
   "notify": {
     "action": {
       "test": "Send a test"

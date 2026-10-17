@@ -445,13 +445,18 @@ DNS 验证分成两种能力，实现方式不同：
    - `Certificate Revoked`：从网站卸下。
 4. 每个网站还放两个标记文件：`/.well-known/ssl-manager/installed.txt`（`<Unix 时间> <域名>`）和同目录的 `installed.b64.json`（`{"domain","manager_conflicts":[],"timestamp"}` 的 base64）。文档说 Namecheap 会访问前者，确认工具装好了。
 
-**JEC 的做法**：模块 `namecheap`，证书来源类型 `namecheap.ssl_manager`，**实验性，默认关闭**，界面标注“非公开接口，可能随时失效”。JEC 扮演 SSL Manager 的客户端：
+**JEC 的做法**（M2，已实现，还没有用真实账号试过）：模块 `namecheap`，证书来源类型 `namecheap.ssl_manager`，**实验性，默认关闭**（在模块页打开），类型列表和表单里标着“实验”，说明里写明是非公开接口、可能随时失效。JEC 扮演 SSL Manager 的客户端：
 
-- 用户把一次性令牌填进 JEC，JEC 马上注册（令牌 24 小时内有效，只用这一次）。access token、integrationHash 和令牌的过期时间加密存在模块自己的表里，按上面的规则刷新。
-- 请求按官方客户端的格式发，工具名也是 `ssl-manager`；User-Agent 在官方格式后面加上 `JustEnoughCerts/<版本>`，让对方看得出是谁。`updateMeta` 在注册后和 JEC 升级后各发一次，`controlPanel.type` 填 `manual_interactive`（官方的取值有 `cpanel`、`plugin`、`web_server`、`manual_interactive`，JEC 最接近手动模式）。
-- 和官方一样每 5 分钟查一次 status（加随机延迟）；fingerprint 变了，或者有证书在等待中，才去查证书。
-- `Awaiting CSR` 时由证书模块生成私钥（等待期间加密保存）和 CSR；验证交给证书选的 HTTP 文件验证实例放好，再报告已放好；签出后下载，用模数核对它和等待中的私钥配对，作为新版本交给证书模块，照常部署到 ESA 等目标、删掉旧证书；部署完调 `confirmInstallation`（安装标识用 JEC 的证书版本），清理验证文件。下一张证书什么时候来由 Namecheap 决定，JEC 的续期窗口只用来提醒。
-- 不运行官方的程序；协议写进模块的注释和本节。
+- 设置只有两项：一次性令牌（保密）和接口地址（高级设置，默认官方地址，只接受 https）。第一次签发或点“测试连接”时用令牌注册；access token 加密存在 `namecheap_integrations`，记下令牌的 SHA-256，换了新令牌就重新注册；同一个实例的调用一次只走一个，因为令牌只能用一次。令牌被拒（4xx）不重试，提示去面板重新生成。
+- access token 按官方的规则刷新（没有过期时间或不到 10 天就刷新；接口回 404 或跳转，一天后再试；429 按 `Retry-After`）；`namecheap.refresh` 任务每 6 小时给每个注册刷新一次，没有证书在签发也不会过期；实例删了，注册也删掉。
+- 请求按官方客户端的格式发，工具名也是 `ssl-manager`；User-Agent 在官方格式后面加上 `JustEnoughCerts/<版本>`；对 API 的请求不跟随跳转，令牌不会被带到别处。注册后发一次 `updateMeta`，`controlPanel.type` 填 `manual_interactive`（官方的取值有 `cpanel`、`plugin`、`web_server`、`manual_interactive`，JEC 最接近手动模式）。
+- 签发用 4.3 的“等待来源”：每次检查先查 status，fingerprint 没变（最多 6 小时）就 5 分钟后再查；变了就列出主域名的证书，取这次签发交过 CSR 的那张，否则取最新的 `Awaiting CSR`，否则取最新的一张，按状态处理：
+  - `Awaiting CSR`：用这次签发的私钥做 CSR（只有 CN 和 SAN，就是主域名），提交；只签 RSA，别的密钥类型直接报错。
+  - `Awaiting Challenges Installation`：CSR 不是这次签发交的就只记日志、等着（要在面板重签）。否则把每个 HTTP 验证的文件交给证书选的网站目录类验证方式放好（还放 `installed.txt`、`installed.b64.json` 两个标记文件），从外网取一次核对（取不到只记警告，可能是 JEC 看到的和 CA 不一样），再报告已放好。只有 DNS、Email 验证时报错。
+  - `Certificate Issued`：模数的 SHA-1 不是这次签发的私钥的，就是以前那张，等 Namecheap 准备下一张；是的话下载证书和中间证书，确认和私钥配对，删掉验证文件（标记文件留着），调 `confirmInstallation`（安装标识 `jec-<序列号>`，取回证书时就报告，不等部署完），交给证书模块，照常部署到 ESA 等目标、删掉旧证书。
+  - `Order Failed`、`Certificate Revoked`：报错，不再自动重试；其他状态记一次日志，接着等。
+- 下一张证书什么时候来由 Namecheap 决定：进入续期窗口后签发就一直等，直到 Namecheap 准备好下一张。
+- 测试用假的 Namecheap 服务器（`internal/modules/namecheap/vendor_test.go`）走完注册、交 CSR、放验证文件、签出、下载、刷新令牌。不运行官方的程序；协议写在模块的注释和本节。
 
 **域名验证**：CA 要能访问 `http://域名/<filePath>`，Namecheap 还会访问上面的标记文件。域名在 CDN（如 ESA）后面时，这些请求会回源到源站，所以要把文件放到那里，或者让 JEC 应答：
 

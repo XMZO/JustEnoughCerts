@@ -14,15 +14,16 @@ Just Enough Certs（JEC）是自托管的 SSL/TLS 证书管理面板：从你购
 main 分支上已经可用：
 
 - 从任意 ACME CA（支持 External Account Binding）获取证书，或者手动上传。
+- 由 JEC 扮演 Namecheap SSL Manager 的客户端，自动取得在 Namecheap 买的付费证书（如 PositiveSSL）。实验性功能，默认关闭；还没有用真实账号试过。
 - 域名验证：在 [lego](https://github.com/go-acme/lego) 支持的 221 家 DNS 服务商添加记录，或者把文件放进网站目录（本机或经 SSH）。
 - 每张新证书自动部署到阿里云 ESA（并删掉被替换的旧证书）、本地目录、SSH 服务器（写完可以执行一条命令，比如重载 nginx）和 Webhook。
 - 进入续期窗口后自动续期，失败时按逐渐拉长的间隔重试。
 - 通过 Telegram、邮件（SMTP）和 Webhook 发通知，每个渠道可以选自己的语言。
 - 签发记录：每一次签发、续期和部署，都带完整日志。
-- 内核之外的一切都是模块，可以在运行时停用，也可以在编译时去掉。
+- 内核之外的一切都是模块，可以在“模块”页开关，也可以在编译时去掉。
 - 一个很小的容器镜像，或者一个静态二进制文件，数据存在 SQLite 里。
 
-计划中：由 JEC 扮演 Namecheap SSL Manager 的客户端，自动取得 Namecheap 的付费证书；手动验证、钩子，以及更多 CDN、面板和通知渠道。
+计划中：手动验证、钩子，以及更多 CDN、面板和通知渠道。
 
 ## 快速上手
 

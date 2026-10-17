@@ -775,6 +775,55 @@
       "name": "DNS 服务商（lego）"
     }
   },
+  "namecheap": {
+    "error": {
+      "api": "Namecheap 的接口返回了错误（状态 {status}），详情见日志。",
+      "auth": "Namecheap 不再接受 JEC 的凭据。请在 Namecheap 面板重新生成令牌并填进来。",
+      "connect": "连不上 Namecheap 的接口。",
+      "key_mismatch": "Namecheap 签出的证书和这次签发的私钥对不上。",
+      "key_type": "Namecheap SSL Manager 只签 RSA 证书。请用 RSA 密钥类型重新添加这张证书。",
+      "methods": "Namecheap 要求用 {methods} 验证域名，JEC 目前只能用网站文件验证。",
+      "no_token": "还没有填一次性令牌。",
+      "order_failed": "{domain} 在 Namecheap 的订单失败了。请在 Namecheap 面板查看原因，重签后再签发。",
+      "put_file": "没能为 {domain} 放验证文件。请检查验证方式的设置。",
+      "revoked": "{domain} 在 Namecheap 的证书已被吊销。请在 Namecheap 面板处理后再签发。",
+      "token": "Namecheap 不接受这个令牌：可能填错了、已经用过，或者过了 24 小时。请在 Namecheap 面板重新生成一个。",
+      "url": "接口地址要以 https:// 开头：{url}"
+    },
+    "field": {
+      "token": "一次性令牌",
+      "token_help": "Namecheap 面板给出的安全令牌，24 小时内有效，只能用一次：保存后点“测试连接”就会用它注册。换了新令牌，JEC 会重新注册。",
+      "url": "接口地址",
+      "url_help": "SSL Manager 的接口地址，一般不用改。"
+    },
+    "log": {
+      "confirm_failed": "没能告诉 Namecheap 证书已安装，不影响使用",
+      "issued": "Namecheap 已签发证书",
+      "mark_failed": "没能在 {domain} 放 SSL Manager 的标记文件，Namecheap 可能会看",
+      "next": "Namecheap 上 {domain} 最新的证书还是以前那张，等 Namecheap 准备下一张。",
+      "none": "Namecheap 上还没有 {domain} 的证书。在 Namecheap 面板激活证书时选 Server-side automation，JEC 会定时查看。",
+      "not_ours": "Namecheap 上这张证书的 CSR 不是这次签发交的。在 Namecheap 面板重签后，JEC 会接着做。",
+      "not_served": "从这里访问 {url} 拿不到验证文件，证书颁发机构可能也拿不到。请检查 CDN 和网站的设置。",
+      "put_file": "在 {domain} 放验证文件 {path}",
+      "register": "用一次性令牌向 Namecheap 注册",
+      "remove_failed": "没能删除 {domain} 的验证文件 {path}，可以到网站上手动删除",
+      "remove_file": "删除 {domain} 的验证文件 {path}",
+      "request": "向 Namecheap 提交 {domain} 的 CSR",
+      "state": "Namecheap 上的状态：{state}",
+      "validate": "验证文件已放好，等证书颁发机构验证"
+    },
+    "module": {
+      "description": "通过 Namecheap 的 SSL Manager 自动取得在 Namecheap 买的证书（如 PositiveSSL）。用的是非公开接口，可能随时失效。",
+      "name": "Namecheap"
+    },
+    "ssl_manager": {
+      "description": "JEC 扮演 Namecheap 服务器端自动化工具（SSL Manager）的客户端，取得订阅里的每一张证书。在 Namecheap 面板激活或重签证书时选 Server-side automation，把给出的一次性令牌填进来。用的是非公开接口，可能随时失效。",
+      "name": "Namecheap SSL Manager"
+    },
+    "test": {
+      "ok": "已连上 Namecheap，能看到 {count, plural, other {# 张证书}}。"
+    }
+  },
   "notify": {
     "action": {
       "test": "发送测试"

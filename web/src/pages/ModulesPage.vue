@@ -83,7 +83,9 @@ function tap(e: MouseEvent, m: ModuleInfo) {
   if (!(e.target as HTMLElement).closest('button')) void toggle(m, !isOn(m))
 }
 
-const tag = 'inline-flex h-[18px] flex-none items-center rounded-sm px-1.5 text-[11px] leading-4 font-semibold'
+// A tag goes under the name when the two do not fit, and is cut short, with
+// its full text as a title, when it alone does not.
+const tag = 'inline-block max-w-full truncate rounded-sm px-1.5 text-[11px] leading-[18px] font-semibold'
 </script>
 
 <template>
@@ -135,10 +137,14 @@ const tag = 'inline-flex h-[18px] flex-none items-center rounded-sm px-1.5 text-
           @click="tap($event, m)"
         >
           <div class="min-w-0 flex-1">
-            <div class="flex min-w-0 items-center gap-1.5 text-small font-semibold sm:text-body">
+            <div class="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-small font-semibold sm:text-body">
               <span class="min-w-0 truncate" :title="name(m)">{{ name(m) }}</span>
-              <span v-if="m.required" :class="[tag, 'bg-surface-sunken text-ink-muted max-sm:hidden']">{{ t('kernel.modules.builtin') }}</span>
-              <span v-if="m.experimental" :class="[tag, 'bg-warn-soft text-warn-ink']">{{ t('kernel.modules.experimental') }}</span>
+              <span v-if="m.required" :class="[tag, 'bg-surface-sunken text-ink-muted max-sm:hidden']" :title="t('kernel.modules.builtin')">
+                {{ t('kernel.modules.builtin') }}
+              </span>
+              <span v-if="m.experimental" :class="[tag, 'bg-warn-soft text-warn-ink']" :title="t('kernel.modules.experimental')">
+                {{ t('kernel.modules.experimental') }}
+              </span>
             </div>
             <p v-if="waiting(m)" class="m-0 text-caption text-warn-ink [overflow-wrap:anywhere]">{{ waiting(m) }}</p>
             <p v-else class="m-0 truncate text-caption text-ink-muted max-sm:hidden" :title="description(m)">{{ description(m) }}</p>
