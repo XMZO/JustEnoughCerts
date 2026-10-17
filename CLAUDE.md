@@ -46,7 +46,8 @@
 - `v0.0.1` 已于 2026-10-17 发布（M0 完成）。README 有中英两份（`README.md`、`README.zh-CN.md`），改一份要同步另一份。
 - M1 进行中：已完成事件总线 `internal/kernel/events`（`PLAN.md` 4.5，事件和业务变化在同一个事务里写入，至少送达一次）、调度器 `internal/kernel/jobs`、重试规则 `internal/kernel/retry`（`PLAN.md` 4.4），模块通过 `r.Events`、`r.Jobs` 使用。
 - M1 还完成了：主密钥和加密存储 `internal/kernel/secrets`（`JEC_SECRET_KEY` 或数据目录里的 `secret.key`，模块用 `r.Secrets`）；证书解析 `internal/lib/cryptox`（测试用证书在 `cryptoxtest`）；跨模块的事件类型和数据结构 `internal/kernel/contracts`；证书模块 `internal/modules/certs`（`PLAN.md` 4.6，目前支持上传、新版本、到期提醒事件）。
-- 下一步：前端的应用框架（侧栏、手机底部标签栏）、总览页和证书页（按 `docs/design/boards` 的 Main、Certs、CertDetail、AddCert），然后接 ACME + lego 和签发状态机。事件总线和调度器放到 M1，和签发状态机一起设计（通知、部署要求事件可靠送达）。
+- 前端：应用框架 `web/src/components/AppShell.vue`（侧栏、手机底部标签栏）、总览、证书列表、证书详情（上传新版本、删除、续期设置）、添加证书（目前只有手动上传）、手机端“更多”页；证书寿命的计算和文字在 `web/src/certs/life.ts`。单独显示的日期用 `<time>`、数字用 `<data>`、域名等数据加 `translate="no"`，伪语言测试会跳过它们（`PLAN.md` 7.4）。
+- 下一步：ACME + lego 和签发状态机（签发中、失败两种状态，签发记录页），然后是部署目标和通知。事件总线和调度器放到 M1，和签发状态机一起设计（通知、部署要求事件可靠送达）。
 
 ## 工程约定
 

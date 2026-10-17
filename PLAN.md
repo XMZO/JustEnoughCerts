@@ -363,6 +363,8 @@ M0 落地时的做法（`web/`）：
 - **API 类型**：`go run ./tools/openapi` 把带全部模块的 OpenAPI 文档写到 `web/openapi.json`，`pnpm -C web gen:api` 用 openapi-typescript 生成 `src/api/schema.d.ts`，请求用 openapi-fetch。CI 检查两个文件都是最新的。
 - **设计 token**：样式直接 import `docs/design/system/tokens.css`，只有这一份。Tailwind 的 `@theme` 里只保留 token 对应的颜色和字号，用不了默认调色板。颜色用 `@theme inline` 映射，切换 `data-theme` 时立即生效。
 - **代码检查**：ESLint 用 `eslint-plugin-vue` 的 essential 规则（排版交给编辑器），加 `@intlify/vue-i18n` 的 `no-raw-text` 和 `no-missing-keys`。
+- **应用框架**：登录后的页面都在 `AppShell` 里：1024px 以上侧栏常驻，640–1024px 侧栏从菜单按钮打开，640px 以下用底部标签栏（总览、证书、更多）。页面标题用 `PageHeader`：手机上是顶部的固定栏（返回按钮或标志、标题、图标按钮），更宽时是面包屑、标题、副标题和按钮。还没做的页面（签发记录、配置、设置）不放进导航。
+- **API 里的数组**：后端设置 `huma.DefaultArrayNullable = false`，响应里的数组从不为 null，生成的类型里也没有 `| null`，前端不用判空。
 - **嵌进二进制**：Go 用 `//go:embed all:dist` 嵌入 `web/dist`。服务端行为：
   - 把 `index.html` 里的 `<base href>` 改成 base 路径，同一份构建在根路径和子路径下都能用；
   - 非文件路径一律返回 `index.html`，交给前端路由；
@@ -435,9 +437,9 @@ M0 落地时的做法（`web/`）：
 
    实现（`web/e2e/`，CI 里的 "i18n pseudo-locale pages"）：
    - **伪语言**：用英文消息渲染，结果经 `src/i18n/pseudo.ts` 处理：字母换成带重音的变体，用短词补长 40%，首尾加 `⟦ ⟧`。浏览器 localStorage 里 `jec.pseudo` 为 `1` 时启用，所以测的就是生产构建本身。
-   - **页面**：每种宽度起一个全新的 `jec`（`JEC_E2E_BIN`），走完初始化（含两种出错状态）、总览、退出、登录（含登录失败），每一步都检查。
+   - **页面**：每种宽度起一个全新的 `jec`（`JEC_E2E_BIN`），每一步都检查：初始化（含两种出错状态）、空的总览、添加证书（含出错状态）；再通过 API 上传各种状态的证书（`e2e/certs.ts` 用 WebCrypto 现场生成自签名证书，有效期任意，不依赖 openssl），检查总览、证书列表、证书详情、上传新版本对话框（含出错状态）、删除确认框、“更多”页，最后退出并检查登录页（含登录失败）。新页面都要加进这个流程。
    - **检查内容**：
-     - 可见文字和 `title`、`placeholder`、`aria-label` 都必须带标记，`<code>` 和带 `lang` 的元素（语言名称）除外；
+     - 可见文字和 `title`、`placeholder`、`aria-label` 都必须带标记。不算界面文字、不检查标记的：`<code>`；带 `lang` 的元素（语言名称）；带 `translate="no"` 的元素，用于域名、序列号这类数据；`<time>` 和 `<data>`，用于 `Intl` 单独格式化出来的日期和数字。所以单独显示的日期写成 `<time>`、数字写成 `<data>`，域名加 `translate="no"`；放进句子的日期和数字作为消息参数，跟着消息一起带标记；
      - 文字超出容器就失败；被截断的文字只有带完整内容的 `title` 才算合格；页面出现横向滚动也失败。
      - 重叠暂时不查。
    - **自检**：用例本身也验证检查器能抓到这些问题。
