@@ -138,15 +138,17 @@ type Module interface {
 }
 ```
 
-**模块之间不直接互相调用**，只通过内核提供的接口和事件总线通信，例如证书模块发出 `certificate.issued` 事件，通知模块和部署模块各自订阅。CI 用依赖规则检查（如 `go-arch-lint`）禁止模块之间互相 import，保证删掉任何一个模块，其他模块都还能编译。
+**模块之间不直接互相调用**，只通过内核提供的接口和事件总线通信，例如证书模块发出 `certificate.issued` 事件，通知模块和部署模块各自订阅。`internal/modules` 里的架构测试（`go test`，不另装工具）禁止模块之间互相 import，也禁止内核 import 模块，保证删掉任何一个模块，其他模块都还能编译。
 
 **三种增删方式**：
 
-1. **编译时**：每个模块对应一个 build tag 和一行注册代码。删除模块就是删掉它的目录和那一行。官方发布的版本包含全部模块。
+1. **编译时**：每个模块在 `internal/modules/all/<id>.go` 有一个注册文件，带 build tag `!no_<id>`。`go build -tags no_<id>` 不编译它；删除模块就是删掉它的目录和这个文件。官方发布的版本包含全部模块。
 2. **运行时**：在设置页里启用或停用模块。停用后它的 API、菜单、定时任务都不再加载，数据保留，重新启用就能恢复。
 3. **前端按需加载**：后端的 `/api/v1/manifest` 返回已启用的模块清单，前端据此动态加载页面。每个模块单独打包，没启用的模块不会被下载。
 
-**模块脚手架**：`make new-module name=xxx` 生成模块模板，包括目录结构、注册代码、翻译 key 占位、测试和文档骨架。
+**模块脚手架**：`make new-module id=xxx category=source`（Windows 上 `go run ./tools/new-module -id xxx -category source`）生成模块目录 `internal/modules/<id>/`（`module.go` 和测试）、注册文件、两个翻译 key（`<id>.module.name` / `<id>.module.description`）。翻译 key 先写成 `TODO:` 开头的占位文字，i18n 检查不放行占位文字，所以模块作者必须写好名称和简介才能合并。CI 每次都在仓库副本里生成一个模块，检查它能编译、测试通过、只有占位文字被 i18n 检查拦下，再逐个用 build tag 去掉每个模块，检查程序仍能编译（`scripts/check-modules.sh`）。
+
+Provider 也是模块，和功能模块一样放在 `internal/modules/<id>/`，类别（来源、验证、部署目标、通知、功能）写在 Manifest 里。模块 ID 在全局唯一（它是模块启用状态表的主键，也是 `/api/v1/<id>` 的路径），所以一个 ID 一个目录，不再按类别分目录。
 
 ### 4.3 签发状态机
 
@@ -498,7 +500,7 @@ services:
 - Go：`golangci-lint`、`go test -race`、`govulncheck`。
 - 前端：类型检查、ESLint、单元测试、构建。
 - **i18n 门禁**：7.4 的全部检查，单独作为一个必须通过的检查项。
-- **模块依赖检查**：禁止模块之间互相 import；逐个去掉单个模块后仍能编译（抽样或定期全量跑）。
+- **模块依赖检查**：`internal/modules` 的架构测试禁止模块之间互相 import、禁止内核 import 模块；`scripts/check-modules.sh` 逐个去掉每个模块后编译，并检查脚手架生成的新模块能编译、测试通过。
 - **体积检查**：输出程序体积、各依赖的体积占比、前端首屏 JS 大小，超过预算就失败，并在 PR 里评论和 main 分支的对比。
 - 用 `ubuntu-24.04-arm` 原生 ARM 运行器（公开仓库免费）再跑一遍测试，确保 ARM 上行为一致。
 
@@ -572,19 +574,16 @@ JustEnoughCerts/
 │   └── keys_gen.go             # 由 en-US.json 自动生成的 key 常量
 ├── internal/
 │   ├── kernel/                 # 内核：配置、存储、认证、事件总线、调度器、模块注册表
-│   ├── modules/                # 功能模块（每个目录一个模块，可单独删除）
+│   ├── modules/                # 模块：每个目录一个，目录名就是模块 ID，可单独删除
+│   │   ├── all/                # 编译进二进制的模块清单，每个模块一个注册文件
 │   │   ├── certs/              # 证书管理与签发状态机
 │   │   ├── monitor/            # 线上巡检
 │   │   ├── hooks/              # 钩子：内嵌 shell 解释器与内置动作
 │   │   ├── plugins/            # exec 外部插件协议
 │   │   ├── audit/              # 审计日志
 │   │   ├── backup/             # 备份与恢复
-│   │   └── …
-│   ├── providers/              # Provider 模块（每个服务商一个目录）
-│   │   ├── source/             # acme, manual, namecheap, aliyun_cas, tencent_ssl, spaceship_sslmanager(实验) …
-│   │   ├── solver/             # lego 适配层、dnsrecord、http、email、manual
-│   │   ├── target/             # aliyun_esa, local, ssh, docker, webhook …
-│   │   └── notify/             # telegram, smtp, webhook …
+│   │   └── …                   # Provider 也在这里：来源 acme, namecheap, aliyun_cas …；
+│   │                           # 验证 lego, http …；部署 aliyun_esa, ssh …；通知 telegram, smtp …
 │   └── lib/                    # 模块共用的工具库（不含业务逻辑）
 │       ├── cryptox/            # 私钥、CSR、PEM/PFX 处理，加密存储
 │       ├── cloudsign/          # 阿里云 V3、腾讯云 TC3、AWS SigV4 等轻量签名
