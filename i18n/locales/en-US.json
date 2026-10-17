@@ -390,6 +390,49 @@
       "title": "Upload a new certificate"
     }
   },
+  "email": {
+    "error": {
+      "auth": "The mail server refused the sign-in: {message} ({code}). Check the username and the password.",
+      "certificate": "The certificate of {host} is not valid or not trusted.",
+      "connect": "Could not reach the mail server {host}:{port}. Check the server, the port and the network.",
+      "no_auth": "{host} offers no sign-in (AUTH). If it needs none, leave the username empty.",
+      "recipients": "Not valid recipients: {to}",
+      "rejected": "The mail server refused the mail: {message} ({code})",
+      "sender": "Not a valid sender: {from}",
+      "server": "The mail server is busy: {message} ({code}); trying again later.",
+      "starttls": "{host} does not offer STARTTLS; choose another encryption.",
+      "tls": "Could not encrypt the connection to {host}; the encryption may not fit the port: port 465 takes SSL/TLS, port 587 STARTTLS.",
+      "unencrypted": "JEC does not send a password over an unencrypted connection. Choose SSL/TLS or STARTTLS."
+    },
+    "field": {
+      "from": "From",
+      "from_help": "Usually the same mailbox as the username, or the server may refuse the mail.",
+      "host": "SMTP server",
+      "host_help": "Such as smtp.gmail.com or smtp.office365.com.",
+      "password": "Password or app password",
+      "password_help": "Gmail, Outlook and others need an app password made in the account's settings, not the sign-in password.",
+      "port": "Port",
+      "port_help": "When empty, 465, 587 or 25, by the encryption.",
+      "security": "Encryption",
+      "to": "To",
+      "to_help": "Separate several addresses with commas.",
+      "username": "Username",
+      "username_help": "Usually the whole mail address; leave it empty if the server needs no sign-in."
+    },
+    "module": {
+      "description": "Mails the notes through an SMTP server, such as your mailbox provider's.",
+      "name": "Email"
+    },
+    "security": {
+      "none": "None (port 25, on a trusted network only)",
+      "starttls": "STARTTLS (port 587)",
+      "tls": "SSL/TLS (port 465)"
+    },
+    "smtp": {
+      "description": "Sends mail through an SMTP server: your mailbox provider's, or your company's.",
+      "name": "Email (SMTP)"
+    }
+  },
   "esa": {
     "error": {
       "api": "Alibaba Cloud ESA returned the error {code}. The full log says why.",

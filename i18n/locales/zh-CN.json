@@ -390,6 +390,49 @@
       "title": "上传新证书"
     }
   },
+  "email": {
+    "error": {
+      "auth": "邮件服务器拒绝登录：{message}（{code}）。请检查用户名和密码（或授权码）。",
+      "certificate": "{host} 的证书无效或不受信任。",
+      "connect": "连不上邮件服务器 {host}:{port}。请检查服务器地址、端口和网络。",
+      "no_auth": "{host} 不支持登录（AUTH）。如果它不用登录，请把用户名留空。",
+      "recipients": "收件人地址不对：{to}",
+      "rejected": "邮件服务器拒收：{message}（{code}）",
+      "sender": "发件人地址不对：{from}",
+      "server": "邮件服务器暂时不可用：{message}（{code}），稍后再试。",
+      "starttls": "{host} 不支持 STARTTLS，请换一种加密方式。",
+      "tls": "和 {host} 建立加密连接失败，加密方式可能和端口对不上：465 端口用 SSL/TLS，587 端口用 STARTTLS。",
+      "unencrypted": "JEC 不会在不加密的连接上发送密码，请选 SSL/TLS 或 STARTTLS。"
+    },
+    "field": {
+      "from": "发件人",
+      "from_help": "一般要和用户名是同一个邮箱，否则服务器可能拒收。",
+      "host": "SMTP 服务器",
+      "host_help": "比如 smtp.qq.com、smtp.163.com、smtp.gmail.com。",
+      "password": "密码或授权码",
+      "password_help": "QQ、163、Gmail 等要用在邮箱设置里生成的授权码（应用专用密码），不是登录密码。",
+      "port": "端口",
+      "port_help": "留空时按加密方式用 465、587 或 25。",
+      "security": "加密方式",
+      "to": "收件人",
+      "to_help": "多个地址用英文逗号分开。",
+      "username": "用户名",
+      "username_help": "通常是完整的邮箱地址；服务器不用登录时留空。"
+    },
+    "module": {
+      "description": "通过 SMTP 服务器发邮件通知，可以用任何邮箱的 SMTP 服务。",
+      "name": "邮件"
+    },
+    "security": {
+      "none": "不加密（端口 25，只在可信的内网里用）",
+      "starttls": "STARTTLS（端口 587）",
+      "tls": "SSL/TLS（端口 465）"
+    },
+    "smtp": {
+      "description": "用邮箱的 SMTP 服务发信，比如 QQ 邮箱、163、Gmail 或公司的邮件服务器。",
+      "name": "邮件（SMTP）"
+    }
+  },
   "esa": {
     "error": {
       "api": "阿里云 ESA 返回了错误 {code}。完整日志里有原因。",
