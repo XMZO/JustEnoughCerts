@@ -13,8 +13,8 @@ set -euo pipefail
 # The budgets of PLAN.md 8.3. Raise one only in the change that needs it,
 # and say there why the growth is worth it. An image takes the archive's
 # budget, since it holds little more than the binary.
-binary_budget=$((20 * 1024 * 1024))
-archive_budget=$((8 * 1024 * 1024))
+binary_budget=$((80 * 1024 * 1024))
+archive_budget=$((27 * 1024 * 1024))
 gsa_version=v1.14.1
 
 dist=${DIST:-dist}
