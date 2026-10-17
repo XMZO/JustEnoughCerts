@@ -28,6 +28,13 @@ export const kindPages = {
     add: 'kernel.providers.target.add',
     empty: 'kernel.providers.target.empty',
   },
+  notifier: {
+    path: '/notify',
+    title: 'kernel.providers.notifier.title',
+    intro: 'kernel.providers.notifier.intro',
+    add: 'kernel.providers.notifier.add',
+    empty: 'kernel.providers.notifier.empty',
+  },
 } as const satisfies Partial<Record<ProviderKind, Record<string, string>>>
 
 export type PageKind = keyof typeof kindPages

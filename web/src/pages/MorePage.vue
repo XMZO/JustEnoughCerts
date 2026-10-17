@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronRight, Globe, LogOut, Package, Server } from '@lucide/vue'
+import { Bell, ChevronRight, Globe, LogOut, Package, Server } from '@lucide/vue'
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
@@ -21,6 +21,7 @@ const config = [
   { to: '/sources', label: 'kernel.providers.source.title', icon: Package },
   { to: '/dns', label: 'kernel.providers.solver.title', icon: Globe },
   { to: '/targets', label: 'kernel.providers.target.title', icon: Server },
+  { to: '/notify', label: 'kernel.providers.notifier.title', icon: Bell },
 ] as const
 
 const signedIn = computed(() => (session.data.value ? t('kernel.shell.signed_in', { username: session.data.value.username }) : ''))

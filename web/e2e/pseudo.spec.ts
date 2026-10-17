@@ -273,6 +273,27 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.goto('./certificates')
   expect.soft(await problems(page), 'certificates with one that could not be deployed').toEqual([])
 
+  // Notifications: Telegram's form, then a webhook to this machine, whose
+  // test the guard against private addresses refuses.
+  await page.goto('./notify')
+  expect.soft(await problems(page), 'notifications').toEqual([])
+  await page.getByRole('button', { name: label('kernel.providers.notifier.add') }).filter({ visible: true }).first().click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'add a channel').toEqual([])
+  await dialog.getByRole('option', { name: label('telegram.bot.name') }).click()
+  await expect(dialog.getByLabel(label('telegram.field.chat'))).toBeVisible()
+  expect.soft(await problems(page), 'add a channel: Telegram').toEqual([])
+  if (info.project.name === 'phone') await dialog.getByRole('button', { name: label('kernel.providers.choose_other') }).click()
+  await dialog.getByRole('option', { name: label('webhook.notify.name') }).click()
+  await dialog.getByLabel(label('kernel.providers.field.name')).fill('e2e hook')
+  await dialog.getByLabel(label('webhook.field.url')).fill('http://127.0.0.1:9/hook')
+  await dialog.locator('button[type=submit]').click()
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  expect.soft(await problems(page), 'notifications with one').toEqual([])
+  await page.getByRole('button', { name: label('notify.action.test') }).click()
+  await expect(page.getByRole('alert')).toBeVisible()
+  expect.soft(await problems(page), 'a test that failed').toEqual([])
+
   // A certificate from the source: the form, its errors, the issuance.
   await page.goto('./certificates/new')
   await expect(page.locator('#domain-input')).toBeVisible()

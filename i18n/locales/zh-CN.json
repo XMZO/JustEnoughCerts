@@ -579,6 +579,12 @@
       },
       "no_match": "没有找到。",
       "no_secrets": "没有保密设置",
+      "notifier": {
+        "add": "添加通知方式",
+        "empty": "还没有通知方式。添加一个，出了问题才能及时知道。",
+        "intro": "签发失败、部署出错或证书快到期时，通过这些渠道告诉你。",
+        "title": "通知"
+      },
       "pick_first": "先在左边选一个服务商。",
       "search": "搜索服务商",
       "secret_saved": "已保存，留空不修改",
@@ -635,9 +641,26 @@
     }
   },
   "notify": {
+    "action": {
+      "test": "发送测试"
+    },
+    "card": {
+      "events": "通知：{events}",
+      "failed": "上次发送失败：{error}",
+      "never": "还没有发过通知",
+      "no_events": "没有选任何事件，不会发通知",
+      "sent": "上次发送成功"
+    },
     "error": {
       "send": "没能发出通知。",
       "unknown": "原因不明。"
+    },
+    "event": {
+      "deploy_failed": "部署失败",
+      "deployed": "部署成功",
+      "expiring": "快到期",
+      "issue_failed": "签发失败",
+      "issued": "新证书"
     },
     "module": {
       "description": "证书签发或部署失败、快到期时，通过你设置的通知渠道告诉你。",
@@ -672,6 +695,7 @@
       "valid_until": "有效期到 {date}。"
     },
     "test": {
+      "sent": "测试通知已发出，请查收。",
       "text": "能收到这条消息，说明这个通知渠道设置正确。",
       "title": "JEC 测试通知"
     }

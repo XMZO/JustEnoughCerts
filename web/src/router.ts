@@ -64,6 +64,13 @@ export const router = createRouter({
           meta: { title: 'kernel.providers.target.title', for: 'app' },
         },
         {
+          path: 'notify',
+          name: 'notify',
+          component: () => import('./pages/ProvidersPage.vue'),
+          props: { kind: 'notifier' },
+          meta: { title: 'kernel.providers.notifier.title', for: 'app' },
+        },
+        {
           path: 'dns',
           name: 'dns',
           component: () => import('./pages/ProvidersPage.vue'),

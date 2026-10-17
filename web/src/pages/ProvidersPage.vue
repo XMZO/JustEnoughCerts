@@ -1,26 +1,31 @@
 <script setup lang="ts">
-import { Pencil, Plus, Trash2 } from '@lucide/vue'
+import { Pencil, Plus, Send, Trash2 } from '@lucide/vue'
 import { useQueries } from '@tanstack/vue-query'
 import { computed, ref } from 'vue'
 
 import { useCertificates } from '../api/certs'
-import { api, unwrap } from '../api/client'
+import { api, ApiError, networkError, unwrap } from '../api/client'
 import { useApiError } from '../api/errors'
+import { useSends, useSendTest } from '../api/notify'
 import { useDeleteProvider, useProviders, useProviderTypes, type Provider } from '../api/providers'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
 import PageHeader from '../components/PageHeader.vue'
 import ProviderDialog from '../components/ProviderDialog.vue'
-import { useT } from '../i18n'
+import { useT, type MessageKey, type Params } from '../i18n'
+import { useIntl } from '../i18n/intl'
 import { kindPages, summary, typeName, type PageKind } from '../providers/fields'
 
 // The configured providers of one kind (docs/design/boards/Providers):
-// certificate sources, or DNS providers for the domain validation. Each
-// card says what it is, what it is set to and how many certificates use it.
+// certificate sources, DNS providers for the domain validation, deploy
+// targets or notifiers. Each card says what it is, what it is set to and
+// how many certificates use it; a notifier's card says instead what it
+// tells about and how its last note went, and can send a test.
 const props = defineProps<{ kind: PageKind }>()
 
 const { t } = useT()
+const intl = useIntl()
 const page = computed(() => kindPages[props.kind])
 const list = useProviders(() => props.kind)
 const types = useProviderTypes(() => props.kind)
@@ -40,11 +45,44 @@ const fullTypes = useQueries({
 })
 const fullType = (id: string) => fullTypes.value.find((q) => q.data?.id === id)?.data
 
+// Notifiers: what they tell about, by the switches every notifier type
+// has, and a test on demand.
+const notifiers = computed(() => props.kind === 'notifier')
+const sends = useSends(notifiers)
+const noteEvents = [
+  { key: 'on_issue_failed', label: 'notify.event.issue_failed' },
+  { key: 'on_deploy_failed', label: 'notify.event.deploy_failed' },
+  { key: 'on_expiring', label: 'notify.event.expiring' },
+  { key: 'on_issued', label: 'notify.event.issued' },
+  { key: 'on_deployed', label: 'notify.event.deployed' },
+] as const
+function events(p: Provider): string {
+  const on = noteEvents.filter((e) => p.config[e.key] === 'true').map((e) => t(e.label))
+  return on.length ? t('notify.card.events', { events: intl.list(on) }) : t('notify.card.no_events')
+}
+const errorText = (e?: { key: string; params?: Record<string, unknown> }) => (e ? t(e.key as MessageKey, (e.params ?? {}) as Params) : '')
+const sendTest = useSendTest()
+const tested = ref<Record<number, ApiError | 'ok'>>({})
+const testError = (id: number) => {
+  const r = tested.value[id]
+  return r instanceof ApiError ? r : undefined
+}
+async function test(id: number) {
+  try {
+    await sendTest.mutateAsync(id)
+    tested.value = { ...tested.value, [id]: 'ok' }
+  } catch (err) {
+    tested.value = { ...tested.value, [id]: err instanceof ApiError ? err : networkError }
+  }
+}
+
 const cards = computed(() =>
   (list.data.value ?? []).map((p) => {
     const summaryType = types.data.value?.find((s) => s.id === p.type)
     const name = typeName(summaryType)
-    const uses = (certificates.data.value ?? []).filter((c) => c.sourceProvider === p.id || c.solverProvider === p.id).length
+    const uses = (certificates.data.value ?? []).filter(
+      (c) => c.sourceProvider === p.id || c.solverProvider === p.id || c.targets.includes(p.id),
+    ).length
     return {
       provider: p,
       typeBrand: name.brand,
@@ -52,6 +90,8 @@ const cards = computed(() =>
       shown: summary(fullType(p.type), p),
       secrets: p.secretKeys.length,
       uses,
+      events: notifiers.value ? events(p) : '',
+      send: sends.data.value?.find((s) => s.notifier === p.id),
     }
   }),
 )
@@ -134,8 +174,27 @@ async function confirmDelete() {
         <p class="m-0 text-small text-ink-muted">
           {{ c.secrets ? t('kernel.providers.secrets_saved', { count: c.secrets }) : t('kernel.providers.no_secrets') }}
         </p>
-        <p class="m-0 text-small text-ink-muted">{{ t('kernel.providers.uses', { count: c.uses }) }}</p>
+        <template v-if="notifiers">
+          <p class="m-0 text-small text-ink-muted">{{ c.events }}</p>
+          <!-- A test just sent says how it went; otherwise the last note does. -->
+          <p v-if="tested[c.provider.id] === 'ok'" role="status" class="m-0 text-small text-ok-ink">{{ t('notify.test.sent') }}</p>
+          <JecAlert v-else-if="testError(c.provider.id)" :code="testError(c.provider.id)!.code" :params="testError(c.provider.id)!.params" />
+          <p v-else-if="!c.send" class="m-0 text-small text-ink-muted">{{ t('notify.card.never') }}</p>
+          <p v-else-if="c.send.state === 'sent'" class="m-0 text-small text-ok-ink">
+            {{ t('notify.card.sent') }} <time :datetime="c.send.at">{{ intl.dateTime(c.send.at) }}</time>
+          </p>
+          <p v-else class="m-0 text-small text-danger-ink [overflow-wrap:anywhere]">{{ t('notify.card.failed', { error: errorText(c.send.error) }) }}</p>
+        </template>
+        <p v-else class="m-0 text-small text-ink-muted">{{ t('kernel.providers.uses', { count: c.uses }) }}</p>
         <div class="mt-auto flex flex-wrap gap-2 pt-1">
+          <JecButton
+            v-if="notifiers"
+            size="sm"
+            :busy="sendTest.isPending.value && sendTest.variables.value === c.provider.id"
+            @click="test(c.provider.id)"
+          >
+            <Send class="size-4" aria-hidden="true" />{{ t('notify.action.test') }}
+          </JecButton>
           <JecButton size="sm" @click="editing = c.provider"><Pencil class="size-4" aria-hidden="true" />{{ t('kernel.action.edit') }}</JecButton>
           <JecButton size="sm" variant="ghost" @click="startDelete(c.provider)"><Trash2 class="size-4" aria-hidden="true" />{{ t('kernel.action.delete') }}</JecButton>
         </div>

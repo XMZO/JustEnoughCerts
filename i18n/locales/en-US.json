@@ -579,6 +579,12 @@
       },
       "no_match": "None found.",
       "no_secrets": "No secrets",
+      "notifier": {
+        "add": "Add a channel",
+        "empty": "No channels yet. Add one to hear about problems in time.",
+        "intro": "When an issuance or a deployment fails, or a certificate is about to expire, these channels tell you.",
+        "title": "Notifications"
+      },
       "pick_first": "Choose a provider on the left first.",
       "search": "Search providers",
       "secret_saved": "Saved; leave empty to keep it",
@@ -635,9 +641,26 @@
     }
   },
   "notify": {
+    "action": {
+      "test": "Send a test"
+    },
+    "card": {
+      "events": "Tells about {events}",
+      "failed": "The last note failed: {error}",
+      "never": "Nothing sent yet",
+      "no_events": "No events chosen: it sends nothing",
+      "sent": "Last sent"
+    },
     "error": {
       "send": "The note could not be sent.",
       "unknown": "The reason is unknown."
+    },
+    "event": {
+      "deploy_failed": "failed deployments",
+      "deployed": "deployments",
+      "expiring": "expiry",
+      "issue_failed": "failed issuances",
+      "issued": "new certificates"
     },
     "module": {
       "description": "Tells you through the channels you set up when a certificate cannot be issued or deployed, or is about to expire.",
@@ -672,6 +695,7 @@
       "valid_until": "Valid until {date}."
     },
     "test": {
+      "sent": "The test is on its way.",
       "text": "If this reached you, the channel is set up right.",
       "title": "A test note from JEC"
     }
