@@ -632,5 +632,36 @@
       "text": "If this reached you, the channel is set up right.",
       "title": "A test note from JEC"
     }
+  },
+  "telegram": {
+    "bot": {
+      "description": "A bot made with @BotFather sends the notes to a person, a group or a channel.",
+      "name": "Telegram bot"
+    },
+    "error": {
+      "api": "Telegram refused the message: {description} ({status})",
+      "api_url": "The Bot API server is not a valid address: {url}",
+      "chat": "There is no such chat. Check the chat ID, and message the bot or add it to the group first.",
+      "forbidden": "The bot may not post there: {description}",
+      "network": "Could not reach Telegram. If your network cannot, set a proxy in the advanced settings.",
+      "proxy": "The proxy must start with http://, https:// or socks5://, followed by a host and a port.",
+      "status": "Telegram's answer made no sense (HTTP {status}). Check the Bot API server and the proxy.",
+      "throttled": "Telegram asked to slow down; trying again later.",
+      "token": "Telegram does not accept this bot token. Check it with @BotFather."
+    },
+    "field": {
+      "api": "Bot API server",
+      "api_help": "Change it only for a Bot API server of your own, or a reverse proxy.",
+      "chat": "Chat ID",
+      "chat_help": "The number of a person or a group (those of groups and channels start with -100), or @name for a public channel. Message the bot first, add it to the group, or make it an admin of the channel.",
+      "proxy": "Proxy",
+      "proxy_help": "For a network that cannot reach Telegram, such as http://127.0.0.1:7890 or socks5://127.0.0.1:1080.",
+      "token": "Bot token",
+      "token_help": "@BotFather gives it when you create the bot with /newbot, like 123456:ABC-DEF…"
+    },
+    "module": {
+      "description": "Sends notes to a chat, a group or a channel through a Telegram bot.",
+      "name": "Telegram"
+    }
   }
 }
