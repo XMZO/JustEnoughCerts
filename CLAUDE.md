@@ -62,13 +62,14 @@
 - M2 还完成了：模块页 `/modules`（`PLAN.md` 6.1，`PUT /api/v1/modules/{id}` 在运行中开关模块，实验模块要在这里打开）。
 - M2 还完成了：`namecheap` 模块（`PLAN.md` 5.6 的“JEC 的做法”）：类型 `namecheap.ssl_manager`，实验模块默认关闭；一次性令牌注册、access token 加密保存和刷新（`namecheap.refresh` 任务）；签发按 Namecheap 的证书状态一步步走（交 CSR、经网站目录类验证方式放验证文件、等 CA、下载并核对私钥），只签 RSA；测试用假服务器（`vendor_test.go`），还没有用真实账号试过。类型列表和表单会标出实验类型。
 - M2 还完成了：JEC 自己应答（模块 `wellknown`，类型 `wellknown.answer`，`PLAN.md` 5.3.2 ④）：内核的 `r.WellKnown` 让模块回答根路径 `/.well-known/` 下的请求（不要登录，回 404 交给下一个模块）；测试连接从外网经填的域名取回临时文件。
-- 测试版 `v0.1.0-alpha.1` 已于 2026-10-17 发布（预发布：镜像标签 `0.1.0-alpha.1` 和 `beta`，`latest` 不动），给用户用真实账号试。
+- 测试版 `v0.1.0-alpha.1`、`v0.1.0-alpha.2`（加了 ESA 边缘应答）已于 2026-10-17 发布（预发布：镜像标签是版本号和 `beta`，`latest` 不动），给用户用真实账号试。
 - M2 还完成了：ESA 边缘应答（验证类型 `esa.edge`，在 `esa` 模块里，`PLAN.md` 5.4）：验证文件存进 ESA 的边缘 KV，第一次用时自动建 KV 命名空间 `jec_validation`、边缘函数 `jec-validation`（代码 `internal/modules/esa/routine.js`，经 OSS 上传）和站点上 `/.well-known/` 的路由；放好后从外网取到才算放好。`httpx` 的 `SkipVerify`：核对验证文件时像 CA 一样跟随跳转、不校验证书（wellknown、namecheap 也用）。测试用替身 API 和替身边缘，装了 Node.js 时实际运行函数代码；还没有用真实账号试过。
 - 下一步：用真实账号验证阿里云 ESA 部署、ESA 边缘应答和 Namecheap 模块（M1/M2 验收，`PLAN.md` 5.4、5.6 列了要确认的点）；续期时间窗口（`PLAN.md` 14 的待定事项）；DNS 验证（要先确认 Namecheap 给不给 DNS 验证，还要能加 CNAME 记录）。
 
 ## 工程约定
 
 - 代码、注释、脚本、部署文件都用英文；中文只出现在语言文件和文档里（i18n 门禁会扫描）。命令行输出和运维日志按 `PLAN.md` 7.3 算开发者日志，用英文。
-- Go：`go.mod` 只写最低版本（1.26），CI 和发布用最新稳定版。GitHub Actions 一律钉到 commit SHA 并在注释里写版本号，由 Dependabot 每周更新。
+- Go：`go.mod` 只写最低版本（1.26），CI 和发布用最新稳定版。GitHub Actions 一律钉到 commit SHA 并在注释里写版本号，由 Dependabot 每周更新（包括 `.github/actions/` 下的组合动作；Node 大版本除外，镜像和 CI 一起手动升到下一个长期支持版）。
+- CI 和发布里的 Go 一律用 `.github/actions/setup-go` 安装：每个任务有自己的编译缓存，只有 main 上的运行写缓存，发布和发布演练共用一份（`PLAN.md` 9.1）。新加的任务照此办理，不要用 setup-go 自带的缓存。
 - 容器默认以 65532:65532 运行，不在启动时切换用户；挂载的数据目录要先 `chown`，启动检查会给出明确报错。
 - ghcr.io 上的镜像包从 v0.0.1 起就是公开的（发布后实测匿名能拉取），不需要手动改可见性。
