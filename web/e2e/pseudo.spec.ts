@@ -84,20 +84,21 @@ test('the checks catch untranslated and overflowing text', async ({ page }) => {
   ])
 })
 
+// Soft checks: one run reports the problems of every page, not just the first.
 test('every page is translated and fits', async ({ page }, info) => {
   const token = process.env[`JEC_E2E_TOKEN_${info.project.name.toUpperCase()}`] ?? ''
 
   // A fresh server sends visitors to the setup wizard.
   await page.goto('./')
   await expect(page).toHaveURL(/\/setup$/)
-  expect(await problems(page), 'setup wizard').toEqual([])
+  expect.soft(await problems(page), 'setup wizard').toEqual([])
 
   // Its own check: the two passwords differ.
   await page.locator('#password').fill('correct horse')
   await page.locator('#again').fill('correct hors')
   await page.locator('form button[type=submit]').click()
   await expect(page.locator('#again-error')).toBeVisible()
-  expect(await problems(page), 'setup wizard with an error').toEqual([])
+  expect.soft(await problems(page), 'setup wizard with an error').toEqual([])
 
   // The server's errors come back as message keys.
   await page.locator('#token').fill('wrong token')
@@ -105,19 +106,19 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.locator('#again').fill('correct horse')
   await page.locator('form button[type=submit]').click()
   await expect(page.getByRole('alert')).toBeVisible()
-  expect(await problems(page), 'setup wizard with a server error').toEqual([])
+  expect.soft(await problems(page), 'setup wizard with a server error').toEqual([])
 
   await page.locator('#token').fill(token)
   await page.locator('form button[type=submit]').click()
   await expect(page).toHaveURL(/\/$/)
-  expect(await problems(page), 'overview without certificates').toEqual([])
+  expect.soft(await problems(page), 'overview without certificates').toEqual([])
 
   await page.goto('./certificates/new')
-  expect(await problems(page), 'add a certificate').toEqual([])
+  expect.soft(await problems(page), 'add a certificate').toEqual([])
   await page.locator('#certificate').fill('not a certificate')
   await page.locator('button[form=add-form]').click()
   await expect(page.locator('#certificate-error')).toBeVisible()
-  expect(await problems(page), 'add a certificate with an error').toEqual([])
+  expect.soft(await problems(page), 'add a certificate with an error').toEqual([])
 
   // A certificate in each state, the first two with long and several names.
   for (const [names, from, to] of [
@@ -131,36 +132,36 @@ test('every page is translated and fits', async ({ page }, info) => {
     expect(res.status(), names[0]).toBe(201)
   }
   await page.goto('./')
-  expect(await problems(page), 'overview').toEqual([])
+  expect.soft(await problems(page), 'overview').toEqual([])
   await page.goto('./certificates')
-  expect(await problems(page), 'certificates').toEqual([])
+  expect.soft(await problems(page), 'certificates').toEqual([])
   await page.goto('./certificates/1')
-  expect(await problems(page), 'a certificate').toEqual([])
+  expect.soft(await problems(page), 'a certificate').toEqual([])
 
   await page.goto('./certificates/1?upload=1')
   await expect(page.locator('dialog[open]')).toBeVisible()
-  expect(await problems(page), 'upload a new certificate').toEqual([])
+  expect.soft(await problems(page), 'upload a new certificate').toEqual([])
   await page.locator('#certificate').fill('not a certificate')
   await page.locator('button[form=upload-form]').click()
   await expect(page.locator('#certificate-error')).toBeVisible()
-  expect(await problems(page), 'upload a new certificate with an error').toEqual([])
+  expect.soft(await problems(page), 'upload a new certificate with an error').toEqual([])
   await page.keyboard.press('Escape')
   await expect(page.locator('dialog[open]')).toHaveCount(0)
 
   await page.getByRole('button', { name: label('certs.action.delete') }).filter({ visible: true }).first().click()
   await expect(page.locator('dialog[open]')).toBeVisible()
-  expect(await problems(page), 'delete a certificate').toEqual([])
+  expect.soft(await problems(page), 'delete a certificate').toEqual([])
   await page.keyboard.press('Escape')
 
   await page.goto('./more')
-  expect(await problems(page), 'more').toEqual([])
+  expect.soft(await problems(page), 'more').toEqual([])
   await page.getByRole('button', { name: label('kernel.shell.sign_out') }).filter({ visible: true }).first().click()
   await expect(page).toHaveURL(/\/login$/)
-  expect(await problems(page), 'sign-in page').toEqual([])
+  expect.soft(await problems(page), 'sign-in page').toEqual([])
 
   await page.locator('#username').fill('admin')
   await page.locator('#password').fill('wrong horse')
   await page.locator('form button[type=submit]').click()
   await expect(page.getByRole('alert')).toBeVisible()
-  expect(await problems(page), 'sign-in page with an error').toEqual([])
+  expect.soft(await problems(page), 'sign-in page with an error').toEqual([])
 })

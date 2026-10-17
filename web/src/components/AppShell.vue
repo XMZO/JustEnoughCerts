@@ -101,7 +101,7 @@ async function leave() {
           ]"
         >
           <component :is="link.icon" :class="['size-[18px] flex-none', current(link.to) ? 'text-brand' : '']" aria-hidden="true" />
-          <span class="min-w-0 flex-1 truncate">{{ t(link.label) }}</span>
+          <span class="min-w-0 flex-1 truncate" :title="t(link.label)">{{ t(link.label) }}</span>
           <data v-if="link.count !== undefined" :value="link.count" class="text-caption text-ink-muted tabular-nums">{{ link.count }}</data>
         </RouterLink>
       </nav>
