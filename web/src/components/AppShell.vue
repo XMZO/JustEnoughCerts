@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Ellipsis, Globe, History, LayoutGrid, LogOut, Menu, Package, Server, ShieldCheck, X } from '@lucide/vue'
+import { Bell, Blocks, Ellipsis, Globe, History, LayoutGrid, LogOut, Menu, Package, Server, ShieldCheck, X } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
@@ -41,6 +41,8 @@ const config: Link[] = [
   { to: '/targets', label: 'kernel.providers.target.title', icon: Server },
   { to: '/notify', label: 'kernel.providers.notifier.title', icon: Bell },
 ]
+// JEC itself: the modules.
+const system: Link[] = [{ to: '/modules', label: 'kernel.modules.title', icon: Blocks }]
 
 const current = (to: string) => (to === '/' ? route.path === '/' : route.path === to || route.path.startsWith(`${to}/`))
 
@@ -117,6 +119,21 @@ async function leave() {
         <span class="px-2.5 pb-1 text-caption font-semibold text-ink-muted">{{ t('kernel.shell.config') }}</span>
         <RouterLink
           v-for="link in config"
+          :key="link.to"
+          :to="link.to"
+          :aria-current="current(link.to) ? 'page' : undefined"
+          :class="[
+            'flex h-9 items-center gap-2.5 rounded-md px-2.5 font-medium no-underline',
+            current(link.to) ? 'bg-brand-soft font-semibold text-ink hover:text-ink' : 'text-ink-muted hover:bg-surface-sunken hover:text-ink',
+          ]"
+        >
+          <component :is="link.icon" :class="['size-[18px] flex-none', current(link.to) ? 'text-brand' : '']" aria-hidden="true" />
+          <span class="min-w-0 flex-1 truncate" :title="t(link.label)">{{ t(link.label) }}</span>
+        </RouterLink>
+      </nav>
+      <nav :aria-label="t('kernel.more.system')" class="flex flex-col gap-0.5">
+        <RouterLink
+          v-for="link in system"
           :key="link.to"
           :to="link.to"
           :aria-current="current(link.to) ? 'page' : undefined"

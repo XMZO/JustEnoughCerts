@@ -349,6 +349,23 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page.getByText(label('certs.runs.no_match'))).toBeVisible()
   expect.soft(await problems(page), 'history with no match').toEqual([])
 
+  // The modules: one switched off and on again, then a search that finds none.
+  await page.goto('./modules')
+  const first = page.locator('button[role=switch][aria-checked=true]:not([disabled])').first()
+  await expect(first).toBeVisible()
+  expect.soft(await problems(page), 'modules').toEqual([])
+  const module = page.getByRole('switch', { name: (await first.getAttribute('aria-label')) ?? '', exact: true })
+  await module.click()
+  await expect(module).toHaveAttribute('aria-checked', 'false')
+  await page.getByRole('button', { name: label('kernel.modules.filter.off') }).click()
+  expect.soft(await problems(page), 'modules switched off').toEqual([])
+  await module.click()
+  await expect(module).toHaveCount(0) // on again, so no longer among those off
+  await page.getByRole('button', { name: label('kernel.modules.filter.all') }).click()
+  await page.getByRole('searchbox').fill('nothing.example')
+  await expect(page.getByText(label('kernel.modules.no_match'))).toBeVisible()
+  expect.soft(await problems(page), 'modules with no match').toEqual([])
+
   await page.goto('./more')
   expect.soft(await problems(page), 'more').toEqual([])
   await page.getByRole('button', { name: label('kernel.shell.sign_out') }).filter({ visible: true }).first().click()

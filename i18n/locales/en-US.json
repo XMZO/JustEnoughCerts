@@ -638,6 +638,7 @@
       "invalid_request": "The request is not valid. Check what you entered and try again.",
       "login_failed": "The username or password is wrong. After {attempts, plural, one {# failed attempt} other {# failed attempts}} in a row, sign-in is locked for {minutes, plural, one {# minute} other {# minutes}}.",
       "method_not_allowed": "This action is not supported here.",
+      "module_required": "This module is required and cannot be switched off.",
       "network": "JEC cannot be reached. Check that the server is running, then try again.",
       "not_found": "This item does not exist. It may have been deleted.",
       "password_wrong": "The password is wrong.",
@@ -656,8 +657,29 @@
       "submit": "Sign in",
       "title": "Sign in"
     },
+    "modules": {
+      "builtin": "Built in",
+      "count": "{on} of {total} on",
+      "experimental": "Experimental",
+      "feature": "Features",
+      "filter": {
+        "all": "All",
+        "label": "Filter by state",
+        "off": "Off",
+        "on": "On"
+      },
+      "intro": "Every certificate source, validation method, deploy target and notification channel of JEC is a module. A module switched off does not run, and what it offers leaves the menus.",
+      "no_match": "No module matches.",
+      "on_count": "{count, plural, one {# on} other {# on}}",
+      "search": "Search modules",
+      "summary": "{on, plural, one {# module} other {# modules}} on, out of {total, plural, one {#} other {#}}. Every module is compiled in; for a smaller image, leave out those you do not need with build tags.",
+      "switch": "Switch on {name}",
+      "title": "Modules",
+      "waiting": "Runs once {modules} is on too"
+    },
     "more": {
-      "account": "Account"
+      "account": "Account",
+      "system": "System"
     },
     "notify": {
       "event": {

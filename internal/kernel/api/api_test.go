@@ -16,7 +16,9 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 )
 
 type fakeModule struct{ mf module.Manifest }
@@ -199,6 +201,48 @@ func TestModuleSwitch(t *testing.T) {
 	on.Store(true)
 	if r := do(t, srv, http.MethodPost, "/demo/things", `{"name": "long enough"}`); r.status != http.StatusOK {
 		t.Errorf("switched back on: %d", r.status)
+	}
+}
+
+func TestSwitch(t *testing.T) {
+	st, err := store.Open(t.Context(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	if _, err := st.Migrate(t.Context(), "kernel", migrations.FS); err != nil {
+		t.Fatal(err)
+	}
+	set, err := module.NewSet(
+		fakeModule{module.Manifest{ID: "core", Category: module.Feature, Name: "core.module.name", Description: "core.module.description", Required: true}},
+		fakeModule{module.Manifest{ID: "beta", Category: module.Source, Name: "beta.module.name", Description: "beta.module.description", Experimental: true}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := set.Load(t.Context(), st.DB()); err != nil {
+		t.Fatal(err)
+	}
+	a, err := New(Options{Version: "1.2.3", SessionCookie: "s"}, set, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(a.Handler())
+	t.Cleanup(srv.Close)
+
+	var m ModuleInfo
+	r := do(t, srv, http.MethodPut, "/modules/beta", `{"on": true}`)
+	if err := json.Unmarshal(r.body, &m); r.status != http.StatusOK || err != nil || m.ID != "beta" || !m.Switched || !m.Enabled || !set.Enabled("beta") {
+		t.Errorf("switched on: %d %s", r.status, r.body)
+	}
+	if r := do(t, srv, http.MethodPut, "/modules/beta", `{"on": false}`); r.status != http.StatusOK || set.Enabled("beta") {
+		t.Errorf("switched off: %d %s", r.status, r.body)
+	}
+	if r := do(t, srv, http.MethodPut, "/modules/core", `{"on": false}`); r.status != http.StatusConflict || decodeError(t, r.body).Code != i18n.KernelErrorModuleRequired {
+		t.Errorf("required: %d %s", r.status, r.body)
+	}
+	if r := do(t, srv, http.MethodPut, "/modules/nope", `{"on": true}`); r.status != http.StatusNotFound {
+		t.Errorf("unknown: %d %s", r.status, r.body)
 	}
 }
 

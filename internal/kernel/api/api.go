@@ -87,6 +87,7 @@ func New(opts Options, set *module.Set, log *slog.Logger) (*API, error) {
 
 	a := &API{huma: h, handler: csrf.Handler(router)}
 	a.registerManifest(set, opts.Version)
+	a.registerSwitch(set, log)
 	return a, nil
 }
 
@@ -142,19 +143,61 @@ func (a *API) registerManifest(set *module.Set, version string) {
 	}, func(context.Context, *struct{}) (*struct{ Body ManifestBody }, error) {
 		out := &struct{ Body ManifestBody }{Body: ManifestBody{Version: version, Modules: []ModuleInfo{}}}
 		for _, st := range set.Statuses() {
-			out.Body.Modules = append(out.Body.Modules, ModuleInfo{
-				ID:           st.ID,
-				Category:     st.Category,
-				Name:         st.Name,
-				Description:  st.Description,
-				Requires:     st.Requires,
-				Required:     st.Required,
-				Experimental: st.Experimental,
-				Switched:     st.Switched,
-				Enabled:      st.Enabled,
-			})
+			out.Body.Modules = append(out.Body.Modules, moduleInfo(st))
 		}
 		return out, nil
+	})
+}
+
+func moduleInfo(st module.Status) ModuleInfo {
+	return ModuleInfo{
+		ID:           st.ID,
+		Category:     st.Category,
+		Name:         st.Name,
+		Description:  st.Description,
+		Requires:     st.Requires,
+		Required:     st.Required,
+		Experimental: st.Experimental,
+		Switched:     st.Switched,
+		Enabled:      st.Enabled,
+	}
+}
+
+type switchInput struct {
+	ID   string `path:"id"`
+	Body struct {
+		On bool `json:"on" doc:"Switch the module on, or off"`
+	}
+}
+
+// registerSwitch adds PUT /modules/{id}, which switches a module on or off
+// while JEC runs. Every module's tables exist already: the migrations of
+// all modules run at startup.
+func (a *API) registerSwitch(set *module.Set, log *slog.Logger) {
+	huma.Register(a.huma, huma.Operation{
+		OperationID: "switch-module",
+		Method:      http.MethodPut,
+		Path:        "/modules/{id}",
+		Summary:     "Switch a module on or off",
+		Description: "A module switched on runs once the modules it requires are on too. Required modules cannot be switched off.",
+		Tags:        []string{"kernel"},
+	}, func(ctx context.Context, in *switchInput) (*struct{ Body ModuleInfo }, error) {
+		err := set.SetEnabled(ctx, in.ID, in.Body.On)
+		switch {
+		case errors.Is(err, module.ErrUnknown):
+			return nil, NewError(http.StatusNotFound, i18n.KernelErrorNotFound, nil)
+		case errors.Is(err, module.ErrRequired):
+			return nil, NewError(http.StatusConflict, i18n.KernelErrorModuleRequired, nil)
+		case err != nil:
+			return nil, err
+		}
+		log.Info("module switched", "module", in.ID, "on", in.Body.On)
+		for _, st := range set.Statuses() {
+			if st.ID == in.ID {
+				return &struct{ Body ModuleInfo }{Body: moduleInfo(st)}, nil
+			}
+		}
+		return nil, NewError(http.StatusNotFound, i18n.KernelErrorNotFound, nil)
 	})
 }
 

@@ -223,6 +223,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/modules/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Switch a module on or off
+         * @description A module switched on runs once the modules it requires are on too. Required modules cannot be switched off.
+         */
+        put: operations["switch-module"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/notify/notifiers/{id}/test": {
         parameters: {
             query?: never;
@@ -841,6 +861,10 @@ export interface components {
             /** @enum {string} */
             step: "key" | "order" | "challenge" | "validate" | "cleanup" | "download";
         };
+        SwitchInputBody: {
+            /** @description Switch the module on, or off */
+            on: boolean;
+        };
         TestOutputBody: {
             /** @description What the test found */
             message: components["schemas"]["Message"];
@@ -1422,6 +1446,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ManifestBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "switch-module": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SwitchInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModuleInfo"];
                 };
             };
             /** @description Error */

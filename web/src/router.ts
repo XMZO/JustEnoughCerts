@@ -83,6 +83,7 @@ export const router = createRouter({
           props: { kind: 'solver' },
           meta: { title: 'kernel.providers.solver.title', for: 'app' },
         },
+        { path: 'modules', name: 'modules', component: () => import('./pages/ModulesPage.vue'), meta: { title: 'kernel.modules.title', for: 'app' } },
         { path: 'more', name: 'more', component: () => import('./pages/MorePage.vue'), meta: { title: 'kernel.shell.more', for: 'app' } },
       ],
     },

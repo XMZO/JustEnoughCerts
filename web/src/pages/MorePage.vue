@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, ChevronRight, Globe, LogOut, Package, Server } from '@lucide/vue'
+import { Bell, Blocks, ChevronRight, Globe, LogOut, Package, Server } from '@lucide/vue'
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
@@ -23,6 +23,8 @@ const config = [
   { to: '/targets', label: 'kernel.providers.target.title', icon: Server },
   { to: '/notify', label: 'kernel.providers.notifier.title', icon: Bell },
 ] as const
+
+const modulesOn = computed(() => manifest.data.value?.modules.filter((m) => m.required || m.switched).length)
 
 const signedIn = computed(() => (session.data.value ? t('kernel.shell.signed_in', { username: session.data.value.username }) : ''))
 
@@ -49,6 +51,15 @@ async function leave() {
       >
         <component :is="link.icon" class="size-5 flex-none text-ink-muted" aria-hidden="true" />
         <span class="min-w-0 flex-1">{{ t(link.label) }}</span>
+        <ChevronRight class="size-4 flex-none text-ink-muted" aria-hidden="true" />
+      </RouterLink>
+    </section>
+    <section aria-labelledby="system" class="overflow-hidden rounded-lg border border-line bg-surface-raised">
+      <h2 id="system" class="m-0 px-4 pt-3 pb-1 text-heading font-semibold">{{ t('kernel.more.system') }}</h2>
+      <RouterLink to="/modules" class="flex min-h-12 items-center gap-3 px-4 text-ink no-underline hover:bg-surface-sunken hover:text-ink">
+        <Blocks class="size-5 flex-none text-ink-muted" aria-hidden="true" />
+        <span class="min-w-0 flex-1">{{ t('kernel.modules.title') }}</span>
+        <span v-if="modulesOn !== undefined" class="text-small text-ink-muted">{{ t('kernel.modules.on_count', { count: modulesOn }) }}</span>
         <ChevronRight class="size-4 flex-none text-ink-muted" aria-hidden="true" />
       </RouterLink>
     </section>

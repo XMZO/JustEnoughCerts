@@ -1197,6 +1197,19 @@
         ],
         "type": "object"
       },
+      "SwitchInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "on": {
+            "description": "Switch the module on, or off",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "on"
+        ],
+        "type": "object"
+      },
       "TestOutputBody": {
         "additionalProperties": false,
         "properties": {
@@ -2201,6 +2214,58 @@
           }
         },
         "summary": "List the modules and their state",
+        "tags": [
+          "kernel"
+        ]
+      }
+    },
+    "/modules/{id}": {
+      "put": {
+        "description": "A module switched on runs once the modules it requires are on too. Required modules cannot be switched off.",
+        "operationId": "switch-module",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModuleInfo"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Switch a module on or off",
         "tags": [
           "kernel"
         ]
