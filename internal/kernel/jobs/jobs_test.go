@@ -310,3 +310,45 @@ func TestRun(t *testing.T) {
 	cancel()
 	<-done
 }
+
+func TestTrigger(t *testing.T) {
+	f := newFixture(t)
+	release := make(chan struct{})
+	var runs atomic.Int32
+	s := f.scheduler(Job{Name: "issue", Every: time.Hour, Run: func(context.Context) error {
+		if runs.Add(1) == 1 {
+			<-release
+		}
+		return nil
+	}})
+	scope := s.Scope("certs")
+
+	// Before its time, a trigger makes the job due.
+	scope.Trigger("issue")
+	if n := s.tick(t.Context()); n != 1 {
+		t.Fatalf("a triggered job did not start: %d", n)
+	}
+	// A trigger while it runs makes it run again once it ends.
+	scope.Trigger("issue")
+	if n := s.tick(t.Context()); n != 0 {
+		t.Error("a triggered job overlapped itself")
+	}
+	// Forget the wake-ups of the triggers, to see the one the run's end sends.
+	for len(s.kick) > 0 {
+		<-s.kick
+	}
+	close(release)
+	s.wg.Wait()
+	select {
+	case <-s.kick:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the end of the run did not wake the scheduler")
+	}
+	if f.tick(s) != 1 || runs.Load() != 2 {
+		t.Errorf("the job triggered while running did not run again: %d runs", runs.Load())
+	}
+	if f.tick(s) != 0 {
+		t.Error("the job ran a third time")
+	}
+	scope.Trigger("nonexistent") // no job of that name: nothing happens
+}

@@ -50,6 +50,7 @@ type entry struct {
 	module  string
 	next    time.Time
 	running bool
+	again   bool // triggered while running: due once the run ends
 }
 
 // Scheduler runs jobs on schedule.
@@ -64,13 +65,14 @@ type Scheduler struct {
 	started bool
 	jobs    []*entry // sorted by ID
 	wg      sync.WaitGroup
+	kick    chan struct{}
 }
 
 // New returns a scheduler that stores the last runs in db, whose kernel
 // migrations are applied. enabled reports whether a module is on; "kernel"
 // counts as a module.
 func New(db *sql.DB, log *slog.Logger, enabled func(module string) bool) *Scheduler {
-	return &Scheduler{db: db, log: log, enabled: enabled, now: time.Now, startDelay: startDelay}
+	return &Scheduler{db: db, log: log, enabled: enabled, now: time.Now, startDelay: startDelay, kick: make(chan struct{}, 1)}
 }
 
 // Scope returns the handle through which module adds its jobs.
@@ -112,6 +114,26 @@ func (s *Scope) Add(job Job) error {
 	return nil
 }
 
+// Trigger makes the module's job name due now, as when there is work for
+// it that should not wait for its next time. A job already running runs
+// again once it ends, so that it sees the new work.
+func (s *Scope) Trigger(name string) {
+	sched := s.sched
+	id := s.module + "." + name
+	sched.mu.Lock()
+	for _, e := range sched.jobs {
+		if e.id == id {
+			e.next = time.Time{}
+			e.again = e.running
+		}
+	}
+	sched.mu.Unlock()
+	select {
+	case sched.kick <- struct{}{}:
+	default:
+	}
+}
+
 // Run runs the jobs on schedule until ctx is done, then waits for the
 // running ones, which see ctx done as well.
 func (s *Scheduler) Run(ctx context.Context) {
@@ -127,6 +149,7 @@ func (s *Scheduler) Run(ctx context.Context) {
 			s.wg.Wait()
 			return
 		case <-t.C:
+		case <-s.kick:
 		}
 	}
 }
@@ -196,7 +219,18 @@ func (s *Scheduler) run(ctx context.Context, e *entry, start time.Time) {
 	defer func() {
 		s.mu.Lock()
 		e.running = false
+		again := e.again
+		e.again = false
+		if again {
+			e.next = time.Time{}
+		}
 		s.mu.Unlock()
+		if again {
+			select {
+			case s.kick <- struct{}{}:
+			default:
+			}
+		}
 		s.wg.Done()
 	}()
 	log := s.log.With("job", e.id)
