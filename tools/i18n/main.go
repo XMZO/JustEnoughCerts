@@ -26,6 +26,10 @@ import (
 // requiredLocales must translate every key of the base locale.
 var requiredLocales = []language.Tag{i18n.BaseLocale, language.MustParse("zh-CN")}
 
+// placeholder starts the texts that tools/new-module writes for a new
+// module; check refuses them until someone writes the real ones.
+const placeholder = "TODO:"
+
 func main() {
 	root := flag.String("root", ".", "repository root")
 	flag.Usage = func() {
@@ -304,6 +308,9 @@ func checkFile(p *problems, root string, f, base *i18n.File) {
 		if strings.TrimSpace(src) == "" {
 			p.add("%s: %s is empty", name, k)
 			continue
+		}
+		if strings.HasPrefix(src, placeholder) {
+			p.add("%s: %s is still a placeholder: write the text", name, k)
 		}
 		m, err := i18n.ParseMessage(src)
 		if err != nil {

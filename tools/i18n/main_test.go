@@ -161,6 +161,7 @@ func TestChecksFail(t *testing.T) {
 		{"select branches", func(_, zh map[i18n.Key]string) { zh["certs.kind.label"] = "{kind, select, http {x} other {y}}" }, nil, "select branches"},
 		{"syntax error", func(_, zh map[i18n.Key]string) { zh["certs.list.title"] = "{owner" }, nil, "zh-CN.json: certs.list.title: at character"},
 		{"empty message", func(_, zh map[i18n.Key]string) { zh["certs.list.title"] = "  " }, nil, "certs.list.title is empty"},
+		{"placeholder", func(en, _ map[i18n.Key]string) { en["certs.list.title"] = "TODO: name {owner}" }, nil, "en-US.json: certs.list.title is still a placeholder"},
 		{"bad key name", func(en, zh map[i18n.Key]string) { en["certs.title"] = "x"; zh["certs.title"] = "x" }, nil, "certs.title: a key needs at least three segments"},
 		{"unused key", nil, map[string]string{"internal/x/x.go": "package x\n"}, "certs.kind.label is not used by any code"},
 		{"stale web keys", nil, map[string]string{"web/src/i18n/generated.ts": "export {}\n"}, "generated.ts is stale"},

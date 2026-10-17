@@ -8,7 +8,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v/
 LDFLAGS := -s -w -X $(PKG)/internal/kernel/buildinfo.version=$(VERSION)
 IMAGE   ?= jec:dev
 
-.PHONY: help web build test lint i18n-check i18n-fix gen dev run image snapshot clean
+.PHONY: help web build test lint i18n-check i18n-fix gen new-module dev run image snapshot clean
 
 help: ## list the targets
 	@grep -hE '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-11s %s\n", $$1, $$2}'
@@ -40,6 +40,9 @@ gen: ## regenerate the message keys and the web UI's API types
 	$(GO) generate ./i18n
 	$(GO) run ./tools/openapi
 	$(PNPM) -C web gen:api
+
+new-module: ## scaffold a module: make new-module id=acme category=source
+	$(GO) run ./tools/new-module -id '$(id)' -category '$(or $(category),feature)'
 
 dev: ## run the web UI's dev server; it proxies /api to make run
 	$(PNPM) -C web dev

@@ -4,7 +4,8 @@
 // key the code makes up would bypass the i18n gates.
 //
 // Tests are not checked, nor the packages that handle keys as data: the
-// i18n package, which holds the generated constants, and its tooling.
+// i18n package, which holds the generated constants, and its tooling:
+// tools/i18n and tools/new-module, which adds keys for a new module.
 //
 //	go run ./tools/i18nlint ./...
 package main
@@ -25,7 +26,8 @@ const i18nPkg = "github.com/XMZO/JustEnoughCerts/i18n"
 
 var exempt = map[string]bool{
 	i18nPkg: true,
-	"github.com/XMZO/JustEnoughCerts/tools/i18n": true,
+	"github.com/XMZO/JustEnoughCerts/tools/i18n":       true,
+	"github.com/XMZO/JustEnoughCerts/tools/new-module": true,
 }
 
 // Analyzer reports i18n.Key values that do not come from generated constants.
