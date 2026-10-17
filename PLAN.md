@@ -394,7 +394,7 @@ DNS 验证分成两种能力，实现方式不同：
 
 ### 5.6 Namecheap SSL Manager（M2，实验性）
 
-依据 2026-10 查到的 Namecheap 官方文档（知识库 10728、10754、9511）。
+依据 2026-10 查到的 Namecheap 官方文档（知识库 10728、10754、9511），以及对官方客户端 v1.15.10（Go 程序，linux/amd64，2026-06-25 构建）的静态分析：只看了符号、字符串、类型信息和反汇编，没有运行它。
 
 **它是什么**：Namecheap 给直客的服务器端自动化工具，经销商的客户不能用。在账户面板激活或重签证书时选 “Server-side automation”，面板给出一条终端安装命令和一个一次性安全令牌（24 小时有效，用过就作废）。在服务器上运行命令、粘贴令牌，显示 “Vendor registered” 后装好 cron 任务（`ssl-manager cron`）。之后它定时和 Namecheap 的 SSL 接口通信（后端 `externalautossl.service.spaceship.com`），自动签发、续期、安装：
 
@@ -405,20 +405,55 @@ DNS 验证分成两种能力，实现方式不同：
 - 目前只支持单域名证书；通配符、多域名和 API 访问，官方计划 2026 年 11–12 月提供，ACME 也是。官方工具只支持本机的 Apache 2.4+ 和 Nginx 1.18+，推不到 CDN。
 - 没有官方 API 的门槛（20 个域名或余额 / 消费满 $50），也不用设 IP 白名单。
 
-**JEC 的做法**：模块 `namecheap`（暂定），证书来源类型 `namecheap.ssl_manager`，**实验性，默认关闭**，界面标注“非公开接口，可能随时失效”。JEC 扮演 SSL Manager 的服务器端客户端：
+**协议**（v1.15.10 的行为；非公开接口，随时可能变）：
 
-- 用户把一次性令牌填进 JEC，JEC 用它注册；注册得到的凭据用 `r.Secrets` 加密保存，令牌只用这一次。
-- JEC 照官方工具的节奏轮询接口：轮到签发时用 JEC 生成的私钥做 CSR，发布 HTTP 验证文件，取回证书，交给证书模块作为新版本，然后照常部署到 ESA 等目标、删掉旧证书。下一张证书什么时候来由 Namecheap 决定，JEC 的续期窗口只用来提醒。
-- 不运行官方的程序。协议从官方客户端的代码分析得来，写进模块的注释和本节。
+- 地址是 `https://externalautossl.service.spaceship.com/api/v1/externalautossl/user`，写在安装脚本里，注册时交给客户端保存，下表的路径都接在它后面。请求一律是 `POST`，请求体是 JSON。HTTP 状态 ≥ 400，或者状态 200 但带了 `z-error-code` 响应头，都算失败。User-Agent 是 `sslManager/<版本> (<Go 版本>; linux; <架构>)`。
+- 认证用 `Authorization: Bearer <令牌>`：注册时是面板给的一次性令牌，之后是注册得到的 access token。
 
-**域名验证**：CA 和 Namecheap 要能访问 `http://域名/.well-known/…`。域名在 CDN（如 ESA）后面时，这些请求会回源到源站，所以要把文件放到那里，或者让 JEC 应答：
+| 路径 | 请求体 | 回应 |
+|---|---|---|
+| `/integrations/create`（注册） | `{"tool":"ssl-manager"}` | `{"accessToken","integrationHash"}` |
+| `/integrations/hash` | 无 | `{"integrationHash"}` |
+| `/integrations/updateMeta`（上报环境） | `{"tool":"ssl-manager","meta":{"tool":{"name","version"},"system":{"os","distro","version","arch","goVersion","privileged"},"controlPanel":{"type","version"}}}` | 不看 |
+| `/integrations/status?integrationHash=…` | 无 | `{"fingerprint"}` |
+| `/certificates/list` | `{"filters":{"order.domains.fqdn":{"$eq":"<域名>"}},"skip":null,"take":null}`；不带请求体时列出全部 | `{"items":[证书],"total"}` |
+| `/certificates/request`（交 CSR） | `{"id":"<证书 ID>","content":"<PEM 格式 CSR 的 base64>"}` | 证书 |
+| `/certificates/listChallenges` | `{"id":"<证书 ID>"}` | `{"items":[验证],"total"}` |
+| `/certificates/markChallengeInstalled` | `{"id":"<验证 ID>"}` | 证书 |
+| `/certificates/readPEMFormatted` | `{"id":"<证书 ID>"}` | `{"content":"<PEM 的 base64>"}` |
+| `/certificates/confirmInstallation` | `{"id":"<证书 ID>","installationId":"<安装标识>"}` | 证书 |
+| `/vendor/integration-token/refresh`（刷新令牌；接在把末尾 `/user` 去掉的地址后面） | 无 | `{"accessToken","issuedAt","expiresAt"}`（Unix 秒） |
+
+- **证书**的字段：`id`（UUID）、`orderId`、`domains`、`wildcard`、`state`、`notBefore`、`expires`、`issuer`、`serialNumber`、`modulusSha1`（RSA 公钥模数的 SHA-1，用来判断是不是同一张）、`installationId`。时间可能是 RFC 3339，也可能是不带时区的 `2006-01-02T15:04:05`（按 UTC）。客户端认得的 `state`：`Awaiting CSR`、`Awaiting Challenges Installation`、`Certificate Issued`、`Certificate Revoked`、`Order Failed`；其他状态（如 CA 审核中）跳过，下次再看。
+- **验证**的字段：`id`、`domain`、`method`（`HTTP`、`DNS`、`Email`）、`state`、`meta`（HTTP 是 `filePath`、`content`，DNS 是 `recordName`、`recordType`、`recordValue`），还有 `instructions`（`files`、`records` 两个列表和 `version`）。`filePath` 是这个域名下的 URL 路径，访问它要原样返回 `content`，不加换行。
+
+**官方客户端怎么跑**：cron 每 5 分钟运行一次，先随机等一会儿。
+
+1. 令牌没有过期时间（刚注册）或者不到 10 天就过期时刷新，新令牌和 `issuedAt`、`expiresAt` 一起存下。刷新回 404 或跳转算服务端不支持，1 天后再试；429 按 `Retry-After` 等；401、403、422 和其他 4xx 算被拒，408、425、5xx 和网络错误算暂时失败，这两种下次运行再试。
+2. 查 `/integrations/status`：fingerprint 和本机状态都没变就到此为止（服务端有缓存，响应头 `X-Cache-Status`）。
+3. 列出本机网站的域名，用 `/certificates/list` 挑出在 Namecheap 有证书的；每个域名取过滤结果里的第一张，按状态处理，同一次运行里可以连着走几步：
+   - `Awaiting CSR`：生成 RSA 2048 私钥（PKCS #1）和 CSR（`CN=<域名>`，另带 `C=US, ST=California, L=San Francisco`），调 `/certificates/request`。
+   - `Awaiting Challenges Installation`：调 `/certificates/listChallenges`，把每个验证放好（没有控制面板的模式只支持 HTTP：写文件，改 nginx / Apache 配置让这个路径能访问到），再调 `/certificates/markChallengeInstalled`。
+   - `Certificate Issued`：调 `/certificates/readPEMFormatted` 下载证书和中间证书；网站上装的不是这一张（看模数）时装上，调 `/certificates/confirmInstallation`，再删掉验证文件。
+   - `Certificate Revoked`：从网站卸下。
+4. 每个网站还放两个标记文件：`/.well-known/ssl-manager/installed.txt`（`<Unix 时间> <域名>`）和同目录的 `installed.b64.json`（`{"domain","manager_conflicts":[],"timestamp"}` 的 base64）。文档说 Namecheap 会访问前者，确认工具装好了。
+
+**JEC 的做法**：模块 `namecheap`，证书来源类型 `namecheap.ssl_manager`，**实验性，默认关闭**，界面标注“非公开接口，可能随时失效”。JEC 扮演 SSL Manager 的客户端：
+
+- 用户把一次性令牌填进 JEC，JEC 马上注册（令牌 24 小时内有效，只用这一次）。access token、integrationHash 和令牌的过期时间加密存在模块自己的表里，按上面的规则刷新。
+- 请求按官方客户端的格式发，工具名也是 `ssl-manager`；User-Agent 在官方格式后面加上 `JustEnoughCerts/<版本>`，让对方看得出是谁。`updateMeta` 在注册后和 JEC 升级后各发一次，`controlPanel.type` 填 `manual_interactive`（官方的取值有 `cpanel`、`plugin`、`web_server`、`manual_interactive`，JEC 最接近手动模式）。
+- 和官方一样每 5 分钟查一次 status（加随机延迟）；fingerprint 变了，或者有证书在等待中，才去查证书。
+- `Awaiting CSR` 时由证书模块生成私钥（等待期间加密保存）和 CSR；验证交给证书选的 HTTP 文件验证实例放好，再报告已放好；签出后下载，用模数核对它和等待中的私钥配对，作为新版本交给证书模块，照常部署到 ESA 等目标、删掉旧证书；部署完调 `confirmInstallation`（安装标识用 JEC 的证书版本），清理验证文件。下一张证书什么时候来由 Namecheap 决定，JEC 的续期窗口只用来提醒。
+- 不运行官方的程序；协议写进模块的注释和本节。
+
+**域名验证**：CA 要能访问 `http://域名/<filePath>`，Namecheap 还会访问上面的标记文件。域名在 CDN（如 ESA）后面时，这些请求会回源到源站，所以要把文件放到那里，或者让 JEC 应答：
 
 - 写到源站的网站目录：源站和 JEC 在同一台机器上（本地目录），或者经 SSH 写过去，写法和 5.3.3 的本地文件、SSH 部署一样；
 - 或者在源站或 CDN 上把 `/.well-known/` 转给 JEC，由 JEC 应答。
 
-这是一个新的验证类型“HTTP 文件验证”，M2 一起做。DNS 记录管理层（5.3.2 ②）这条路线用不到，移到 M3。
+CDN 不能缓存这些路径；有跳转（如 HTTP 跳 HTTPS）时要确认 CA 会跟随，官方客户端的手动模式也这样提示。这是一个新的验证类型“HTTP 文件验证”，M2 一起做，标记文件也由它放。协议里有 DNS 验证（记录类型由服务端给），但没有面板的官方客户端只处理 HTTP；DNS 记录管理层（5.3.2 ②）移到 M3。
 
-**要分析官方客户端的代码才能确定**（需要用户从账户面板拿到安装命令或 `ssl-manager.php`，令牌不用给）：接口地址和请求格式，注册之后怎么认证，一次注册管一张证书还是一个账户，轮询的频率和任务有哪几种，验证文件的路径和内容，证书和中间证书怎么返回，是否也支持 DNS（CNAME）验证。
+**还不确定，要用真实账号试**：一次注册能看到账户里的哪些证书（只有激活时选了 “Server-side automation” 的那一张，还是全部），第二张证书要不要再注册；交了验证之后、签出之前的状态叫什么；服务端是否真的检查 `installed.txt`；`controlPanel.type` 会不会影响给哪种验证；access token 的有效期；User-Agent 里多了 JEC 会不会被拒。
 
 **对证书模块的要求**（M2 的“厂商来源通用框架”）：现在的签发在一次尝试里做完，ACME 由 lego 从下单到下载一次完成。厂商来源要等 CA 审核，跨多次检查才拿到证书，所以签发要能处在“等待中”而不算失败，私钥要在等待期间加密保存，取回的证书要和当初的私钥配对。
 
