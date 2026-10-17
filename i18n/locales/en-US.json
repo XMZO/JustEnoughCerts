@@ -5,6 +5,18 @@
     "completeness": 100
   },
   "kernel": {
+    "account": {
+      "password": "Password",
+      "password_again": "Repeat the password",
+      "password_hint": "At least {min, plural, one {# character} other {# characters}}.",
+      "password_mismatch": "The two passwords differ.",
+      "username": "Username"
+    },
+    "app": {
+      "language": "Language",
+      "name": "Just Enough Certs",
+      "tagline": "Just enough certs to keep your site green."
+    },
     "error": {
       "cross_origin": "The request came from another site and was blocked.",
       "internal": "The server hit an error. Try again, and check the server log if it keeps happening.",
@@ -12,12 +24,30 @@
       "invalid_request": "The request is not valid. Check what you entered and try again.",
       "login_failed": "The username or password is wrong. After {attempts, plural, one {# failed attempt} other {# failed attempts}} in a row, sign-in is locked for {minutes, plural, one {# minute} other {# minutes}}.",
       "method_not_allowed": "This action is not supported here.",
+      "network": "JEC cannot be reached. Check that the server is running, then try again.",
       "not_found": "This item does not exist. It may have been deleted.",
       "setup_done": "JEC is already set up. Sign in instead.",
       "setup_token_invalid": "The setup token is wrong. Copy it again from the server log.",
       "too_large": "The request is too large. Send a smaller file.",
       "too_many_attempts": "Too many failed attempts. Try again in {minutes, plural, one {# minute} other {# minutes}}.",
       "unauthorized": "Sign in to continue."
+    },
+    "home": {
+      "empty": "No certificates yet. Certificate management arrives in the next version.",
+      "sign_out": "Sign out",
+      "signed_in": "Signed in as {username}",
+      "title": "Overview"
+    },
+    "login": {
+      "forgot": "Forgot the password? Run this on the server:",
+      "submit": "Sign in",
+      "title": "Sign in"
+    },
+    "setup": {
+      "intro": "Create the admin account. The setup token is in the server log, after setup_token=. With Docker, run:",
+      "submit": "Create account",
+      "title": "Set up JEC",
+      "token": "Setup token"
     }
   }
 }

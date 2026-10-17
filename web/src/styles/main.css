@@ -1,0 +1,94 @@
+@import "tailwindcss";
+/* The design tokens, light and dark. Unlayered, they also override the
+   Tailwind defaults of the same names: --radius-*, --font-sans, --font-mono. */
+@import "../../../docs/design/system/tokens.css";
+
+/* Only design tokens are available: no stray palette colors or sizes. */
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+
+  --text-page-title: 24px;
+  --text-page-title--line-height: 32px;
+  --text-section-title: 18px;
+  --text-section-title--line-height: 26px;
+  --text-heading: 15px;
+  --text-heading--line-height: 22px;
+  --text-body: 14px;
+  --text-body--line-height: 22px;
+  --text-small: 13px;
+  --text-small--line-height: 20px;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-numeral: 28px;
+  --text-numeral--line-height: 32px;
+}
+
+/* Inline, so that utilities follow a [data-theme] switch at run time. */
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-on-brand: var(--on-brand);
+  --color-ok-ink: var(--ok-ink);
+  --color-ok-soft: var(--ok-soft);
+  --color-ok-fill: var(--ok-fill);
+  --color-warn-ink: var(--warn-ink);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-fill: var(--warn-fill);
+  --color-danger-ink: var(--danger-ink);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-fill: var(--danger-fill);
+  --color-on-danger: var(--on-danger);
+  --color-info-ink: var(--info-ink);
+  --color-info-soft: var(--info-soft);
+  --color-info-fill: var(--info-fill);
+  --color-focus-ring: var(--focus-ring);
+  --color-bar-track: var(--bar-track);
+  --color-bar-edge: var(--bar-edge);
+  --shadow-popover: var(--shadow-popover);
+  --shadow-slot: var(--shadow-slot);
+}
+
+@layer base {
+  html {
+    background: var(--surface);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    margin: 0;
+    font-size: 14px;
+    line-height: 22px;
+  }
+  a {
+    color: var(--brand);
+  }
+  a:hover {
+    color: var(--brand-hover);
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+  code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 20px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+}

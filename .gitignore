@@ -1,6 +1,11 @@
 # Build output
 /build/
 /dist/
+/web/dist/*
+!/web/dist/.gitkeep
+
+# Dependencies
+node_modules/
 
 # Local data from "jec serve" or docker compose
 /data/

@@ -3,15 +3,19 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/XMZO/JustEnoughCerts/i18n"
 )
 
 const i18nPkg = "github.com/XMZO/JustEnoughCerts/i18n"
@@ -100,6 +104,35 @@ func usedKeyConstants(root string) (map[string]bool, error) {
 			}
 			return true
 		})
+		return nil
+	})
+	return used, err
+}
+
+// webKeyPattern matches a quoted message key in TypeScript or a Vue
+// template; keys are typed, so a key the UI uses appears as a literal.
+var webKeyPattern = regexp.MustCompile("[\"'`]([a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*){2,})[\"'`]")
+
+// usedWebKeys returns the message keys that the web UI's sources quote,
+// leaving out the generated list of all keys.
+func usedWebKeys(root string) (map[i18n.Key]bool, error) {
+	used := map[i18n.Key]bool{}
+	src := filepath.Join(root, "web", "src")
+	if _, err := os.Stat(src); errors.Is(err, fs.ErrNotExist) {
+		return used, nil
+	}
+	err := walk(src, func(rel, path string) error {
+		source := strings.HasSuffix(rel, ".ts") || strings.HasSuffix(rel, ".vue")
+		if !source || rel == "i18n/generated.ts" {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		for _, m := range webKeyPattern.FindAllSubmatch(data, -1) {
+			used[i18n.Key(m[1])] = true
+		}
 		return nil
 	})
 	return used, err

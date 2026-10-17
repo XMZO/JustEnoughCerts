@@ -22,12 +22,14 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
+	"github.com/XMZO/JustEnoughCerts/web"
 )
 
 // App is the assembled server.
 type App struct {
 	store   *store.Store
 	modules *module.Set
+	api     *api.API
 	handler http.Handler
 }
 
@@ -96,8 +98,23 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 
 	router := chi.NewRouter()
 	router.Mount(cfg.BasePath()+api.Prefix, a.Handler())
-	return &App{store: st, modules: set, handler: router}, nil
+	ui, err := web.Handler(cfg.BasePath())
+	switch {
+	case errors.Is(err, web.ErrNotBuilt):
+		log.Warn(err.Error())
+	case err != nil:
+		return nil, err
+	default:
+		router.Handle(cfg.BasePath()+"/*", ui)
+		if cfg.BasePath() != "" {
+			router.Handle(cfg.BasePath(), ui)
+		}
+	}
+	return &App{store: st, modules: set, api: a, handler: router}, nil
 }
+
+// OpenAPI returns the document describing the API, every module included.
+func (a *App) OpenAPI() *huma.OpenAPI { return a.api.Kernel().OpenAPI() }
 
 // origin returns scheme://host[:port] of the base URL, or "".
 func origin(baseURL string) string {

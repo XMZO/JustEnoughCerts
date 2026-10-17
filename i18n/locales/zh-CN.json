@@ -5,6 +5,18 @@
     "completeness": 100
   },
   "kernel": {
+    "account": {
+      "password": "密码",
+      "password_again": "再输一次密码",
+      "password_hint": "至少 {min, plural, other {# 个字符}}。",
+      "password_mismatch": "两次输入的密码不一样。",
+      "username": "用户名"
+    },
+    "app": {
+      "language": "语言",
+      "name": "Just Enough Certs",
+      "tagline": "刚好够用的证书，让网站一直是绿锁。"
+    },
     "error": {
       "cross_origin": "这个请求来自其他网站，已被拦截。",
       "internal": "服务器出错了。请重试；如果一直出现，请查看服务器日志。",
@@ -12,12 +24,30 @@
       "invalid_request": "请求无效。请检查填写的内容后重试。",
       "login_failed": "用户名或密码不对。连续错 {attempts, plural, other {# 次}}会锁定 {minutes, plural, other {# 分钟}}。",
       "method_not_allowed": "这里不支持这个操作。",
+      "network": "连不上 JEC。请确认服务器在运行，然后重试。",
       "not_found": "要找的内容不存在，可能已被删除。",
       "setup_done": "JEC 已经初始化过了，请直接登录。",
       "setup_token_invalid": "初始化令牌不对，请从服务器日志里重新复制。",
       "too_large": "提交的内容太大，请换一个更小的文件。",
       "too_many_attempts": "失败次数太多，请 {minutes, plural, other {# 分钟}}后再试。",
       "unauthorized": "请先登录。"
+    },
+    "home": {
+      "empty": "还没有证书。证书管理会在下一个版本加入。",
+      "sign_out": "退出登录",
+      "signed_in": "已登录：{username}",
+      "title": "总览"
+    },
+    "login": {
+      "forgot": "忘记密码：在服务器上运行",
+      "submit": "登录",
+      "title": "登录"
+    },
+    "setup": {
+      "intro": "创建管理员账号。初始化令牌在服务器日志里 setup_token= 的后面。用 Docker 部署时运行：",
+      "submit": "创建账号",
+      "title": "初始化 JEC",
+      "token": "初始化令牌"
     }
   }
 }

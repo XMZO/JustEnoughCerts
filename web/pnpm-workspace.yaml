@@ -1,0 +1,4 @@
+# vue-demi's install script only matters for Vue 2; its default files are
+# the Vue 3 ones, so it does not need to run.
+ignoredBuiltDependencies:
+  - vue-demi

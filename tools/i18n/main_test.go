@@ -116,6 +116,7 @@ func repo(t *testing.T, change func(en, zh map[i18n.Key]string), extra map[strin
 		t.Fatal(err)
 	}
 	write("i18n/keys_gen.go", string(keys))
+	write("web/src/i18n/generated.ts", string(tsSource([]*i18n.File{zhFile, baseFile}, baseFile)))
 	write("internal/x/x.go", usingCode)
 	for rel, content := range extra {
 		write(rel, content)
@@ -162,6 +163,7 @@ func TestChecksFail(t *testing.T) {
 		{"empty message", func(_, zh map[i18n.Key]string) { zh["certs.list.title"] = "  " }, nil, "certs.list.title is empty"},
 		{"bad key name", func(en, zh map[i18n.Key]string) { en["certs.title"] = "x"; zh["certs.title"] = "x" }, nil, "certs.title: a key needs at least three segments"},
 		{"unused key", nil, map[string]string{"internal/x/x.go": "package x\n"}, "certs.kind.label is not used by any code"},
+		{"stale web keys", nil, map[string]string{"web/src/i18n/generated.ts": "export {}\n"}, "generated.ts is stale"},
 		{"key used by tests only", nil, map[string]string{
 			"internal/x/x.go":      "package x\n",
 			"internal/x/x_test.go": usingCode,
@@ -182,6 +184,34 @@ func TestChecksFail(t *testing.T) {
 			}
 			t.Errorf("no problem contains %q; got:\n%s", tt.want, strings.Join(p, "\n"))
 		})
+	}
+}
+
+func TestWebKeysCount(t *testing.T) {
+	// Go uses two of the keys, the web UI the third one.
+	root := repo(t, nil, map[string]string{
+		"internal/x/x.go":        "package x\n\nimport \"github.com/XMZO/JustEnoughCerts/i18n\"\n\nvar _ = []i18n.Key{i18n.CertsListTitle, i18n.CertsListCount}\n",
+		"web/src/pages/Kind.vue": "<template><p>{{ t('certs.kind.label', { kind }) }}</p></template>\n",
+	})
+	if p := runChecks(root); len(p) > 0 {
+		t.Errorf("a key used by the web UI counts as unused:\n%s", strings.Join(p, "\n"))
+	}
+}
+
+func TestTSSource(t *testing.T) {
+	base := &i18n.File{Tag: i18n.BaseLocale, Meta: i18n.Meta{Name: "English", Dir: "ltr"}, Messages: map[i18n.Key]string{"a.b.c": "x", "a.b.a": "y"}}
+	zh := &i18n.File{Tag: requiredLocales[1], Meta: i18n.Meta{Name: cjk, Dir: "ltr"}, Messages: map[i18n.Key]string{"a.b.c": "x"}}
+	got := string(tsSource([]*i18n.File{zh, base}, base))
+	for _, want := range []string{
+		"{ tag: \"en-US\", name: \"English\", dir: \"ltr\", completeness: 100 },\n  { tag: \"zh-CN\", name: \"\\u4e2d\\u6587\", dir: \"ltr\", completeness: 50 },",
+		"export type MessageKey =\n  | \"a.b.a\"\n  | \"a.b.c\"\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("tsSource lacks %q:\n%s", want, got)
+		}
+	}
+	if strings.ContainsFunc(got, isCJK) {
+		t.Error("tsSource emits CJK text")
 	}
 }
 
