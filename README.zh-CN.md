@@ -7,16 +7,22 @@
 Just Enough Certs（JEC）是自托管的 SSL/TLS 证书管理面板：从你购买或签发证书的地方获取证书，自动完成域名验证，部署到 CDN 和服务器，到期前自动续期。名字和视觉致敬 Minecraft 的 JEI 模组。
 
 > [!WARNING]
-> JEC 还在早期开发中。0.0.x 版本只是骨架：服务端、初始化向导和登录，支持中文和英文。证书相关的功能在接下来的里程碑里加入，路线图见 [PLAN.md](PLAN.md)。
+> JEC 还在早期开发中。已发布的 0.0.x 版本只是骨架：服务端、初始化向导和登录，支持中文和英文。main 分支已经能做到下面列出的功能，但还没有发布，也还没有对真实的阿里云 ESA 站点完整跑通一次。路线图见 [PLAN.md](PLAN.md)。
 
-## 计划中的功能
+## 功能
 
-- 从任意 ACME CA（支持 External Account Binding）和 Namecheap 等厂商 API 获取证书。
-- 域名验证：在 [lego](https://github.com/go-acme/lego) 支持的任意 DNS 服务商添加记录，或者 HTTP 验证、手动验证。
-- 部署到阿里云 ESA 等 CDN、通过 SSH 部署到服务器、写到本地文件，部署前后可以跑钩子。
-- 到期前自动续期，并发送通知。
+main 分支上已经可用：
+
+- 从任意 ACME CA（支持 External Account Binding）获取证书，或者手动上传。
+- 域名验证：在 [lego](https://github.com/go-acme/lego) 支持的 221 家 DNS 服务商添加记录。
+- 每张新证书自动部署到阿里云 ESA（并删掉被替换的旧证书）、本地目录、SSH 服务器（写完可以执行一条命令，比如重载 nginx）和 Webhook。
+- 进入续期窗口后自动续期，失败时按逐渐拉长的间隔重试。
+- 通过 Telegram、邮件（SMTP）和 Webhook 发通知，每个渠道可以选自己的语言。
+- 签发记录：每一次签发、续期和部署，都带完整日志。
 - 内核之外的一切都是模块，可以在运行时停用，也可以在编译时去掉。
 - 一个很小的容器镜像，或者一个静态二进制文件，数据存在 SQLite 里。
+
+计划中：Namecheap 等厂商 API、HTTP 验证和手动验证、钩子，以及更多 CDN、面板和通知渠道。
 
 ## 快速上手
 
@@ -44,7 +50,7 @@ docker exec -it jec /jec reset-password
 
 ### 放在反向代理后面
 
-把 `JEC_BASE_URL` 设为用户实际打开的地址，例如 `https://certs.example.com`，或者子路径 `https://example.com/certs/`。地址是 `https` 时，会话 Cookie 只通过 HTTPS 发送。
+把 `JEC_BASE_URL` 设为用户实际打开的地址，例如 `https://certs.example.com`，或者子路径 `https://example.com/certs/`。地址是 `https` 时，会话 Cookie 只通过 HTTPS 发送。设置了它，通知里才会带上对应页面的链接。
 
 ### 不用 Docker
 

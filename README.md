@@ -12,22 +12,33 @@ Minecraft mod JEI.
 
 > [!WARNING]
 > JEC is in early development. The 0.0.x releases are the skeleton: the
-> server, the setup wizard and signing in, in English and Chinese.
-> Certificates arrive in the next milestones; see the roadmap in
-> [PLAN.md](PLAN.md) (in Chinese).
+> server, the setup wizard and signing in, in English and Chinese. The
+> main branch does what the list below says works, but it is not released
+> yet and has not been tried end to end against a real Alibaba Cloud ESA
+> site. See the roadmap in [PLAN.md](PLAN.md) (in Chinese).
 
-## Planned features
+## Features
 
-- Certificates from any ACME CA, with External Account Binding, and from
-  vendor APIs such as Namecheap.
-- Domain validation through DNS records at any of the providers that
-  [lego](https://github.com/go-acme/lego) supports, over HTTP, or by hand.
-- Deployment to CDNs such as Alibaba Cloud ESA, to servers over SSH and
-  to local files, with hooks before and after.
-- Renewal before expiry, with notifications.
+Working on the main branch:
+
+- Certificates from any ACME CA, with External Account Binding, or
+  uploaded by hand.
+- Domain validation through DNS records at any of the 221 providers that
+  [lego](https://github.com/go-acme/lego) supports.
+- Deployment of each new certificate to Alibaba Cloud ESA (removing the one
+  it replaces), to local directories, to servers over SSH (with a command
+  afterwards, such as reloading nginx) and to webhooks.
+- Renewal once a certificate enters its renewal window; failures are
+  retried with a growing delay.
+- Notifications through Telegram, email (SMTP) and webhooks, each in the
+  language you choose for it.
+- A history of every issuance, renewal and deployment, with its full log.
 - Everything beyond the kernel is a module that can be switched off at run
   time or left out at build time.
 - One small container image or one static binary, with SQLite.
+
+Planned: vendor APIs such as Namecheap's, HTTP and manual validation,
+hooks, and more CDNs, panels and notification channels.
 
 ## Quick start
 
@@ -66,6 +77,7 @@ docker exec -it jec /jec reset-password
 Set `JEC_BASE_URL` to the URL people open, such as
 `https://certs.example.com` or `https://example.com/certs/` for a sub-path.
 With an `https` URL the session cookie is only sent over HTTPS.
+Notifications link to the pages they are about only when it is set.
 
 ### Without Docker
 
