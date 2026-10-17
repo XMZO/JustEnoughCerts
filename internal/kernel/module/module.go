@@ -18,6 +18,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 )
 
@@ -80,6 +81,10 @@ type Registry struct {
 	// Secrets seals what the module stores but must not keep in the clear,
 	// such as private keys and credentials.
 	Secrets *secrets.Scope
+	// Providers takes the provider types the module offers, such as a DNS
+	// provider or a deploy target, and opens configured instances of any
+	// module's types.
+	Providers *providers.Scope
 	// ConfirmPassword checks the password of the account a request is
 	// signed in as, before something sensitive such as a private key
 	// download. Its error is an API response: a wrong body.password, or

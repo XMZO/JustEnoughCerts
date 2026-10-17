@@ -203,6 +203,7 @@
     },
     "error": {
       "cross_origin": "这个请求来自其他网站，已被拦截。",
+      "field_required": "请填写这一项。",
       "internal": "服务器出错了。请重试；如果一直出现，请查看服务器日志。",
       "invalid_field": "这一项的值无效。",
       "invalid_request": "请求无效。请检查填写的内容后重试。",
@@ -211,6 +212,8 @@
       "network": "连不上 JEC。请确认服务器在运行，然后重试。",
       "not_found": "要找的内容不存在，可能已被删除。",
       "password_wrong": "密码不对。",
+      "provider_in_use": "还有证书在使用它，不能删除。请先修改这些证书。",
+      "provider_type_unknown": "没有这项服务，它所属的模块可能已经停用。",
       "setup_done": "JEC 已经初始化过了，请直接登录。",
       "setup_token_invalid": "初始化令牌不对，请从服务器日志里重新复制。",
       "too_large": "提交的内容太大，请换一个更小的文件。",
@@ -243,6 +246,12 @@
       "sign_out": "退出登录",
       "signed_in": "已登录：{username}",
       "version": "版本 {version}"
+    }
+  },
+  "lego": {
+    "module": {
+      "description": "借助 lego，在 221 家 DNS 服务商添加 TXT 记录，完成域名验证。",
+      "name": "DNS 服务商（lego）"
     }
   }
 }

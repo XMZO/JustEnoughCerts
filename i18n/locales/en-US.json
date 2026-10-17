@@ -203,6 +203,7 @@
     },
     "error": {
       "cross_origin": "The request came from another site and was blocked.",
+      "field_required": "Fill in this field.",
       "internal": "The server hit an error. Try again, and check the server log if it keeps happening.",
       "invalid_field": "This value is not valid.",
       "invalid_request": "The request is not valid. Check what you entered and try again.",
@@ -211,6 +212,8 @@
       "network": "JEC cannot be reached. Check that the server is running, then try again.",
       "not_found": "This item does not exist. It may have been deleted.",
       "password_wrong": "The password is wrong.",
+      "provider_in_use": "Certificates still use this, so it cannot be deleted. Change those certificates first.",
+      "provider_type_unknown": "This service is not available. The module it belongs to may be switched off.",
       "setup_done": "JEC is already set up. Sign in instead.",
       "setup_token_invalid": "The setup token is wrong. Copy it again from the server log.",
       "too_large": "The request is too large. Send a smaller file.",
@@ -243,6 +246,12 @@
       "sign_out": "Sign out",
       "signed_in": "Signed in as {username}",
       "version": "Version {version}"
+    }
+  },
+  "lego": {
+    "module": {
+      "description": "Proves control of a domain by adding a TXT record at any of 221 DNS providers, through lego.",
+      "name": "DNS providers (lego)"
     }
   }
 }

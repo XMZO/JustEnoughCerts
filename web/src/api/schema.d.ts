@@ -92,6 +92,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the configured providers */
+        get: operations["providers-list"];
+        put?: never;
+        /** Configure a provider */
+        post: operations["providers-create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/providers/types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the provider types the modules offer */
+        get: operations["providers-types"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/providers/types/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a provider type with the fields of its form */
+        get: operations["providers-type"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/providers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a configured provider */
+        get: operations["providers-get"];
+        put?: never;
+        post?: never;
+        /** Delete a configured provider, unless a certificate uses it */
+        delete: operations["providers-delete"];
+        options?: never;
+        head?: never;
+        /** Change a configured provider */
+        patch: operations["providers-update"];
+        trace?: never;
+    };
     "/session": {
         parameters: {
             query?: never;
@@ -182,6 +253,16 @@ export interface components {
             notAfter: string;
             subject: string;
         };
+        CreateInputBody: {
+            config?: {
+                [key: string]: string;
+            };
+            name: string;
+            secrets?: {
+                [key: string]: string;
+            };
+            type: string;
+        };
         DetailOutputBody: {
             certificate: components["schemas"]["CertificateBody"];
             /** @description The chain of the current version, the leaf first */
@@ -203,13 +284,44 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        Field: {
+            default?: string;
+            doc?: string;
+            help?: string;
+            key: string;
+            kind: string;
+            label?: string;
+            options?: components["schemas"]["Option"][];
+            required?: boolean;
+            secret?: boolean;
+        };
         FieldError: {
             /** @description Message key */
             code: string;
             /** @description Where in the request, e.g. body.domains[1] */
             location: string;
         };
+        InstanceBody: {
+            config: {
+                [key: string]: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int64 */
+            id: number;
+            /** @description The type's kind, or empty when the type is not available */
+            kind: string;
+            name: string;
+            /** @description The secret fields that hold a value */
+            secretKeys: string[];
+            type: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         ListOutputBody: {
+            providers: components["schemas"]["InstanceBody"][];
+        };
+        ListOutputBody1: {
             /** @description The soonest to expire first */
             certificates: components["schemas"]["CertificateBody"][];
         };
@@ -238,6 +350,10 @@ export interface components {
             /** @description Switched on by itself */
             switched: boolean;
         };
+        Option: {
+            label: string;
+            value: string;
+        };
         PEMFields: {
             /** @description PEM certificates: the leaf and its intermediates, in any order. The private key may come along. */
             certificate: string;
@@ -261,7 +377,48 @@ export interface components {
             password: string;
             username: string;
         };
+        Type: {
+            brand?: string;
+            description?: string;
+            doc?: string;
+            experimental?: boolean;
+            fields: components["schemas"]["Field"][];
+            id: string;
+            kind: string;
+            module: string;
+            name?: string;
+            tags?: string[];
+            url?: string;
+        };
+        TypeSummary: {
+            /** @description A third party's name for the type, shown as it is */
+            brand?: string;
+            description?: string;
+            experimental?: boolean;
+            id: string;
+            /** @enum {string} */
+            kind: "source" | "solver" | "target" | "notifier";
+            module: string;
+            /** @description Message key of the name, for types JEC describes */
+            name?: string;
+            tags?: string[];
+            url?: string;
+        };
+        TypesOutputBody: {
+            types: components["schemas"]["TypeSummary"][];
+        };
         UpdateInputBody: {
+            /** @description Replaces the plain settings when given */
+            config?: {
+                [key: string]: string;
+            };
+            name?: string;
+            /** @description Merged: a value replaces that secret, an empty string removes it */
+            secrets?: {
+                [key: string]: string;
+            };
+        };
+        UpdateInputBody1: {
             /** Format: int64 */
             renewBeforeDays: number;
         };
@@ -312,7 +469,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ListOutputBody"];
+                    "application/json": components["schemas"]["ListOutputBody1"];
                 };
             };
             /** @description Error */
@@ -430,7 +587,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateInputBody"];
+                "application/json": components["schemas"]["UpdateInputBody1"];
             };
         };
         responses: {
@@ -544,6 +701,227 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ManifestBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "providers-list": {
+        parameters: {
+            query?: {
+                kind?: "source" | "solver" | "target" | "notifier" | "";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "providers-create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInputBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "providers-types": {
+        parameters: {
+            query?: {
+                kind?: "source" | "solver" | "target" | "notifier" | "";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TypesOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "providers-type": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Type"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "providers-get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "providers-delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "providers-update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceBody"];
                 };
             };
             /** @description Error */

@@ -27,6 +27,8 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers/providersapi"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 	"github.com/XMZO/JustEnoughCerts/web"
@@ -84,6 +86,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	enabled := func(id string) bool { return id == owner || set.Enabled(id) }
 	bus := events.New(st.DB(), log, enabled)
 	sched := jobs.New(st.DB(), log, enabled)
+	registry := providers.New(st.DB(), box.Scope(owner), enabled)
 
 	cookiePath := cfg.BasePath()
 	if cookiePath == "" {
@@ -107,6 +110,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		return nil, err
 	}
 	accounts.Register(a.Kernel())
+	providersapi.Register(a.Kernel(), registry)
 	for _, m := range set.Modules() {
 		id := m.Manifest().ID
 		r := &module.Registry{
@@ -116,6 +120,8 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 			Events:  bus.Scope(id),
 			Jobs:    sched.Scope(id),
 			Secrets: box.Scope(id),
+
+			Providers: registry.Scope(id),
 
 			ConfirmPassword: accounts.ConfirmPassword,
 		}
@@ -127,6 +133,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		return nil, err
 	}
 	bus.Seal()
+	registry.Seal()
 
 	router := chi.NewRouter()
 	router.Mount(cfg.BasePath()+api.Prefix, a.Handler())
