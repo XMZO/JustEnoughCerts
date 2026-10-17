@@ -4,6 +4,58 @@
     "dir": "ltr",
     "completeness": 100
   },
+  "acme": {
+    "account": {
+      "description": "证书颁发机构（CA）上的一个账号，第一次使用时由 JEC 自动注册。",
+      "name": "ACME 账号"
+    },
+    "ca": {
+      "actalis": "Actalis",
+      "custom": "自定义",
+      "digicert": "DigiCert",
+      "freessl": "FreeSSL",
+      "globalsign": "GlobalSign",
+      "googletrust": "Google Trust Services",
+      "googletrust_staging": "Google Trust Services（测试环境）",
+      "letsencrypt": "Let's Encrypt",
+      "letsencrypt_staging": "Let's Encrypt（测试环境）",
+      "litessl": "LiteSSL",
+      "peeringhub": "PeeringHub",
+      "sectigo": "Sectigo（DV）",
+      "sectigoev": "Sectigo（EV）",
+      "sectigoov": "Sectigo（OV）",
+      "sslcomecc": "SSL.com（ECC）",
+      "sslcomrsa": "SSL.com（RSA）",
+      "zerossl": "ZeroSSL"
+    },
+    "error": {
+      "directory_required": "请填写自定义证书颁发机构的目录地址。",
+      "eab_required": "这家证书颁发机构要求 EAB。请在账号里填写 EAB Key ID 和 HMAC Key。"
+    },
+    "field": {
+      "ca": "证书颁发机构",
+      "ca_help": "其他支持 ACME 的 CA 选“自定义”，再填写它的目录地址。",
+      "directory": "目录地址（仅自定义时填写）",
+      "directory_help": "CA 的 ACME 目录地址，在它的文档里能找到，通常以 /directory 结尾。",
+      "eab_hmac": "EAB HMAC Key（可选）",
+      "eab_hmac_help": "和 Key ID 一起给出，注册账号时使用。",
+      "eab_kid": "EAB Key ID（可选）",
+      "eab_kid_help": "ZeroSSL、Google Trust Services 和多数付费 CA 需要，在它们的账户页面里获取。",
+      "email": "联系邮箱（可选）",
+      "email_help": "CA 会把账号相关的通知发到这里。使用这个账号即表示接受该 CA 的服务条款。"
+    },
+    "log": {
+      "cleanup": "正在删除 {domain} 的验证记录",
+      "issued": "证书颁发机构已签发证书",
+      "order": "正在申请 {domains} 的证书",
+      "present": "正在为 {domain} 添加验证记录",
+      "register": "正在向 {directory} 注册账号"
+    },
+    "module": {
+      "description": "从支持 ACME 的 CA 获取证书，例如 Let's Encrypt、ZeroSSL、Google Trust Services。",
+      "name": "ACME"
+    }
+  },
   "certs": {
     "action": {
       "add": "添加证书",

@@ -4,6 +4,58 @@
     "dir": "ltr",
     "completeness": 100
   },
+  "acme": {
+    "account": {
+      "description": "An account at a certificate authority. JEC registers it the first time it is used.",
+      "name": "ACME account"
+    },
+    "ca": {
+      "actalis": "Actalis",
+      "custom": "Custom",
+      "digicert": "DigiCert",
+      "freessl": "FreeSSL",
+      "globalsign": "GlobalSign",
+      "googletrust": "Google Trust Services",
+      "googletrust_staging": "Google Trust Services (staging, for tests)",
+      "letsencrypt": "Let's Encrypt",
+      "letsencrypt_staging": "Let's Encrypt (staging, for tests)",
+      "litessl": "LiteSSL",
+      "peeringhub": "PeeringHub",
+      "sectigo": "Sectigo (DV)",
+      "sectigoev": "Sectigo (EV)",
+      "sectigoov": "Sectigo (OV)",
+      "sslcomecc": "SSL.com (ECC)",
+      "sslcomrsa": "SSL.com (RSA)",
+      "zerossl": "ZeroSSL"
+    },
+    "error": {
+      "directory_required": "Fill in the directory URL of the custom certificate authority.",
+      "eab_required": "This certificate authority needs External Account Binding. Fill in the EAB Key ID and HMAC key of the account."
+    },
+    "field": {
+      "ca": "Certificate authority",
+      "ca_help": "For any other CA that speaks ACME, choose Custom and fill in its directory URL.",
+      "directory": "Directory URL (only for Custom)",
+      "directory_help": "The CA's ACME directory, given in its documentation; it usually ends in /directory.",
+      "eab_hmac": "EAB HMAC key (optional)",
+      "eab_hmac_help": "Comes with the Key ID; JEC uses it to register the account.",
+      "eab_kid": "EAB Key ID (optional)",
+      "eab_kid_help": "ZeroSSL, Google Trust Services and most paid CAs need it; their account page gives it.",
+      "email": "Contact email (optional)",
+      "email_help": "The CA sends notices about the account here. Using the account means accepting the CA's terms of service."
+    },
+    "log": {
+      "cleanup": "Removing the validation record for {domain}",
+      "issued": "The certificate authority issued the certificate",
+      "order": "Asking for a certificate for {domains}",
+      "present": "Adding the validation record for {domain}",
+      "register": "Registering the account at {directory}"
+    },
+    "module": {
+      "description": "Gets certificates from any CA that speaks ACME, such as Let's Encrypt, ZeroSSL and Google Trust Services.",
+      "name": "ACME"
+    }
+  },
   "certs": {
     "action": {
       "add": "Add certificate",

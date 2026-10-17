@@ -75,6 +75,33 @@ jobs:
       - name: A new module builds, and jec builds without any one module
         run: ./scripts/check-modules.sh
 
+  acme:
+    name: ACME against Pebble
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+      - name: Start Pebble, the test CA of Let's Encrypt
+        run: |
+          docker run -d --name pebble -p 14000:14000 -e PEBBLE_VA_ALWAYS_VALID=1             ghcr.io/letsencrypt/pebble:2.10.1@sha256:ddf230642b1a584f519f32e347de1b05a6e4c1f6c35c1863b33effeab5f78199
+          docker cp pebble:/test/certs/pebble.minica.pem "$RUNNER_TEMP/pebble-root.pem"
+          for _ in $(seq 30); do
+            curl -fs --cacert "$RUNNER_TEMP/pebble-root.pem" https://localhost:14000/dir >/dev/null && exit 0
+            sleep 1
+          done
+          docker logs pebble
+          exit 1
+      - name: Issue certificates from Pebble
+        env:
+          JEC_TEST_PEBBLE: https://localhost:14000/dir
+        run: JEC_TEST_PEBBLE_ROOT="$RUNNER_TEMP/pebble-root.pem" go test -count=1 -race -run Pebble -v ./internal/modules/acme/
+
   vulncheck:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
