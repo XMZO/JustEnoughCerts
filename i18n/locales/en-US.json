@@ -700,6 +700,56 @@
       "title": "A test note from JEC"
     }
   },
+  "ssh": {
+    "error": {
+      "auth": "{address} refused {user}: check the user, the key or the password.",
+      "command": "The command failed with status {status}; the log has its output.",
+      "connect": "Could not reach {address}.",
+      "host_key": "The server's host key is not the one set (it showed {fingerprint}). If the server was reinstalled, update the setting; otherwise someone may pose as it, so hold off.",
+      "host_key_unknown": "The server's host key is not checked yet. It showed {fingerprint}: once you are sure the server is yours, put that in Host key.",
+      "key": "The private key is not in OpenSSH or PEM form.",
+      "key_or_passphrase": "The private key or its passphrase is wrong.",
+      "no_auth": "Set a private key or a password.",
+      "passphrase": "The private key has a passphrase: set it in the advanced settings.",
+      "relative": "The directory must be an absolute path: {directory}",
+      "write": "Could not write to {directory}: {output}"
+    },
+    "field": {
+      "command": "Command to run afterwards",
+      "command_help": "Such as systemctl reload nginx; leave it empty for none. It runs in the user's shell.",
+      "directory": "Directory on the server",
+      "directory_help": "An absolute path, such as /etc/nginx/certs, that the user may write to.",
+      "host": "Host",
+      "host_key": "Host key",
+      "host_key_help": "Proves the server is yours: its SHA256: fingerprint (ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub on the server shows it), or its line in known_hosts. Left empty, the first deployment fails and shows the server's fingerprint, for you to check and paste here.",
+      "layout": "Where the files go",
+      "passphrase": "Key passphrase",
+      "password": "Password",
+      "password_help": "To sign in without a key. A key is safer.",
+      "port": "Port",
+      "private_key": "Private key",
+      "private_key_help": "In OpenSSH or PEM form. Best make JEC a key pair of its own (ssh-keygen -t ed25519) and add the public key to ~/.ssh/authorized_keys of this user on the server. Not shown again once saved.",
+      "user": "User"
+    },
+    "layout": {
+      "by_domain": "A subdirectory for each certificate, named after its primary domain",
+      "flat": "Right in this directory"
+    },
+    "log": {
+      "command": "Running {command}",
+      "connect": "Connecting to {address} as {user}",
+      "output": "What the command wrote",
+      "upload": "Writing to {directory}"
+    },
+    "module": {
+      "description": "Writes certificates to a remote server over SSH, then runs a command if set, such as reloading nginx.",
+      "name": "SSH"
+    },
+    "server": {
+      "description": "Writes the files to a directory on the server as certbot names them, then runs your command. The server needs a POSIX shell, as Linux and BSD have.",
+      "name": "SSH server"
+    }
+  },
   "telegram": {
     "bot": {
       "description": "A bot made with @BotFather sends the notes to a person, a group or a channel.",

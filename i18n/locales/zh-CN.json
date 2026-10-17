@@ -700,6 +700,56 @@
       "title": "JEC 测试通知"
     }
   },
+  "ssh": {
+    "error": {
+      "auth": "{address} 拒绝了 {user} 的登录，请检查用户名、私钥或密码。",
+      "command": "命令执行失败，退出码 {status}，输出见日志。",
+      "connect": "连不上 {address}。",
+      "host_key": "服务器的主机公钥和设置的不一样（服务器出示的是 {fingerprint}）。服务器重装过就更新设置；否则可能有人冒充它，先别部署。",
+      "host_key_unknown": "还没有核对服务器的主机公钥。服务器出示的指纹是 {fingerprint}，确认它就是你的服务器后，把它填进“主机公钥”。",
+      "key": "私钥格式不对，要 OpenSSH 或 PEM 格式。",
+      "key_or_passphrase": "私钥或它的口令不对。",
+      "no_auth": "要填私钥或密码。",
+      "passphrase": "私钥有口令保护，请在高级设置里填写口令。",
+      "relative": "远程目录必须是绝对路径：{directory}",
+      "write": "没能写入 {directory}：{output}"
+    },
+    "field": {
+      "command": "写入后执行的命令",
+      "command_help": "比如 systemctl reload nginx；不需要就留空。用登录用户的 shell 执行。",
+      "directory": "远程目录",
+      "directory_help": "绝对路径，比如 /etc/nginx/certs。登录的用户要能写入。",
+      "host": "主机",
+      "host_key": "主机公钥",
+      "host_key_help": "用来确认连上的是你的服务器：填 SHA256: 开头的指纹（在服务器上运行 ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub 得到），或 known_hosts 里的那一行。留空时第一次部署会失败并显示服务器的指纹，核对无误后填进来。",
+      "layout": "文件放在哪里",
+      "passphrase": "私钥口令",
+      "password": "密码",
+      "password_help": "没有私钥时用密码登录。私钥更安全。",
+      "port": "端口",
+      "private_key": "私钥",
+      "private_key_help": "OpenSSH 或 PEM 格式。建议给 JEC 单独生成一对密钥（ssh-keygen -t ed25519），把公钥加到服务器上这个用户的 ~/.ssh/authorized_keys。保存后不再显示。",
+      "user": "用户名"
+    },
+    "layout": {
+      "by_domain": "每张证书一个子目录，以主域名命名",
+      "flat": "直接放在这个目录里"
+    },
+    "log": {
+      "command": "执行 {command}",
+      "connect": "以 {user} 连接 {address}",
+      "output": "命令的输出",
+      "upload": "写入 {directory}"
+    },
+    "module": {
+      "description": "通过 SSH 把证书写到远程服务器上，写完可以执行一条命令，比如重载 nginx。",
+      "name": "SSH"
+    },
+    "server": {
+      "description": "按 certbot 的文件名写到服务器上的一个目录，再执行你设置的命令。服务器要有 POSIX shell（Linux、BSD 都有）。",
+      "name": "SSH 服务器"
+    }
+  },
   "telegram": {
     "bot": {
       "description": "用 @BotFather 创建的机器人发消息，可以发给个人、群或频道。",

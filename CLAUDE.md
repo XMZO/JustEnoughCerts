@@ -54,7 +54,8 @@
 - M1 还完成了：部署（`PLAN.md` 4.6 的“部署”）：证书选一组部署目标（类型为 target 的 provider 实例），每个新版本自动部署到每个目标，失败按退避重试，目标负责删掉 JEC 以前部署的版本；目标模块 `internal/modules/esa`（阿里云 ESA，`PLAN.md` 5.4，只用替身 API 测过，还没对真实账号验证）和 `internal/modules/files`（写到本地目录，`PLAN.md` 5.3.3）。前端：部署目标页 `/targets`，添加证书和证书详情里选目标，部署记录和日志页 `/certificates/:id/deployments/:deployment`；日志组件 `web/src/components/LogView.vue` 签发和部署共用。
 - M1 还完成了：通知（`PLAN.md` 5.3.4）：分发模块 `internal/modules/notify` 订阅证书事件，按每个通知渠道选的事件和语言渲染消息（渠道都带 `contracts.NotifierFields`：`locale` 字段和事件开关），发送记录防重复，可在界面上发送测试；渠道模块 `telegram`、`email`（SMTP）、`webhook`（通知和部署两种类型）；共用的 HTTP 客户端 `internal/lib/httpx`（代理、只连公网地址）。前端通知页 `/notify`。
 - 证书状态多了 `deploy_failed`（和签发失败的 `failed` 分开）。伪语言测试的标记检查以前被 `<html lang>` 整个豁免掉了，已修正：真实页面的文字现在确实会检查。
-- 下一步：用真实的阿里云 ESA 账号验证部署和删除旧证书（M1 验收要用户提供账号）；SSH 部署目标；续期时间窗口（`PLAN.md` 14 的待定事项）。
+- M1 还完成了：SSH 部署目标 `internal/modules/ssh`（`PLAN.md` 5.3.3：经 SSH 执行命令写文件、一起改名，再执行设置的命令；主机公钥必须核对）。M1 计划里的部署目标和通知渠道都已具备。
+- 下一步：用真实的阿里云 ESA 账号验证部署和删除旧证书（M1 验收要用户提供账号）；续期时间窗口（`PLAN.md` 14 的待定事项）。
 
 ## 工程约定
 

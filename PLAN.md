@@ -326,6 +326,8 @@ DNS 验证分成两种能力，实现方式不同：
 
 **本地文件的实现**（`internal/modules/files`，M1）：部署目标类型 `files.directory`：目录（绝对路径）和放法（每张证书一个以主域名命名的子目录，`*` 写成 `star`；或者直接放在这个目录里）。按 certbot 的文件名写 `cert.pem`、`chain.pem`、`fullchain.pem`、`privkey.pem`（私钥只有所有者可读），每个文件先写到临时文件再改名，读的程序不会读到写了一半的文件；新版本直接覆盖，没有旧版本要删。目录是相对路径、没有写入权限时不自动重试。部署后重载 Web 服务器的命令还没有做，和钩子（5.2）一起做。
 
+**SSH 的实现**（`internal/modules/ssh`，M1）：部署目标类型 `ssh.server`：主机、端口、用户名、私钥（OpenSSH 或 PEM，可以带口令）或密码、主机公钥、远程目录（绝对路径）和放法（同本地文件），以及写入后执行的命令。用已有依赖里的 `golang.org/x/crypto/ssh`，不用 SFTP：每个文件用一条 `cat > 临时文件` 命令写入（私钥在 `umask 077` 下写），四个都写好后用一条命令一起改名，再执行设置的命令（比如 `systemctl reload nginx`），它的输出记进部署日志。所以服务器要有 POSIX shell，Linux 和 BSD 都有。主机公钥一定核对：可以填 `SHA256:` 开头的指纹，或 known_hosts 里的那一行；留空时第一次部署会失败，错误信息给出服务器出示的指纹，让人核对后填进去。登录被拒、主机公钥不对、写不进去、命令退出码不是 0 都不自动重试，网络问题照常重试。
+
 **Webhook 部署的实现**（`internal/modules/webhook`，M1）：部署目标类型 `webhook.deploy`：URL（必须是 https，因为请求里有私钥）、签名密钥、额外的请求头（保密保存）、允许内网地址。每个新版本 POST 一个 JSON：`event`（`certificate.deploy`）、`certificate`（证书 ID）、`domains`、`serial`、`fingerprint`（叶子证书的 SHA-256，十六进制）、`not_before`、`not_after`，`cert`、`chain`、`fullchain`、`privkey`（PEM，和 certbot 的文件同名），`previous`（以前部署时接口回的 ref，新的在前）。接口回 2xx 就算成功，可以回 `{"ref": "…", "removed": […]}`：JEC 记下 ref，下次放进 `previous`，`removed` 里的记为已删除。请求头带 `X-JEC-Event`；设了签名密钥时带 `X-JEC-Signature: sha256=<用密钥对请求体算的 HMAC-SHA256>`。不跟随跳转；4xx（408、429 除外）不重试，5xx、408、429 按 `Retry-After` 或退避重试。
 
 #### 5.3.4 通知渠道

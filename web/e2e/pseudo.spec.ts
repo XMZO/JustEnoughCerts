@@ -219,6 +219,15 @@ test('every page is translated and fits', async ({ page }, info) => {
   await dialog.getByRole('option', { name: label('esa.site.name') }).click()
   await expect(dialog.getByLabel(label('esa.field.site'))).toBeVisible()
   expect.soft(await problems(page), 'add a deploy target: ESA').toEqual([])
+  for (const [type, field] of [
+    ['ssh.server.name', 'ssh.field.host_key'],
+    ['webhook.deploy.name', 'webhook.field.secret'],
+  ] as const) {
+    if (info.project.name === 'phone') await dialog.getByRole('button', { name: label('kernel.providers.choose_other') }).click()
+    await dialog.getByRole('option', { name: label(type) }).click()
+    await expect(dialog.getByLabel(label(field))).toBeVisible()
+    expect.soft(await problems(page), `add a deploy target: ${type}`).toEqual([])
+  }
   if (info.project.name === 'phone') await dialog.getByRole('button', { name: label('kernel.providers.choose_other') }).click()
   await dialog.getByRole('option', { name: label('files.directory.name') }).click()
   await dialog.getByLabel(label('kernel.providers.field.name')).fill('e2e files')
