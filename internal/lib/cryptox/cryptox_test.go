@@ -253,3 +253,21 @@ func TestGenerateKey(t *testing.T) {
 		t.Errorf("an unknown type: %v", err)
 	}
 }
+
+func TestNewBundle(t *testing.T) {
+	key := newECKey(t)
+	p := newPKI(t, key)
+	b, err := NewBundle([]*x509.Certificate{p.root, p.inter, p.leaf}, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Leaf != p.leaf || len(b.Chain) != 1 || b.Chain[0] != p.inter {
+		t.Errorf("leaf %v, chain of %d", b.Leaf.Subject, len(b.Chain))
+	}
+	if _, err := NewBundle([]*x509.Certificate{p.leaf}, newECKey(t)); !errors.Is(err, ErrKeyMismatch) {
+		t.Errorf("another key: %v", err)
+	}
+	if _, err := NewBundle(nil, key); !errors.Is(err, ErrNoCertificate) {
+		t.Errorf("no certificates: %v", err)
+	}
+}

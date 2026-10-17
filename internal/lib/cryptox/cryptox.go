@@ -71,14 +71,23 @@ func ParseBundle(certs, key []byte) (*Bundle, error) {
 	case len(keys) > 1:
 		return nil, ErrSeveralKeys
 	}
+	return NewBundle(found, keys[0])
+}
 
-	b := &Bundle{Key: keys[0]}
+// NewBundle makes the bundle of key out of certs, in any order: the leaf is
+// the certificate key belongs to, and the chain is built from the others
+// as ParseBundle builds it.
+func NewBundle(certs []*x509.Certificate, key crypto.Signer) (*Bundle, error) {
+	if len(certs) == 0 {
+		return nil, ErrNoCertificate
+	}
+	b := &Bundle{Key: key}
 	type equaler interface{ Equal(crypto.PublicKey) bool }
-	pub, ok := b.Key.Public().(equaler)
+	pub, ok := key.Public().(equaler)
 	if !ok {
 		return nil, ErrUnsupportedKey
 	}
-	for _, c := range found {
+	for _, c := range certs {
 		if pub.Equal(c.PublicKey) {
 			b.Leaf = c
 			break
@@ -87,7 +96,7 @@ func ParseBundle(certs, key []byte) (*Bundle, error) {
 	if b.Leaf == nil {
 		return nil, ErrKeyMismatch
 	}
-	b.Chain = buildChain(b.Leaf, found)
+	b.Chain = buildChain(b.Leaf, certs)
 	return b, nil
 }
 
