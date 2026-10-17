@@ -505,6 +505,18 @@
     "more": {
       "account": "账号"
     },
+    "notify": {
+      "event": {
+        "deploy_failed": "部署失败时通知",
+        "deployed": "部署成功时通知",
+        "expiring": "证书快到期或已经过期时通知",
+        "issue_failed": "签发失败时通知",
+        "issued": "有新证书（签发或上传）时通知"
+      },
+      "field": {
+        "locale": "消息语言"
+      }
+    },
     "overview": {
       "title": "总览"
     },
@@ -577,6 +589,48 @@
     "module": {
       "description": "借助 lego，在 221 家 DNS 服务商添加 TXT 记录，完成域名验证。",
       "name": "DNS 服务商（lego）"
+    }
+  },
+  "notify": {
+    "error": {
+      "send": "没能发出通知。",
+      "unknown": "原因不明。"
+    },
+    "module": {
+      "description": "证书签发或部署失败、快到期时，通过你设置的通知渠道告诉你。",
+      "name": "通知"
+    },
+    "note": {
+      "also": "这张证书还包括：{names}",
+      "deploy_failed": {
+        "title": "{domain} 部署到 {target} 失败"
+      },
+      "deployed": {
+        "title": "{domain} 已部署到 {target}"
+      },
+      "ended": "已于 {date} 到期。",
+      "ends": "到期时间：{date}。",
+      "expired": {
+        "title": "{domain} 的证书已过期"
+      },
+      "expiring": {
+        "title": "{domain} 的证书{days, plural, =0 {今天到期} other {还有 # 天到期}}"
+      },
+      "gave_up": "JEC 不会再自动重试，需要你来处理。",
+      "issue_failed": {
+        "title": "{domain} 签发失败"
+      },
+      "issued": {
+        "title": "{domain} 有新证书了"
+      },
+      "link": "详情：{url}",
+      "retry": "JEC 会在 {time} 再试一次。",
+      "target_gone": "已删除的部署目标",
+      "valid_until": "有效期到 {date}。"
+    },
+    "test": {
+      "text": "能收到这条消息，说明这个通知渠道设置正确。",
+      "title": "JEC 测试通知"
     }
   }
 }

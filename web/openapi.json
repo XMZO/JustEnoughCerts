@@ -785,6 +785,22 @@
         ],
         "type": "object"
       },
+      "Message": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "type": "object"
+      },
       "MessageBody": {
         "additionalProperties": false,
         "properties": {
@@ -892,6 +908,65 @@
         },
         "required": [
           "certificate"
+        ],
+        "type": "object"
+      },
+      "SendBody": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "attempts": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "error": {
+            "$ref": "#/components/schemas/Message",
+            "description": "Why the last attempt failed"
+          },
+          "event": {
+            "description": "The event the note was about, or notify.test for a test",
+            "type": "string"
+          },
+          "notifier": {
+            "description": "The notifier provider instance",
+            "format": "int64",
+            "type": "integer"
+          },
+          "state": {
+            "description": "retrying: sent again with the next delivery of the event; failed: not sent again",
+            "enum": [
+              "sent",
+              "retrying",
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "notifier",
+          "event",
+          "state",
+          "attempts",
+          "at"
+        ],
+        "type": "object"
+      },
+      "SendsOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "sends": {
+            "description": "One for each notifier that sent something",
+            "items": {
+              "$ref": "#/components/schemas/SendBody"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "sends"
         ],
         "type": "object"
       },
@@ -1896,6 +1971,73 @@
         "summary": "List the modules and their state",
         "tags": [
           "kernel"
+        ]
+      }
+    },
+    "/notify/notifiers/{id}/test": {
+      "post": {
+        "description": "Sends at once, in the notifier's language. A notifier that fails answers 502 with its own message.",
+        "operationId": "notify-test",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Send a test note through a notifier",
+        "tags": [
+          "notify"
+        ]
+      }
+    },
+    "/notify/sends": {
+      "get": {
+        "operationId": "notify-sends",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendsOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "The last note sent through each notifier",
+        "tags": [
+          "notify"
         ]
       }
     },

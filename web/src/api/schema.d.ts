@@ -203,6 +203,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/notify/notifiers/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a test note through a notifier
+         * @description Sends at once, in the notifier's language. A notifier that fails answers 502 with its own message.
+         */
+        post: operations["notify-test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notify/sends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The last note sent through each notifier */
+        get: operations["notify-sends"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/providers": {
         parameters: {
             query?: never;
@@ -612,6 +649,12 @@ export interface components {
             /** @description Program version */
             version: string;
         };
+        Message: {
+            key: string;
+            params?: {
+                [key: string]: unknown;
+            };
+        };
         MessageBody: {
             key: string;
             params?: {
@@ -646,6 +689,30 @@ export interface components {
             certificate: string;
             /** @description The PEM private key, unless it is in certificate */
             privateKey?: string;
+        };
+        SendBody: {
+            /** Format: date-time */
+            at: string;
+            /** Format: int64 */
+            attempts: number;
+            /** @description Why the last attempt failed */
+            error?: components["schemas"]["Message"];
+            /** @description The event the note was about, or notify.test for a test */
+            event: string;
+            /**
+             * Format: int64
+             * @description The notifier provider instance
+             */
+            notifier: number;
+            /**
+             * @description retrying: sent again with the next delivery of the event; failed: not sent again
+             * @enum {string}
+             */
+            state: "sent" | "retrying" | "failed";
+        };
+        SendsOutputBody: {
+            /** @description One for each notifier that sent something */
+            sends: components["schemas"]["SendBody"][];
         };
         SetupInputBody: {
             /** @description BCP 47 tag of the language the account starts with */
@@ -1207,6 +1274,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ManifestBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "notify-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "notify-sends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendsOutputBody"];
                 };
             };
             /** @description Error */

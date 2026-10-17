@@ -505,6 +505,18 @@
     "more": {
       "account": "Account"
     },
+    "notify": {
+      "event": {
+        "deploy_failed": "When a deployment fails",
+        "deployed": "When a deployment succeeds",
+        "expiring": "When a certificate is about to expire, or has expired",
+        "issue_failed": "When an issuance fails",
+        "issued": "When a new certificate is issued or uploaded"
+      },
+      "field": {
+        "locale": "Language of the notes"
+      }
+    },
     "overview": {
       "title": "Overview"
     },
@@ -577,6 +589,48 @@
     "module": {
       "description": "Proves control of a domain by adding a TXT record at any of 221 DNS providers, through lego.",
       "name": "DNS providers (lego)"
+    }
+  },
+  "notify": {
+    "error": {
+      "send": "The note could not be sent.",
+      "unknown": "The reason is unknown."
+    },
+    "module": {
+      "description": "Tells you through the channels you set up when a certificate cannot be issued or deployed, or is about to expire.",
+      "name": "Notifications"
+    },
+    "note": {
+      "also": "The certificate also covers {names}.",
+      "deploy_failed": {
+        "title": "Could not deploy {domain} to {target}"
+      },
+      "deployed": {
+        "title": "{domain} is deployed to {target}"
+      },
+      "ended": "It ended on {date}.",
+      "ends": "It ends on {date}.",
+      "expired": {
+        "title": "The certificate for {domain} has expired"
+      },
+      "expiring": {
+        "title": "The certificate for {domain} {days, plural, =0 {expires today} one {expires in # day} other {expires in # days}}"
+      },
+      "gave_up": "JEC will not try again by itself: this needs you.",
+      "issue_failed": {
+        "title": "Could not issue the certificate for {domain}"
+      },
+      "issued": {
+        "title": "A new certificate for {domain}"
+      },
+      "link": "Details: {url}",
+      "retry": "JEC tries again at {time}.",
+      "target_gone": "a deleted target",
+      "valid_until": "Valid until {date}."
+    },
+    "test": {
+      "text": "If this reached you, the channel is set up right.",
+      "title": "A test note from JEC"
     }
   }
 }
