@@ -1,7 +1,20 @@
+import { readFileSync } from 'node:fs'
+
 import { expect, test, type Page } from '@playwright/test'
+
+import { pseudoize } from '../src/i18n/pseudo'
+import { selfSigned } from './certs'
 
 // Every page, in the pseudo-locale (src/i18n/pseudo.ts): all text a user
 // sees must carry the markers, and none of it may spill out of its box.
+
+const english = JSON.parse(readFileSync(new URL('../../i18n/locales/en-US.json', import.meta.url), 'utf8')) as Record<string, unknown>
+
+/** label is how a plain message reads in the pseudo-locale, to find a button by its name. */
+function label(key: string): string {
+  const text = key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown>)[part], english)
+  return pseudoize(String(text))
+}
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('jec.pseudo', '1'))
@@ -14,8 +27,9 @@ async function problems(page: Page): Promise<string[]> {
     const found: string[] = []
     const marked = /^(\s*⟦[^⟦⟧]*⟧)+\s*$/
     // Not text for translators: commands, language names (in their own
-    // language) and graphics.
-    const exempt = (el: Element) => el.closest('code, [lang], svg, script, style') !== null
+    // language), data such as domains (translate="no"), dates and numbers
+    // that Intl formats (<time>, <data>), and graphics.
+    const exempt = (el: Element) => el.closest('code, [lang], [translate="no"], time, data, svg, script, style') !== null
     const visible = (el: Element) => {
       const style = getComputedStyle(el)
       return style.display !== 'none' && style.visibility !== 'hidden'
@@ -96,9 +110,51 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.locator('#token').fill(token)
   await page.locator('form button[type=submit]').click()
   await expect(page).toHaveURL(/\/$/)
-  expect(await problems(page), 'overview').toEqual([])
+  expect(await problems(page), 'overview without certificates').toEqual([])
 
-  await page.locator('header button').click()
+  await page.goto('./certificates/new')
+  expect(await problems(page), 'add a certificate').toEqual([])
+  await page.locator('#certificate').fill('not a certificate')
+  await page.locator('button[form=add-form]').click()
+  await expect(page.locator('#certificate-error')).toBeVisible()
+  expect(await problems(page), 'add a certificate with an error').toEqual([])
+
+  // A certificate in each state, the first two with long and several names.
+  for (const [names, from, to] of [
+    [['shop.example.com', 'www.shop.example.com'], -177, 23],
+    [['a-rather-long-subdomain-name.example.com'], -85, 5],
+    [['old.example.com'], -92, -2],
+    [['docs.example.org'], -38, 52],
+    [['blog.example.com'], -69, 131],
+  ] as const) {
+    const res = await page.request.post('api/v1/certs/certificates', { data: await selfSigned([...names], from, to) })
+    expect(res.status(), names[0]).toBe(201)
+  }
+  await page.goto('./')
+  expect(await problems(page), 'overview').toEqual([])
+  await page.goto('./certificates')
+  expect(await problems(page), 'certificates').toEqual([])
+  await page.goto('./certificates/1')
+  expect(await problems(page), 'a certificate').toEqual([])
+
+  await page.goto('./certificates/1?upload=1')
+  await expect(page.locator('dialog[open]')).toBeVisible()
+  expect(await problems(page), 'upload a new certificate').toEqual([])
+  await page.locator('#certificate').fill('not a certificate')
+  await page.locator('button[form=upload-form]').click()
+  await expect(page.locator('#certificate-error')).toBeVisible()
+  expect(await problems(page), 'upload a new certificate with an error').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+
+  await page.getByRole('button', { name: label('certs.action.delete') }).filter({ visible: true }).first().click()
+  await expect(page.locator('dialog[open]')).toBeVisible()
+  expect(await problems(page), 'delete a certificate').toEqual([])
+  await page.keyboard.press('Escape')
+
+  await page.goto('./more')
+  expect(await problems(page), 'more').toEqual([])
+  await page.getByRole('button', { name: label('kernel.shell.sign_out') }).filter({ visible: true }).first().click()
   await expect(page).toHaveURL(/\/login$/)
   expect(await problems(page), 'sign-in page').toEqual([])
 
