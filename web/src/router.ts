@@ -16,14 +16,35 @@ export const router = createRouter({
   // The server's <base href> carries the base path.
   history: createWebHistory(new URL('.', document.baseURI).pathname),
   routes: [
-    { path: '/', name: 'home', component: () => import('./pages/HomePage.vue'), meta: { title: 'kernel.home.title', for: 'app' } },
+    {
+      path: '/',
+      component: () => import('./components/AppShell.vue'),
+      children: [
+        { path: '', name: 'overview', component: () => import('./pages/OverviewPage.vue'), meta: { title: 'kernel.overview.title', for: 'app' } },
+        { path: 'certificates', name: 'certificates', component: () => import('./pages/CertsPage.vue'), meta: { title: 'certs.list.title', for: 'app' } },
+        {
+          path: 'certificates/new',
+          name: 'add-certificate',
+          component: () => import('./pages/AddCertPage.vue'),
+          meta: { title: 'certs.action.add', for: 'app' },
+        },
+        {
+          path: String.raw`certificates/:id(\d+)`,
+          name: 'certificate',
+          component: () => import('./pages/CertDetailPage.vue'),
+          props: (route) => ({ id: Number(route.params.id) }),
+          meta: { title: 'certs.detail.title', for: 'app' },
+        },
+        { path: 'more', name: 'more', component: () => import('./pages/MorePage.vue'), meta: { title: 'kernel.shell.more', for: 'app' } },
+      ],
+    },
     { path: '/login', name: 'login', component: () => import('./pages/LoginPage.vue'), meta: { title: 'kernel.login.title', for: 'login' } },
     { path: '/setup', name: 'setup', component: () => import('./pages/SetupPage.vue'), meta: { title: 'kernel.setup.title', for: 'setup' } },
     { path: '/:rest(.*)*', redirect: '/' },
   ],
 })
 
-const homeOf = { setup: { name: 'setup' }, login: { name: 'login' }, app: { name: 'home' } } as const
+const homeOf = { setup: { name: 'setup' }, login: { name: 'login' }, app: { name: 'overview' } } as const
 
 router.beforeEach(async (to) => {
   let state: 'setup' | 'login' | 'app'

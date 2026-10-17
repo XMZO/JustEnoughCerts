@@ -5,6 +5,59 @@
     "completeness": 100
   },
   "certs": {
+    "action": {
+      "add": "添加证书",
+      "copy_fingerprint": "复制 SHA-256 指纹",
+      "copy_serial": "复制序列号",
+      "delete": "删除证书",
+      "details": "查看详情",
+      "save": "保存证书",
+      "upload": "上传新证书",
+      "upload_short": "上传"
+    },
+    "add": {
+      "certificate": "证书（PEM，含中间证书）",
+      "certificate_help": "证书和中间证书，顺序不限。私钥也可以一起放在这里。",
+      "intro": "选好证书来源，再填写需要的内容。",
+      "key": "私钥",
+      "key_help": "加密保存在 JEC 的数据目录里。如果上面已经包含私钥，这里留空。",
+      "plan": "接下来的步骤",
+      "reminder": "到期提醒",
+      "source": "证书来源"
+    },
+    "attention": {
+      "expired": "{domain} 已过期",
+      "expired_detail": "{life}，请上传新证书替换它。",
+      "none": "现在没有需要你处理的事。",
+      "replace": "{domain} 需要手动更换",
+      "replace_detail": "手动上传的证书无法自动续期，{life}。",
+      "title": "需要处理"
+    },
+    "cert": {
+      "label": "{domain}，{state}，{life}",
+      "label_note": "{label}，{note}"
+    },
+    "chain": {
+      "expires": "{date} 到期",
+      "issued_by": "由 {issuer} 签发",
+      "title": "证书链"
+    },
+    "column": {
+      "domain": "域名",
+      "left": "剩余",
+      "next": "下次续期",
+      "source": "来源",
+      "state": "状态"
+    },
+    "delete": {
+      "body": "JEC 会删除这张证书的全部版本和私钥。已经部署到别处的证书不受影响。",
+      "title": "删除 {domain}？"
+    },
+    "detail": {
+      "also": "另含 {names}",
+      "title": "证书",
+      "validity": "有效期"
+    },
     "error": {
       "bad_certificate": "有一张证书读不出来。请完整地重新粘贴，从 -----BEGIN CERTIFICATE----- 到 -----END CERTIFICATE-----。",
       "bad_key": "私钥读不出来。请完整地重新粘贴。",
@@ -18,9 +71,106 @@
       "several_keys": "粘贴了不止一个私钥。只保留这张证书的私钥。",
       "unsupported_key": "不支持这种私钥。请使用 RSA、ECDSA 或 Ed25519 私钥。"
     },
+    "field": {
+      "days": "{days, plural, other {# 天}}",
+      "domains": "域名",
+      "expires": "到期",
+      "fingerprint": "SHA-256",
+      "issuer": "颁发者",
+      "key": "密钥",
+      "not_after": "到期时间",
+      "not_before": "签发时间",
+      "reminder": "到期提醒",
+      "serial": "序列号",
+      "source": "来源",
+      "validity": "有效期"
+    },
+    "filter": {
+      "all": "全部",
+      "label": "按状态筛选"
+    },
+    "history": {
+      "current": "当前",
+      "range": "{from} 至 {to}",
+      "replaced": "{date} 被替换",
+      "title": "历史版本"
+    },
+    "info": {
+      "title": "证书信息"
+    },
+    "key": {
+      "ecdsa": "ECDSA {curve}",
+      "ed25519": "Ed25519",
+      "rsa": "RSA {bits}",
+      "unknown": "未知"
+    },
+    "life": {
+      "expired": "已过期 {days, plural, other {# 天}}",
+      "expired_today": "今天已过期",
+      "left": "剩 {days, plural, other {# 天}}",
+      "today": "今天到期"
+    },
+    "list": {
+      "empty": "还没有证书。添加第一张证书，JEC 会在到期前提醒你。",
+      "intro": "JEC 记录每张证书，到期前提醒你。",
+      "no_match": "没有匹配“{query}”的证书。",
+      "summary": "显示 {shown, plural, other {# 张}}，共 {total} 张。按剩余天数排列。",
+      "title": "证书"
+    },
     "module": {
       "description": "记录每张证书和它的各个版本，到期前发出提醒。",
       "name": "证书"
+    },
+    "next": {
+      "manual": "需手动更换"
+    },
+    "note": {
+      "expired": "请上传新证书",
+      "manual": "无法自动续期，请上传新证书"
+    },
+    "overview": {
+      "badge": "{label} {count}",
+      "hint": "按剩余天数排列，最需要处理的在前。点一个格子查看摘要。",
+      "inventory": "全部证书",
+      "short_count": "{count, plural, other {# 张}}，{attention, plural, other {# 张需要处理}}",
+      "summary": "{count, plural, other {# 张证书。}}{attention, plural, =0 {全部正常。} other {# 张需要你处理。}}"
+    },
+    "plan": {
+      "check": "检查证书和私钥是否匹配",
+      "expired": "这张证书已经过期，请上传新证书替换它。",
+      "remind": "到期前 {days, plural, other {# 天}}提醒你上传新证书",
+      "store": "加密保存私钥",
+      "upload": "手动上传的证书无法自动续期，到期前 {days, plural, other {# 天}}会提醒你上传新证书。",
+      "upload_due": "请在 {date} 前上传新证书。"
+    },
+    "search": {
+      "label": "搜索域名"
+    },
+    "settings": {
+      "days": "提前天数",
+      "days_help": "证书只剩这么多天时提醒你，可以填 1 到 365。",
+      "days_unit": "天",
+      "reminder_value": "到期前 {days, plural, other {# 天}}",
+      "title": "续期设置"
+    },
+    "source": {
+      "upload": "手动上传",
+      "upload_desc": "粘贴证书和私钥，不能自动续期。"
+    },
+    "state": {
+      "expired": "已过期",
+      "expiring": "即将到期",
+      "ok": "正常"
+    },
+    "timeline": {
+      "marker": "{domain}，{date} 到期",
+      "none": "未来 90 天没有到期的证书。",
+      "title": "未来 90 天到期",
+      "today": "今天"
+    },
+    "upload": {
+      "intro": "新证书会替换正在使用的这张。它必须包含 {domain}，而且到期时间更晚。",
+      "title": "上传新证书"
     }
   },
   "kernel": {
@@ -30,6 +180,13 @@
       "password_hint": "至少 {min, plural, other {# 个字符}}。",
       "password_mismatch": "两次输入的密码不一样。",
       "username": "用户名"
+    },
+    "action": {
+      "cancel": "取消",
+      "close": "关闭",
+      "copied": "已复制",
+      "edit": "编辑",
+      "save": "保存"
     },
     "app": {
       "language": "语言",
@@ -51,22 +208,32 @@
       "too_many_attempts": "失败次数太多，请 {minutes, plural, other {# 分钟}}后再试。",
       "unauthorized": "请先登录。"
     },
-    "home": {
-      "empty": "还没有证书。证书管理会在下一个版本加入。",
-      "sign_out": "退出登录",
-      "signed_in": "已登录：{username}",
-      "title": "总览"
-    },
     "login": {
       "forgot": "忘记密码：在服务器上运行",
       "submit": "登录",
       "title": "登录"
+    },
+    "more": {
+      "account": "账号"
+    },
+    "overview": {
+      "title": "总览"
     },
     "setup": {
       "intro": "创建管理员账号。初始化令牌在服务器日志里 setup_token= 的后面。用 Docker 部署时运行：",
       "submit": "创建账号",
       "title": "初始化 JEC",
       "token": "初始化令牌"
+    },
+    "shell": {
+      "breadcrumb": "位置",
+      "close_menu": "关闭菜单",
+      "menu": "打开菜单",
+      "more": "更多",
+      "navigation": "主导航",
+      "sign_out": "退出登录",
+      "signed_in": "已登录：{username}",
+      "version": "版本 {version}"
     }
   }
 }

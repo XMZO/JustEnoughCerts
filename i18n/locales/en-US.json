@@ -5,6 +5,59 @@
     "completeness": 100
   },
   "certs": {
+    "action": {
+      "add": "Add certificate",
+      "copy_fingerprint": "Copy the SHA-256 fingerprint",
+      "copy_serial": "Copy the serial number",
+      "delete": "Delete certificate",
+      "details": "View details",
+      "save": "Save certificate",
+      "upload": "Upload new certificate",
+      "upload_short": "Upload"
+    },
+    "add": {
+      "certificate": "Certificate (PEM, with intermediates)",
+      "certificate_help": "The certificate and its intermediates, in any order. The private key may go here too.",
+      "intro": "Choose where the certificate comes from, then fill in what it needs.",
+      "key": "Private key",
+      "key_help": "Stored encrypted in the data directory. Leave it empty if the key is in the field above.",
+      "plan": "What happens next",
+      "reminder": "Reminder",
+      "source": "Source"
+    },
+    "attention": {
+      "expired": "{domain} has expired",
+      "expired_detail": "{life}. Upload a new certificate to replace it.",
+      "none": "Nothing needs you right now.",
+      "replace": "{domain} needs replacing",
+      "replace_detail": "Uploaded certificates are not renewed automatically: {life}.",
+      "title": "Needs attention"
+    },
+    "cert": {
+      "label": "{domain}, {state}, {life}",
+      "label_note": "{label}, {note}"
+    },
+    "chain": {
+      "expires": "Expires {date}",
+      "issued_by": "Issued by {issuer}",
+      "title": "Certificate chain"
+    },
+    "column": {
+      "domain": "Domain",
+      "left": "Remaining",
+      "next": "Next renewal",
+      "source": "Source",
+      "state": "Status"
+    },
+    "delete": {
+      "body": "JEC deletes this certificate with every version and private key. Copies already deployed elsewhere stay where they are.",
+      "title": "Delete {domain}?"
+    },
+    "detail": {
+      "also": "Also covers {names}",
+      "title": "Certificate",
+      "validity": "Validity"
+    },
     "error": {
       "bad_certificate": "A certificate cannot be read. Paste it again in full, from -----BEGIN CERTIFICATE----- to -----END CERTIFICATE-----.",
       "bad_key": "The private key cannot be read. Paste it again in full.",
@@ -18,9 +71,106 @@
       "several_keys": "More than one private key was pasted. Keep only the key of this certificate.",
       "unsupported_key": "This type of private key is not supported. Use an RSA, ECDSA or Ed25519 key."
     },
+    "field": {
+      "days": "{days, plural, one {# day} other {# days}}",
+      "domains": "Domains",
+      "expires": "Expires",
+      "fingerprint": "SHA-256",
+      "issuer": "Issuer",
+      "key": "Key",
+      "not_after": "Expires on",
+      "not_before": "Valid from",
+      "reminder": "Reminder",
+      "serial": "Serial number",
+      "source": "Source",
+      "validity": "Validity"
+    },
+    "filter": {
+      "all": "All",
+      "label": "Filter by status"
+    },
+    "history": {
+      "current": "Current",
+      "range": "{from} to {to}",
+      "replaced": "Replaced on {date}",
+      "title": "Versions"
+    },
+    "info": {
+      "title": "Certificate details"
+    },
+    "key": {
+      "ecdsa": "ECDSA {curve}",
+      "ed25519": "Ed25519",
+      "rsa": "RSA {bits}",
+      "unknown": "Unknown"
+    },
+    "life": {
+      "expired": "{days, plural, one {Expired # day ago} other {Expired # days ago}}",
+      "expired_today": "Expired today",
+      "left": "{days, plural, one {# day left} other {# days left}}",
+      "today": "Expires today"
+    },
+    "list": {
+      "empty": "No certificates yet. Add the first one, and JEC warns you before it expires.",
+      "intro": "JEC keeps track of each certificate and warns you before it expires.",
+      "no_match": "No certificate matches “{query}”.",
+      "summary": "Showing {shown, plural, one {# certificate} other {# certificates}} of {total}. Sorted by days left.",
+      "title": "Certificates"
+    },
     "module": {
       "description": "Keeps track of each certificate and its versions, and warns before one expires.",
       "name": "Certificates"
+    },
+    "next": {
+      "manual": "Replace by hand"
+    },
+    "note": {
+      "expired": "Upload a new certificate",
+      "manual": "Not renewed automatically, upload a new one"
+    },
+    "overview": {
+      "badge": "{label} {count}",
+      "hint": "Sorted by days left, the most urgent first. Select a slot to see its summary.",
+      "inventory": "All certificates",
+      "short_count": "{count, plural, one {# certificate} other {# certificates}}, {attention, plural, one {# needs attention} other {# need attention}}",
+      "summary": "{count, plural, one {# certificate.} other {# certificates.}} {attention, plural, =0 {All of them are healthy.} one {# needs your attention.} other {# need your attention.}}"
+    },
+    "plan": {
+      "check": "Check that the certificate and the private key match",
+      "expired": "This certificate has expired. Upload a new one to replace it.",
+      "remind": "Remind you {days, plural, one {# day} other {# days}} before expiry to upload a new certificate",
+      "store": "Store the private key encrypted",
+      "upload": "Uploaded certificates are not renewed automatically. JEC reminds you {days, plural, one {# day} other {# days}} before this one expires.",
+      "upload_due": "Upload a new certificate before {date}."
+    },
+    "search": {
+      "label": "Search domains"
+    },
+    "settings": {
+      "days": "Days before expiry",
+      "days_help": "JEC warns you when the certificate has this many days left, from 1 to 365.",
+      "days_unit": "days",
+      "reminder_value": "{days, plural, one {# day} other {# days}} before expiry",
+      "title": "Renewal settings"
+    },
+    "source": {
+      "upload": "Manual upload",
+      "upload_desc": "Paste the certificate and its key. Not renewed automatically."
+    },
+    "state": {
+      "expired": "Expired",
+      "expiring": "Expiring soon",
+      "ok": "Healthy"
+    },
+    "timeline": {
+      "marker": "{domain}, expires {date}",
+      "none": "Nothing expires in the next 90 days.",
+      "title": "Expiring in the next 90 days",
+      "today": "Today"
+    },
+    "upload": {
+      "intro": "The new certificate replaces the one in use. It must cover {domain} and expire later.",
+      "title": "Upload a new certificate"
     }
   },
   "kernel": {
@@ -30,6 +180,13 @@
       "password_hint": "At least {min, plural, one {# character} other {# characters}}.",
       "password_mismatch": "The two passwords differ.",
       "username": "Username"
+    },
+    "action": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "copied": "Copied",
+      "edit": "Edit",
+      "save": "Save"
     },
     "app": {
       "language": "Language",
@@ -51,22 +208,32 @@
       "too_many_attempts": "Too many failed attempts. Try again in {minutes, plural, one {# minute} other {# minutes}}.",
       "unauthorized": "Sign in to continue."
     },
-    "home": {
-      "empty": "No certificates yet. Certificate management arrives in the next version.",
-      "sign_out": "Sign out",
-      "signed_in": "Signed in as {username}",
-      "title": "Overview"
-    },
     "login": {
       "forgot": "Forgot the password? Run this on the server:",
       "submit": "Sign in",
       "title": "Sign in"
+    },
+    "more": {
+      "account": "Account"
+    },
+    "overview": {
+      "title": "Overview"
     },
     "setup": {
       "intro": "Create the admin account. The setup token is in the server log, after setup_token=. With Docker, run:",
       "submit": "Create account",
       "title": "Set up JEC",
       "token": "Setup token"
+    },
+    "shell": {
+      "breadcrumb": "Location",
+      "close_menu": "Close the menu",
+      "menu": "Open the menu",
+      "more": "More",
+      "navigation": "Main navigation",
+      "sign_out": "Sign out",
+      "signed_in": "Signed in as {username}",
+      "version": "Version {version}"
     }
   }
 }

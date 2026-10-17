@@ -8,6 +8,7 @@ defineProps<{
   hint?: MessageKey
   hintParams?: Params
   error?: MessageKey | null
+  errorParams?: Params
 }>()
 
 const { t } = useT()
@@ -17,7 +18,7 @@ const { t } = useT()
   <div class="grid gap-1.5">
     <label :for="id" class="text-small font-semibold">{{ t(label) }}</label>
     <slot />
-    <p v-if="error" :id="`${id}-error`" class="m-0 text-small text-danger-ink">{{ t(error) }}</p>
+    <p v-if="error" :id="`${id}-error`" class="m-0 text-small text-danger-ink">{{ t(error, errorParams) }}</p>
     <p v-else-if="hint" :id="`${id}-hint`" class="m-0 text-small text-ink-muted">{{ t(hint, hintParams) }}</p>
   </div>
 </template>

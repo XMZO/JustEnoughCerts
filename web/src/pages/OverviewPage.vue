@@ -1,0 +1,256 @@
+<script setup lang="ts">
+import { ChevronRight, CircleX, Plus, Search, TriangleAlert } from '@lucide/vue'
+import { computed, ref } from 'vue'
+import { RouterLink } from 'vue-router'
+
+import { ApiError, networkError } from '../api/client'
+import { useCertificates, type Certificate, type CertificateState } from '../api/certs'
+import { certLife, lifeText, needsAttention, type Life } from '../certs/life'
+import CertSlot from '../components/CertSlot.vue'
+import JecAlert from '../components/JecAlert.vue'
+import JecButton from '../components/JecButton.vue'
+import LifeBar from '../components/LifeBar.vue'
+import PageHeader from '../components/PageHeader.vue'
+import SearchBox from '../components/SearchBox.vue'
+import StatusBadge from '../components/StatusBadge.vue'
+import { useT } from '../i18n'
+import { useIntl } from '../i18n/intl'
+
+// The overview (docs/design/boards/Main and OverviewMobile): every
+// certificate as a slot, the selected one's summary, what needs attention
+// and what expires in the next 90 days.
+const { t } = useT()
+const intl = useIntl()
+const certificates = useCertificates()
+const query = ref('')
+
+const error = computed(() => {
+  const err = certificates.error.value
+  if (!err) return null
+  return err instanceof ApiError ? err : networkError
+})
+
+const all = computed(() => certificates.data.value ?? [])
+const shown = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  return q ? all.value.filter((c) => c.domains.some((d) => d.includes(q))) : all.value
+})
+const attention = computed(() => all.value.filter(needsAttention))
+
+const picked = ref<number | null>(null)
+const selected = computed(() => shown.value.find((c) => c.id === picked.value) ?? shown.value[0] ?? null)
+const selectedLife = computed(() => (selected.value ? certLife(selected.value) : null))
+const selectedExtra = computed(() => {
+  const n = (selected.value?.domains.length ?? 0) - 1
+  return n > 0 ? `+${n}` : ''
+})
+
+const subtitle = computed(() => t('certs.overview.summary', { count: all.value.length, attention: attention.value.length }))
+
+const order: CertificateState[] = ['expired', 'expiring', 'ok']
+const counts = computed(() =>
+  order.map((state) => ({ state, count: all.value.filter((c) => c.state === state).length })).filter((s) => s.count > 0),
+)
+
+function lifeWords(l: Life | null): string {
+  if (!l) return ''
+  const text = lifeText(l)
+  return t(text.key, text.params)
+}
+
+/** plan says what happens next to c. */
+function plan(c: Certificate, l: Life | null): string {
+  if (!l || l.expired) return t('certs.plan.expired')
+  if (c.state === 'expiring' && c.current) return t('certs.plan.upload_due', { date: intl.date(c.current.notAfter) })
+  return t('certs.plan.upload', { days: c.renewBeforeDays })
+}
+
+const todo = computed(() =>
+  attention.value.map((c) => {
+    const l = certLife(c)
+    const domain = c.domains[0] ?? ''
+    const expired = c.state === 'expired'
+    return {
+      cert: c,
+      expired,
+      title: t(expired ? 'certs.attention.expired' : 'certs.attention.replace', { domain }),
+      detail: t(expired ? 'certs.attention.expired_detail' : 'certs.attention.replace_detail', { life: lifeWords(l) }),
+    }
+  }),
+)
+
+// The 90 days ahead, with a mark at each expiry and ticks every 30 days.
+const horizon = 90
+const day = 86_400_000
+const ticks = computed(() => [30, 60, 90].map((d) => ({ left: `${(d / horizon) * 100}%`, date: intl.shortDate(Date.now() + d * day) })))
+const upcoming = computed(() =>
+  all.value
+    .map((c) => ({ cert: c, life: certLife(c) }))
+    .filter((x): x is { cert: Certificate; life: Life } => !!x.life && !x.life.expired && x.life.days <= horizon),
+)
+const marks = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill' }
+const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger: 'font-semibold text-danger-ink' }
+</script>
+
+<template>
+  <PageHeader :title="t('kernel.overview.title')" :subtitle="all.length ? subtitle : undefined">
+    <template #phone>
+      <RouterLink
+        to="/certificates"
+        :aria-label="t('certs.search.label')"
+        class="grid size-11 place-items-center rounded-md text-ink hover:bg-surface-sunken"
+      >
+        <Search class="size-4" aria-hidden="true" />
+      </RouterLink>
+      <RouterLink
+        to="/certificates/new"
+        :aria-label="t('certs.action.add')"
+        class="grid size-11 place-items-center rounded-md bg-brand text-on-brand hover:bg-brand-hover hover:text-on-brand"
+      >
+        <Plus class="size-4" aria-hidden="true" />
+      </RouterLink>
+    </template>
+    <template #actions>
+      <SearchBox v-if="all.length" v-model="query" label="certs.search.label" class="w-60 max-w-full" />
+      <JecButton variant="primary" to="/certificates/new"><Plus class="size-4" aria-hidden="true" />{{ t('certs.action.add') }}</JecButton>
+    </template>
+  </PageHeader>
+
+  <div class="flex flex-col gap-3 px-4 pt-3 sm:mt-4 sm:gap-4 sm:p-0">
+    <JecAlert v-if="error" :code="error.code" :params="error.params" />
+
+    <section
+      v-if="certificates.isSuccess.value && !all.length"
+      class="flex flex-col items-start gap-3 rounded-lg border border-line bg-surface-raised p-4"
+    >
+      <p class="m-0 text-ink-muted">{{ t('certs.list.empty') }}</p>
+      <JecButton variant="primary" to="/certificates/new"><Plus class="size-4" aria-hidden="true" />{{ t('certs.action.add') }}</JecButton>
+    </section>
+
+    <template v-else-if="all.length">
+      <section aria-labelledby="inventory" class="flex flex-wrap gap-4 rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
+        <div class="flex min-w-0 flex-[999_1_420px] flex-col gap-3">
+          <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+            <h2 id="inventory" class="m-0 text-heading font-semibold sm:text-section-title">{{ t('certs.overview.inventory') }}</h2>
+            <span class="text-small text-ink-muted tabular-nums sm:hidden">
+              {{ t('certs.overview.short_count', { count: all.length, attention: attention.length }) }}
+            </span>
+            <div class="hidden flex-wrap gap-1.5 sm:flex">
+              <StatusBadge v-for="s in counts" :key="s.state" :state="s.state" :count="s.count" />
+            </div>
+          </div>
+          <div role="list" :aria-label="t('certs.list.title')" class="flex flex-wrap gap-2">
+            <div v-for="c in shown" :key="c.id" role="listitem">
+              <CertSlot :cert="c" :pressed="selected?.id === c.id" @select="picked = c.id" />
+            </div>
+            <RouterLink
+              to="/certificates/new"
+              :aria-label="t('certs.action.add')"
+              class="grid size-12 place-items-center rounded-sm text-ink-muted shadow-[inset_0_0_0_1px_var(--line-strong)] hover:bg-surface-sunken sm:size-14"
+            >
+              <Plus class="size-4" aria-hidden="true" />
+            </RouterLink>
+          </div>
+          <p class="m-0 hidden text-small text-ink-muted sm:block">{{ t('certs.overview.hint') }}</p>
+        </div>
+
+        <div
+          v-if="selected"
+          aria-live="polite"
+          class="flex min-w-0 flex-[1_1_300px] flex-col gap-2.5 rounded-lg bg-surface-sunken p-3 sm:p-3.5"
+        >
+          <div class="flex min-w-0 items-center justify-between gap-2">
+            <span class="min-w-0 truncate text-heading font-semibold" translate="no" :title="selected.domains[0]">
+              {{ selected.domains[0] }}<small v-if="selectedExtra" class="ml-1 text-small font-normal text-ink-muted">{{ selectedExtra }}</small>
+            </span>
+            <StatusBadge :state="selected.state" />
+          </div>
+          <LifeBar v-if="selectedLife" :life="selectedLife" />
+          <dl class="m-0 hidden grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-small sm:grid">
+            <dt class="text-ink-muted">{{ t('certs.field.source') }}</dt>
+            <dd class="m-0">{{ t('certs.source.upload') }}</dd>
+            <template v-if="selected.current">
+              <dt class="text-ink-muted">{{ t('certs.field.expires') }}</dt>
+              <dd class="m-0 tabular-nums">
+                <time :datetime="selected.current.notAfter">{{ intl.date(selected.current.notAfter) }}</time>
+              </dd>
+            </template>
+          </dl>
+          <p class="m-0 text-small text-ink-muted">{{ plan(selected, selectedLife) }}</p>
+          <div class="mt-auto flex flex-wrap gap-2">
+            <JecButton variant="primary" size="sm" :to="{ path: `/certificates/${selected.id}`, query: { upload: '1' } }" class="max-sm:flex-1">
+              {{ t('certs.action.upload') }}
+            </JecButton>
+            <JecButton size="sm" :to="`/certificates/${selected.id}`" class="max-sm:flex-1">{{ t('certs.action.details') }}</JecButton>
+          </div>
+        </div>
+      </section>
+
+      <div class="flex flex-wrap items-stretch gap-3 sm:gap-4">
+        <section aria-labelledby="todo" class="flex min-w-0 flex-[1_1_300px] flex-col rounded-lg border border-line bg-surface-raised px-3 pt-3 pb-1 sm:p-4">
+          <h2 id="todo" class="m-0 mb-0.5 text-heading font-semibold sm:text-section-title">{{ t('certs.attention.title') }}</h2>
+          <p v-if="!todo.length" class="m-0 py-2.5 text-small text-ink-muted">{{ t('certs.attention.none') }}</p>
+          <div
+            v-for="item in todo"
+            :key="item.cert.id"
+            class="flex items-start gap-2.5 border-b border-line py-2.5 last:border-b-0 last:pb-1"
+          >
+            <CircleX v-if="item.expired" class="mt-[3px] size-4 flex-none text-danger-ink" aria-hidden="true" />
+            <TriangleAlert v-else class="mt-[3px] size-4 flex-none text-warn-ink" aria-hidden="true" />
+            <div class="min-w-0 flex-1">
+              <div class="font-semibold [overflow-wrap:anywhere]">{{ item.title }}</div>
+              <div class="text-small text-ink-muted">{{ item.detail }}</div>
+            </div>
+            <JecButton variant="ghost" size="sm" :to="{ path: `/certificates/${item.cert.id}`, query: { upload: '1' } }" class="max-sm:hidden">
+              {{ t('certs.action.upload_short') }}
+            </JecButton>
+            <RouterLink
+              :to="{ path: `/certificates/${item.cert.id}`, query: { upload: '1' } }"
+              :aria-label="t('certs.action.upload_short')"
+              class="-my-2.5 grid size-11 flex-none place-items-center text-ink-muted sm:hidden"
+            >
+              <ChevronRight class="size-4" aria-hidden="true" />
+            </RouterLink>
+          </div>
+        </section>
+
+        <section aria-labelledby="timeline" class="hidden min-w-0 flex-[1_1_300px] flex-col gap-2 rounded-lg border border-line bg-surface-raised p-4 sm:flex">
+          <h2 id="timeline" class="m-0 text-section-title font-semibold">{{ t('certs.timeline.title') }}</h2>
+          <div class="relative mx-1.5 h-[72px]">
+            <div class="absolute inset-x-0 top-[30px] h-0.5 bg-line" />
+            <div class="absolute top-6 left-0 h-3.5 w-0.5 bg-line-strong" />
+            <div v-for="tick in ticks" :key="tick.left" class="absolute top-[26px] h-2.5 w-px bg-line-strong" :style="{ left: tick.left }" />
+            <span
+              v-for="u in upcoming"
+              :key="u.cert.id"
+              role="img"
+              :aria-label="t('certs.timeline.marker', { domain: u.cert.domains[0] ?? '', date: intl.date(u.cert.current?.notAfter ?? 0) })"
+              :title="t('certs.timeline.marker', { domain: u.cert.domains[0] ?? '', date: intl.date(u.cert.current?.notAfter ?? 0) })"
+              :class="['absolute top-[25px] -ml-1.5 size-3 rounded-sm shadow-[0_0_0_2px_var(--surface-raised)]', marks[u.life.level]]"
+              :style="{ left: `${(u.life.days / horizon) * 100}%` }"
+            />
+            <span class="absolute top-[50px] left-0 text-caption text-ink-muted">{{ t('certs.timeline.today') }}</span>
+            <time
+              v-for="(tick, i) in ticks"
+              :key="tick.date"
+              :class="['absolute top-[50px] text-caption whitespace-nowrap text-ink-muted tabular-nums', i === ticks.length - 1 ? 'right-0' : '-translate-x-1/2']"
+              :style="i === ticks.length - 1 ? {} : { left: tick.left }"
+            >{{ tick.date }}</time>
+          </div>
+          <p v-if="!upcoming.length" class="m-0 text-small text-ink-muted">{{ t('certs.timeline.none') }}</p>
+          <ol class="m-0 flex list-none flex-col gap-1.5 p-0 text-small">
+            <li v-for="u in upcoming" :key="u.cert.id" class="flex gap-3">
+              <time :datetime="u.cert.current?.notAfter" :class="['w-[72px] flex-none tabular-nums', inks[u.life.level]]">
+                {{ intl.shortDate(u.cert.current?.notAfter ?? 0) }}
+              </time>
+              <RouterLink :to="`/certificates/${u.cert.id}`" class="min-w-0 flex-1 truncate text-ink no-underline" translate="no" :title="u.cert.domains[0]">
+                {{ u.cert.domains[0] }}
+              </RouterLink>
+              <span :class="['flex-none tabular-nums', inks[u.life.level]]">{{ lifeWords(u.life) }}</span>
+            </li>
+          </ol>
+        </section>
+      </div>
+    </template>
+  </div>
+</template>
