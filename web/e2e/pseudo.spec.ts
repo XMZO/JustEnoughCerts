@@ -25,11 +25,22 @@ async function problems(page: Page): Promise<string[]> {
   await page.waitForLoadState('networkidle')
   return page.evaluate(() => {
     const found: string[] = []
-    const marked = /^(\s*⟦[^⟦⟧]*⟧)+\s*$/
+    // Marked text is whole messages, which may hold other messages as
+    // parameters: taking out the innermost ones until none is left leaves
+    // nothing but space.
+    const marked = (text: string) => {
+      let rest = text
+      for (let before = ''; rest !== before; ) {
+        before = rest
+        rest = rest.replace(/⟦[^⟦⟧]*⟧/g, '')
+      }
+      return rest.trim() === ''
+    }
     // Not text for translators: commands, language names (in their own
-    // language), data such as domains (translate="no"), dates and numbers
-    // that Intl formats (<time>, <data>), and graphics.
-    const exempt = (el: Element) => el.closest('code, [lang], [translate="no"], time, data, svg, script, style') !== null
+    // language; the page's own lang is on <html>), data such as domains
+    // (translate="no"), dates and numbers that Intl formats (<time>, <data>),
+    // and graphics.
+    const exempt = (el: Element) => el.closest('code, [lang]:not(html), [translate="no"], time, data, svg, script, style') !== null
     const visible = (el: Element) => {
       const style = getComputedStyle(el)
       return style.display !== 'none' && style.visibility !== 'hidden'
@@ -41,13 +52,13 @@ async function problems(page: Page): Promise<string[]> {
       const text = node.textContent ?? ''
       const el = node.parentElement
       if (!text.trim() || !el || exempt(el) || !visible(el)) continue
-      if (!marked.test(text)) found.push(`text without markers in ${where(el)}: ${text.trim()}`)
+      if (!marked(text)) found.push(`text without markers in ${where(el)}: ${text.trim()}`)
     }
     for (const el of document.body.querySelectorAll('[placeholder], [title], [aria-label]')) {
       if (exempt(el)) continue
       for (const attr of ['placeholder', 'title', 'aria-label']) {
         const value = el.getAttribute(attr)
-        if (value && !marked.test(value)) found.push(`${attr} without markers on ${where(el)}: ${value}`)
+        if (value && !marked(value)) found.push(`${attr} without markers on ${where(el)}: ${value}`)
       }
     }
     for (const el of document.body.querySelectorAll('*')) {
@@ -68,17 +79,23 @@ async function problems(page: Page): Promise<string[]> {
 }
 
 test('the checks catch untranslated and overflowing text', async ({ page }) => {
-  // The long words overflow their 40px boxes but stay inside a phone screen.
-  await page.setContent(`
+  // A page of the app, with its language on <html>. The long words overflow
+  // their 40px boxes but stay inside a phone screen.
+  await page.setContent(`<!doctype html><html lang="en-US"><body>
     <p>hard-coded</p>
+    <p>⟦fine⟧ and raw</p>
+    <p>⟦⟦a message⟧ holding ⟦another⟧⟧</p>
+    <p lang="de">Deutsch</p>
     <p title="raw tooltip">⟦fine⟧</p>
     <div style="width: 40px; white-space: nowrap">⟦${'w'.repeat(20)}⟧</div>
     <div style="width: 40px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">⟦${'c'.repeat(20)}⟧</div>
     <div style="width: 40px; overflow: hidden; white-space: nowrap" title="⟦all of it⟧">⟦${'t'.repeat(20)}⟧</div>
-    <code>jec version</code>`)
+    <code>jec version</code>
+  </body></html>`)
   const found = await problems(page)
   expect(found).toEqual([
     'text without markers in <p class="">: hard-coded',
+    `text without markers in <p class="">: ⟦fine⟧ and raw`,
     'title without markers on <p class="">: raw tooltip',
     expect.stringMatching(/^overflowing text in <div class="">: ⟦w+/),
     expect.stringMatching(/^clipped text in <div class="">: ⟦c+/),
