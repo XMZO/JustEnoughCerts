@@ -7,7 +7,7 @@ require (
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.2.4
 	github.com/alibabacloud-go/tea v1.5.3
 	github.com/danielgtaylor/huma/v2 v2.39.1
-	github.com/go-acme/esa-20240910/v3 v3.13.0
+	github.com/go-acme/esa-20240910/v3 v3.13.1
 	github.com/go-acme/lego/v5 v5.5.2
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/ncruces/go-sqlite3 v0.35.6
