@@ -110,19 +110,24 @@ func asciiOnly(data []byte) []byte {
 	return b.Bytes()
 }
 
-// module returns the version and directory of the lego module in go.mod.
+// module returns the version and directory of the lego module in go.mod,
+// downloading it when the module cache does not have it, as in a fresh CI
+// job: building this tool does not need lego.
 func module() (string, string, error) {
-	cmd := exec.Command("go", "list", "-m", "-f", "{{.Version}}\t{{.Dir}}", legoModule)
+	cmd := exec.Command("go", "mod", "download", "-json", legoModule)
 	cmd.Stderr = os.Stderr
 	b, err := cmd.Output()
 	if err != nil {
-		return "", "", fmt.Errorf("go list %s: %w", legoModule, err)
+		return "", "", fmt.Errorf("go mod download %s: %w", legoModule, err)
 	}
-	version, dir, ok := strings.Cut(strings.TrimSpace(string(b)), "\t")
-	if !ok || dir == "" {
-		return "", "", fmt.Errorf("go list %s: no module directory; run go mod download", legoModule)
+	var m struct{ Version, Dir, Error string }
+	if err := json.Unmarshal(b, &m); err != nil {
+		return "", "", fmt.Errorf("go mod download %s: %w", legoModule, err)
 	}
-	return version, dir, nil
+	if m.Error != "" || m.Dir == "" {
+		return "", "", fmt.Errorf("go mod download %s: no module directory: %s", legoModule, m.Error)
+	}
+	return m.Version, m.Dir, nil
 }
 
 // read collects the providers under dir, one directory each, by code.
