@@ -55,10 +55,11 @@ func (q *queue[T]) kick() {
 	q.trigger()
 }
 
-// run is a run of the queue's job.
+// run is a run of the queue's job. When ctx ends it returns nil: JEC is
+// stopping, and a query cut short by that is no failure.
 func (q *queue[T]) run(ctx context.Context, s *service) error {
 	if err := q.resume(ctx); err != nil {
-		return err
+		return stopping(ctx, err)
 	}
 	ended := make(chan struct{}, q.limit)
 	var wg sync.WaitGroup
@@ -68,7 +69,7 @@ func (q *queue[T]) run(ctx context.Context, s *service) error {
 		for running < q.limit {
 			t, err := q.claim(ctx)
 			if err != nil {
-				return err
+				return stopping(ctx, err)
 			}
 			if t == nil {
 				break
@@ -101,6 +102,14 @@ func (q *queue[T]) run(ctx context.Context, s *service) error {
 			return nil
 		}
 	}
+}
+
+// stopping returns err, or nil once ctx has ended.
+func stopping(ctx context.Context, err error) error {
+	if ctx.Err() != nil {
+		return nil
+	}
+	return err
 }
 
 // stopAttempts cancels the attempts under way for certificate id.
