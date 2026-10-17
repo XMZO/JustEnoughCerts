@@ -3,9 +3,12 @@
 //
 // A certificate is a set of domains with a source and a renewal policy; a
 // version is one certificate with its chain and private key, which is
-// sealed in the database. For now versions come from uploads. The module
-// publishes the certificate events of package contracts, and warns once a
-// version enters its renewal window, has a week left and expires.
+// sealed in the database. Versions are uploaded, or issued by a source
+// provider such as an ACME account: each issuance is kept with its log,
+// retried with a backoff when it fails, and started again when the
+// current version enters its renewal window (PLAN.md 4.3 and 4.6). The
+// module publishes the certificate events of package contracts, and warns
+// once a version enters its renewal window, has a week left and expires.
 package certs
 
 import (
@@ -47,9 +50,23 @@ func (*Module) Migrations() fs.FS {
 	return sub
 }
 
-// Register adds the API under /api/v1/certs and the expiry check.
+// Register adds the API under /api/v1/certs, the jobs that issue, renew
+// and check expiry, and the veto on deleting the providers certificates
+// use.
 func (m *Module) Register(r *module.Registry) error {
-	s := &service{db: r.DB, events: r.Events, secrets: r.Secrets, log: r.Log, now: m.now}
+	s := newService(r.DB, r.Events, r.Secrets, r.Providers, r.Log, m.now)
+	s.trigger = func() { r.Jobs.Trigger("issue") }
 	registerAPI(r.API, s, r.ConfirmPassword)
-	return r.Jobs.Add(jobs.Job{Name: "check_expiry", Every: time.Hour, Timeout: 5 * time.Minute, Run: s.checkExpiry})
+	r.Providers.UsedBy(s.usesProvider)
+	for _, j := range []jobs.Job{
+		// Runs until no issuance is due; started at once when one is added.
+		{Name: "issue", Every: time.Minute, Timeout: 24 * time.Hour, Run: s.runIssuances},
+		{Name: "renew", Every: time.Hour, Timeout: 5 * time.Minute, Run: s.renew},
+		{Name: "check_expiry", Every: time.Hour, Timeout: 5 * time.Minute, Run: s.checkExpiry},
+	} {
+		if err := r.Jobs.Add(j); err != nil {
+			return err
+		}
+	}
+	return nil
 }

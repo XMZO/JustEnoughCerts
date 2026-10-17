@@ -22,6 +22,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certs/certificates/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a certificate issued by a source provider
+         * @description The certificate is added at once; its first issuance runs in the background.
+         */
+        post: operations["certs-issue-new"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/certs/certificates/{id}": {
         parameters: {
             query?: never;
@@ -39,6 +59,43 @@ export interface paths {
         head?: never;
         /** Change the renewal policy of a certificate */
         patch: operations["certs-update"];
+        trace?: never;
+    };
+    "/certs/certificates/{id}/issuances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the latest issuances of a certificate */
+        get: operations["certs-issuances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/certs/certificates/{id}/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Issue a new version of a certificate now
+         * @description Starts an issuance, or returns the one under way, which is retried now if it was waiting to.
+         */
+        post: operations["certs-issue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/certs/certificates/{id}/versions": {
@@ -69,6 +126,23 @@ export interface paths {
         put?: never;
         /** Download a version with its private key, as a ZIP of PEM files */
         post: operations["certs-download"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/certs/issuances/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get an issuance with its steps and log */
+        get: operations["certs-issuance"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -229,6 +303,8 @@ export interface components {
             domains: string[];
             /** Format: int64 */
             id: number;
+            /** @description The latest issuance */
+            issuance?: components["schemas"]["IssuanceBody"];
             /** @description Type and size of the key, such as rsa-2048 or ecdsa-p256 */
             keyType: string;
             /**
@@ -237,15 +313,25 @@ export interface components {
              */
             renewBeforeDays: number;
             /**
-             * @description Where new versions come from
-             * @enum {string}
+             * Format: int64
+             * @description The solver provider instance that proves control of the domains
              */
-            source: "upload";
+            solverProvider?: number;
             /**
-             * @description ok; expiring: within RenewBeforeDays of the end; expired
+             * @description Where new versions come from: uploads only, or the source provider
              * @enum {string}
              */
-            state: "ok" | "expiring" | "expired";
+            source: "upload" | "provider";
+            /**
+             * Format: int64
+             * @description The source provider instance that issues the certificate
+             */
+            sourceProvider?: number;
+            /**
+             * @description issuing: an issuance is under way; failed: the latest issuance failed, or is waiting to retry; otherwise by the current version: ok, expiring (within renewBeforeDays of the end) or expired
+             * @enum {string}
+             */
+            state: "ok" | "expiring" | "expired" | "issuing" | "failed";
         };
         ChainEntry: {
             issuer: string;
@@ -318,6 +404,84 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        IssuanceBody: {
+            /**
+             * Format: int64
+             * @description Attempts started so far
+             */
+            attempts: number;
+            /** Format: int64 */
+            certificateId: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Why the last attempt failed */
+            error?: components["schemas"]["MessageBody"];
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: int64 */
+            id: number;
+            /**
+             * Format: date-time
+             * @description When the next attempt starts, for a pending issuance
+             */
+            nextAt?: string;
+            /**
+             * @description first: the certificate was added, or has no version yet; renewal; manual: someone asked
+             * @enum {string}
+             */
+            reason: "first" | "renewal" | "manual";
+            /**
+             * Format: date-time
+             * @description When the last attempt started
+             */
+            startedAt?: string;
+            /**
+             * @description pending: the next attempt starts at nextAt, a retry when error is set; failed: no attempt follows unless someone starts one
+             * @enum {string}
+             */
+            state: "pending" | "running" | "done" | "failed";
+            /**
+             * Format: int64
+             * @description The version issued
+             */
+            versionId?: number;
+        };
+        IssuanceDetailOutputBody: {
+            certificate: components["schemas"]["CertificateBody"];
+            issuance: components["schemas"]["IssuanceBody"];
+            /** @description Every line, of every attempt, in order */
+            log: components["schemas"]["LogLineBody"][];
+            /** @description The steps of the last attempt, in order */
+            steps: components["schemas"]["StepBody"][];
+        };
+        IssuanceListOutputBody: {
+            /** @description The newest first */
+            issuances: components["schemas"]["IssuanceBody"][];
+        };
+        IssueRequest: {
+            /** @description The domains, the primary first; a wildcard as *.example.com, an internationalized name in any form */
+            domains: string[];
+            /**
+             * @description The type of the private key, new for each version; rsa-2048 if left out
+             * @enum {string}
+             */
+            keyType?: "ecdsa-p256" | "ecdsa-p384" | "rsa-2048" | "rsa-3072" | "rsa-4096";
+            /**
+             * Format: int64
+             * @description Days before the end to renew; 30 if left out
+             */
+            renewBeforeDays?: number;
+            /**
+             * Format: int64
+             * @description The solver provider instance that proves control of the domains, for a source that needs one
+             */
+            solverProvider?: number;
+            /**
+             * Format: int64
+             * @description The source provider instance that issues the certificate
+             */
+            sourceProvider: number;
+        };
         ListOutputBody: {
             providers: components["schemas"]["InstanceBody"][];
         };
@@ -325,11 +489,38 @@ export interface components {
             /** @description The soonest to expire first */
             certificates: components["schemas"]["CertificateBody"][];
         };
+        LogLineBody: {
+            /** Format: date-time */
+            at: string;
+            /** Format: int64 */
+            attempt: number;
+            /** @description Raw text behind the line, such as a CA's error, in its own language */
+            detail?: string;
+            key: string;
+            /** @enum {string} */
+            level: "info" | "ok" | "warn" | "error";
+            params?: {
+                [key: string]: unknown;
+            };
+            /** Format: int64 */
+            seq: number;
+            /**
+             * @description The step the line belongs to, if any
+             * @enum {string}
+             */
+            step?: "key" | "order" | "challenge" | "validate" | "cleanup" | "download";
+        };
         ManifestBody: {
             /** @description Every module compiled in, by category and ID */
             modules: components["schemas"]["ModuleInfo"][];
             /** @description Program version */
             version: string;
+        };
+        MessageBody: {
+            key: string;
+            params?: {
+                [key: string]: unknown;
+            };
         };
         ModuleInfo: {
             /** @enum {string} */
@@ -377,6 +568,17 @@ export interface components {
             password: string;
             username: string;
         };
+        StepBody: {
+            /**
+             * Format: date-time
+             * @description The time of the step's last line
+             */
+            at?: string;
+            /** @enum {string} */
+            state: "pending" | "running" | "done" | "failed";
+            /** @enum {string} */
+            step: "key" | "order" | "challenge" | "validate" | "cleanup" | "download";
+        };
         Type: {
             brand?: string;
             description?: string;
@@ -387,6 +589,7 @@ export interface components {
             kind: string;
             module: string;
             name?: string;
+            needsSolver?: boolean;
             tags?: string[];
             url?: string;
         };
@@ -401,6 +604,8 @@ export interface components {
             module: string;
             /** @description Message key of the name, for types JEC describes */
             name?: string;
+            /** @description For a source: issuing needs a solver */
+            needsSolver?: boolean;
             tags?: string[];
             url?: string;
         };
@@ -438,10 +643,10 @@ export interface components {
             /** Format: date-time */
             notBefore: string;
             /**
-             * @description How the version came
+             * @description How the version came: uploaded, or issued by the source
              * @enum {string}
              */
-            origin: "upload";
+            origin: "upload" | "issued";
             /** @description Serial number, lowercase hex */
             serial: string;
         };
@@ -493,6 +698,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AddInputBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-issue-new": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueRequest"];
             };
         };
         responses: {
@@ -611,6 +849,71 @@ export interface operations {
             };
         };
     };
+    "certs-issuances": {
+        parameters: {
+            query?: {
+                /** @description How many, the newest first */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssuanceListOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssuanceBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     "certs-upload": {
         parameters: {
             query?: never;
@@ -672,6 +975,37 @@ export interface operations {
                 };
                 content: {
                     "application/zip": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-issuance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssuanceDetailOutputBody"];
                 };
             };
             /** @description Error */

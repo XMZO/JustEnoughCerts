@@ -5,9 +5,6 @@ import (
 	"os"
 	"slices"
 	"testing"
-	"time"
-
-	"github.com/go-acme/lego/v5/challenge/dns01"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
@@ -34,7 +31,7 @@ func TestPebble(t *testing.T) {
 	if !m.roots.AppendCertsFromPEM(root) {
 		t.Fatal("no certificate in", rootFile)
 	}
-	m.dnsOptions = []dns01.ChallengeOption{dns01.PropagationWait(time.Millisecond, true)}
+	m.skipPropagation = true
 	src := &source{m: m, in: providers.Instance{ID: 1, Config: map[string]string{"ca": custom, "directory": directory, "email": "admin@example.com"}}}
 
 	for round := range 2 {

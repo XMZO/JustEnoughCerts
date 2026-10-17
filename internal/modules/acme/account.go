@@ -58,6 +58,7 @@ func accountType() providers.Type {
 			{Key: "eab_kid", Label: i18n.AcmeFieldEabKid, Help: i18n.AcmeFieldEabKidHelp, Kind: providers.Text},
 			{Key: "eab_hmac", Label: i18n.AcmeFieldEabHmac, Help: i18n.AcmeFieldEabHmacHelp, Kind: providers.Text, Secret: true},
 		},
+		NeedsSolver: true,
 	}
 }
 

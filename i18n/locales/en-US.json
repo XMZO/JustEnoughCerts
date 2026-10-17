@@ -29,8 +29,18 @@
       "zerossl": "ZeroSSL"
     },
     "error": {
+      "ca": "The certificate authority returned an error. The full log says why.",
+      "caa": "The domain's CAA records do not allow this certificate authority. Add it to the CAA records.",
+      "directory": "Cannot reach the certificate authority at {directory}. Check the network, or that the directory URL is right.",
       "directory_required": "Fill in the directory URL of the custom certificate authority.",
-      "eab_required": "This certificate authority needs External Account Binding. Fill in the EAB Key ID and HMAC key of the account."
+      "eab_required": "This certificate authority needs External Account Binding. Fill in the EAB Key ID and HMAC key of the account.",
+      "present": "Could not add the record for {domain}. Check the DNS provider's credentials and permissions.",
+      "propagation": "The records for {domains} never showed in DNS. Check that the DNS provider is the one that serves them.",
+      "rate_limited": "The certificate authority refused for now: too many requests. JEC tries again when it allows.",
+      "register": "The certificate authority did not accept the account. Check its settings, such as the EAB and the email.",
+      "rejected": "The certificate authority does not issue certificates for these domains.",
+      "user_action": "The certificate authority asks you to do something on its site first: {url}",
+      "validation": "The certificate authority could not validate the domains. Check that the DNS provider is the one that serves them."
     },
     "field": {
       "ca": "Certificate authority",
@@ -46,10 +56,13 @@
     },
     "log": {
       "cleanup": "Removing the validation record for {domain}",
+      "cleanup_failed": "Could not remove the record for {domain}; you can remove it at the DNS provider",
       "issued": "The certificate authority issued the certificate",
+      "not_visible": "The record for {domain} does not show yet; checking again",
       "order": "Asking for a certificate for {domains}",
       "present": "Adding the validation record for {domain}",
-      "register": "Registering the account at {directory}"
+      "register": "Registering the account at {directory}",
+      "wait": "Waiting for the records to show in DNS, at most {seconds, plural, one {# second} other {# seconds}}"
     },
     "module": {
       "description": "Gets certificates from any CA that speaks ACME, such as Let's Encrypt, ZeroSSL and Google Trust Services.",
@@ -119,16 +132,23 @@
     },
     "error": {
       "bad_certificate": "A certificate cannot be read. Paste it again in full, from -----BEGIN CERTIFICATE----- to -----END CERTIFICATE-----.",
+      "bad_domain": "This is not a valid domain name. Write a wildcard as *.example.com.",
       "bad_key": "The private key cannot be read. Paste it again in full.",
       "duplicate": "This certificate has been added already.",
       "encrypted_key": "The private key is protected by a passphrase. Remove it first, for example with openssl pkey -in key.pem -out plain.pem, then paste the key again.",
+      "issue_failed": "The issuance failed. The full log says why.",
       "key_mismatch": "The private key does not belong to this certificate. Check that both come from the same order or CSR.",
+      "names_missing": "The certificate issued lacks {domains}.",
       "no_certificate": "No certificate found. Paste the certificate in PEM format, starting with -----BEGIN CERTIFICATE-----.",
       "no_key": "No private key found. Paste the private key in PEM format.",
+      "no_source": "This certificate has no source to issue it. Upload new versions instead.",
       "not_newer": "This certificate expires before the one in use. Upload a newer certificate.",
       "other_domains": "This certificate is not for {domain}. Upload one that covers {domain}, or add it as a new certificate.",
+      "provider_missing": "A provider this certificate uses was deleted.",
+      "provider_unavailable": "A provider this certificate uses is not available; its module may be off. Retries go on once the module is back.",
       "several_keys": "More than one private key was pasted. Keep only the key of this certificate.",
-      "unsupported_key": "This type of private key is not supported. Use an RSA, ECDSA or Ed25519 key."
+      "unsupported_key": "This type of private key is not supported. Use an RSA, ECDSA or Ed25519 key.",
+      "wrong_provider": "This provider cannot be used here. Choose another one."
     },
     "field": {
       "days": "{days, plural, one {# day} other {# days}}",
@@ -176,6 +196,15 @@
       "summary": "Showing {shown, plural, one {# certificate} other {# certificates}} of {total}. Sorted by days left.",
       "title": "Certificates"
     },
+    "log": {
+      "attempt": "Attempt {attempt}",
+      "done": "Done in {seconds, plural, one {# second} other {# seconds}}",
+      "gave_up": "No more automatic retries. Once the cause is fixed, issue the certificate again.",
+      "interrupted": "JEC stopped during the issuance; starting over",
+      "key": "New private key: {kind, select, rsa {RSA {size}} ecdsa {ECDSA {size}} other {{kind}}}",
+      "retry": "Trying again in {minutes, plural, one {# minute} other {# minutes}}",
+      "stored": "Certificate saved, valid for {days, plural, one {# day} other {# days}}"
+    },
     "module": {
       "description": "Keeps track of each certificate and its versions, and warns before one expires.",
       "name": "Certificates"
@@ -219,6 +248,8 @@
     "state": {
       "expired": "Expired",
       "expiring": "Expiring soon",
+      "failed": "Failed",
+      "issuing": "Issuing",
       "ok": "Healthy"
     },
     "timeline": {

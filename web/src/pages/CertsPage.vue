@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleCheck, CircleX, Plus, TriangleAlert } from '@lucide/vue'
+import { CircleCheck, CircleX, LoaderCircle, OctagonX, Plus, TriangleAlert } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
@@ -80,6 +80,8 @@ const healthyRows = computed(() => rows.value.filter((r) => !needsAttention(r.ce
 const itemLooks = {
   expiring: { icon: TriangleAlert, ink: 'text-warn-ink', fill: 'bg-warn-fill' },
   expired: { icon: CircleX, ink: 'text-danger-ink', fill: 'bg-danger-fill' },
+  failed: { icon: OctagonX, ink: 'text-danger-ink', fill: 'bg-danger-fill' },
+  issuing: { icon: LoaderCircle, ink: 'text-info-ink', fill: 'bg-info-fill' },
   ok: { icon: CircleCheck, ink: 'text-ok-ink', fill: 'bg-ok-fill' },
 } as const
 const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill' }

@@ -19,11 +19,30 @@ const (
 	Error Level = "error"
 )
 
-// LogLine is a step of an issuance, as the UI shows it: a message key with
-// its arguments. Detail is the raw text behind it, such as a CA's error,
-// for the full log only.
+// Step is a stage of an issuance, which the progress view lists in this
+// order. A source takes the stages it needs: a CA that does not validate
+// domains has no challenge, validate or cleanup.
+type Step string
+
+// Steps.
+const (
+	StepKey       Step = "key"       // making the private key
+	StepOrder     Step = "order"     // asking the source for the certificate
+	StepChallenge Step = "challenge" // publishing the answers to the domain validation
+	StepValidate  Step = "validate"  // waiting for the answers to show and the CA to check them
+	StepCleanup   Step = "cleanup"   // removing the answers
+	StepDownload  Step = "download"  // getting and storing the certificate
+)
+
+// Steps lists the steps in order.
+var Steps = []Step{StepKey, StepOrder, StepChallenge, StepValidate, StepCleanup, StepDownload}
+
+// LogLine is a line of an issuance's log, as the UI shows it: a message key
+// with its arguments, and the step it belongs to, if any. Detail is the raw
+// text behind it, such as a CA's error, for the full log only.
 type LogLine struct {
 	Level  Level
+	Step   Step
 	Key    i18n.Key
 	Params map[string]any
 	Detail string

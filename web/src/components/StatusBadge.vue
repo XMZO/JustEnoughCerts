@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleCheck, CircleX, TriangleAlert } from '@lucide/vue'
+import { CircleCheck, CircleX, LoaderCircle, OctagonX, TriangleAlert } from '@lucide/vue'
 
 import type { CertificateState } from '../api/certs'
 import { stateText } from '../certs/life'
@@ -15,6 +15,8 @@ const looks = {
   ok: { icon: CircleCheck, cls: 'bg-ok-soft text-ok-ink' },
   expiring: { icon: TriangleAlert, cls: 'bg-warn-soft text-warn-ink' },
   expired: { icon: CircleX, cls: 'bg-danger-soft text-danger-ink' },
+  failed: { icon: OctagonX, cls: 'bg-danger-soft text-danger-ink' },
+  issuing: { icon: LoaderCircle, cls: 'bg-info-soft text-info-ink', spin: true },
 } as const
 </script>
 
@@ -25,7 +27,11 @@ const looks = {
       looks[state].cls,
     ]"
   >
-    <component :is="looks[state].icon" class="size-3.5 flex-none" aria-hidden="true" />
+    <component
+      :is="looks[state].icon"
+      :class="['size-3.5 flex-none', 'spin' in looks[state] && 'animate-spin']"
+      aria-hidden="true"
+    />
     {{ count === undefined ? t(stateText[state]) : t('certs.overview.badge', { label: t(stateText[state]), count }) }}
   </span>
 </template>

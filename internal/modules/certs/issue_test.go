@@ -1,0 +1,687 @@
+package certs
+
+import (
+	"context"
+	"crypto/x509"
+	"errors"
+	"net/http"
+	"slices"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/XMZO/JustEnoughCerts/i18n"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+)
+
+// fakes are the providers of module "fake": a source that issues from the
+// fixture's CA, or does what issue says, and a solver that records calls.
+type fakes struct {
+	mu     sync.Mutex
+	issue  func(ctx context.Context, req contracts.IssueRequest) ([]*x509.Certificate, error)
+	calls  []string // of the solver
+	opened int      // sources and solvers open
+}
+
+func (f *fixture) addFakes() {
+	f.t.Helper()
+	scope := f.reg.Scope("fake")
+	for _, typ := range []providers.Type{
+		{ID: "fake.ca", Kind: providers.Source, Brand: "Fake CA", NeedsSolver: true},
+		{ID: "fake.free", Kind: providers.Source, Brand: "Fake CA without validation"},
+		{ID: "fake.dns", Kind: providers.Solver, Brand: "Fake DNS"},
+		{ID: "fake.hook", Kind: providers.Target, Brand: "Fake target"},
+	} {
+		err := scope.Add(typ, func(context.Context, providers.Instance) (any, error) {
+			f.fake.mu.Lock()
+			defer f.fake.mu.Unlock()
+			f.fake.opened++
+			switch typ.Kind {
+			case providers.Source:
+				return &fakeSource{f}, nil
+			case providers.Solver:
+				return &fakeSolver{f}, nil
+			}
+			return struct{}{}, nil
+		})
+		if err != nil {
+			f.t.Fatal(err)
+		}
+	}
+}
+
+// provider creates an instance of a fake type.
+func (f *fixture) provider(typ string) int64 {
+	f.t.Helper()
+	id, err := f.reg.Create(f.t.Context(), typ, typ, map[string]string{}, map[string]string{})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return id
+}
+
+type fakeSource struct{ f *fixture }
+
+func (s *fakeSource) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509.Certificate, error) {
+	s.f.fake.mu.Lock()
+	issue := s.f.fake.issue
+	s.f.fake.mu.Unlock()
+	if issue != nil {
+		return issue(ctx, req)
+	}
+	return s.f.issueAll(ctx, req)
+}
+
+func (s *fakeSource) Close() error { return s.f.closed() }
+
+// issueAll goes through the steps of an ACME issuance and issues the
+// certificate.
+func (f *fixture) issueAll(ctx context.Context, req contracts.IssueRequest) ([]*x509.Certificate, error) {
+	req.Log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.AcmeLogOrder, Params: map[string]any{"domains": strings.Join(req.Domains, ", ")}})
+	if req.Solver != nil {
+		for _, d := range req.Domains {
+			req.Log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepChallenge, Key: i18n.AcmeLogPresent, Params: map[string]any{"domain": d}})
+			if err := req.Solver.Present(ctx, contracts.Challenge{Domain: strings.TrimPrefix(d, "*.")}); err != nil {
+				return nil, err
+			}
+		}
+		for _, d := range req.Domains {
+			req.Log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepCleanup, Key: i18n.AcmeLogCleanup, Params: map[string]any{"domain": d}})
+			if err := req.Solver.CleanUp(ctx, contracts.Challenge{Domain: strings.TrimPrefix(d, "*.")}); err != nil {
+				return nil, err
+			}
+		}
+	}
+	req.Log(contracts.LogLine{Level: contracts.OK, Step: contracts.StepDownload, Key: i18n.AcmeLogIssued})
+	leaf := f.ca.Leaf(f.t, req.Key, f.now.Add(-time.Hour), f.now.Add(90*day), req.Domains...)
+	return []*x509.Certificate{leaf, f.ca.Intermediate}, nil
+}
+
+func (f *fixture) closed() error {
+	f.fake.mu.Lock()
+	defer f.fake.mu.Unlock()
+	f.fake.opened--
+	return nil
+}
+
+func (f *fixture) failWith(err error) {
+	f.fake.mu.Lock()
+	defer f.fake.mu.Unlock()
+	f.fake.issue = func(context.Context, contracts.IssueRequest) ([]*x509.Certificate, error) { return nil, err }
+}
+
+func (f *fixture) succeed() {
+	f.fake.mu.Lock()
+	defer f.fake.mu.Unlock()
+	f.fake.issue = nil
+}
+
+type fakeSolver struct{ f *fixture }
+
+func (s *fakeSolver) record(call string) {
+	s.f.fake.mu.Lock()
+	defer s.f.fake.mu.Unlock()
+	s.f.fake.calls = append(s.f.fake.calls, call)
+}
+
+func (s *fakeSolver) Present(_ context.Context, ch contracts.Challenge) error {
+	s.record("present " + ch.Domain)
+	return nil
+}
+
+func (s *fakeSolver) CleanUp(_ context.Context, ch contracts.Challenge) error {
+	s.record("cleanup " + ch.Domain)
+	return nil
+}
+
+func (*fakeSolver) Wait() (time.Duration, time.Duration) { return time.Minute, time.Second }
+func (s *fakeSolver) Close() error                       { return s.f.closed() }
+
+// issueNew adds a certificate issued by the fake CA through the fake DNS.
+func (f *fixture) issueNew(domains ...string) CertificateBody {
+	f.t.Helper()
+	var c CertificateBody
+	f.call(f.api.Post("/certificates/issue", map[string]any{
+		"domains": domains, "sourceProvider": f.provider("fake.ca"), "solverProvider": f.provider("fake.dns"), "keyType": "ecdsa-p256",
+	}), http.StatusCreated, &c)
+	return c
+}
+
+// run runs the issuance job once, until no issuance is due.
+func (f *fixture) run() {
+	f.t.Helper()
+	if err := f.svc.runIssuances(f.t.Context()); err != nil {
+		f.t.Fatal(err)
+	}
+}
+
+func (f *fixture) certificate(id int64) CertificateBody {
+	f.t.Helper()
+	var d struct {
+		Certificate CertificateBody `json:"certificate"`
+	}
+	f.call(f.api.Get("/certificates/"+strconv.FormatInt(id, 10)), http.StatusOK, &d)
+	return d.Certificate
+}
+
+type issuanceDetail struct {
+	Issuance    IssuanceBody    `json:"issuance"`
+	Certificate CertificateBody `json:"certificate"`
+	Steps       []StepBody      `json:"steps"`
+	Log         []LogLineBody   `json:"log"`
+}
+
+func (f *fixture) issuanceDetail(id int64) issuanceDetail {
+	f.t.Helper()
+	var d issuanceDetail
+	f.call(f.api.Get("/issuances/"+strconv.FormatInt(id, 10)), http.StatusOK, &d)
+	return d
+}
+
+func logKeys(d issuanceDetail) []i18n.Key {
+	var keys []i18n.Key
+	for _, l := range d.Log {
+		keys = append(keys, l.Key)
+	}
+	return keys
+}
+
+func eventTypes(events []storedEvent) []string {
+	var out []string
+	for _, e := range events {
+		out = append(out, e.typ)
+	}
+	return out
+}
+
+func TestIssue(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("Example.COM.", "*.example.com", "example.com", bucher+".example.com")
+	if strings.Join(c.Domains, ",") != "example.com,*.example.com,xn--bcher-kva.example.com" || c.Source != "provider" ||
+		c.SourceProvider == 0 || c.SolverProvider == 0 || c.KeyType != "ecdsa-p256" || c.RenewBeforeDays != 30 ||
+		c.State != "issuing" || c.Current != nil || c.Issuance == nil {
+		t.Fatalf("added %+v", c)
+	}
+	if is := c.Issuance; is.Reason != "first" || is.State != "pending" || is.Attempts != 0 || is.NextAt == nil {
+		t.Errorf("issuance %+v", is)
+	}
+	if f.triggered.Load() != 1 {
+		t.Error("the runner was not started")
+	}
+
+	f.run()
+	c = f.certificate(c.ID)
+	if c.State != "ok" || c.Current == nil || c.Current.Origin != "issued" || c.Issuance.State != "done" ||
+		c.Issuance.VersionID != c.Current.ID || c.Issuance.Attempts != 1 || c.Issuance.FinishedAt == nil {
+		t.Fatalf("after the run: %+v", c)
+	}
+	if !slices.Equal(f.fake.calls, []string{
+		"present example.com", "present example.com", "present xn--bcher-kva.example.com",
+		"cleanup example.com", "cleanup example.com", "cleanup xn--bcher-kva.example.com",
+	}) {
+		t.Errorf("solver calls %v", f.fake.calls)
+	}
+	if f.fake.opened != 0 {
+		t.Errorf("%d providers left open", f.fake.opened)
+	}
+
+	d := f.issuanceDetail(c.Issuance.ID)
+	if !slices.Equal(logKeys(d), []i18n.Key{
+		i18n.CertsLogKey, i18n.AcmeLogOrder, i18n.AcmeLogPresent, i18n.AcmeLogPresent, i18n.AcmeLogPresent,
+		i18n.AcmeLogCleanup, i18n.AcmeLogCleanup, i18n.AcmeLogCleanup, i18n.AcmeLogIssued, i18n.CertsLogStored, i18n.CertsLogDone,
+	}) {
+		t.Errorf("log %v", logKeys(d))
+	}
+	if p := d.Log[0].Params; p["kind"] != "ecdsa" || p["size"] != "P-256" {
+		t.Errorf("key line %+v", d.Log[0])
+	}
+	var steps []string
+	for _, st := range d.Steps {
+		steps = append(steps, st.Step+" "+st.State)
+	}
+	// The fake CA does not log a validate step, so a done issuance leaves it out.
+	if strings.Join(steps, ", ") != "key done, order done, challenge done, cleanup done, download done" {
+		t.Errorf("steps %v", steps)
+	}
+	if got := eventTypes(f.events()); !slices.Equal(got, []string{contracts.CertificateIssued}) {
+		t.Errorf("events %v", got)
+	}
+}
+
+func TestIssueDefaults(t *testing.T) {
+	f := newFixture(t)
+	var c CertificateBody
+	f.call(f.api.Post("/certificates/issue", map[string]any{
+		"domains": []string{"example.com"}, "sourceProvider": f.provider("fake.free"),
+	}), http.StatusCreated, &c)
+	if c.KeyType != "rsa-2048" || c.SolverProvider != 0 {
+		t.Fatalf("added %+v", c)
+	}
+	f.run()
+	c = f.certificate(c.ID)
+	if c.State != "ok" || c.Current.KeyType != "rsa-2048" {
+		t.Fatalf("issued %+v", c)
+	}
+	var steps []string
+	for _, st := range f.issuanceDetail(c.Issuance.ID).Steps {
+		steps = append(steps, st.Step)
+	}
+	if strings.Join(steps, ",") != "key,order,download" {
+		t.Errorf("steps without a solver: %v", steps)
+	}
+}
+
+func TestIssueChecks(t *testing.T) {
+	f := newFixture(t)
+	source, solver, target := f.provider("fake.ca"), f.provider("fake.dns"), f.provider("fake.hook")
+	for name, tt := range map[string]struct {
+		body   map[string]any
+		fields []string
+		codes  []i18n.Key
+	}{
+		"bad domains": {
+			map[string]any{"domains": []string{"example.com", "exa mple.com", "a.*.example.com", "*"}, "sourceProvider": source, "solverProvider": solver},
+			[]string{"body.domains[1]", "body.domains[2]", "body.domains[3]"},
+			[]i18n.Key{i18n.CertsErrorBadDomain, i18n.CertsErrorBadDomain, i18n.CertsErrorBadDomain},
+		},
+		"no solver": {
+			map[string]any{"domains": []string{"example.com"}, "sourceProvider": source},
+			[]string{"body.solverProvider"}, []i18n.Key{i18n.KernelErrorFieldRequired},
+		},
+		"wrong kinds": {
+			map[string]any{"domains": []string{"example.com"}, "sourceProvider": target, "solverProvider": source},
+			[]string{"body.sourceProvider", "body.solverProvider"}, []i18n.Key{i18n.CertsErrorWrongProvider, i18n.CertsErrorWrongProvider},
+		},
+		"unknown": {
+			map[string]any{"domains": []string{"example.com"}, "sourceProvider": 999, "solverProvider": solver},
+			[]string{"body.sourceProvider"}, []i18n.Key{i18n.KernelErrorNotFound},
+		},
+	} {
+		e := f.apiError(f.api.Post("/certificates/issue", tt.body), http.StatusUnprocessableEntity)
+		var fields []string
+		var codes []i18n.Key
+		for _, fe := range e.Fields {
+			fields, codes = append(fields, fe.Location), append(codes, i18n.Key(fe.Code))
+		}
+		if !slices.Equal(fields, tt.fields) || !slices.Equal(codes, tt.codes) {
+			t.Errorf("%s: fields %v %v", name, fields, codes)
+		}
+	}
+	var n int
+	if err := f.db.QueryRowContext(t.Context(), "SELECT count(*) FROM certs_certificates").Scan(&n); err != nil || n != 0 {
+		t.Errorf("%d certificates added, %v", n, err)
+	}
+}
+
+func TestIssueRetries(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+	f.failWith(errors.New("connection refused"))
+	f.run()
+
+	c = f.certificate(c.ID)
+	is := c.Issuance
+	if c.State != "failed" || is.State != "pending" || is.Attempts != 1 || is.Error == nil || is.Error.Key != i18n.CertsErrorIssueFailed {
+		t.Fatalf("after a failed attempt: %+v %+v", c, is)
+	}
+	if wait := is.NextAt.Sub(f.now); wait < retryBase/2 || wait > retryBase {
+		t.Errorf("retry in %v", wait)
+	}
+	d := f.issuanceDetail(is.ID)
+	last := d.Log[len(d.Log)-2]
+	if last.Level != "error" || last.Step != "key" || last.Detail != "connection refused" ||
+		d.Log[len(d.Log)-1].Key != i18n.CertsLogRetry {
+		t.Errorf("log %+v", d.Log)
+	}
+	if st := d.Steps[0]; st.Step != "key" || st.State != "failed" {
+		t.Errorf("steps %+v", d.Steps)
+	}
+	events := f.events()
+	if len(events) != 1 || events[0].typ != contracts.CertificateIssueFailed {
+		t.Fatalf("events %v", eventTypes(events))
+	}
+	if e := events[0].data.Issuance; e == nil || e.ID != is.ID || e.Attempt != 1 || e.Error.Key != i18n.CertsErrorIssueFailed || !e.Retry.Equal(*is.NextAt) {
+		t.Errorf("event %+v", events[0].data)
+	}
+
+	// Not due yet.
+	f.run()
+	if got := f.certificate(c.ID).Issuance.Attempts; got != 1 {
+		t.Errorf("retried early: %d attempts", got)
+	}
+	f.now = *is.NextAt
+	f.succeed()
+	f.run()
+	c = f.certificate(c.ID)
+	if c.State != "ok" || c.Issuance.State != "done" || c.Issuance.Attempts != 2 || c.Issuance.Error != nil {
+		t.Errorf("after the retry: %+v %+v", c, c.Issuance)
+	}
+	if keys := logKeys(f.issuanceDetail(is.ID)); !slices.Contains(keys, i18n.CertsLogAttempt) {
+		t.Errorf("no attempt line: %v", keys)
+	}
+}
+
+func TestIssueGivesUp(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+	f.failWith(&contracts.Problem{Key: i18n.AcmeErrorEabRequired})
+	for range maxAttempts {
+		f.run()
+		is := f.certificate(c.ID).Issuance
+		if is.NextAt != nil {
+			f.now = *is.NextAt
+		}
+	}
+	c = f.certificate(c.ID)
+	if is := c.Issuance; c.State != "failed" || is.State != "failed" || is.Attempts != maxAttempts ||
+		is.FinishedAt == nil || is.Error.Key != i18n.AcmeErrorEabRequired {
+		t.Fatalf("after %d attempts: %+v %+v", maxAttempts, c, c.Issuance)
+	}
+	events := f.events()
+	if len(events) != maxAttempts || !events[len(events)-1].data.Issuance.Retry.IsZero() || events[0].data.Issuance.Retry.IsZero() {
+		t.Errorf("events: %d", len(events))
+	}
+	if keys := logKeys(f.issuanceDetail(c.Issuance.ID)); keys[len(keys)-1] != i18n.CertsLogGaveUp {
+		t.Errorf("log ends with %v", keys[len(keys)-1])
+	}
+
+	// A person can start again.
+	f.succeed()
+	var is IssuanceBody
+	f.call(f.api.Post("/certificates/"+strconv.FormatInt(c.ID, 10)+"/issue"), http.StatusAccepted, &is)
+	if is.Reason != "first" || is.State != "pending" || is.ID == c.Issuance.ID {
+		t.Errorf("manual issuance %+v", is)
+	}
+	f.run()
+	if got := f.certificate(c.ID); got.State != "ok" {
+		t.Errorf("after the manual issuance: %s", got.State)
+	}
+}
+
+func TestIssuePermanent(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+	f.failWith(retry.Permanent(&contracts.Problem{Key: i18n.AcmeErrorEabRequired, Err: errors.New("externalAccountRequired")}))
+	f.run()
+	c = f.certificate(c.ID)
+	if is := c.Issuance; is.State != "failed" || is.Attempts != 1 || is.Error.Key != i18n.AcmeErrorEabRequired {
+		t.Fatalf("issuance %+v", is)
+	}
+	d := f.issuanceDetail(c.Issuance.ID)
+	if l := d.Log[len(d.Log)-2]; l.Key != i18n.AcmeErrorEabRequired || l.Detail != "externalAccountRequired" {
+		t.Errorf("error line %+v", l)
+	}
+}
+
+func TestManualIssue(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+	path := "/certificates/" + strconv.FormatInt(c.ID, 10) + "/issue"
+
+	// While the first issuance waits, asking again returns it.
+	var is IssuanceBody
+	f.call(f.api.Post(path), http.StatusAccepted, &is)
+	if is.ID != c.Issuance.ID {
+		t.Errorf("a second issuance %d", is.ID)
+	}
+	f.run()
+
+	// A retry waiting is made due now.
+	f.failWith(errors.New("timeout"))
+	f.call(f.api.Post(path), http.StatusAccepted, &is)
+	if is.Reason != "manual" {
+		t.Errorf("reason %s", is.Reason)
+	}
+	f.run()
+	waiting := f.certificate(c.ID).Issuance
+	if waiting.State != "pending" || waiting.Attempts != 1 {
+		t.Fatalf("issuance %+v", waiting)
+	}
+	f.call(f.api.Post(path), http.StatusAccepted, &is)
+	if is.ID != waiting.ID || !is.NextAt.Equal(f.now) {
+		t.Errorf("the retry was not made due: %+v", is)
+	}
+
+	// An uploaded certificate has no source.
+	up := f.add(f.leaf(90, "upload.example.com"))
+	if e := f.apiError(f.api.Post("/certificates/"+strconv.FormatInt(up.ID, 10)+"/issue"), http.StatusConflict); e.Code != string(i18n.CertsErrorNoSource) {
+		t.Errorf("error %+v", e)
+	}
+	f.apiError(f.api.Post("/certificates/999/issue"), http.StatusNotFound)
+}
+
+func TestIssuanceList(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+	f.run()
+	path := "/certificates/" + strconv.FormatInt(c.ID, 10)
+	f.call(f.api.Post(path+"/issue"), http.StatusAccepted, nil)
+	f.run()
+	var list struct {
+		Issuances []IssuanceBody `json:"issuances"`
+	}
+	f.call(f.api.Get(path+"/issuances"), http.StatusOK, &list)
+	if len(list.Issuances) != 2 || list.Issuances[0].Reason != "manual" || list.Issuances[1].Reason != "first" {
+		t.Errorf("issuances %+v", list.Issuances)
+	}
+	f.call(f.api.Get(path+"/issuances?limit=1"), http.StatusOK, &list)
+	if len(list.Issuances) != 1 {
+		t.Errorf("limit: %d", len(list.Issuances))
+	}
+	f.apiError(f.api.Get("/certificates/999/issuances"), http.StatusNotFound)
+	f.apiError(f.api.Get("/issuances/999"), http.StatusNotFound)
+}
+
+func TestIssueResumes(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+	// An attempt claimed by a JEC that then stopped.
+	if claimed, err := f.svc.claim(t.Context()); err != nil || claimed == nil {
+		t.Fatal(claimed, err)
+	}
+	f.run()
+	c = f.certificate(c.ID)
+	if c.State != "ok" || c.Issuance.Attempts != 2 {
+		t.Fatalf("after the restart: %+v %+v", c, c.Issuance)
+	}
+	if keys := logKeys(f.issuanceDetail(c.Issuance.ID)); keys[0] != i18n.CertsLogInterrupted {
+		t.Errorf("log %v", keys)
+	}
+}
+
+func TestIssueStops(t *testing.T) {
+	f := newFixture(t)
+	started := make(chan struct{})
+	f.fake.issue = func(ctx context.Context, _ contracts.IssueRequest) ([]*x509.Certificate, error) {
+		close(started)
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
+
+	// JEC stopping leaves the issuance running, to resume after the restart.
+	c := f.issueNew("example.com")
+	ctx, stop := context.WithCancel(t.Context())
+	done := make(chan error)
+	go func() { done <- f.svc.runIssuances(ctx) }()
+	<-started
+	stop()
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if is := f.certificate(c.ID).Issuance; is.State != "running" || is.Error != nil {
+		t.Errorf("after the stop: %+v", is)
+	}
+
+	// Deleting the certificate stops its attempt, with no failure told.
+	started = make(chan struct{})
+	go func() { done <- f.svc.runIssuances(t.Context()) }()
+	<-started
+	f.call(f.api.Delete("/certificates/"+strconv.FormatInt(c.ID, 10)), http.StatusNoContent, nil)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if got := eventTypes(f.events()); !slices.Equal(got, []string{contracts.CertificateDeleted}) {
+		t.Errorf("events %v", got)
+	}
+}
+
+func TestIssueConcurrency(t *testing.T) {
+	f := newFixture(t)
+	entered := make(chan struct{}, 5)
+	release := make(chan struct{})
+	f.fake.issue = func(ctx context.Context, req contracts.IssueRequest) ([]*x509.Certificate, error) {
+		entered <- struct{}{}
+		<-release
+		return f.issueAll(ctx, req)
+	}
+	for i := range 5 {
+		f.issueNew("site" + strconv.Itoa(i) + ".example.com")
+	}
+	done := make(chan error)
+	go func() { done <- f.svc.runIssuances(t.Context()) }()
+	for range maxRunning {
+		<-entered
+	}
+	select {
+	case <-entered:
+		t.Errorf("more than %d attempts at once", maxRunning)
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	certs, err := f.svc.list(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range certs {
+		if c.state(f.now) != stateOK {
+			t.Errorf("%s: %s", c.Domains[0], c.state(f.now))
+		}
+	}
+}
+
+func TestRenew(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+	f.run()
+	up := f.add(f.leaf(10, "upload.example.com"))
+
+	// Outside the renewal window: nothing to do.
+	if err := f.svc.renew(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.certificate(c.ID).Issuance.Reason; got != "first" {
+		t.Fatalf("renewed early: %s", got)
+	}
+
+	f.now = f.now.Add(61 * day)
+	triggered := f.triggered.Load()
+	if err := f.svc.renew(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	is := f.certificate(c.ID).Issuance
+	if is.Reason != "renewal" || is.State != "pending" || f.triggered.Load() != triggered+1 {
+		t.Fatalf("renewal %+v", is)
+	}
+	if f.certificate(up.ID).Issuance != nil {
+		t.Error("an uploaded certificate was renewed")
+	}
+	// Under way: not started twice.
+	if err := f.svc.renew(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.certificate(c.ID).Issuance.ID; got != is.ID {
+		t.Error("a second renewal started")
+	}
+
+	// A renewal that failed for good waits a day before the next.
+	f.failWith(retry.Permanent(errors.New("rejected")))
+	f.run()
+	if err := f.svc.renew(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.certificate(c.ID).Issuance; got.ID != is.ID || got.State != "failed" {
+		t.Fatalf("renewed again at once: %+v", got)
+	}
+	f.now = f.now.Add(failedPause)
+	if err := f.svc.renew(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.certificate(c.ID).Issuance; got.ID == is.ID || got.Reason != "renewal" {
+		t.Errorf("no renewal a day later: %+v", got)
+	}
+}
+
+func TestFailedStateEnds(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+	f.failWith(retry.Permanent(errors.New("rejected")))
+	f.run()
+	if got := f.certificate(c.ID).State; got != "failed" {
+		t.Fatalf("state %s", got)
+	}
+	// A version uploaded since ends the failed state.
+	f.now = f.now.Add(time.Minute)
+	u := f.leaf(90, "example.com")
+	f.call(f.api.Post("/certificates/"+strconv.FormatInt(c.ID, 10)+"/versions", map[string]any{
+		"certificate": u.cert, "privateKey": u.key,
+	}), http.StatusCreated, nil)
+	if got := f.certificate(c.ID).State; got != "ok" {
+		t.Errorf("state after the upload: %s", got)
+	}
+}
+
+func TestProviderInUse(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+	var inUse *providers.InUseError
+	if err := f.reg.Delete(t.Context(), c.SourceProvider); !errors.As(err, &inUse) || inUse.Module != "certs" {
+		t.Errorf("deleting the source: %v", err)
+	}
+	if err := f.reg.Delete(t.Context(), c.SolverProvider); !errors.As(err, &inUse) {
+		t.Errorf("deleting the solver: %v", err)
+	}
+	f.call(f.api.Delete("/certificates/"+strconv.FormatInt(c.ID, 10)), http.StatusNoContent, nil)
+	if err := f.reg.Delete(t.Context(), c.SourceProvider); err != nil {
+		t.Errorf("deleting the source once unused: %v", err)
+	}
+}
+
+// Internationalized names, spelled out so that the source stays ASCII.
+var (
+	bucher        = "b" + string(rune(0xfc)) + "cher"                              // German for books
+	example, test = string([]rune{0x4f8b, 0x5b50}), string([]rune{0x6d4b, 0x8bd5}) // Chinese
+)
+
+func TestNormalizeDomain(t *testing.T) {
+	for _, tt := range []struct{ in, want string }{
+		{"Example.com", "example.com"},
+		{" example.com. ", "example.com"},
+		{"*.Example.com", "*.example.com"},
+		{bucher + ".de", "xn--bcher-kva.de"},
+		{"xn--bcher-kva.de", "xn--bcher-kva.de"},
+		{example + "." + test, "xn--fsqu00a.xn--0zwm56d"}, // the IANA test domain in Chinese
+		{"a_b.example.com", ""},
+		{"*.*.example.com", ""},
+		{"a.*.example.com", ""},
+		{"*", ""},
+		{"", ""},
+		{"-a.example.com", ""},
+		{strings.Repeat("a", 64) + ".com", ""},
+	} {
+		got, ok := normalizeDomain(tt.in)
+		if got != tt.want || ok != (tt.want != "") {
+			t.Errorf("normalizeDomain(%q) = %q, %v; want %q", tt.in, got, ok, tt.want)
+		}
+	}
+	out, bad := normalizeDomains([]string{"a.com", "A.com", "bad name", "b.com"})
+	if !slices.Equal(out, []string{"a.com", "b.com"}) || !slices.Equal(bad, []int{2}) {
+		t.Errorf("normalizeDomains: %v, %v", out, bad)
+	}
+}

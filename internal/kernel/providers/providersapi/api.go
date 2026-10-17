@@ -26,6 +26,7 @@ type TypeSummary struct {
 	Brand        string         `json:"brand,omitempty" doc:"A third party's name for the type, shown as it is"`
 	URL          string         `json:"url,omitempty"`
 	Tags         []string       `json:"tags,omitempty"`
+	NeedsSolver  bool           `json:"needsSolver,omitempty" doc:"For a source: issuing needs a solver"`
 	Experimental bool           `json:"experimental,omitempty"`
 }
 
@@ -110,7 +111,7 @@ func Register(a huma.API, r *providers.Registry) {
 		for _, t := range r.Types(providers.Kind(in.Kind)) {
 			out.Body.Types = append(out.Body.Types, TypeSummary{
 				ID: t.ID, Kind: t.Kind, Module: t.Module, Name: t.Name, Description: t.Description,
-				Brand: t.Brand, URL: t.URL, Tags: t.Tags, Experimental: t.Experimental,
+				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, Experimental: t.Experimental,
 			})
 		}
 		return out, nil

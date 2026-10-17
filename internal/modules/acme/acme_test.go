@@ -4,18 +4,21 @@ import (
 	"context"
 	"crypto"
 	"errors"
+	"fmt"
 	"log/slog"
 	"slices"
 	"sync"
 	"testing"
 	"time"
 
+	legoacme "github.com/go-acme/lego/v5/acme"
 	"github.com/go-acme/lego/v5/lego"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 )
@@ -163,8 +166,92 @@ func TestDNSProvider(t *testing.T) {
 	if timeout, interval := p.Timeout(); timeout != 2*time.Minute || interval != 5*time.Second {
 		t.Errorf("Timeout = %v, %v", timeout, interval)
 	}
+	p.Timeout() // logs the wait once
 	if !slices.Equal(s.calls, []string{"present example.com", "cleanup example.com"}) ||
-		!slices.Equal(logged, []i18n.Key{i18n.AcmeLogPresent, i18n.AcmeLogCleanup}) {
+		!slices.Equal(logged, []i18n.Key{i18n.AcmeLogPresent, i18n.AcmeLogCleanup, i18n.AcmeLogWait}) {
 		t.Errorf("calls %v, log %v", s.calls, logged)
+	}
+}
+
+func TestExplain(t *testing.T) {
+	problem := func(typ string) error {
+		return fmt.Errorf("acme: obtain: %w", &legoacme.ProblemDetails{Type: typ, Detail: "no", HTTPStatus: 403})
+	}
+	fromSolver := &contracts.Problem{Key: i18n.AcmeErrorPresent, Params: map[string]any{"domain": "example.com"}}
+	for name, tt := range map[string]struct {
+		err       error
+		key       i18n.Key
+		permanent bool
+		delay     time.Duration
+	}{
+		"solver":       {fmt.Errorf("solve: %w", fromSolver), i18n.AcmeErrorPresent, false, 0},
+		"rate limited": {&legoacme.RateLimitedError{ProblemDetails: &legoacme.ProblemDetails{Type: legoacme.RateLimitedErrorType}, RetryAfter: time.Hour}, i18n.AcmeErrorRateLimited, false, time.Hour},
+		"eab":          {problem(legoacme.ExternalAccountRequiredErrorType), i18n.AcmeErrorEabRequired, true, 0},
+		"rejected":     {problem(legoacme.RejectedIdentifierErrorType), i18n.AcmeErrorRejected, true, 0},
+		"user action":  {problem(legoacme.UserActionRequiredErrorType), i18n.AcmeErrorUserAction, true, 0},
+		"validation":   {problem(legoacme.UnauthorizedErrorType), i18n.AcmeErrorValidation, false, 0},
+		"server":       {problem(legoacme.ServerInternalErrorType), i18n.AcmeErrorCa, false, 0},
+		"compound": {&legoacme.ProblemDetails{Type: legoacme.CompoundErrorType, SubProblems: []legoacme.SubProblem{
+			{Type: legoacme.CaaErrorType, Identifier: legoacme.Identifier{Value: "example.com"}},
+		}}, i18n.AcmeErrorCaa, false, 0},
+		"propagation": {errors.New("dns01: time limit exceeded: last error: NXDOMAIN"), i18n.AcmeErrorPropagation, false, 0},
+	} {
+		err := explain(tt.err, []string{"example.com"})
+		var p *contracts.Problem
+		if !errors.As(err, &p) || p.Key != tt.key {
+			t.Errorf("%s: %v", name, err)
+			continue
+		}
+		if retry.IsPermanent(err) != tt.permanent {
+			t.Errorf("%s: permanent %v", name, retry.IsPermanent(err))
+		}
+		if d, _ := retry.Delay(err); d != tt.delay {
+			t.Errorf("%s: delay %v", name, d)
+		}
+	}
+	if err := explain(errors.New("connection reset"), nil); err.Error() != "connection reset" {
+		t.Errorf("an unknown error became %v", err)
+	}
+}
+
+func TestPrecheck(t *testing.T) {
+	var logged []contracts.LogLine
+	p := &dnsProvider{solver: &fakeSolver{}, log: func(l contracts.LogLine) { logged = append(logged, l) }, missed: map[string]bool{}}
+	visible := false
+	check := func(context.Context, string, string) (bool, error) {
+		if visible {
+			return true, nil
+		}
+		return false, errors.New("NXDOMAIN")
+	}
+	for range 3 {
+		if ok, err := p.precheck(t.Context(), "a.example.com", "_acme-challenge.a.example.com.", "v", check); ok || err == nil {
+			t.Fatalf("a missing record: %v, %v", ok, err)
+		}
+	}
+	if len(logged) != 1 || logged[0].Key != i18n.AcmeLogNotVisible || logged[0].Detail != "NXDOMAIN" || logged[0].Step != contracts.StepValidate {
+		t.Errorf("logged %+v", logged)
+	}
+	if got := p.unseen(); !slices.Equal(got, []string{"a.example.com"}) {
+		t.Errorf("unseen %v", got)
+	}
+	visible = true
+	if ok, err := p.precheck(t.Context(), "a.example.com", "_acme-challenge.a.example.com.", "v", check); !ok || err != nil {
+		t.Errorf("a visible record: %v, %v", ok, err)
+	}
+	if got := p.unseen(); len(got) != 0 {
+		t.Errorf("unseen once visible: %v", got)
+	}
+
+	// A stop ends the wait at once, with the reason.
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if ok, err := p.precheck(ctx, "b.example.com", "_acme-challenge.b.example.com.", "v", check); !ok || !errors.Is(err, context.Canceled) {
+		t.Errorf("after the stop: %v, %v", ok, err)
+	}
+	p.skipCheck = true
+	visible = false
+	if ok, err := p.precheck(t.Context(), "c.example.com", "_acme-challenge.c.example.com.", "v", check); !ok || err != nil {
+		t.Errorf("skipping the check: %v, %v", ok, err)
 	}
 }

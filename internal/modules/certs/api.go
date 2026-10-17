@@ -16,20 +16,23 @@ import (
 
 // CertificateBody is a certificate as the API returns it.
 type CertificateBody struct {
-	ID              int64        `json:"id"`
-	Domains         []string     `json:"domains" doc:"The domains, the primary first"`
-	Source          string       `json:"source" enum:"upload" doc:"Where new versions come from"`
-	KeyType         string       `json:"keyType" doc:"Type and size of the key, such as rsa-2048 or ecdsa-p256"`
-	RenewBeforeDays int          `json:"renewBeforeDays" doc:"How many days before the end the certificate is renewed, or a reminder sent"`
-	State           string       `json:"state" enum:"ok,expiring,expired" doc:"ok; expiring: within RenewBeforeDays of the end; expired"`
-	Current         *VersionBody `json:"current,omitempty" doc:"The version in use"`
-	CreatedAt       time.Time    `json:"createdAt"`
+	ID              int64         `json:"id"`
+	Domains         []string      `json:"domains" doc:"The domains, the primary first"`
+	Source          string        `json:"source" enum:"upload,provider" doc:"Where new versions come from: uploads only, or the source provider"`
+	SourceProvider  int64         `json:"sourceProvider,omitempty" doc:"The source provider instance that issues the certificate"`
+	SolverProvider  int64         `json:"solverProvider,omitempty" doc:"The solver provider instance that proves control of the domains"`
+	KeyType         string        `json:"keyType" doc:"Type and size of the key, such as rsa-2048 or ecdsa-p256"`
+	RenewBeforeDays int           `json:"renewBeforeDays" doc:"How many days before the end the certificate is renewed, or a reminder sent"`
+	State           string        `json:"state" enum:"ok,expiring,expired,issuing,failed" doc:"issuing: an issuance is under way; failed: the latest issuance failed, or is waiting to retry; otherwise by the current version: ok, expiring (within renewBeforeDays of the end) or expired"`
+	Current         *VersionBody  `json:"current,omitempty" doc:"The version in use"`
+	Issuance        *IssuanceBody `json:"issuance,omitempty" doc:"The latest issuance"`
+	CreatedAt       time.Time     `json:"createdAt"`
 }
 
 // VersionBody is a version as the API returns it.
 type VersionBody struct {
 	ID          int64     `json:"id"`
-	Origin      string    `json:"origin" enum:"upload" doc:"How the version came"`
+	Origin      string    `json:"origin" enum:"upload,issued" doc:"How the version came: uploaded, or issued by the source"`
 	Names       []string  `json:"names" doc:"The names the certificate is valid for"`
 	Serial      string    `json:"serial" doc:"Serial number, lowercase hex"`
 	Fingerprint string    `json:"fingerprint" doc:"SHA-256 of the certificate, lowercase hex"`
@@ -49,12 +52,16 @@ type ChainEntry struct {
 
 func certificateBody(c *Certificate, now time.Time) CertificateBody {
 	b := CertificateBody{
-		ID: c.ID, Domains: c.Domains, Source: c.Source, KeyType: c.KeyType,
-		RenewBeforeDays: c.RenewBeforeDays, State: c.state(now), CreatedAt: c.CreatedAt,
+		ID: c.ID, Domains: c.Domains, Source: c.Source, SourceProvider: c.SourceProvider, SolverProvider: c.SolverProvider,
+		KeyType: c.KeyType, RenewBeforeDays: c.RenewBeforeDays, State: c.state(now), CreatedAt: c.CreatedAt,
 	}
 	if c.Current != nil {
 		v := versionBody(c.Current)
 		b.Current = &v
+	}
+	if c.Issuance != nil {
+		is := issuanceBody(c.Issuance)
+		b.Issuance = &is
 	}
 	return b
 }
@@ -129,6 +136,8 @@ type updateInput struct {
 }
 
 func registerAPI(a huma.API, s *service, confirm func(context.Context, string) error) {
+	registerIssueAPI(a, s)
+
 	huma.Register(a, huma.Operation{
 		OperationID: "certs-list", Method: http.MethodGet, Path: "/certificates",
 		Summary: "List the certificates",
@@ -302,6 +311,8 @@ func serviceError(err error) error {
 	case errors.Is(err, errNotNewer):
 		return api.NewError(http.StatusUnprocessableEntity, i18n.CertsErrorNotNewer, nil).
 			WithField("body.certificate", i18n.CertsErrorNotNewer)
+	case errors.Is(err, errNoSource):
+		return api.NewError(http.StatusConflict, i18n.CertsErrorNoSource, nil)
 	}
 	return err
 }

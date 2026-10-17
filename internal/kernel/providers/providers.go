@@ -98,9 +98,12 @@ type Type struct {
 	Doc   string `json:"doc,omitempty"`
 	URL   string `json:"url,omitempty"`
 	// Tags group types in the UI, such as "china" or "popular".
-	Tags         []string `json:"tags,omitempty"`
-	Fields       []Field  `json:"fields"`
-	Experimental bool     `json:"experimental,omitempty"`
+	Tags   []string `json:"tags,omitempty"`
+	Fields []Field  `json:"fields"`
+	// NeedsSolver is set on a source that proves control of the domains
+	// through a solver, as ACME does.
+	NeedsSolver  bool `json:"needsSolver,omitempty"`
+	Experimental bool `json:"experimental,omitempty"`
 }
 
 // Instance is a configured provider with its secrets opened, as a Factory

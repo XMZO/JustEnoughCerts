@@ -18,7 +18,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-acme/lego/v5/challenge/dns01"
 	legolog "github.com/go-acme/lego/v5/log"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
@@ -33,10 +32,11 @@ var migrationFiles embed.FS
 type Module struct {
 	now func() time.Time
 	// roots replaces the system's CA roots for talking to the CA, and
-	// dnsOptions adds to lego's DNS-01 settings: for tests against Pebble,
-	// a CA with a private root that need not see real DNS records.
-	roots      *x509.CertPool
-	dnsOptions []dns01.ChallengeOption
+	// skipPropagation trusts the validation records to show without
+	// looking: for tests against Pebble, a CA with a private root that
+	// need not see real DNS records.
+	roots           *x509.CertPool
+	skipPropagation bool
 
 	db      *sql.DB
 	secrets *secrets.Scope

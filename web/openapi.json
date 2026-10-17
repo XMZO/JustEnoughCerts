@@ -66,6 +66,10 @@
             "format": "int64",
             "type": "integer"
           },
+          "issuance": {
+            "$ref": "#/components/schemas/IssuanceBody",
+            "description": "The latest issuance"
+          },
           "keyType": {
             "description": "Type and size of the key, such as rsa-2048 or ecdsa-p256",
             "type": "string"
@@ -75,19 +79,32 @@
             "format": "int64",
             "type": "integer"
           },
+          "solverProvider": {
+            "description": "The solver provider instance that proves control of the domains",
+            "format": "int64",
+            "type": "integer"
+          },
           "source": {
-            "description": "Where new versions come from",
+            "description": "Where new versions come from: uploads only, or the source provider",
             "enum": [
-              "upload"
+              "upload",
+              "provider"
             ],
             "type": "string"
           },
+          "sourceProvider": {
+            "description": "The source provider instance that issues the certificate",
+            "format": "int64",
+            "type": "integer"
+          },
           "state": {
-            "description": "ok; expiring: within RenewBeforeDays of the end; expired",
+            "description": "issuing: an issuance is under way; failed: the latest issuance failed, or is waiting to retry; otherwise by the current version: ok, expiring (within renewBeforeDays of the end) or expired",
             "enum": [
               "ok",
               "expiring",
-              "expired"
+              "expired",
+              "issuing",
+              "failed"
             ],
             "type": "string"
           }
@@ -332,6 +349,174 @@
         ],
         "type": "object"
       },
+      "IssuanceBody": {
+        "additionalProperties": false,
+        "properties": {
+          "attempts": {
+            "description": "Attempts started so far",
+            "format": "int64",
+            "type": "integer"
+          },
+          "certificateId": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "error": {
+            "$ref": "#/components/schemas/MessageBody",
+            "description": "Why the last attempt failed"
+          },
+          "finishedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "nextAt": {
+            "description": "When the next attempt starts, for a pending issuance",
+            "format": "date-time",
+            "type": "string"
+          },
+          "reason": {
+            "description": "first: the certificate was added, or has no version yet; renewal; manual: someone asked",
+            "enum": [
+              "first",
+              "renewal",
+              "manual"
+            ],
+            "type": "string"
+          },
+          "startedAt": {
+            "description": "When the last attempt started",
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "description": "pending: the next attempt starts at nextAt, a retry when error is set; failed: no attempt follows unless someone starts one",
+            "enum": [
+              "pending",
+              "running",
+              "done",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "versionId": {
+            "description": "The version issued",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "certificateId",
+          "reason",
+          "state",
+          "attempts",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "IssuanceDetailOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "certificate": {
+            "$ref": "#/components/schemas/CertificateBody"
+          },
+          "issuance": {
+            "$ref": "#/components/schemas/IssuanceBody"
+          },
+          "log": {
+            "description": "Every line, of every attempt, in order",
+            "items": {
+              "$ref": "#/components/schemas/LogLineBody"
+            },
+            "type": "array"
+          },
+          "steps": {
+            "description": "The steps of the last attempt, in order",
+            "items": {
+              "$ref": "#/components/schemas/StepBody"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "issuance",
+          "certificate",
+          "steps",
+          "log"
+        ],
+        "type": "object"
+      },
+      "IssuanceListOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "issuances": {
+            "description": "The newest first",
+            "items": {
+              "$ref": "#/components/schemas/IssuanceBody"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "issuances"
+        ],
+        "type": "object"
+      },
+      "IssueRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "domains": {
+            "description": "The domains, the primary first; a wildcard as *.example.com, an internationalized name in any form",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array"
+          },
+          "keyType": {
+            "description": "The type of the private key, new for each version; rsa-2048 if left out",
+            "enum": [
+              "ecdsa-p256",
+              "ecdsa-p384",
+              "rsa-2048",
+              "rsa-3072",
+              "rsa-4096"
+            ],
+            "type": "string"
+          },
+          "renewBeforeDays": {
+            "description": "Days before the end to renew; 30 if left out",
+            "format": "int64",
+            "maximum": 365,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "solverProvider": {
+            "description": "The solver provider instance that proves control of the domains, for a source that needs one",
+            "format": "int64",
+            "type": "integer"
+          },
+          "sourceProvider": {
+            "description": "The source provider instance that issues the certificate",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "domains",
+          "sourceProvider"
+        ],
+        "type": "object"
+      },
       "ListOutputBody": {
         "additionalProperties": false,
         "properties": {
@@ -363,6 +548,63 @@
         ],
         "type": "object"
       },
+      "LogLineBody": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "attempt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "detail": {
+            "description": "Raw text behind the line, such as a CA's error, in its own language",
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "info",
+              "ok",
+              "warn",
+              "error"
+            ],
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "seq": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "step": {
+            "description": "The step the line belongs to, if any",
+            "enum": [
+              "key",
+              "order",
+              "challenge",
+              "validate",
+              "cleanup",
+              "download"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "at",
+          "attempt",
+          "level",
+          "key"
+        ],
+        "type": "object"
+      },
       "ManifestBody": {
         "additionalProperties": false,
         "properties": {
@@ -381,6 +623,22 @@
         "required": [
           "version",
           "modules"
+        ],
+        "type": "object"
+      },
+      "MessageBody": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "required": [
+          "key"
         ],
         "type": "object"
       },
@@ -542,6 +800,41 @@
         ],
         "type": "object"
       },
+      "StepBody": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "description": "The time of the step's last line",
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "running",
+              "done",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "step": {
+            "enum": [
+              "key",
+              "order",
+              "challenge",
+              "validate",
+              "cleanup",
+              "download"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "step",
+          "state"
+        ],
+        "type": "object"
+      },
       "Type": {
         "additionalProperties": false,
         "properties": {
@@ -574,6 +867,9 @@
           },
           "name": {
             "type": "string"
+          },
+          "needsSolver": {
+            "type": "boolean"
           },
           "tags": {
             "items": {
@@ -624,6 +920,10 @@
           "name": {
             "description": "Message key of the name, for types JEC describes",
             "type": "string"
+          },
+          "needsSolver": {
+            "description": "For a source: issuing needs a solver",
+            "type": "boolean"
           },
           "tags": {
             "items": {
@@ -734,9 +1034,10 @@
             "type": "string"
           },
           "origin": {
-            "description": "How the version came",
+            "description": "How the version came: uploaded, or issued by the source",
             "enum": [
-              "upload"
+              "upload",
+              "issued"
             ],
             "type": "string"
           },
@@ -839,6 +1140,48 @@
           }
         },
         "summary": "Add a certificate by uploading it with its private key",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/certificates/issue": {
+      "post": {
+        "description": "The certificate is added at once; its first issuance runs in the background.",
+        "operationId": "certs-issue-new",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Add a certificate issued by a source provider",
         "tags": [
           "certs"
         ]
@@ -964,6 +1307,105 @@
           }
         },
         "summary": "Change the renewal policy of a certificate",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/certificates/{id}/issuances": {
+      "get": {
+        "operationId": "certs-issuances",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "How many, the newest first",
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "description": "How many, the newest first",
+              "format": "int64",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuanceListOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the latest issuances of a certificate",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/certificates/{id}/issue": {
+      "post": {
+        "description": "Starts an issuance, or returns the one under way, which is retried now if it was waiting to.",
+        "operationId": "certs-issue",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuanceBody"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Issue a new version of a certificate now",
         "tags": [
           "certs"
         ]
@@ -1096,6 +1538,48 @@
           }
         },
         "summary": "Download a version with its private key, as a ZIP of PEM files",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/issuances/{id}": {
+      "get": {
+        "operationId": "certs-issuance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuanceDetailOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get an issuance with its steps and log",
         "tags": [
           "certs"
         ]

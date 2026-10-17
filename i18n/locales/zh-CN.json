@@ -29,8 +29,18 @@
       "zerossl": "ZeroSSL"
     },
     "error": {
+      "ca": "证书颁发机构返回了错误。完整日志里有原因。",
+      "caa": "域名的 CAA 记录不允许这家证书颁发机构签发证书。请在 CAA 记录里加上它。",
+      "directory": "连不上证书颁发机构：{directory}。请检查网络，或者确认目录地址正确。",
       "directory_required": "请填写自定义证书颁发机构的目录地址。",
-      "eab_required": "这家证书颁发机构要求 EAB。请在账号里填写 EAB Key ID 和 HMAC Key。"
+      "eab_required": "这家证书颁发机构要求 EAB。请在账号里填写 EAB Key ID 和 HMAC Key。",
+      "present": "没能为 {domain} 添加验证记录。请检查 DNS 服务商的凭据和权限。",
+      "propagation": "等了很久，仍然查不到 {domains} 的验证记录。请确认 DNS 服务商管理的正是这些域名。",
+      "rate_limited": "请求太频繁，证书颁发机构暂时拒绝了。JEC 会按它要求的时间再试。",
+      "register": "证书颁发机构没有接受账号注册。请检查账号设置，比如 EAB 和邮箱。",
+      "rejected": "证书颁发机构不为这些域名签发证书。",
+      "user_action": "证书颁发机构要求先在它的网站上处理一件事：{url}",
+      "validation": "证书颁发机构没能验证域名。请确认 DNS 服务商管理的正是这些域名。"
     },
     "field": {
       "ca": "证书颁发机构",
@@ -46,10 +56,13 @@
     },
     "log": {
       "cleanup": "正在删除 {domain} 的验证记录",
+      "cleanup_failed": "没能删除 {domain} 的验证记录，可以到 DNS 服务商那里手动删除",
       "issued": "证书颁发机构已签发证书",
+      "not_visible": "还没查到 {domain} 的验证记录，稍后再查",
       "order": "正在申请 {domains} 的证书",
       "present": "正在为 {domain} 添加验证记录",
-      "register": "正在向 {directory} 注册账号"
+      "register": "正在向 {directory} 注册账号",
+      "wait": "等待验证记录在 DNS 里生效，最多 {seconds, plural, other {# 秒}}"
     },
     "module": {
       "description": "从支持 ACME 的 CA 获取证书，例如 Let's Encrypt、ZeroSSL、Google Trust Services。",
@@ -119,16 +132,23 @@
     },
     "error": {
       "bad_certificate": "有一张证书读不出来。请完整地重新粘贴，从 -----BEGIN CERTIFICATE----- 到 -----END CERTIFICATE-----。",
+      "bad_domain": "这不是有效的域名。通配符写成 *.example.com。",
       "bad_key": "私钥读不出来。请完整地重新粘贴。",
       "duplicate": "这张证书已经添加过了。",
       "encrypted_key": "私钥设置了密码。请先去掉密码，例如运行 openssl pkey -in key.pem -out plain.pem，再重新粘贴。",
+      "issue_failed": "签发失败。完整日志里有原因。",
       "key_mismatch": "私钥和证书不匹配。请确认两者来自同一个订单或同一份 CSR。",
+      "names_missing": "签发的证书缺少这些域名：{domains}。",
       "no_certificate": "没有找到证书。请粘贴 PEM 格式的证书，开头是 -----BEGIN CERTIFICATE-----。",
       "no_key": "没有找到私钥。请粘贴 PEM 格式的私钥。",
+      "no_source": "这张证书没有可以签发它的来源，只能手动上传新版本。",
       "not_newer": "这张证书比正在使用的那张更早到期。请上传更新的证书。",
       "other_domains": "这张证书不包含 {domain}。请上传包含 {domain} 的证书，或者把它添加为新证书。",
+      "provider_missing": "证书用到的服务已被删除。",
+      "provider_unavailable": "证书用到的服务现在不能用，它所属的模块可能已经停用。模块重新启用后会继续重试。",
       "several_keys": "粘贴了不止一个私钥。只保留这张证书的私钥。",
-      "unsupported_key": "不支持这种私钥。请使用 RSA、ECDSA 或 Ed25519 私钥。"
+      "unsupported_key": "不支持这种私钥。请使用 RSA、ECDSA 或 Ed25519 私钥。",
+      "wrong_provider": "这项服务不能用在这里，请换一个。"
     },
     "field": {
       "days": "{days, plural, other {# 天}}",
@@ -176,6 +196,15 @@
       "summary": "显示 {shown, plural, other {# 张}}，共 {total} 张。按剩余天数排列。",
       "title": "证书"
     },
+    "log": {
+      "attempt": "第 {attempt} 次尝试",
+      "done": "全部完成，用时 {seconds, plural, other {# 秒}}",
+      "gave_up": "不再自动重试。解决问题后，请手动重新签发。",
+      "interrupted": "JEC 停止时签发被打断，重新开始",
+      "key": "生成新私钥：{kind, select, rsa {RSA {size}} ecdsa {ECDSA {size}} other {{kind}}}",
+      "retry": "{minutes, plural, other {# 分钟}}后自动重试",
+      "stored": "证书已保存，有效期还有 {days, plural, other {# 天}}"
+    },
     "module": {
       "description": "记录每张证书和它的各个版本，到期前发出提醒。",
       "name": "证书"
@@ -219,6 +248,8 @@
     "state": {
       "expired": "已过期",
       "expiring": "即将到期",
+      "failed": "失败",
+      "issuing": "签发中",
       "ok": "正常"
     },
     "timeline": {

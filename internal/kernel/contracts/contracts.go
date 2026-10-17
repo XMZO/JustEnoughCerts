@@ -1,11 +1,15 @@
 // Package contracts holds what modules agree on without importing each
 // other (PLAN.md 4.2): the event types they publish with their payloads,
-// and later the provider interfaces of PLAN.md 5.1. A module that
+// and the interfaces of the providers (PLAN.md 5.1). A module that
 // publishes an event documents it here; the modules that react to it read
 // the payload with these types.
 package contracts
 
-import "time"
+import (
+	"time"
+
+	"github.com/XMZO/JustEnoughCerts/i18n"
+)
 
 // Events of the certs module. Their subject is the certificate ID, in
 // decimal.
@@ -23,6 +27,10 @@ const (
 	// CertificateKeyDownloaded: someone downloaded a version with its
 	// private key. Payload CertificateEvent with Username set.
 	CertificateKeyDownloaded = "certificate.key_downloaded"
+	// CertificateIssueFailed: an attempt to get a new version from the
+	// certificate's source failed. Payload CertificateEvent with Issuance
+	// set; the current version, if any, is still in use.
+	CertificateIssueFailed = "certificate.issue_failed"
 )
 
 // Expiry says how close a certificate is to its end, in increasing order of
@@ -44,4 +52,23 @@ type CertificateEvent struct {
 	NotAfter      time.Time `json:"notAfter,omitzero"` // the end of the version
 	Expiry        Expiry    `json:"expiry,omitempty"`
 	Username      string    `json:"username,omitempty"` // who did it, where a person did
+	Issuance      *Issuance `json:"issuance,omitempty"`
+}
+
+// Issuance tells how an attempt to issue a certificate went.
+type Issuance struct {
+	ID      int64 `json:"id"`
+	Attempt int   `json:"attempt"` // counting from 1
+	// Error says why the attempt failed.
+	Error Message `json:"error"`
+	// Retry is when the next attempt starts; zero when no attempt follows
+	// without a person starting it.
+	Retry time.Time `json:"retry,omitzero"`
+}
+
+// Message is a message key with its arguments, shown in the reader's
+// language.
+type Message struct {
+	Key    i18n.Key       `json:"key"`
+	Params map[string]any `json:"params,omitempty"`
 }

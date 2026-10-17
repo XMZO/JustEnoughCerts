@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
@@ -38,8 +40,12 @@ type fixture struct {
 	db  *sql.DB
 	svc *service
 	box *secrets.Scope
+	reg *providers.Registry
 	ca  *cryptoxtest.CA
 	now time.Time
+
+	triggered atomic.Int32 // runs of the issuance runner asked for
+	fake      fakes        // the providers of module "fake"
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -63,7 +69,12 @@ func newFixture(t *testing.T) *fixture {
 	bus := events.New(st.DB(), slog.New(slog.DiscardHandler), func(string) bool { return true })
 	bus.Seal()
 	f := &fixture{t: t, db: st.DB(), box: box.Scope("certs"), ca: cryptoxtest.NewCA(t), now: start}
-	f.svc = &service{db: st.DB(), events: bus.Scope("certs"), secrets: f.box, log: slog.New(slog.DiscardHandler), now: func() time.Time { return f.now }}
+	f.reg = providers.New(st.DB(), box.Scope("kernel"), func(string) bool { return true })
+	f.addFakes()
+	f.reg.Seal()
+	f.svc = newService(st.DB(), bus.Scope("certs"), f.box, f.reg.Scope("certs"), slog.New(slog.DiscardHandler), func() time.Time { return f.now })
+	f.svc.trigger = func() { f.triggered.Add(1) }
+	f.reg.Scope("certs").UsedBy(f.svc.usesProvider)
 	_, f.api = humatest.New(t)
 	registerAPI(f.api, f.svc, func(_ context.Context, password string) error {
 		if password != testPassword {

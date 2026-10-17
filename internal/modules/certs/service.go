@@ -13,10 +13,12 @@ import (
 	"math"
 	"slices"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
@@ -28,10 +30,16 @@ const (
 	day                    = 24 * time.Hour
 )
 
-// Sources and origins of versions.
+// Sources of certificates: uploads only, or a source provider.
 const (
-	sourceUpload = "upload"
+	sourceUpload   = "upload"
+	sourceProvider = "provider"
+)
+
+// Origins of versions.
+const (
 	originUpload = "upload"
+	originIssued = "issued"
 )
 
 // States of a certificate.
@@ -39,6 +47,8 @@ const (
 	stateOK       = "ok"
 	stateExpiring = "expiring"
 	stateExpired  = "expired"
+	stateIssuing  = "issuing"
+	stateFailed   = "failed"
 )
 
 // Errors of the service, which the API turns into responses.
@@ -63,11 +73,25 @@ func (e *otherDomainsError) Error() string {
 }
 
 type service struct {
-	db      *sql.DB
-	events  *events.Scope
-	secrets *secrets.Scope
-	log     *slog.Logger
-	now     func() time.Time
+	db        *sql.DB
+	events    *events.Scope
+	secrets   *secrets.Scope
+	providers *providers.Scope
+	log       *slog.Logger
+	now       func() time.Time
+	// trigger starts the issuance runner when it is idle.
+	trigger func()
+
+	wake    chan struct{}                // new work for the issuance runner while it runs
+	mu      sync.Mutex                   // guards running
+	running map[int64]context.CancelFunc // the attempts under way, by certificate
+}
+
+func newService(db *sql.DB, ev *events.Scope, box *secrets.Scope, prov *providers.Scope, log *slog.Logger, now func() time.Time) *service {
+	return &service{
+		db: db, events: ev, secrets: box, providers: prov, log: log, now: now, trigger: func() {},
+		wake: make(chan struct{}, 1), running: map[int64]context.CancelFunc{},
+	}
 }
 
 // Certificate is a certificate with its current version.
@@ -75,10 +99,14 @@ type Certificate struct {
 	ID              int64
 	Domains         []string
 	Source          string
+	SourceProvider  int64 // with Source "provider"
+	SolverProvider  int64 // 0 for none
 	KeyType         string
 	RenewBeforeDays int
 	Current         *Version
-	CreatedAt       time.Time
+	// Issuance is the latest issuance, if any.
+	Issuance  *Issuance
+	CreatedAt time.Time
 }
 
 // Version is a certificate issued or uploaded for a Certificate.
@@ -96,8 +124,18 @@ type Version struct {
 	CreatedAt   time.Time
 }
 
-// state tells how a certificate stands at now.
+// state tells how a certificate stands at now: being issued, failing to
+// be issued since its current version came, or else by the life left in
+// its current version.
 func (c *Certificate) state(now time.Time) string {
+	if is := c.Issuance; is != nil {
+		switch {
+		case is.State == issuanceRunning, is.State == issuancePending && is.Error.Key == "":
+			return stateIssuing
+		case is.State == issuancePending, is.State == issuanceFailed && (c.Current == nil || is.CreatedAt.After(c.Current.CreatedAt)):
+			return stateFailed
+		}
+	}
 	if c.Current == nil {
 		return stateExpired
 	}
@@ -130,7 +168,7 @@ func (s *service) add(ctx context.Context, b *cryptox.Bundle, renewBeforeDays in
 	if err != nil {
 		return 0, err
 	}
-	if err := s.addVersion(ctx, tx, id, b, originUpload); err != nil {
+	if _, err := s.addVersion(ctx, tx, id, b, originUpload); err != nil {
 		return 0, err
 	}
 	return id, tx.Commit()
@@ -160,28 +198,28 @@ func (s *service) upload(ctx context.Context, id int64, b *cryptox.Bundle) error
 	if err != nil {
 		return err
 	}
-	if err := s.addVersion(ctx, tx, id, b, originUpload); err != nil {
+	if _, err := s.addVersion(ctx, tx, id, b, originUpload); err != nil {
 		return err
 	}
 	return tx.Commit()
 }
 
 // addVersion stores b as the current version of certificate id and
-// publishes certificate.issued, in tx.
-func (s *service) addVersion(ctx context.Context, tx *sql.Tx, id int64, b *cryptox.Bundle, origin string) error {
+// publishes certificate.issued, in tx. It returns the version's ID.
+func (s *service) addVersion(ctx context.Context, tx *sql.Tx, id int64, b *cryptox.Bundle, origin string) (int64, error) {
 	fingerprint := cryptox.Fingerprint(b.Leaf)
 	var owner int64
 	err := tx.QueryRowContext(ctx, "SELECT certificate_id FROM certs_versions WHERE fingerprint = ?", fingerprint).Scan(&owner)
 	switch {
 	case err == nil:
-		return &duplicateError{owner}
+		return 0, &duplicateError{owner}
 	case !errors.Is(err, sql.ErrNoRows):
-		return err
+		return 0, err
 	}
 
 	key, err := cryptox.EncodeKey(b.Key)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	names := cryptox.Names(b.Leaf)
 	namesJSON, _ := json.Marshal(names)
@@ -196,14 +234,15 @@ func (s *service) addVersion(ctx context.Context, tx *sql.Tx, id int64, b *crypt
 		cryptox.KeyType(b.Leaf.PublicKey), b.Leaf.NotBefore.UnixMilli(), b.Leaf.NotAfter.UnixMilli(),
 		string(chain), s.secrets.Seal(key, "key:"+fingerprint), now.UnixMilli()).Scan(&version)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET current_version_id = ? WHERE id = ?", version, id); err != nil {
-		return err
+		return 0, err
 	}
-	return s.events.PublishTx(ctx, tx, contracts.CertificateIssued, strconv.FormatInt(id, 10), contracts.CertificateEvent{
+	err = s.events.PublishTx(ctx, tx, contracts.CertificateIssued, strconv.FormatInt(id, 10), contracts.CertificateEvent{
 		CertificateID: id, Domains: names, VersionID: version, NotAfter: b.Leaf.NotAfter.UTC(),
 	})
+	return version, err
 }
 
 // issuerName and subjectName are what the UI shows of a certificate's
@@ -226,9 +265,12 @@ type querier interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
-const selectCertificates = `SELECT c.id, c.domains, c.source, c.key_type, c.renew_before_days, c.created_at,
-	v.id, v.origin, v.names, v.serial, v.fingerprint, v.issuer, v.key_type, v.not_before, v.not_after, v.chain, v.created_at
-	FROM certs_certificates c LEFT JOIN certs_versions v ON v.id = c.current_version_id`
+const selectCertificates = `SELECT c.id, c.domains, c.source, c.source_provider, c.solver_provider, c.key_type,
+	c.renew_before_days, c.created_at,
+	v.id, v.origin, v.names, v.serial, v.fingerprint, v.issuer, v.key_type, v.not_before, v.not_after, v.chain, v.created_at,
+	` + issuanceColumns + `
+	FROM certs_certificates c LEFT JOIN certs_versions v ON v.id = c.current_version_id
+	LEFT JOIN certs_issuances i ON i.id = (SELECT max(id) FROM certs_issuances WHERE certificate_id = c.id)`
 
 // list returns every certificate, the soonest to expire first.
 func (s *service) list(ctx context.Context) ([]*Certificate, error) {
@@ -270,15 +312,24 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 		c := &Certificate{}
 		var domains string
 		var created int64
+		var sourceProvider, solverProvider sql.NullInt64
 		var v struct {
 			id                                                         sql.NullInt64
 			origin, names, serial, fingerprint, issuer, keyType, chain sql.NullString
 			notBefore, notAfter, created                               sql.NullInt64
 		}
-		err := rows.Scan(&c.ID, &domains, &c.Source, &c.KeyType, &c.RenewBeforeDays, &created,
-			&v.id, &v.origin, &v.names, &v.serial, &v.fingerprint, &v.issuer, &v.keyType, &v.notBefore, &v.notAfter, &v.chain, &v.created)
-		if err != nil {
+		var is issuanceRow
+		dest := []any{&c.ID, &domains, &c.Source, &sourceProvider, &solverProvider, &c.KeyType, &c.RenewBeforeDays, &created,
+			&v.id, &v.origin, &v.names, &v.serial, &v.fingerprint, &v.issuer, &v.keyType, &v.notBefore, &v.notAfter, &v.chain, &v.created}
+		if err := rows.Scan(append(dest, is.dest()...)...); err != nil {
 			return nil, err
+		}
+		c.SourceProvider, c.SolverProvider = sourceProvider.Int64, solverProvider.Int64
+		if is.id.Valid {
+			var err error
+			if c.Issuance, err = is.issuance(); err != nil {
+				return nil, err
+			}
 		}
 		if err := json.Unmarshal([]byte(domains), &c.Domains); err != nil {
 			return nil, err
@@ -341,7 +392,7 @@ func (s *service) setRenewBefore(ctx context.Context, id int64, days int) error 
 }
 
 // remove deletes certificate id with its versions and publishes
-// certificate.deleted.
+// certificate.deleted. An attempt to issue it that is under way stops.
 func (s *service) remove(ctx context.Context, id int64) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -360,5 +411,9 @@ func (s *service) remove(ctx context.Context, id int64) error {
 	if err != nil {
 		return err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.stopAttempt(id)
+	return nil
 }
