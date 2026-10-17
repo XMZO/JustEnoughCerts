@@ -83,6 +83,8 @@ type service struct {
 	providers *providers.Scope
 	log       *slog.Logger
 	now       func() time.Time
+	// loc is the time zone of the time renewals start: the server's.
+	loc *time.Location
 
 	issuing   *queue[claimed]
 	deploying *queue[deployClaim]
@@ -92,7 +94,7 @@ type service struct {
 
 func newService(db *sql.DB, ev *events.Scope, box *secrets.Scope, prov *providers.Scope, log *slog.Logger, now func() time.Time) *service {
 	s := &service{
-		db: db, events: ev, secrets: box, providers: prov, log: log, now: now,
+		db: db, events: ev, secrets: box, providers: prov, log: log, now: now, loc: time.Local,
 		issuing: newQueue[claimed](maxRunning, attemptTimeout), deploying: newQueue[deployClaim](maxDeploying, deployTimeout),
 		running: map[runKey]context.CancelFunc{},
 	}
@@ -181,7 +183,11 @@ func (c *Certificate) state(now time.Time) string {
 // add stores b as a new certificate, deployed to targets.
 func (s *service) add(ctx context.Context, b *cryptox.Bundle, renewBeforeDays int, targets []int64) (int64, error) {
 	if renewBeforeDays == 0 {
-		renewBeforeDays = defaultRenewBeforeDays
+		st, err := s.settings(ctx)
+		if err != nil {
+			return 0, err
+		}
+		renewBeforeDays = st.RenewBeforeDays
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

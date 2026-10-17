@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Blocks, ChevronRight, Globe, LogOut, Package, Server } from '@lucide/vue'
+import { Bell, Blocks, ChevronRight, Globe, LogOut, Package, Server, Settings } from '@lucide/vue'
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
@@ -60,6 +60,14 @@ async function leave() {
         <Blocks class="size-5 flex-none text-ink-muted" aria-hidden="true" />
         <span class="min-w-0 flex-1">{{ t('kernel.modules.title') }}</span>
         <span v-if="modulesOn !== undefined" class="text-small text-ink-muted">{{ t('kernel.modules.on_count', { count: modulesOn }) }}</span>
+        <ChevronRight class="size-4 flex-none text-ink-muted" aria-hidden="true" />
+      </RouterLink>
+      <RouterLink
+        to="/settings"
+        class="flex min-h-12 items-center gap-3 border-t border-line px-4 text-ink no-underline hover:bg-surface-sunken hover:text-ink"
+      >
+        <Settings class="size-5 flex-none text-ink-muted" aria-hidden="true" />
+        <span class="min-w-0 flex-1">{{ t('kernel.settings.title') }}</span>
         <ChevronRight class="size-4 flex-none text-ink-muted" aria-hidden="true" />
       </RouterLink>
     </section>

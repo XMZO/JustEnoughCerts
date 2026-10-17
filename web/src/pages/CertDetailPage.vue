@@ -331,7 +331,10 @@ async function confirmDelete() {
           </div>
           <div>
             <dt class="text-caption text-ink-muted">{{ t(issued ? 'certs.field.renewal' : 'certs.field.reminder') }}</dt>
-            <dd class="m-0 mt-0.5 font-semibold tabular-nums"><time :datetime="new Date(reminderAt).toISOString()">{{ intl.date(reminderAt) }}</time></dd>
+            <dd class="m-0 mt-0.5 font-semibold tabular-nums">
+              <time v-if="issued && cert.renewAt" :datetime="cert.renewAt">{{ intl.dateTime(cert.renewAt) }}</time>
+              <time v-else :datetime="new Date(reminderAt).toISOString()">{{ intl.date(reminderAt) }}</time>
+            </dd>
           </div>
         </dl>
       </section>

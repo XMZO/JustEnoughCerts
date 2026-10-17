@@ -18,8 +18,8 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
 
-// defaultKeyType is the key type of a certificate issued without one
-// asked for: RSA still works with the most clients.
+// defaultKeyType is the key type of new certificates until the settings
+// say otherwise: RSA still works with the most clients.
 const defaultKeyType = "rsa-2048"
 
 // IssuanceBody is an issuance as the API returns it.
@@ -97,8 +97,8 @@ type IssueRequest struct {
 	Domains         []string `json:"domains" minItems:"1" maxItems:"100" doc:"The domains, the primary first; a wildcard as *.example.com, an internationalized name in any form"`
 	SourceProvider  int64    `json:"sourceProvider" doc:"The source provider instance that issues the certificate"`
 	SolverProvider  int64    `json:"solverProvider,omitempty" doc:"The solver provider instance that proves control of the domains, for a source that needs one"`
-	KeyType         string   `json:"keyType,omitempty" enum:"ecdsa-p256,ecdsa-p384,rsa-2048,rsa-3072,rsa-4096" doc:"The type of the private key, new for each version; rsa-2048 if left out"`
-	RenewBeforeDays int      `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Days before the end to renew; 30 if left out"`
+	KeyType         string   `json:"keyType,omitempty" enum:"ecdsa-p256,ecdsa-p384,rsa-2048,rsa-3072,rsa-4096" doc:"The type of the private key, new for each version; that of the settings if left out"`
+	RenewBeforeDays int      `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Days before the end to renew; that of the settings if left out"`
 	Targets         []int64  `json:"targets,omitempty" maxItems:"50" doc:"The target provider instances to deploy each version to, in order"`
 }
 
@@ -196,7 +196,9 @@ func registerIssueAPI(a huma.API, s *service) {
 		}
 		out := &issuanceDetailOutput{}
 		out.Body.Issuance = issuanceBody(is)
-		out.Body.Certificate = certificateBody(c, s.now())
+		if out.Body.Certificate, err = s.body(ctx, c); err != nil {
+			return nil, err
+		}
 		out.Body.Steps = []StepBody{}
 		for _, st := range steps(is, lines, c.SolverProvider != 0) {
 			b := StepBody{Step: string(st.Step), State: st.State}
@@ -249,16 +251,20 @@ func (s *service) addIssued(ctx context.Context, in *IssueRequest) (int64, error
 	if len(invalid.Fields) > 0 {
 		return 0, invalid
 	}
+	st, err := s.settings(ctx)
+	if err != nil {
+		return 0, err
+	}
 	keyType := in.KeyType
 	if keyType == "" {
-		keyType = defaultKeyType
+		keyType = st.KeyType
 	}
 	if !slices.Contains(cryptox.KeyTypes, keyType) {
 		return 0, invalid.WithField("body.keyType", i18n.KernelErrorInvalidField)
 	}
 	renewBefore := in.RenewBeforeDays
 	if renewBefore == 0 {
-		renewBefore = defaultRenewBeforeDays
+		renewBefore = st.RenewBeforeDays
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)

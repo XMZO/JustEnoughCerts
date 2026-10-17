@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Blocks, Ellipsis, Globe, History, LayoutGrid, LogOut, Menu, Package, Server, ShieldCheck, X } from '@lucide/vue'
+import { Bell, Blocks, Ellipsis, Globe, History, LayoutGrid, LogOut, Menu, Package, Server, Settings, ShieldCheck, X } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
@@ -41,8 +41,11 @@ const config: Link[] = [
   { to: '/targets', label: 'kernel.providers.target.title', icon: Server },
   { to: '/notify', label: 'kernel.providers.notifier.title', icon: Bell },
 ]
-// JEC itself: the modules.
-const system: Link[] = [{ to: '/modules', label: 'kernel.modules.title', icon: Blocks }]
+// JEC itself: the modules and the settings.
+const system: Link[] = [
+  { to: '/modules', label: 'kernel.modules.title', icon: Blocks },
+  { to: '/settings', label: 'kernel.settings.title', icon: Settings },
+]
 
 const current = (to: string) => (to === '/' ? route.path === '/' : route.path === to || route.path.startsWith(`${to}/`))
 

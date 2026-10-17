@@ -174,6 +174,15 @@
       "source": "Source",
       "state": "Status"
     },
+    "defaults": {
+      "check_time": "Daily check time",
+      "check_time_help": "Certificates in their renewal window start renewing at this time, in the server's time zone ({zone}); with a week or less left, at once.",
+      "days": "Days before expiry",
+      "days_help": "The default of new certificates; each certificate can have its own.",
+      "key_type": "Default key type",
+      "key_type_help": "New certificates from a source use it unless set otherwise.",
+      "title": "Renewal defaults"
+    },
     "delete": {
       "body": "JEC deletes this certificate with every version and private key. Copies already deployed elsewhere stay where they are.",
       "title": "Delete {domain}?"
@@ -369,7 +378,7 @@
       "key": "Make a new private key: {key}",
       "order": "Order the certificate from {source}",
       "remind": "Remind you {days, plural, one {# day} other {# days}} before expiry to upload a new certificate",
-      "renew": "Renew {days, plural, one {# day} other {# days}} before the end",
+      "renew": "Renew {days, plural, one {# day} other {# days}} before the end, at {time}",
       "store": "Store the private key encrypted",
       "upload": "Uploaded certificates are not renewed automatically. JEC reminds you {days, plural, one {# day} other {# days}} before this one expires.",
       "upload_due": "Upload a new certificate before {date}."
@@ -764,6 +773,19 @@
       "test": "Test",
       "type_gone": "Type not available; its module may be off",
       "uses": "{count, plural, =0 {Used by no certificate} one {Used by # certificate} other {Used by # certificates}}"
+    },
+    "settings": {
+      "about": "About",
+      "appearance": "Appearance",
+      "build": "Build",
+      "intro": "Changes are saved at once.",
+      "language": "Language",
+      "language_help": "The language of the interface, remembered by this browser",
+      "license": "MIT License",
+      "saved": "Saved",
+      "source": "Source code",
+      "title": "Settings",
+      "version": "Version"
     },
     "setup": {
       "intro": "Create the admin account. The setup token is in the server log, after setup_token=. With Docker, run:",

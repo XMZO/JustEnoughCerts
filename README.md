@@ -36,8 +36,9 @@ Working on the main branch:
 - Deployment of each new certificate to Alibaba Cloud ESA (removing the one
   it replaces), to local directories, to servers over SSH (with a command
   afterwards, such as reloading nginx) and to webhooks.
-- Renewal once a certificate enters its renewal window; failures are
-  retried with a growing delay.
+- Renewal once a certificate enters its renewal window, at the time of
+  day set on the Settings page (02:00 by default), or at once with a week
+  or less left; failures are retried with a growing delay.
 - Notifications through Telegram, email (SMTP) and webhooks, each in the
   language you choose for it.
 - A history of every issuance, renewal and deployment, with its full log.

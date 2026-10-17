@@ -96,7 +96,9 @@ func registerDeployAPI(a huma.API, s *service) {
 		}
 		out := &deploymentDetailOutput{}
 		out.Body.Deployment = deploymentBody(d)
-		out.Body.Certificate = certificateBody(c, s.now())
+		if out.Body.Certificate, err = s.body(ctx, c); err != nil {
+			return nil, err
+		}
 		out.Body.Log = make([]LogLineBody, 0, len(lines))
 		for _, l := range lines {
 			out.Body.Log = append(out.Body.Log, logLineBody(l))

@@ -174,6 +174,15 @@
       "source": "来源",
       "state": "状态"
     },
+    "defaults": {
+      "check_time": "每天检查时间",
+      "check_time_help": "进入续期窗口的证书在这个时间开始续期，按服务器时区（{zone}）；只剩一周或更少时立即续期。",
+      "days": "提前续期",
+      "days_help": "新证书的默认值，单张证书可以单独改",
+      "key_type": "默认密钥类型",
+      "key_type_help": "用证书来源签发的新证书默认用它",
+      "title": "续期默认值"
+    },
     "delete": {
       "body": "JEC 会删除这张证书的全部版本和私钥。已经部署到别处的证书不受影响。",
       "title": "删除 {domain}？"
@@ -369,7 +378,7 @@
       "key": "生成新私钥：{key}",
       "order": "向 {source} 申请证书",
       "remind": "到期前 {days, plural, other {# 天}}提醒你上传新证书",
-      "renew": "到期前 {days, plural, other {# 天}}自动续期",
+      "renew": "到期前 {days, plural, other {# 天}}，在每天 {time} 自动续期",
       "store": "加密保存私钥",
       "upload": "手动上传的证书无法自动续期，到期前 {days, plural, other {# 天}}会提醒你上传新证书。",
       "upload_due": "请在 {date} 前上传新证书。"
@@ -764,6 +773,19 @@
       "test": "测试连接",
       "type_gone": "类型不可用，所属模块可能已停用",
       "uses": "{count, plural, =0 {没有证书在用} other {# 张证书在用}}"
+    },
+    "settings": {
+      "about": "关于",
+      "appearance": "外观",
+      "build": "构建",
+      "intro": "改动会立即保存。",
+      "language": "语言",
+      "language_help": "界面文字的语言，记在这个浏览器里",
+      "license": "MIT 许可",
+      "saved": "已保存",
+      "source": "源代码",
+      "title": "设置",
+      "version": "版本"
     },
     "setup": {
       "intro": "创建管理员账号。初始化令牌在服务器日志里 setup_token= 的后面。用 Docker 部署时运行：",

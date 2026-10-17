@@ -99,10 +99,14 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	if err != nil {
 		return nil, err
 	}
+	build := buildinfo.Get()
 	a, err := api.New(api.Options{
 		BasePath:      cfg.BasePath(),
 		Origin:        origin(cfg.BaseURL),
-		Version:       buildinfo.Get().Version,
+		Version:       build.Version,
+		Commit:        build.Commit,
+		Date:          build.Date,
+		Platform:      build.Platform,
 		Middlewares:   []func(huma.Context, func(huma.Context)){accounts.Middleware},
 		SessionCookie: auth.CookieName,
 	}, set, log)

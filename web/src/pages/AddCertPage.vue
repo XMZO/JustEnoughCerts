@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Plus, Save, ShieldCheck } from '@lucide/vue'
-import { computed, ref } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
-import { useAddCertificate, useIssueCertificate, type KeyType } from '../api/certs'
+import { useAddCertificate, useCertSettings, useIssueCertificate, type KeyType } from '../api/certs'
 import { revealError, useApiError } from '../api/errors'
 import { useProviders, useProviderTypes, type Provider } from '../api/providers'
 import { keyText } from '../certs/life'
@@ -85,6 +85,18 @@ const keyLabel = (k: string) => {
 const days = ref('30')
 const renewDays = computed(() => Number(days.value) || 30)
 
+// The defaults of the settings, taken once they come, before anyone could
+// have changed the fields.
+const settings = useCertSettings()
+let defaulted = false
+watchEffect(() => {
+  const st = settings.data.value
+  if (!st || defaulted) return
+  defaulted = true
+  keyType.value = st.keyType
+  days.value = String(st.renewBeforeDays)
+})
+
 const uploading = computed(() => source.value === 'upload')
 const mutation = computed(() => (uploading.value ? add : issue))
 const errors = useApiError(computed(() => mutation.value.error.value))
@@ -109,7 +121,7 @@ const plan = computed(() => {
     steps.push(challengeOf(solverProvider.value) === 'http' ? t('certs.plan.http', { solver: name }) : t('certs.plan.dns', { dns: name }))
   }
   steps.push(t('certs.plan.download'))
-  steps.push(...deploySteps.value, t('certs.plan.renew', { days: renewDays.value }))
+  steps.push(...deploySteps.value, t('certs.plan.renew', { days: renewDays.value, time: settings.data.value?.checkTime ?? '02:00' }))
   return steps
 })
 

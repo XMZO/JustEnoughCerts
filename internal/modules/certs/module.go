@@ -5,8 +5,9 @@
 // version is one certificate with its chain and private key, which is
 // sealed in the database. Versions are uploaded, or issued by a source
 // provider such as an ACME account: each issuance is kept with its log,
-// retried with a backoff when it fails, and started again when the
-// current version enters its renewal window (PLAN.md 4.3 and 4.6). The
+// retried with a backoff when it fails, and started again at the check
+// time of the settings once the current version enters its renewal window
+// (PLAN.md 4.3 and 4.6). The
 // module publishes the certificate events of package contracts, and warns
 // once a version enters its renewal window, has a week left and expires.
 package certs
@@ -63,7 +64,8 @@ func (m *Module) Register(r *module.Registry) error {
 		// Run until nothing is due; started at once when work is added.
 		{Name: "issue", Every: time.Minute, Timeout: 24 * time.Hour, Run: s.runIssuances},
 		{Name: "deploy", Every: time.Minute, Timeout: 24 * time.Hour, Run: s.runDeployments},
-		{Name: "renew", Every: time.Hour, Timeout: 5 * time.Minute, Run: s.renew},
+		// Often enough to start renewals near the check time.
+		{Name: "renew", Every: 5 * time.Minute, Timeout: 5 * time.Minute, Run: s.renew},
 		{Name: "check_expiry", Every: time.Hour, Timeout: 5 * time.Minute, Run: s.checkExpiry},
 	} {
 		if err := r.Jobs.Add(j); err != nil {

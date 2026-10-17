@@ -25,6 +25,7 @@ type CertificateBody struct {
 	RenewBeforeDays int              `json:"renewBeforeDays" doc:"How many days before the end the certificate is renewed, or a reminder sent"`
 	State           string           `json:"state" enum:"ok,expiring,expired,issuing,deploying,failed,deploy_failed" doc:"issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end) or expired"`
 	Current         *VersionBody     `json:"current,omitempty" doc:"The version in use"`
+	RenewAt         *time.Time       `json:"renewAt,omitempty" doc:"When the renewal of the current version starts, or started: for a certificate with a source"`
 	Issuance        *IssuanceBody    `json:"issuance,omitempty" doc:"The latest issuance"`
 	Targets         []int64          `json:"targets" doc:"The target provider instances each version is deployed to, in order"`
 	Deployments     []DeploymentBody `json:"deployments" doc:"The latest deployment to each target that had one, in the order of targets"`
@@ -52,7 +53,7 @@ type ChainEntry struct {
 	NotAfter time.Time `json:"notAfter"`
 }
 
-func certificateBody(c *Certificate, now time.Time) CertificateBody {
+func certificateBody(c *Certificate, now time.Time, sch schedule) CertificateBody {
 	b := CertificateBody{
 		ID: c.ID, Domains: c.Domains, Source: c.Source, SourceProvider: c.SourceProvider, SolverProvider: c.SolverProvider,
 		KeyType: c.KeyType, RenewBeforeDays: c.RenewBeforeDays, State: c.state(now), CreatedAt: c.CreatedAt,
@@ -60,6 +61,10 @@ func certificateBody(c *Certificate, now time.Time) CertificateBody {
 	if c.Current != nil {
 		v := versionBody(c.Current)
 		b.Current = &v
+		if c.Source == sourceProvider {
+			at := sch.renewAt(c.Current.NotAfter, c.RenewBeforeDays)
+			b.RenewAt = &at
+		}
 	}
 	if c.Issuance != nil {
 		is := issuanceBody(c.Issuance)
@@ -111,7 +116,7 @@ type PEMFields struct {
 type addInput struct {
 	Body struct {
 		PEMFields
-		RenewBeforeDays int     `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Days before the end to send a reminder; 30 if left out"`
+		RenewBeforeDays int     `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Days before the end to send a reminder; that of the settings if left out"`
 		Targets         []int64 `json:"targets,omitempty" maxItems:"50" doc:"The target provider instances to deploy each version to, in order"`
 	}
 }
@@ -148,6 +153,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 	registerIssueAPI(a, s)
 	registerDeployAPI(a, s)
 	registerHistoryAPI(a, s)
+	registerSettingsAPI(a, s)
 
 	huma.Register(a, huma.Operation{
 		OperationID: "certs-list", Method: http.MethodGet, Path: "/certificates",
@@ -157,11 +163,15 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 		if err != nil {
 			return nil, err
 		}
+		sch, err := s.schedule(ctx)
+		if err != nil {
+			return nil, err
+		}
 		out := &listOutput{}
 		out.Body.Certificates = make([]CertificateBody, 0, len(certs))
 		now := s.now()
 		for _, c := range certs {
-			out.Body.Certificates = append(out.Body.Certificates, certificateBody(c, now))
+			out.Body.Certificates = append(out.Body.Certificates, certificateBody(c, now, sch))
 		}
 		return out, nil
 	})
@@ -198,7 +208,9 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			return nil, err
 		}
 		out := &detailOutput{}
-		out.Body.Certificate = certificateBody(c, s.now())
+		if out.Body.Certificate, err = s.body(ctx, c); err != nil {
+			return nil, err
+		}
 		out.Body.Versions = make([]VersionBody, 0, len(versions))
 		for _, v := range versions {
 			out.Body.Versions = append(out.Body.Versions, versionBody(v))
@@ -287,7 +299,20 @@ func (s *service) output(ctx context.Context, id int64) (*certificateOutput, err
 	if err != nil {
 		return nil, serviceError(err)
 	}
-	return &certificateOutput{Body: certificateBody(c, s.now())}, nil
+	b, err := s.body(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	return &certificateOutput{Body: b}, nil
+}
+
+// body is certificateBody of c now, with the time its renewal starts.
+func (s *service) body(ctx context.Context, c *Certificate) (CertificateBody, error) {
+	sch, err := s.schedule(ctx)
+	if err != nil {
+		return CertificateBody{}, err
+	}
+	return certificateBody(c, s.now(), sch), nil
 }
 
 // bundleError turns what is wrong with an upload into a response that

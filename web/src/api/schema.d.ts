@@ -206,6 +206,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certs/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the defaults of new certificates and the time renewals start */
+        get: operations["certs-settings"];
+        /** Change the defaults of new certificates and the time renewals start */
+        put: operations["certs-save-settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/manifest": {
         parameters: {
             query?: never;
@@ -424,11 +442,34 @@ export interface components {
             privateKey?: string;
             /**
              * Format: int64
-             * @description Days before the end to send a reminder; 30 if left out
+             * @description Days before the end to send a reminder; that of the settings if left out
              */
             renewBeforeDays?: number;
             /** @description The target provider instances to deploy each version to, in order */
             targets?: number[];
+        };
+        CertSettingsBody: {
+            /** @description The time of day, HH:MM in timeZone, renewals start once certificates enter their renewal window; with a week or less left, they start at once */
+            checkTime: string;
+            /**
+             * @description The key type of new certificates with a source, unless set otherwise
+             * @enum {string}
+             */
+            keyType: "ecdsa-p256" | "ecdsa-p384" | "rsa-2048" | "rsa-3072" | "rsa-4096";
+            /**
+             * Format: int64
+             * @description How many days before the end new certificates renew, or remind, unless set otherwise
+             */
+            renewBeforeDays: number;
+            /** @description The time zone of checkTime: the server's, which the TZ environment variable sets */
+            readonly timeZone: string;
+        };
+        CertSettingsInputBody: {
+            checkTime: string;
+            /** @enum {string} */
+            keyType: "ecdsa-p256" | "ecdsa-p384" | "rsa-2048" | "rsa-3072" | "rsa-4096";
+            /** Format: int64 */
+            renewBeforeDays: number;
         };
         CertificateBody: {
             /** Format: date-time */
@@ -445,6 +486,11 @@ export interface components {
             issuance?: components["schemas"]["IssuanceBody"];
             /** @description Type and size of the key, such as rsa-2048 or ecdsa-p256 */
             keyType: string;
+            /**
+             * Format: date-time
+             * @description When the renewal of the current version starts, or started: for a certificate with a source
+             */
+            renewAt?: string;
             /**
              * Format: int64
              * @description How many days before the end the certificate is renewed, or a reminder sent
@@ -658,13 +704,13 @@ export interface components {
             /** @description The domains, the primary first; a wildcard as *.example.com, an internationalized name in any form */
             domains: string[];
             /**
-             * @description The type of the private key, new for each version; rsa-2048 if left out
+             * @description The type of the private key, new for each version; that of the settings if left out
              * @enum {string}
              */
             keyType?: "ecdsa-p256" | "ecdsa-p384" | "rsa-2048" | "rsa-3072" | "rsa-4096";
             /**
              * Format: int64
-             * @description Days before the end to renew; 30 if left out
+             * @description Days before the end to renew; that of the settings if left out
              */
             renewBeforeDays?: number;
             /**
@@ -709,8 +755,14 @@ export interface components {
             step?: "key" | "order" | "challenge" | "validate" | "cleanup" | "download";
         };
         ManifestBody: {
+            /** @description The revision the program was built from */
+            commit?: string;
+            /** @description RFC 3339 time of that revision */
+            date?: string;
             /** @description Every module compiled in, by category and ID */
             modules: components["schemas"]["ModuleInfo"][];
+            /** @description GOOS/GOARCH, such as linux/amd64 */
+            platform: string;
             /** @description Program version */
             version: string;
         };
@@ -1417,6 +1469,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunsOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertSettingsBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-save-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CertSettingsInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertSettingsBody"];
                 };
             };
             /** @description Error */

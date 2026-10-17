@@ -17,6 +17,8 @@ export type KeyType = NonNullable<IssueRequest['keyType']>
 export type Deployment = components['schemas']['DeploymentBody']
 export type Run = components['schemas']['RunBody']
 export type DeploymentDetail = components['schemas']['DeploymentDetailOutputBody']
+export type CertSettings = components['schemas']['CertSettingsBody']
+export type CertSettingsInput = components['schemas']['CertSettingsInputBody']
 
 /** A certificate with its PEM private key, as pasted. */
 export interface PEMUpload {
@@ -26,6 +28,25 @@ export interface PEMUpload {
 
 const all = ['certs'] as const
 const listKey = [...all, 'list'] as const
+
+const settingsKey = [...all, 'settings'] as const
+
+/** The defaults of new certificates, and the time of day renewals start. */
+export function useCertSettings() {
+  return useQuery({ queryKey: settingsKey, queryFn: () => unwrap(api.GET('/certs/settings')) })
+}
+
+/** Saves the settings; the times certificates renew follow. */
+export function useSaveCertSettings() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CertSettingsInput) => unwrap(api.PUT('/certs/settings', { body })),
+    onSuccess: async (saved) => {
+      client.setQueryData(settingsKey, saved)
+      await Promise.all([client.invalidateQueries({ queryKey: listKey }), client.invalidateQueries({ queryKey: [...all, 'detail'] })])
+    },
+  })
+}
 
 /** Every certificate, the soonest to expire first. */
 export function useCertificates() {

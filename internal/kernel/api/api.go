@@ -35,8 +35,9 @@ type Options struct {
 	// Origin is the scheme://host[:port] users open, if known; requests from
 	// it pass the cross-origin check even when a proxy rewrites Host.
 	Origin string
-	// Version is the program version.
-	Version string
+	// Version is the program version; Commit, Date and Platform tell the
+	// build, as package buildinfo does.
+	Version, Commit, Date, Platform string
 	// Middlewares run for every operation. huma binds them when an operation
 	// is registered, so they cannot be added later.
 	Middlewares []func(huma.Context, func(huma.Context))
@@ -86,7 +87,7 @@ func New(opts Options, set *module.Set, log *slog.Logger) (*API, error) {
 	}))
 
 	a := &API{huma: h, handler: csrf.Handler(router)}
-	a.registerManifest(set, opts.Version)
+	a.registerManifest(set, opts)
 	a.registerSwitch(set, log)
 	return a, nil
 }
@@ -129,11 +130,14 @@ type ModuleInfo struct {
 
 // ManifestBody is the response of GET /manifest.
 type ManifestBody struct {
-	Version string       `json:"version" doc:"Program version"`
-	Modules []ModuleInfo `json:"modules" doc:"Every module compiled in, by category and ID"`
+	Version  string       `json:"version" doc:"Program version"`
+	Commit   string       `json:"commit,omitempty" doc:"The revision the program was built from"`
+	Date     string       `json:"date,omitempty" doc:"RFC 3339 time of that revision"`
+	Platform string       `json:"platform" doc:"GOOS/GOARCH, such as linux/amd64"`
+	Modules  []ModuleInfo `json:"modules" doc:"Every module compiled in, by category and ID"`
 }
 
-func (a *API) registerManifest(set *module.Set, version string) {
+func (a *API) registerManifest(set *module.Set, opts Options) {
 	huma.Register(a.huma, huma.Operation{
 		OperationID: "get-manifest",
 		Method:      http.MethodGet,
@@ -141,7 +145,9 @@ func (a *API) registerManifest(set *module.Set, version string) {
 		Summary:     "List the modules and their state",
 		Tags:        []string{"kernel"},
 	}, func(context.Context, *struct{}) (*struct{ Body ManifestBody }, error) {
-		out := &struct{ Body ManifestBody }{Body: ManifestBody{Version: version, Modules: []ModuleInfo{}}}
+		out := &struct{ Body ManifestBody }{Body: ManifestBody{
+			Version: opts.Version, Commit: opts.Commit, Date: opts.Date, Platform: opts.Platform, Modules: []ModuleInfo{},
+		}}
 		for _, st := range set.Statuses() {
 			out.Body.Modules = append(out.Body.Modules, moduleInfo(st))
 		}

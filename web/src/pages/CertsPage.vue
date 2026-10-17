@@ -71,7 +71,10 @@ function note(c: Certificate): string {
   if (c.state === 'failed') return issueNote(c)
   if (c.state === 'deploy_failed') return deployNote(c)
   if (c.state === 'ok' || c.state === 'issuing' || c.state === 'deploying') return ''
-  if (c.source === 'provider') return t('certs.note.renewing')
+  if (c.source === 'provider') {
+    // Waiting for the check time, or under way already.
+    return c.renewAt && Date.parse(c.renewAt) > Date.now() ? t('certs.next.auto', { date: intl.dateTime(c.renewAt) }) : t('certs.note.renewing')
+  }
   return t(c.state === 'expired' ? 'certs.note.expired' : 'certs.note.manual')
 }
 
@@ -88,7 +91,7 @@ function next(c: Certificate): string {
   if (c.state === 'issuing') return t('certs.next.issuing')
   if (c.state === 'failed') return issueNote(c)
   if (!c.current) return t('certs.next.first')
-  return t('certs.next.auto', { date: intl.date(Date.parse(c.current.notAfter) - c.renewBeforeDays * day) })
+  return t('certs.next.auto', { date: c.renewAt ? intl.dateTime(c.renewAt) : intl.date(Date.parse(c.current.notAfter) - c.renewBeforeDays * day) })
 }
 
 const rows = computed<Row[]>(() =>

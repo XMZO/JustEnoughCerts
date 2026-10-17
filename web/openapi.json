@@ -32,7 +32,7 @@
             "type": "string"
           },
           "renewBeforeDays": {
-            "description": "Days before the end to send a reminder; 30 if left out",
+            "description": "Days before the end to send a reminder; that of the settings if left out",
             "format": "int64",
             "maximum": 365,
             "minimum": 1,
@@ -50,6 +50,77 @@
         },
         "required": [
           "certificate"
+        ],
+        "type": "object"
+      },
+      "CertSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "checkTime": {
+            "description": "The time of day, HH:MM in timeZone, renewals start once certificates enter their renewal window; with a week or less left, they start at once",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "keyType": {
+            "description": "The key type of new certificates with a source, unless set otherwise",
+            "enum": [
+              "ecdsa-p256",
+              "ecdsa-p384",
+              "rsa-2048",
+              "rsa-3072",
+              "rsa-4096"
+            ],
+            "type": "string"
+          },
+          "renewBeforeDays": {
+            "description": "How many days before the end new certificates renew, or remind, unless set otherwise",
+            "format": "int64",
+            "maximum": 365,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "timeZone": {
+            "description": "The time zone of checkTime: the server's, which the TZ environment variable sets",
+            "readOnly": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "renewBeforeDays",
+          "keyType",
+          "checkTime",
+          "timeZone"
+        ],
+        "type": "object"
+      },
+      "CertSettingsInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "checkTime": {
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "type": "string"
+          },
+          "keyType": {
+            "enum": [
+              "ecdsa-p256",
+              "ecdsa-p384",
+              "rsa-2048",
+              "rsa-3072",
+              "rsa-4096"
+            ],
+            "type": "string"
+          },
+          "renewBeforeDays": {
+            "format": "int64",
+            "maximum": 365,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "renewBeforeDays",
+          "keyType",
+          "checkTime"
         ],
         "type": "object"
       },
@@ -88,6 +159,11 @@
           },
           "keyType": {
             "description": "Type and size of the key, such as rsa-2048 or ecdsa-p256",
+            "type": "string"
+          },
+          "renewAt": {
+            "description": "When the renewal of the current version starts, or started: for a certificate with a source",
+            "format": "date-time",
             "type": "string"
           },
           "renewBeforeDays": {
@@ -644,7 +720,7 @@
             "type": "array"
           },
           "keyType": {
-            "description": "The type of the private key, new for each version; rsa-2048 if left out",
+            "description": "The type of the private key, new for each version; that of the settings if left out",
             "enum": [
               "ecdsa-p256",
               "ecdsa-p384",
@@ -655,7 +731,7 @@
             "type": "string"
           },
           "renewBeforeDays": {
-            "description": "Days before the end to renew; 30 if left out",
+            "description": "Days before the end to renew; that of the settings if left out",
             "format": "int64",
             "maximum": 365,
             "minimum": 1,
@@ -778,12 +854,24 @@
       "ManifestBody": {
         "additionalProperties": false,
         "properties": {
+          "commit": {
+            "description": "The revision the program was built from",
+            "type": "string"
+          },
+          "date": {
+            "description": "RFC 3339 time of that revision",
+            "type": "string"
+          },
           "modules": {
             "description": "Every module compiled in, by category and ID",
             "items": {
               "$ref": "#/components/schemas/ModuleInfo"
             },
             "type": "array"
+          },
+          "platform": {
+            "description": "GOOS/GOARCH, such as linux/amd64",
+            "type": "string"
           },
           "version": {
             "description": "Program version",
@@ -792,6 +880,7 @@
         },
         "required": [
           "version",
+          "platform",
           "modules"
         ],
         "type": "object"
@@ -2183,6 +2272,76 @@
           }
         },
         "summary": "List the issuances and deployments",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/settings": {
+      "get": {
+        "operationId": "certs-settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertSettingsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get the defaults of new certificates and the time renewals start",
+        "tags": [
+          "certs"
+        ]
+      },
+      "put": {
+        "operationId": "certs-save-settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CertSettingsInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertSettingsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Change the defaults of new certificates and the time renewals start",
         "tags": [
           "certs"
         ]

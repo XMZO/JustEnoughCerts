@@ -393,6 +393,23 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'add a source: Namecheap').toEqual([])
   await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
 
+  // The settings: a default saved at once, then one the server refuses.
+  await page.goto('./settings')
+  const days = page.locator('#renewBeforeDays')
+  await expect(days).toBeVisible()
+  expect.soft(await problems(page), 'settings').toEqual([])
+  await days.fill('45')
+  await days.blur()
+  await expect(page.getByRole('status').filter({ hasText: label('kernel.settings.saved') })).toBeVisible()
+  expect.soft(await problems(page), 'settings saved').toEqual([])
+  await days.fill('0')
+  await days.blur()
+  await expect(days).toHaveAttribute('aria-invalid', 'true')
+  expect.soft(await problems(page), 'settings refused').toEqual([])
+  await days.fill('30')
+  await days.blur()
+  await expect(days).not.toHaveAttribute('aria-invalid')
+
   await page.goto('./more')
   expect.soft(await problems(page), 'more').toEqual([])
   await page.getByRole('button', { name: label('kernel.shell.sign_out') }).filter({ visible: true }).first().click()
