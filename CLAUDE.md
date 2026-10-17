@@ -61,7 +61,8 @@
 - M2 还完成了：HTTP 文件验证（`PLAN.md` 5.3.2 ④）：`contracts.FileSolver`，验证类型的 `challenge`（`dns`/`http`）和来源类型的 `challenges`，文件只能放在 `/.well-known/` 下；`files.webroot`（本地网站目录）、`ssh.webroot`（SSH 网站目录）；ACME 用网站目录时走 HTTP-01。
 - M2 还完成了：模块页 `/modules`（`PLAN.md` 6.1，`PUT /api/v1/modules/{id}` 在运行中开关模块，实验模块要在这里打开）。
 - M2 还完成了：`namecheap` 模块（`PLAN.md` 5.6 的“JEC 的做法”）：类型 `namecheap.ssl_manager`，实验模块默认关闭；一次性令牌注册、access token 加密保存和刷新（`namecheap.refresh` 任务）；签发按 Namecheap 的证书状态一步步走（交 CSR、经网站目录类验证方式放验证文件、等 CA、下载并核对私钥），只签 RSA；测试用假服务器（`vendor_test.go`），还没有用真实账号试过。类型列表和表单会标出实验类型。
-- 下一步：用真实账号验证阿里云 ESA 部署和 Namecheap 模块（M1/M2 验收）；续期时间窗口（`PLAN.md` 14 的待定事项）；HTTP 验证的其他方式：ESA 边缘应答（ESA 的边缘函数 + 边缘 KV，SDK 里已有接口，要确认用户的套餐支持）、JEC 自己应答、DNS 验证（要先确认 Namecheap 给不给 DNS 验证，还要能加 CNAME 记录）。
+- M2 还完成了：JEC 自己应答（模块 `wellknown`，类型 `wellknown.answer`，`PLAN.md` 5.3.2 ④）：内核的 `r.WellKnown` 让模块回答根路径 `/.well-known/` 下的请求（不要登录，回 404 交给下一个模块）；测试连接从外网经填的域名取回临时文件。
+- 下一步：用真实账号验证阿里云 ESA 部署和 Namecheap 模块（M1/M2 验收）；续期时间窗口（`PLAN.md` 14 的待定事项）；HTTP 验证的其他方式：ESA 边缘应答（ESA 的边缘函数 + 边缘 KV，SDK 里已有接口，要确认用户的套餐支持）、DNS 验证（要先确认 Namecheap 给不给 DNS 验证，还要能加 CNAME 记录）。
 
 ## 工程约定
 

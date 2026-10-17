@@ -215,6 +215,13 @@ test('every page is translated and fits', async ({ page }, info) => {
   await dialog.locator('button[type=submit]').click()
   await expect(page.locator('dialog[open]')).toHaveCount(0)
   expect.soft(await problems(page), 'domain validation with one').toEqual([])
+  await page.getByRole('button', { name: label('kernel.providers.solver.add') }).filter({ visible: true }).first().click()
+  await dialog.getByRole('searchbox').fill('wellknown')
+  await dialog.getByRole('option', { name: label('wellknown.answer.name') }).click()
+  await expect(dialog.getByLabel(label('wellknown.field.domain'))).toBeVisible()
+  expect.soft(await problems(page), 'add a validation answered by JEC').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
 
   // Deploy targets: ESA's form, then a local directory, which needs no
   // network.

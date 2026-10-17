@@ -1017,5 +1017,27 @@
       "description": "Posts each note as JSON to a URL, for any system that takes HTTP requests.",
       "name": "Webhook"
     }
+  },
+  "wellknown": {
+    "answer": {
+      "description": "Validates domains over HTTP, with JEC answering the certificate authority itself. Have the website's reverse proxy (such as nginx) or CDN (such as an origin rule of Alibaba Cloud ESA) send http://the domain/.well-known/ on to JEC.",
+      "name": "Answered by JEC"
+    },
+    "error": {
+      "file_path": "The source asked for a file outside /.well-known/, which JEC does not answer: {path}",
+      "no_domain": "Enter a domain to test with first.",
+      "not_reached": "{url} did not answer with JEC's file from the internet. Check that the reverse proxy or CDN sends /.well-known/ on to JEC."
+    },
+    "field": {
+      "domain": "Domain to test with",
+      "domain_help": "Testing fetches a temporary file under /.well-known/ of this domain from the internet, to make sure the requests reach JEC."
+    },
+    "module": {
+      "description": "JEC answers the validation requests under /.well-known/ itself, which the website's reverse proxy or CDN sends on to it. No access to the website's files is needed.",
+      "name": "Answers from JEC"
+    },
+    "test": {
+      "ok": "{url} answered from the internet with JEC's file: the requests reach JEC."
+    }
   }
 }

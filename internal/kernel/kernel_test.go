@@ -176,6 +176,80 @@ func TestApp(t *testing.T) {
 	}
 }
 
+// answerer is a module answering one path under /.well-known/, or every
+// path when path is "".
+type answerer struct{ id, path string }
+
+func (a answerer) Manifest() module.Manifest {
+	return module.Manifest{ID: a.id, Category: module.Solver, Name: "x.module.name", Description: "x.module.description"}
+}
+
+func (answerer) Migrations() fs.FS { return nil }
+
+func (a answerer) Register(r *module.Registry) error {
+	r.WellKnown(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if a.path != "" && req.URL.Path != a.path {
+			w.Header().Set("X-Answerer", a.id) // dropped with the 404
+			http.NotFound(w, req)
+			return
+		}
+		_, _ = io.WriteString(w, a.id)
+	}))
+	return nil
+}
+
+func TestWellKnown(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.DataDir = t.TempDir()
+	cfg.BaseURL = "https://example.com/jec"
+	app, err := New(t.Context(), cfg, slog.New(slog.DiscardHandler), []module.Module{
+		answerer{id: "first", path: "/.well-known/acme-challenge/token"}, answerer{id: "second"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Close()
+	if err := app.Modules().SetEnabled(t.Context(), "first", true); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.Modules().SetEnabled(t.Context(), "second", true); err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(app.Handler())
+	defer srv.Close()
+	get := func(path string) (int, string, string) {
+		t.Helper()
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL+path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := srv.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		data, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, string(data), resp.Header.Get("X-Answerer")
+	}
+
+	// At the root of the host, with no sign-in, whatever the base path.
+	if status, body, _ := get("/.well-known/acme-challenge/token"); status != http.StatusOK || body != "first" {
+		t.Errorf("first's path = %d %q", status, body)
+	}
+	if status, body, header := get("/.well-known/other"); status != http.StatusOK || body != "second" || header != "" {
+		t.Errorf("past first's 404 = %d %q, header %q", status, body, header)
+	}
+	if err := app.Modules().SetEnabled(t.Context(), "second", false); err != nil {
+		t.Fatal(err)
+	}
+	if status, _, _ := get("/.well-known/other"); status != http.StatusNotFound {
+		t.Errorf("with second off = %d", status)
+	}
+	if status, body, _ := get("/.well-known/acme-challenge/token"); status != http.StatusOK || body != "first" {
+		t.Errorf("first's path, second off = %d %q", status, body)
+	}
+}
+
 func TestBadModules(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.DataDir = t.TempDir()

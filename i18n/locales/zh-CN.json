@@ -1017,5 +1017,27 @@
       "description": "把每条通知以 JSON 发到一个 URL，可以接入任何能收 HTTP 请求的系统。",
       "name": "Webhook"
     }
+  },
+  "wellknown": {
+    "answer": {
+      "description": "通过 HTTP 验证域名，由 JEC 直接回答证书颁发机构。要在网站的反向代理（如 nginx）或 CDN（如阿里云 ESA 的回源规则）上，把 http://域名/.well-known/ 转到 JEC。",
+      "name": "JEC 自己应答"
+    },
+    "error": {
+      "file_path": "来源要放的文件不在 /.well-known/ 下，JEC 不会应答：{path}",
+      "no_domain": "先填一个用来测试的域名。",
+      "not_reached": "从外网访问 {url} 没有取到 JEC 放的文件。请检查反向代理或 CDN 有没有把 /.well-known/ 转到 JEC。"
+    },
+    "field": {
+      "domain": "用来测试的域名",
+      "domain_help": "测试连接时，JEC 从外网访问这个域名 /.well-known/ 下的一个临时文件，确认请求转到了 JEC。"
+    },
+    "module": {
+      "description": "由 JEC 自己回答 /.well-known/ 下的验证请求，网站的反向代理或 CDN 把这些请求转给 JEC。不需要能写网站的文件。",
+      "name": "JEC 自己应答"
+    },
+    "test": {
+      "ok": "从外网访问 {url} 取到了 JEC 放的文件，请求确实转到了 JEC。"
+    }
   }
 }

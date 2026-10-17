@@ -12,6 +12,7 @@ import (
 	"database/sql"
 	"io/fs"
 	"log/slog"
+	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 
@@ -88,6 +89,13 @@ type Registry struct {
 	// BaseURL is the URL users open JEC at, such as
 	// https://certs.example.com, for links in messages; "" when unknown.
 	BaseURL string
+	// WellKnown takes the module's handler of the requests under
+	// /.well-known/ at the root of the host, whatever JEC's base path: a CA
+	// fetching the answer to a domain validation, which the website's
+	// proxy or CDN sent on to JEC. They need no sign-in. The handler
+	// answers 404 for what is not its own; the next module's handler then
+	// gets the request.
+	WellKnown func(h http.Handler)
 	// ConfirmPassword checks the password of the account a request is
 	// signed in as, before something sensitive such as a private key
 	// download. Its error is an API response: a wrong body.password, or

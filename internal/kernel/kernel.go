@@ -111,6 +111,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	}
 	accounts.Register(a.Kernel())
 	providersapi.Register(a.Kernel(), registry)
+	var wellKnown []wellKnownHandler
 	for _, m := range set.Modules() {
 		id := m.Manifest().ID
 		r := &module.Registry{
@@ -125,6 +126,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 
 			BaseURL:         cfg.BaseURL,
 			ConfirmPassword: accounts.ConfirmPassword,
+			WellKnown:       func(h http.Handler) { wellKnown = append(wellKnown, wellKnownHandler{module: id, h: h}) },
 		}
 		if err := m.Register(r); err != nil {
 			return nil, fmt.Errorf("module %s: %w", id, err)
@@ -137,6 +139,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	registry.Seal()
 
 	router := chi.NewRouter()
+	router.Handle("/.well-known/*", serveWellKnown(set, wellKnown))
 	router.Mount(cfg.BasePath()+api.Prefix, a.Handler())
 	ui, err := web.Handler(cfg.BasePath())
 	switch {
@@ -151,6 +154,62 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		}
 	}
 	return &App{store: st, modules: set, api: a, handler: router, bus: bus, jobs: sched}, nil
+}
+
+// wellKnownHandler is a module's handler of the requests under
+// /.well-known/ (module.Registry.WellKnown).
+type wellKnownHandler struct {
+	module string
+	h      http.Handler
+}
+
+// serveWellKnown hands a request under /.well-known/ to the handlers of
+// the modules that are on, in order, until one answers with something
+// other than 404.
+func serveWellKnown(set *module.Set, handlers []wellKnownHandler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for _, wk := range handlers {
+			if !set.Enabled(wk.module) {
+				continue
+			}
+			t := &tryWriter{ResponseWriter: w}
+			wk.h.ServeHTTP(t, r)
+			if !t.missed {
+				return
+			}
+			clear(w.Header())
+		}
+		http.NotFound(w, r)
+	})
+}
+
+// tryWriter passes a response on, unless it starts with 404: its handler
+// then had nothing to say, and what it writes is dropped.
+type tryWriter struct {
+	http.ResponseWriter
+	wrote, missed bool
+}
+
+func (t *tryWriter) WriteHeader(code int) {
+	if t.wrote {
+		return
+	}
+	t.wrote = true
+	if code == http.StatusNotFound {
+		t.missed = true
+		return
+	}
+	t.ResponseWriter.WriteHeader(code)
+}
+
+func (t *tryWriter) Write(p []byte) (int, error) {
+	if !t.wrote {
+		t.WriteHeader(http.StatusOK)
+	}
+	if t.missed {
+		return len(p), nil
+	}
+	return t.ResponseWriter.Write(p)
 }
 
 // Start runs the event bus and the scheduler in the background until Close.

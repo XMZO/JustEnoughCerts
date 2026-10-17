@@ -27,8 +27,9 @@ Working on the main branch:
   the client of Namecheap's SSL Manager. Experimental and off until you
   switch it on; not yet tried against a real account.
 - Domain validation through DNS records at any of the 221 providers that
-  [lego](https://github.com/go-acme/lego) supports, or through files in a
-  website's directory, local or over SSH.
+  [lego](https://github.com/go-acme/lego) supports, or over HTTP: files in
+  a website's directory, local or over SSH, or answers from JEC itself
+  once the website's proxy or CDN sends `/.well-known/` on to it.
 - Deployment of each new certificate to Alibaba Cloud ESA (removing the one
   it replaces), to local directories, to servers over SSH (with a command
   afterwards, such as reloading nginx) and to webhooks.
