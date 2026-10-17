@@ -271,3 +271,30 @@ func TestNewBundle(t *testing.T) {
 		t.Errorf("no certificates: %v", err)
 	}
 }
+
+func TestEncodeKeyTraditional(t *testing.T) {
+	_, edKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tt := range []struct {
+		key   crypto.Signer
+		block string
+	}{
+		{newRSAKey(t), "RSA PRIVATE KEY"},
+		{newECKey(t), "EC PRIVATE KEY"},
+		{edKey, "PRIVATE KEY"},
+	} {
+		data, err := EncodeKeyTraditional(tt.key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if b, _ := pem.Decode(data); b == nil || b.Type != tt.block {
+			t.Errorf("%T: block %v", tt.key, b)
+		}
+		back, err := ParseKey(data)
+		if err != nil || !back.Public().(interface{ Equal(crypto.PublicKey) bool }).Equal(tt.key.Public()) {
+			t.Errorf("%T: read back %v", tt.key, err)
+		}
+	}
+}

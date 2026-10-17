@@ -227,6 +227,23 @@ func EncodeKey(key crypto.Signer) ([]byte, error) {
 	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}), nil
 }
 
+// EncodeKeyTraditional returns key in the PEM form of its own kind, which
+// older software expects: PKCS #1 for RSA, SEC 1 for ECDSA. Other keys
+// have none and come as PKCS #8.
+func EncodeKeyTraditional(key crypto.Signer) ([]byte, error) {
+	switch k := key.(type) {
+	case *rsa.PrivateKey:
+		return pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(k)}), nil
+	case *ecdsa.PrivateKey:
+		der, err := x509.MarshalECPrivateKey(k)
+		if err != nil {
+			return nil, err
+		}
+		return pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: der}), nil
+	}
+	return EncodeKey(key)
+}
+
 // KeyType names the type and size of a public key as JEC stores it:
 // rsa-2048, ecdsa-p256, ed25519 and so on.
 func KeyType(pub crypto.PublicKey) string {
