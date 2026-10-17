@@ -349,6 +349,7 @@ DNS 验证分成两种能力，实现方式不同：
 - ACME 账号是一个 Provider 实例：CA 目录地址（内置 Let's Encrypt 和它的测试环境、ZeroSSL、Google Trust Services 等 lego 已知的 CA，也可以填任意地址）、联系邮箱、EAB（Key ID 和 HMAC，HMAC 只用一次，注册后不再保存）。账号私钥加密保存。
 - 签发用 lego 的 `Obtain`：私钥由证书模块生成并加密保存，每次续期都换新私钥；验证由证书选定的 Solver 实例完成。CA 支持 ARI（RFC 9773）时，按 CA 给的时间续期。
 - lego 会把传给它的 `http.Client` 改成只允许 HTTPS，所以给它单独的 client；本地测试用 Pebble，同样要走 HTTPS。
+- 测试：CI 的 "ACME against Pebble" 任务启动 Pebble（`PEBBLE_VA_ALWAYS_VALID=1`），对着它签两次泛域名证书，检查账号只注册一次、验证器被调用、证书链完整。
 
 ## 6. Web 界面
 
@@ -518,7 +519,10 @@ services:
 
 **参考基准**：lego v5.5.2 带全部 223 家 DNS 服务商，官方 Linux 压缩包 amd64 为 20.2MB、arm64 为 18.3MB。JEC 包含 lego 的全部服务商，所以镜像压缩后预计也在 20MB 出头这个量级。
 
-**预算**：2026-10 实测 M0（内核、账号、前端，还没有 lego），linux/amd64 程序 15.3 MiB、压缩包 6.8 MiB，arm64 是 14.3 MiB 和 6.2 MiB；最大的是 SQLite 的 wasm（4.3MB，约占 27%）。预算定为程序 20 MiB，压缩包和镜像 8 MiB，写在 `scripts/release-sizes.sh` 里。CI 的发布演练和正式发布都检查，超出就失败。加入 lego 和各家服务商时按实测提高预算，并在那次改动里写明原因。
+**预算**：2026-10 实测 M0（内核、账号、前端，还没有 lego），linux/amd64 程序 15.3 MiB、压缩包 6.8 MiB，arm64 是 14.3 MiB 和 6.2 MiB；最大的是 SQLite 的 wasm（4.3MB，约占 27%）。预算写在 `scripts/release-sizes.sh` 里，CI 的发布演练和正式发布都检查，超出就失败；要提高就在那次改动里写明原因。
+
+- M0 时定为程序 20 MiB、压缩包和镜像 8 MiB。
+- 2026-10 加入 lego 的全部 DNS 服务商后实测：linux/amd64 程序 67.4 MiB、压缩包 22.6 MiB，arm64 是 62.3 MiB 和 20.6 MiB，最大的 darwin/amd64 是 69.6 MiB 和 23.3 MiB。各家云平台的 SDK 是大头（lego 本身 4 MiB，sacloud、exoscale、linode、Google 的 protobuf 和 gRPC 各 1–3 MiB）。和上面“20MB 出头”的预期一致，预算提高到程序 80 MiB、压缩包和镜像 27 MiB。
 
 **手段**：
 
@@ -687,7 +691,7 @@ JustEnoughCerts/
 - [x] 前端框架：Vue 3。
 - [x] SQLite 驱动：`ncruces/go-sqlite3`（实测数据见 8.3）。
 - [x] ICU 消息格式的前后端实现：后端自己实现子集，前端用 FormatJS（见 7.2）。
-- [x] 镜像和程序的体积预算：程序 20 MiB，压缩包和镜像 8 MiB（M0 实测见 8.3）。
+- [x] 镜像和程序的体积预算：带上 lego 的全部服务商后，程序 80 MiB，压缩包和镜像 27 MiB（实测见 8.3）。
 - [ ] 续期什么时候执行：设计稿写“每天 02:00 检查”，4.4 写每小时扫描。倾向于每小时检查，进入续期窗口后在下一个维护时段执行（默认 02:00，可设置），避开白天部署。
 - [ ] 除 SQLite 外，何时支持 PostgreSQL。
 - [ ] 文档语言：倾向中英双语（界面语言已定为跟随浏览器，可手动切换）。
