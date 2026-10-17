@@ -1,6 +1,6 @@
 // Command openapi writes the OpenAPI document of the API, with every module
-// compiled into jec, to web/openapi.json; the web UI's API types are
-// generated from it.
+// of package all, to web/openapi.json; the web UI's API types are generated
+// from it.
 //
 //	go run ./tools/openapi [-o web/openapi.json] [-check]
 package main
@@ -16,12 +16,8 @@ import (
 
 	"github.com/XMZO/JustEnoughCerts/internal/kernel"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/config"
-	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
+	"github.com/XMZO/JustEnoughCerts/internal/modules/all"
 )
-
-// modules are the modules whose operations the document describes; keep the
-// list in step with cmd/jec.
-var modules []module.Module
 
 func main() {
 	out := flag.String("o", "web/openapi.json", "output file")
@@ -41,7 +37,7 @@ func run(out string, check bool) error {
 	defer os.RemoveAll(dir)
 	cfg := config.Defaults()
 	cfg.DataDir = dir
-	app, err := kernel.New(context.Background(), cfg, slog.New(slog.DiscardHandler), modules)
+	app, err := kernel.New(context.Background(), cfg, slog.New(slog.DiscardHandler), all.Modules())
 	if err != nil {
 		return err
 	}
