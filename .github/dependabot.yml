@@ -24,6 +24,12 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # The web UI builds on the LTS release of Node that CI uses
+      # (.github/actions/setup-web): both move to the next LTS together, by
+      # hand.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /web
     schedule:
