@@ -13,6 +13,8 @@ import (
 	_ "time/tzdata" // zoneinfo for the scratch release image, which has none
 
 	_ "golang.org/x/crypto/x509roots/fallback" // CA roots, for the same reason
+
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/children"
 )
 
 // Exit codes.
@@ -56,6 +58,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return exitOK
 	case "-version", "--version":
 		return runVersion(ctx, nil, stdout, stderr)
+	case children.Command:
+		// Not in the usage: the server starts these itself.
+		return children.Main(ctx)
 	}
 	for _, c := range commands() {
 		if c.name == args[0] {
