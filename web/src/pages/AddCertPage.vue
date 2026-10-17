@@ -144,7 +144,11 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
             @click="picked = p.id"
           >
             <span class="truncate text-body font-semibold" translate="no" :title="p.name">{{ p.name }}</span>
-            <span class="truncate text-caption leading-[18px] text-ink-muted" :translate="typeLabel(p, sourceTypes).brand ? 'no' : undefined">
+            <span
+              class="truncate text-caption leading-[18px] text-ink-muted"
+              :translate="typeLabel(p, sourceTypes).brand ? 'no' : undefined"
+              :title="typeLabel(p, sourceTypes).text"
+            >
               {{ typeLabel(p, sourceTypes).text }}
             </span>
           </button>

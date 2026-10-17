@@ -282,7 +282,7 @@ async function confirmDelete() {
                   class="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-0.5 py-2 text-ink no-underline hover:text-ink"
                 >
                   <time :datetime="is.createdAt" class="flex-none text-ink-muted tabular-nums">{{ intl.dateTime(is.createdAt) }}</time>
-                  <span class="min-w-0 flex-1">{{ t(reasonText[is.reason]) }}</span>
+                  <span class="min-w-[8rem] flex-1 [overflow-wrap:anywhere]">{{ t(reasonText[is.reason]) }}</span>
                   <span :class="['flex-none font-semibold', is.state === 'done' ? 'text-ok-ink' : is.state === 'running' || (is.state === 'pending' && !is.error) ? 'text-info-ink' : 'text-danger-ink']">
                     {{ t(issuanceState(is)) }}
                   </span>
