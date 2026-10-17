@@ -1,5 +1,5 @@
-# Context of the source build (docker build .). Only what the Go build needs
-# is let in, so docs, design files and local data never reach the builder.
+# Context of the source build (docker build .). Only what the build needs
+# is let in, so docs, design boards and local data never reach the builder.
 # New top-level source directories have to be added here.
 *
 !go.mod
@@ -7,3 +7,7 @@
 !cmd/
 !i18n/
 !internal/
+!web/
+!docs/design/system/tokens.css
+web/node_modules
+web/dist

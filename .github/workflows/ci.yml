@@ -92,6 +92,35 @@ jobs:
       - name: actionlint
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
 
+  web:
+    name: web UI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+      - uses: ./.github/actions/setup-web
+      - name: The API types match the API
+        run: |
+          go run ./tools/openapi -check
+          pnpm -C web gen:api
+          git diff --exit-code web/src/api/schema.d.ts
+      - name: Type check
+        run: pnpm -C web typecheck
+      - name: Lint
+        run: pnpm -C web lint
+      - name: Unit tests
+        run: pnpm -C web test
+      - name: Build
+        run: pnpm -C web build
+      - name: First-load size
+        run: pnpm -C web --silent size >>"$GITHUB_STEP_SUMMARY"
+
   release-dry-run:
     name: release dry run
     runs-on: ubuntu-24.04
@@ -105,6 +134,9 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           check-latest: true
+      - uses: ./.github/actions/setup-web
+      - name: Build the web UI
+        run: pnpm -C web build
       - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
           version: ${{ env.GORELEASER_VERSION }}

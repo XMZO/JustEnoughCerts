@@ -23,3 +23,15 @@ updates:
     directory: /
     schedule:
       interval: weekly
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    ignore:
+      # typescript-eslint and openapi-typescript do not support TypeScript 7
+      # (the native compiler) yet.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+    groups:
+      web:
+        patterns: ["*"]

@@ -29,11 +29,24 @@ FROM runtime AS release
 ARG TARGETPLATFORM
 COPY $TARGETPLATFORM/jec /jec
 
+FROM --platform=$BUILDPLATFORM node:24-alpine AS web
+WORKDIR /src/web
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+COPY web/package.json web/pnpm-lock.yaml ./
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
+# The UI reads the locale files and the design tokens from outside web/.
+COPY i18n/locales /src/i18n/locales
+COPY docs/design/system/tokens.css /src/docs/design/system/tokens.css
+COPY web ./
+RUN pnpm build
+
 FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY . .
+COPY --from=web /src/web/dist ./web/dist
 ARG TARGETOS TARGETARCH VERSION=dev
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
