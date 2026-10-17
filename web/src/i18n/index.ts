@@ -2,8 +2,13 @@ import IntlMessageFormat from 'intl-messageformat'
 import { createI18n, useI18n, type MessageCompiler, type MessageContext } from 'vue-i18n'
 
 import { baseLocale, locales, type Locale, type MessageKey } from './generated'
+import { pseudoEnabled, pseudoize } from './pseudo'
 
 export { locales, type Locale, type MessageKey }
+
+// The pseudo-locale renders English through pseudoize; the e2e tests turn
+// it on with localStorage "jec.pseudo" = "1".
+const pseudo = pseudoEnabled()
 
 type Messages = Record<string, unknown>
 
@@ -19,7 +24,10 @@ const messageCompiler: MessageCompiler = (message, ctx) => {
     return () => ctx.key
   }
   const format = new IntlMessageFormat(message, ctx.locale, undefined, { ignoreTag: true })
-  return (mctx: MessageContext) => String(format.format(mctx.values as Record<string, string | number>))
+  return (mctx: MessageContext) => {
+    const text = String(format.format(mctx.values as Record<string, string | number>))
+    return pseudo ? pseudoize(text) : text
+  }
 }
 
 export const i18n = createI18n({
@@ -79,6 +87,7 @@ export async function setLocale(tag: Locale, remember = true): Promise<void> {
 
 /** The locale chosen earlier on this device, or the browser's preference. */
 export function initialLocale(): Locale {
+  if (pseudo) return baseLocale
   try {
     const saved = localStorage.getItem(storageKey)
     if (saved && isLocale(saved)) return saved

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { LogOut } from '@lucide/vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useSession, useSignOut } from '../api/account'
@@ -11,6 +12,11 @@ const { t } = useT()
 const router = useRouter()
 const session = useSession()
 const signOut = useSignOut()
+
+// Long names are cut short in the header; the tooltip holds all of it.
+const signedIn = computed(() =>
+  session.data.value ? t('kernel.home.signed_in', { username: session.data.value.username }) : '',
+)
 
 async function leave() {
   try {
@@ -29,7 +35,7 @@ async function leave() {
         <span class="font-semibold">{{ t('kernel.app.name') }}</span>
       </div>
       <div class="flex min-w-0 items-center gap-2 text-small text-ink-muted">
-        <span v-if="session.data.value" class="truncate">{{ t('kernel.home.signed_in', { username: session.data.value.username }) }}</span>
+        <span v-if="signedIn" class="truncate" :title="signedIn">{{ signedIn }}</span>
         <JecButton variant="ghost" size="sm" :busy="signOut.isPending.value" @click="leave">
           <LogOut class="size-4" aria-hidden="true" />{{ t('kernel.home.sign_out') }}
         </JecButton>

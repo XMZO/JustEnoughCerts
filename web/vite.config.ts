@@ -23,5 +23,6 @@ export default defineConfig({
   },
   test: {
     environment: 'happy-dom',
+    include: ['src/**/*.test.ts'], // e2e/ is Playwright's
   },
 })

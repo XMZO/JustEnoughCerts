@@ -7,6 +7,10 @@
 # Dependencies
 node_modules/
 
+# Playwright output
+/web/test-results/
+/web/playwright-report/
+
 # Local data from "jec serve" or docker compose
 /data/
 /deploy/data/
