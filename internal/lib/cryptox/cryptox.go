@@ -9,6 +9,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
@@ -256,4 +257,24 @@ func Names(c *x509.Certificate) []string {
 		names = append(names, c.Subject.CommonName)
 	}
 	return names
+}
+
+// KeyTypes are the types of key GenerateKey makes, as KeyType names them.
+var KeyTypes = []string{"ecdsa-p256", "ecdsa-p384", "rsa-2048", "rsa-3072", "rsa-4096"}
+
+// GenerateKey makes a new private key of keyType, one of KeyTypes.
+func GenerateKey(keyType string) (crypto.Signer, error) {
+	switch keyType {
+	case "ecdsa-p256":
+		return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	case "ecdsa-p384":
+		return ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	case "rsa-2048":
+		return rsa.GenerateKey(rand.Reader, 2048)
+	case "rsa-3072":
+		return rsa.GenerateKey(rand.Reader, 3072)
+	case "rsa-4096":
+		return rsa.GenerateKey(rand.Reader, 4096)
+	}
+	return nil, fmt.Errorf("%w: %q", ErrUnsupportedKey, keyType)
 }

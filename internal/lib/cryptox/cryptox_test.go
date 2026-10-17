@@ -235,3 +235,21 @@ func TestNamesAndFingerprint(t *testing.T) {
 		t.Error("EncodeCertificates does not write PEM")
 	}
 }
+
+func TestGenerateKey(t *testing.T) {
+	for _, kt := range KeyTypes {
+		if testing.Short() && strings.HasPrefix(kt, "rsa-") && kt != "rsa-2048" {
+			continue // slow
+		}
+		key, err := GenerateKey(kt)
+		if err != nil {
+			t.Fatalf("%s: %v", kt, err)
+		}
+		if got := KeyType(key.Public()); got != kt {
+			t.Errorf("GenerateKey(%s) made a %s key", kt, got)
+		}
+	}
+	if _, err := GenerateKey("dsa-1024"); !errors.Is(err, ErrUnsupportedKey) {
+		t.Errorf("an unknown type: %v", err)
+	}
+}
