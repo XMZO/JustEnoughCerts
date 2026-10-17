@@ -72,6 +72,8 @@ jobs:
         run: go run ./tools/i18n check
       - name: Keys come from generated constants
         run: go run ./tools/i18nlint ./...
+      - name: A new module builds, and jec builds without any one module
+        run: ./scripts/check-modules.sh
 
   vulncheck:
     runs-on: ubuntu-24.04
