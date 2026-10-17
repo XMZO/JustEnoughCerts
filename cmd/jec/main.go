@@ -70,8 +70,12 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 func usage(w io.Writer) {
 	fmt.Fprint(w, "Just Enough Certs: self-hosted SSL/TLS certificate management.\n\n")
 	fmt.Fprint(w, "Usage:\n  jec <command> [flags]\n\nCommands:\n")
+	width := 0
 	for _, c := range commands() {
-		fmt.Fprintf(w, "  %-12s %s\n", c.name, c.summary)
+		width = max(width, len(c.name))
+	}
+	for _, c := range commands() {
+		fmt.Fprintf(w, "  %-*s  %s\n", width, c.name, c.summary)
 	}
 	fmt.Fprint(w, "\nRun \"jec <command> -h\" for the flags of a command.\n")
 }
