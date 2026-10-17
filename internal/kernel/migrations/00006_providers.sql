@@ -3,9 +3,10 @@
 -- provider with its credentials, a deploy target. type names a type that a
 -- module registers; config holds the plain settings as a JSON object, and
 -- secrets the others, sealed for "provider:<id>". Times are Unix
--- milliseconds.
+-- milliseconds. AUTOINCREMENT: an ID is never reused, as modules keep
+-- data of their own by instance ID, such as an ACME account's key.
 CREATE TABLE kernel_providers (
-    id         INTEGER PRIMARY KEY,
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
     type       TEXT NOT NULL,
     name       TEXT NOT NULL,
     config     TEXT NOT NULL,
