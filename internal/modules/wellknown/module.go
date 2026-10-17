@@ -34,14 +34,15 @@ var migrationFiles embed.FS
 // Module is the wellknown module.
 type Module struct {
 	now func() time.Time
-	// web fetches from the public internet, for the test; tests replace it.
+	// web fetches from the public internet as a CA does (see
+	// httpx.Options.SkipVerify), for the test; tests replace it.
 	web *http.Client
 	db  *sql.DB
 }
 
 // New returns the module.
 func New() *Module {
-	web, _ := httpx.Client(httpx.Options{Timeout: 15 * time.Second, PublicOnly: true})
+	web, _ := httpx.Client(httpx.Options{Timeout: 15 * time.Second, PublicOnly: true, SkipVerify: true})
 	return &Module{now: time.Now, web: web}
 }
 

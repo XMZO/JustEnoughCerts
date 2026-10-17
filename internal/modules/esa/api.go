@@ -4,13 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
 	"github.com/alibabacloud-go/tea/dara"
 	esaapi "github.com/go-acme/esa-20240910/v3/client"
 
+	"github.com/XMZO/JustEnoughCerts/i18n"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 )
 
 // siteAPI is what the target needs of ESA's API (version 2024-09-10).
@@ -42,10 +46,14 @@ const (
 	regionGlobal = "ap-southeast-1"
 )
 
-// sdk is siteAPI over Alibaba Cloud's SDK.
-type sdk struct{ client *esaapi.Client }
+// sdk is siteAPI and edgeAPI over Alibaba Cloud's SDK, with web for what
+// the SDK leaves out: posting the code of a routine to OSS.
+type sdk struct {
+	client *esaapi.Client
+	web    *http.Client
+}
 
-func newSDK(in providers.Instance) (siteAPI, error) {
+func newSDK(in providers.Instance, web *http.Client) (*sdk, error) {
 	region := in.Config["region"]
 	if region == "" {
 		region = regionChina
@@ -69,7 +77,7 @@ func newSDK(in providers.Instance) (siteAPI, error) {
 	if err != nil {
 		return nil, fmt.Errorf("esa: endpoint: %w", err)
 	}
-	return &sdk{client: client}, nil
+	return &sdk{client: client, web: web}, nil
 }
 
 func (s *sdk) siteID(ctx context.Context, name string) (int64, error) {
@@ -141,4 +149,29 @@ func apiErrorCode(err error) (string, int) {
 		return dara.StringValue(e.Code), dara.IntValue(e.StatusCode)
 	}
 	return "", 0
+}
+
+// apiProblem turns an error of ESA's API into a Problem the UI can show,
+// marked for retrying or not. Other errors, of the network or of the SDK
+// itself, stay as they are.
+func apiProblem(err error) error {
+	code, status := apiErrorCode(err)
+	switch {
+	case code == "":
+		return err
+	case status == http.StatusUnauthorized, status == http.StatusForbidden,
+		strings.HasPrefix(code, "InvalidAccessKeyId"), code == "SignatureDoesNotMatch",
+		strings.Contains(code, "Forbidden"), strings.Contains(code, "NoPermission"):
+		return retry.Permanent(&contracts.Problem{Key: i18n.EsaErrorAuth, Err: err})
+	case strings.Contains(code, "Throttling"):
+		return &contracts.Problem{Key: i18n.EsaErrorThrottled, Err: err}
+	}
+	return &contracts.Problem{Key: i18n.EsaErrorApi, Params: map[string]any{"code": code}, Err: fmt.Errorf("esa: %w", err)}
+}
+
+// isQuota tells an error of ESA's API refusing for a limit of the plan.
+func isQuota(err error) bool {
+	code, _ := apiErrorCode(err)
+	code = strings.ToLower(code)
+	return strings.Contains(code, "quota") || strings.Contains(code, "exceed")
 }

@@ -5,8 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
-	"net/http"
 	"slices"
 	"strconv"
 	"strings"
@@ -162,32 +160,15 @@ func (t *target) upload(ctx context.Context, site int64, fingerprint string, req
 	return id, removed, nil
 }
 
-// isQuota tells an upload refused because the site holds all the custom
-// certificates its plan allows.
-func isQuota(err error) bool {
-	code, _ := apiErrorCode(err)
-	code = strings.ToLower(code)
-	return strings.Contains(code, "quota") || strings.Contains(code, "exceed")
-}
-
 // explain turns an error of ESA's API into a Problem the UI can show,
 // marked for retrying or not.
 func (t *target) explain(err error) error {
-	if errors.Is(err, errSiteNotFound) {
-		return retry.Permanent(&contracts.Problem{Key: i18n.EsaErrorSite, Params: map[string]any{"site": t.site}, Err: err})
-	}
-	code, status := apiErrorCode(err)
 	switch {
-	case code == "":
-		return err // the network, or the SDK itself
-	case status == http.StatusUnauthorized, status == http.StatusForbidden,
-		strings.HasPrefix(code, "InvalidAccessKeyId"), code == "SignatureDoesNotMatch",
-		strings.Contains(code, "Forbidden"), strings.Contains(code, "NoPermission"):
-		return retry.Permanent(&contracts.Problem{Key: i18n.EsaErrorAuth, Err: err})
+	case errors.Is(err, errSiteNotFound):
+		return retry.Permanent(&contracts.Problem{Key: i18n.EsaErrorSite, Params: map[string]any{"site": t.site}, Err: err})
 	case isQuota(err):
+		// The site holds all the custom certificates its plan allows.
 		return retry.Permanent(&contracts.Problem{Key: i18n.EsaErrorQuota, Params: map[string]any{"site": t.site}, Err: err})
-	case strings.Contains(code, "Throttling"):
-		return &contracts.Problem{Key: i18n.EsaErrorThrottled, Err: err}
 	}
-	return &contracts.Problem{Key: i18n.EsaErrorApi, Params: map[string]any{"code": code}, Err: fmt.Errorf("esa: %w", err)}
+	return apiProblem(err)
 }

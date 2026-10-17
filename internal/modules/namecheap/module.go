@@ -42,8 +42,9 @@ var migrationFiles embed.FS
 // Module is the namecheap module.
 type Module struct {
 	now func() time.Time
-	// api talks to the vendor and web fetches websites, both on the public
-	// internet only; tests replace them.
+	// api talks to the vendor and web fetches websites as a CA does (see
+	// httpx.Options.SkipVerify), both on the public internet only; tests
+	// replace them.
 	api, web *http.Client
 
 	db        *sql.DB
@@ -58,7 +59,7 @@ type Module struct {
 // New returns the module.
 func New() *Module {
 	api, _ := httpx.Client(httpx.Options{Timeout: time.Minute, PublicOnly: true})
-	web, _ := httpx.Client(httpx.Options{Timeout: 15 * time.Second, PublicOnly: true})
+	web, _ := httpx.Client(httpx.Options{Timeout: 15 * time.Second, PublicOnly: true, SkipVerify: true})
 	// The access token goes to the API only, not where a redirect points.
 	api.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	return &Module{now: time.Now, api: api, web: web, locks: map[int64]*sync.Mutex{}}

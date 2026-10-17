@@ -67,3 +67,28 @@ func TestProxy(t *testing.T) {
 		t.Error("a proxy with PublicOnly")
 	}
 }
+
+func TestSkipVerify(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	defer srv.Close()
+
+	c, err := Client(Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.Get(srv.URL)
+	if err == nil {
+		_ = resp.Body.Close()
+		t.Fatal("a certificate of no known CA was accepted")
+	}
+
+	c, err = Client(Options{SkipVerify: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err = c.Get(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+}

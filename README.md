@@ -13,9 +13,10 @@ Minecraft mod JEI.
 > [!WARNING]
 > JEC is in early development. The 0.0.x releases are the skeleton: the
 > server, the setup wizard and signing in, in English and Chinese. The
-> main branch does what the list below says works, but it is not released
-> yet and has not been tried end to end against a real Alibaba Cloud ESA
-> site. See the roadmap in [PLAN.md](PLAN.md) (in Chinese).
+> test releases (0.1.0-alpha.x, image tag `beta` in place of `latest` in
+> `docker-compose.yml`) and the main branch do what the list below says
+> works, but have not been tried end to end against a real Alibaba Cloud
+> ESA site. See the roadmap in [PLAN.md](PLAN.md) (in Chinese).
 
 ## Features
 
@@ -28,8 +29,10 @@ Working on the main branch:
   switch it on; not yet tried against a real account.
 - Domain validation through DNS records at any of the 221 providers that
   [lego](https://github.com/go-acme/lego) supports, or over HTTP: files in
-  a website's directory, local or over SSH, or answers from JEC itself
-  once the website's proxy or CDN sends `/.well-known/` on to it.
+  a website's directory, local or over SSH, answers from JEC itself once
+  the website's proxy or CDN sends `/.well-known/` on to it, or, for
+  websites on Alibaba Cloud ESA, answers at ESA's edge from Edge KV,
+  through an Edge Routine JEC deploys, without the origin.
 - Deployment of each new certificate to Alibaba Cloud ESA (removing the one
   it replaces), to local directories, to servers over SSH (with a command
   afterwards, such as reloading nginx) and to webhooks.

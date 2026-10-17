@@ -526,10 +526,20 @@
     }
   },
   "esa": {
+    "edge": {
+      "description": "通过 HTTP 验证域名，不经过源站：JEC 把验证文件存进阿里云 ESA 的边缘 KV，并在账号里自动部署一个边缘函数（jec-validation），由它回答站点 /.well-known/ 下的请求，其他请求照常回源。套餐要有“函数和 Pages”和“边缘 KV”。",
+      "name": "ESA 边缘应答"
+    },
     "error": {
       "api": "阿里云 ESA 返回了错误 {code}。完整日志里有原因。",
       "auth": "阿里云拒绝了这个 AccessKey，或者它没有需要的权限。",
+      "file_path": "验证文件不在 /.well-known/ 下，或者路径太长，存不进边缘 KV：{path}",
+      "limit": "ESA 套餐不允许再加了（{code}）：函数、路由、KV 命名空间的数量或规则到了上限。",
+      "no_domain": "先填一个用来测试的域名。",
+      "no_site": "这个阿里云账号的 ESA 里没有包含 {domain} 的站点。",
+      "not_served": "从外网访问 {url} 没有取到 JEC 放进 ESA 边缘 KV 的文件。刚部署的边缘函数和 KV 可能要几分钟才生效；一直这样的话，请检查站点里是否有别的函数路由排在 jec_validation 前面。",
       "quota": "站点 {site} 的自定义证书已满。请在 ESA 里删掉不用的证书，或者打开“部署后删除旧证书”。",
+      "service": "这个阿里云账号用不了 ESA 的函数和 Pages 或边缘 KV（{code}）：可能还没开通，或者欠费停用了。",
       "site": "这个账号下没有站点 {site}。请检查站点名和接入点。",
       "throttled": "请求太频繁，阿里云暂时拒绝了，稍后会自动重试。"
     },
@@ -539,6 +549,9 @@
       "access_key_secret_help": "建议用 RAM 子账号，只授予 esa:ListSites、esa:ListCertificates、esa:SetCertificate、esa:DeleteCertificate。",
       "delete_old": "部署后删除旧证书",
       "delete_old_help": "只删除 JEC 以前部署到这里的版本，不动其他证书。",
+      "domain": "用来测试的域名",
+      "domain_help": "测试连接时，JEC 先在 ESA 里设置好边缘函数，再从外网访问这个域名 /.well-known/ 下的一个临时文件，确认边缘能回答。域名要属于这个账号的某个 ESA 站点。",
+      "edge_secret_help": "建议用 RAM 子账号，只授予 esa:ListSites、esa:*Kv*、esa:*Routine*。",
       "region": "接入点",
       "site": "站点",
       "site_help": "ESA 里的站点名，通常是主域名，例如 example.com。"
@@ -553,7 +566,7 @@
       "uploaded": "新证书已上传，ID {id}"
     },
     "module": {
-      "description": "把证书部署到阿里云边缘安全加速（ESA）的站点，部署后删除旧证书。",
+      "description": "把证书部署到阿里云边缘安全加速（ESA）的站点，部署后删除旧证书；还能在 ESA 的边缘直接回答 HTTP 域名验证。",
       "name": "阿里云 ESA"
     },
     "region": {
@@ -565,6 +578,7 @@
       "name": "阿里云 ESA 站点"
     },
     "test": {
+      "edge_ok": "从外网访问 {url} 取到了边缘函数回答的文件，ESA 边缘应答可以用了。",
       "ok": "连接正常：站点 {site} 现在有 {count, plural, other {# 张证书}}。"
     }
   },

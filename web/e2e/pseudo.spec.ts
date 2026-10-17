@@ -222,6 +222,13 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'add a validation answered by JEC').toEqual([])
   await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
   await expect(page.locator('dialog[open]')).toHaveCount(0)
+  await page.getByRole('button', { name: label('kernel.providers.solver.add') }).filter({ visible: true }).first().click()
+  await dialog.getByRole('searchbox').fill('esa.edge')
+  await dialog.getByRole('option', { name: label('esa.edge.name') }).click()
+  await expect(dialog.getByLabel(label('esa.field.domain'))).toBeVisible()
+  expect.soft(await problems(page), "add a validation answered at ESA's edge").toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
 
   // Deploy targets: ESA's form, then a local directory, which needs no
   // network.

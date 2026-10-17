@@ -6,6 +6,7 @@ package httpx
 
 import (
 	"cmp"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -28,6 +29,11 @@ type Options struct {
 	// internet (see Public), wherever a redirect leads. It cannot be
 	// combined with a proxy, whose own address is the one dialed.
 	PublicOnly bool
+	// SkipVerify accepts any certificate over HTTPS, as the HTTP validation
+	// of a CA does when a redirect leads there: the website may still have
+	// the expired certificate being replaced. It is for checking the public
+	// files of validations, never for sending anything.
+	SkipVerify bool
 }
 
 // Errors of Client and of the requests it makes.
@@ -57,6 +63,9 @@ func Client(o Options) (*http.Client, error) {
 		TLSHandshakeTimeout: 10 * time.Second,
 		MaxIdleConns:        4,
 		IdleConnTimeout:     30 * time.Second,
+	}
+	if o.SkipVerify {
+		t.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // fetches public files as a CA does; see Options.SkipVerify
 	}
 	if o.Proxy != "" {
 		if o.PublicOnly {

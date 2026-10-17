@@ -526,10 +526,20 @@
     }
   },
   "esa": {
+    "edge": {
+      "description": "Validates domains over HTTP without the origin: JEC keeps the validation files in Edge KV of Alibaba Cloud ESA, and deploys an Edge Routine (jec-validation) to the account that answers the requests under /.well-known/ of the sites. Other requests go to the origin as usual. The plan needs Functions and Pages, and Edge KV.",
+      "name": "Answered at ESA's edge"
+    },
     "error": {
       "api": "Alibaba Cloud ESA returned the error {code}. The full log says why.",
       "auth": "Alibaba Cloud refused the AccessKey, or it lacks the permissions needed.",
+      "file_path": "The validation file is outside /.well-known/, or its path is too long for Edge KV: {path}",
+      "limit": "The ESA plan allows no more ({code}): routines, routes, KV namespaces or rules are at their limit.",
+      "no_domain": "Enter a domain to test with first.",
+      "no_site": "No site of ESA on this Alibaba Cloud account holds {domain}.",
+      "not_served": "{url} did not answer from the internet with the file JEC put in Edge KV of ESA. A routine and KV just set up may take a few minutes to take effect; if it lasts, check that no other route of the site comes before jec_validation.",
       "quota": "The site {site} holds all the custom certificates it may. Remove unused ones in ESA, or turn on removing the old certificate.",
+      "service": "This Alibaba Cloud account cannot use Functions and Pages or Edge KV of ESA ({code}): not activated yet, or stopped for an overdue payment.",
       "site": "This account has no site {site}. Check the site name and the endpoint.",
       "throttled": "Alibaba Cloud refused for now: too many requests. JEC tries again later."
     },
@@ -539,6 +549,9 @@
       "access_key_secret_help": "Best from a RAM user granted esa:ListSites, esa:ListCertificates, esa:SetCertificate and esa:DeleteCertificate only.",
       "delete_old": "Remove the old certificate after deploying",
       "delete_old_help": "Only the versions JEC deployed here before go; other certificates stay.",
+      "domain": "Domain to test with",
+      "domain_help": "Testing sets up the routine in ESA, then fetches a temporary file under /.well-known/ of this domain from the internet, to make sure the edge answers. The domain must belong to a site of this account.",
+      "edge_secret_help": "Best from a RAM user granted esa:ListSites, esa:*Kv* and esa:*Routine* only.",
       "region": "Endpoint",
       "site": "Site",
       "site_help": "The site's name in ESA, usually the registered domain, such as example.com."
@@ -553,7 +566,7 @@
       "uploaded": "New certificate uploaded, ID {id}"
     },
     "module": {
-      "description": "Deploys certificates to sites of Alibaba Cloud ESA (Edge Security Acceleration), and removes the old ones afterwards.",
+      "description": "Deploys certificates to sites of Alibaba Cloud ESA (Edge Security Acceleration), and removes the old ones afterwards. It can also answer HTTP validations of domains at ESA's edge.",
       "name": "Alibaba Cloud ESA"
     },
     "region": {
@@ -565,6 +578,7 @@
       "name": "Alibaba Cloud ESA site"
     },
     "test": {
+      "edge_ok": "{url} answered from the internet with the file, from the edge: answering at ESA's edge works.",
       "ok": "Connected: site {site} holds {count, plural, one {# certificate} other {# certificates}}."
     }
   },

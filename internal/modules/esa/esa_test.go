@@ -218,11 +218,11 @@ func TestSiteType(t *testing.T) {
 		t.Error("old versions are kept by default")
 	}
 	// The real client takes the region's endpoint.
-	api, err := newSDK(providers.Instance{Config: map[string]string{"region": regionGlobal}, Secrets: map[string]string{}})
+	api, err := newSDK(providers.Instance{Config: map[string]string{"region": regionGlobal}, Secrets: map[string]string{}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := dara.StringValue(api.(*sdk).client.Endpoint); got != "esa.ap-southeast-1.aliyuncs.com" {
+	if got := dara.StringValue(api.client.Endpoint); got != "esa.ap-southeast-1.aliyuncs.com" {
 		t.Errorf("endpoint %s", got)
 	}
 }
