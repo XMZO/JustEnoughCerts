@@ -272,3 +272,34 @@ func TestEvents(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestSecretKey(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.DataDir = t.TempDir()
+	var logs syncBuffer
+	log := slog.New(slog.NewTextHandler(&logs, nil))
+	app, err := New(t.Context(), cfg, log, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := app.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(logs.String(), "created the secret key file") {
+		t.Errorf("no word of the new key file:\n%s", logs.String())
+	}
+
+	// The key file is used again on restart...
+	app, err = New(t.Context(), cfg, log, nil)
+	if err != nil {
+		t.Fatalf("restart with the same key file: %v", err)
+	}
+	if err := app.Close(); err != nil {
+		t.Fatal(err)
+	}
+	// ...and another key is refused, before any secret is needed.
+	cfg.SecretKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+	if _, err := New(t.Context(), cfg, log, nil); err == nil || !strings.Contains(err.Error(), "secret key is not the one") {
+		t.Errorf("restart with another key: %v", err)
+	}
+}

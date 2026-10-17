@@ -36,6 +36,10 @@ type Config struct {
 	BaseURL string `yaml:"base_url"`
 	// Log configures the process log.
 	Log Log `yaml:"log"`
+	// SecretKey is the master key sealing the stored secrets, base64 of 32
+	// bytes, from JEC_SECRET_KEY only: never a flag, which other processes
+	// can read, nor the config file. Empty means the key file in DataDir.
+	SecretKey string `yaml:"-"`
 }
 
 // Log configures the process log.
@@ -93,6 +97,7 @@ var settings = []setting{
 const (
 	fileFlag = "config"
 	fileEnv  = "JEC_CONFIG"
+	keyEnv   = "JEC_SECRET_KEY"
 )
 
 // Loader resolves the configuration of one command from its flags, the
@@ -154,6 +159,9 @@ func (l *Loader) Load(lookupEnv func(string) (string, bool)) (Config, error) {
 	}
 	for _, s := range settings {
 		override(&cfg, s)
+	}
+	if v, ok := env(keyEnv); ok {
+		cfg.SecretKey = v
 	}
 	if err := cfg.normalize(); err != nil {
 		return Config{}, err

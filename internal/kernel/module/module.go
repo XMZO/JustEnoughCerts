@@ -17,6 +17,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 )
 
 // Category groups modules on the Modules page.
@@ -75,4 +76,7 @@ type Registry struct {
 	Events *events.Scope
 	// Jobs takes the module's periodic jobs.
 	Jobs *jobs.Scope
+	// Secrets seals what the module stores but must not keep in the clear,
+	// such as private keys and credentials.
+	Secrets *secrets.Scope
 }

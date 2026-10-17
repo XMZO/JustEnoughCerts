@@ -195,3 +195,16 @@ func TestNormalizedValues(t *testing.T) {
 		t.Errorf("SlogLevel() = %v, %v", level, err)
 	}
 }
+
+func TestSecretKeyFromEnvOnly(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, FileName), "listen: \":7000\"\n")
+	cfg, err := load(t, []string{"--data-dir", dir}, map[string]string{"JEC_SECRET_KEY": "c2VjcmV0"})
+	if err != nil || cfg.SecretKey != "c2VjcmV0" {
+		t.Errorf("SecretKey = %q, %v", cfg.SecretKey, err)
+	}
+	writeFile(t, filepath.Join(dir, FileName), "secret_key: c2VjcmV0\n")
+	if _, err := load(t, []string{"--data-dir", dir}, nil); err == nil {
+		t.Error("the config file set the secret key")
+	}
+}

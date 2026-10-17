@@ -4,12 +4,14 @@ package kernel
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -25,6 +27,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 	"github.com/XMZO/JustEnoughCerts/web"
 )
@@ -74,6 +77,10 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	if err := set.Load(ctx, st.DB()); err != nil {
 		return nil, err
 	}
+	box, err := openSecrets(ctx, st.DB(), cfg, log)
+	if err != nil {
+		return nil, err
+	}
 	enabled := func(id string) bool { return id == owner || set.Enabled(id) }
 	bus := events.New(st.DB(), log, enabled)
 	sched := jobs.New(st.DB(), log, enabled)
@@ -103,11 +110,12 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	for _, m := range set.Modules() {
 		id := m.Manifest().ID
 		r := &module.Registry{
-			API:    a.Module(id, func() bool { return set.Enabled(id) }),
-			DB:     st.DB(),
-			Log:    log.With("module", id),
-			Events: bus.Scope(id),
-			Jobs:   sched.Scope(id),
+			API:     a.Module(id, func() bool { return set.Enabled(id) }),
+			DB:      st.DB(),
+			Log:     log.With("module", id),
+			Events:  bus.Scope(id),
+			Jobs:    sched.Scope(id),
+			Secrets: box.Scope(id),
 		}
 		if err := m.Register(r); err != nil {
 			return nil, fmt.Errorf("module %s: %w", id, err)
@@ -148,6 +156,32 @@ func (a *App) Start() {
 		defer a.running.Done()
 		a.jobs.Run(ctx)
 	}()
+}
+
+// openSecrets loads the master key and makes sure it is the one the
+// database was sealed with, so that a changed key fails at startup rather
+// than when a secret is needed.
+func openSecrets(ctx context.Context, db *sql.DB, cfg config.Config, log *slog.Logger) (*secrets.Box, error) {
+	box, created, err := secrets.Load(cfg.DataDir, cfg.SecretKey)
+	if err != nil {
+		return nil, err
+	}
+	if created {
+		log.Info("created the secret key file: back it up with the database", "path", filepath.Join(cfg.DataDir, secrets.KeyFile))
+	}
+	var check []byte
+	err = db.QueryRowContext(ctx, "SELECT value FROM kernel_meta WHERE name = 'secret_check'").Scan(&check)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		_, err = db.ExecContext(ctx, "INSERT INTO kernel_meta (name, value) VALUES ('secret_check', ?)", box.Check())
+		return box, err
+	case err != nil:
+		return nil, err
+	case !box.Verify(check):
+		return nil, fmt.Errorf("the secret key is not the one this database was sealed with: restore %s, or the JEC_SECRET_KEY used before",
+			filepath.Join(cfg.DataDir, secrets.KeyFile))
+	}
+	return box, nil
 }
 
 // OpenAPI returns the document describing the API, every module included.
