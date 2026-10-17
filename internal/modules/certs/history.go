@@ -110,7 +110,7 @@ type RunBody struct {
 	Domain      string       `json:"domain" doc:"The certificate's primary domain"`
 	Action      string       `json:"action" enum:"issue,renew,deploy" doc:"renew: an issuance because the current version entered its renewal window"`
 	Trigger     string       `json:"trigger" enum:"auto,manual" doc:"manual: someone added the certificate or a target, or asked for it"`
-	State       string       `json:"state" enum:"pending,running,done,failed,canceled"`
+	State       string       `json:"state" enum:"pending,running,waiting,done,failed,canceled" doc:"waiting: an issuance whose source is not done yet"`
 	Attempts    int          `json:"attempts"`
 	Target      int64        `json:"target,omitempty" doc:"The target of a deployment"`
 	Error       *MessageBody `json:"error,omitempty" doc:"Why the last attempt failed"`

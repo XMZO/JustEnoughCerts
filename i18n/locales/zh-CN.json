@@ -201,7 +201,8 @@
       "show_log": "查看日志",
       "show_progress": "查看进度",
       "title": "证书",
-      "validity": "有效期"
+      "validity": "有效期",
+      "waiting": "正在签发新证书，来源还没处理完。"
     },
     "domains": {
       "placeholder": "添加域名，回车确认",
@@ -272,6 +273,7 @@
       "failed_hint": "不再自动重试。解决问题后，点“重试”。",
       "heading": "签发 {domain}",
       "log": "日志",
+      "next_check": "下次查看：",
       "next_try": "下次尝试：",
       "no_log": "还没有日志。",
       "progress": "第 {step} 步，共 {steps} 步：{name}",
@@ -283,12 +285,14 @@
         "failed": "失败",
         "pending": "等待中",
         "retrying": "等待重试",
-        "running": "进行中"
+        "running": "进行中",
+        "waiting": "等待来源"
       },
       "steps": "步骤",
       "title": "签发",
       "via": "来源：{source}",
-      "via_dns": "来源：{source}，用 {dns} 验证域名"
+      "via_dns": "来源：{source}，用 {dns} 验证域名",
+      "waiting": "{source} 还没处理完，JEC 会定时查看"
     },
     "key": {
       "ecdsa": "ECDSA {curve}",
@@ -318,7 +322,8 @@
       "interrupted": "JEC 停止时签发被打断，重新开始",
       "key": "生成新私钥：{kind, select, rsa {RSA {size}} ecdsa {ECDSA {size}} other {{kind}}}",
       "retry": "{minutes, plural, other {# 分钟}}后自动重试",
-      "stored": "证书已保存，有效期还有 {days, plural, other {# 天}}"
+      "stored": "证书已保存，有效期还有 {days, plural, other {# 天}}",
+      "take_over": "接着做上一次签发留下的订单，用它的私钥"
     },
     "module": {
       "description": "记录每张证书和它的各个版本，到期前发出提醒。",

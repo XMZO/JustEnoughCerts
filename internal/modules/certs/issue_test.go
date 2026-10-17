@@ -2,6 +2,7 @@ package certs
 
 import (
 	"context"
+	"crypto"
 	"crypto/x509"
 	"errors"
 	"net/http"
@@ -496,6 +497,153 @@ func TestIssueResumes(t *testing.T) {
 	}
 	if keys := logKeys(f.issuanceDetail(c.Issuance.ID)); keys[0] != i18n.CertsLogInterrupted {
 		t.Errorf("log %v", keys)
+	}
+}
+
+// vendor makes the fake source act like a vendor that takes time: it waits
+// in an attempt for each of states, in order, then issues. It records the
+// key and state of each call.
+func (f *fixture) vendor(waits ...time.Duration) *[]contracts.IssueRequest {
+	calls := &[]contracts.IssueRequest{}
+	f.fake.mu.Lock()
+	defer f.fake.mu.Unlock()
+	f.fake.issue = func(ctx context.Context, req contracts.IssueRequest) ([]*x509.Certificate, error) {
+		*calls = append(*calls, req)
+		n := len(req.State)
+		if n < len(waits) {
+			step := []contracts.Step{contracts.StepOrder, contracts.StepValidate}[min(n, 1)]
+			req.Log(contracts.LogLine{Level: contracts.Info, Step: step, Key: i18n.AcmeLogOrder})
+			return nil, &contracts.Wait{State: append(req.State, 'w'), After: waits[n]}
+		}
+		return f.issueAll(ctx, req)
+	}
+	return calls
+}
+
+// sealed tells whether issuance id holds a key and a source state.
+func (f *fixture) sealed(id int64) (key, state bool) {
+	f.t.Helper()
+	if err := f.db.QueryRowContext(f.t.Context(), "SELECT sealed_key IS NOT NULL, sealed_state IS NOT NULL FROM certs_issuances WHERE id = ?", id).
+		Scan(&key, &state); err != nil {
+		f.t.Fatal(err)
+	}
+	return key, state
+}
+
+func stepStates(d issuanceDetail) string {
+	var out []string
+	for _, st := range d.Steps {
+		out = append(out, st.Step+" "+st.State)
+	}
+	return strings.Join(out, ", ")
+}
+
+func TestIssueWaits(t *testing.T) {
+	f := newFixture(t)
+	calls := f.vendor(5*time.Minute, 0)
+	c := f.issueNew("example.com")
+	f.run()
+
+	c = f.certificate(c.ID)
+	is := c.Issuance
+	if c.State != "issuing" || is.State != "waiting" || is.Attempts != 1 || is.Error != nil || !is.NextAt.Equal(f.now.Add(5*time.Minute)) {
+		t.Fatalf("after the first attempt: %+v %+v", c, is)
+	}
+	if key, state := f.sealed(is.ID); !key || !state {
+		t.Errorf("sealed key %v, state %v", key, state)
+	}
+	if got := stepStates(f.issuanceDetail(is.ID)); got != "key done, order running, challenge pending, validate pending, cleanup pending, download pending" {
+		t.Errorf("steps %s", got)
+	}
+
+	// Not due yet; then due, waiting again for at least waitMin.
+	f.run()
+	f.now = *is.NextAt
+	f.run()
+	is = f.certificate(c.ID).Issuance
+	if len(*calls) != 2 || is.State != "waiting" || is.Attempts != 1 || !is.NextAt.Equal(f.now.Add(waitMin)) {
+		t.Fatalf("after the second call (%d): %+v", len(*calls), is)
+	}
+	if got := stepStates(f.issuanceDetail(is.ID)); got != "key done, order done, challenge pending, validate running, cleanup pending, download pending" {
+		t.Errorf("steps %s", got)
+	}
+
+	f.now = *is.NextAt
+	f.run()
+	c = f.certificate(c.ID)
+	if c.State != "ok" || c.Issuance.State != "done" || c.Issuance.Attempts != 1 || len(*calls) != 3 {
+		t.Fatalf("after the third call: %+v %+v", c, c.Issuance)
+	}
+	first := (*calls)[0]
+	for i, call := range *calls {
+		if !call.Key.Public().(interface{ Equal(crypto.PublicKey) bool }).Equal(first.Key.Public()) {
+			t.Errorf("call %d got another key", i)
+		}
+		if string(call.State) != strings.Repeat("w", i) {
+			t.Errorf("call %d got state %q", i, call.State)
+		}
+	}
+	if key, state := f.sealed(c.Issuance.ID); key || state {
+		t.Errorf("done, but still sealed: key %v, state %v", key, state)
+	}
+	keys := logKeys(f.issuanceDetail(c.Issuance.ID))
+	if slices.Contains(keys, i18n.CertsLogAttempt) || slices.Index(keys, i18n.CertsLogKey) != 0 || keys[len(keys)-1] != i18n.CertsLogDone {
+		t.Errorf("log %v", keys)
+	}
+}
+
+func TestIssueTakesOver(t *testing.T) {
+	f := newFixture(t)
+	f.vendor(time.Hour)
+	c := f.issueNew("example.com")
+	f.run()
+
+	// The source then fails for good, with the order still on its side.
+	f.failWith(retry.Permanent(&contracts.Problem{Key: i18n.AcmeErrorEabRequired}))
+	f.now = *f.certificate(c.ID).Issuance.NextAt
+	f.run()
+	old := f.certificate(c.ID).Issuance
+	if old.State != "failed" {
+		t.Fatalf("issuance %+v", old)
+	}
+	if key, state := f.sealed(old.ID); !key || !state {
+		t.Fatalf("the failed issuance keeps key %v, state %v", key, state)
+	}
+
+	// The next issuance goes on with that order.
+	calls := f.vendor(time.Hour)
+	f.call(f.api.Post("/certificates/"+strconv.FormatInt(c.ID, 10)+"/issue"), http.StatusAccepted, nil)
+	if key, state := f.sealed(old.ID); key || state {
+		t.Errorf("the failed issuance still holds key %v, state %v", key, state)
+	}
+	f.run()
+	c = f.certificate(c.ID)
+	if c.State != "ok" || len(*calls) != 1 || string((*calls)[0].State) != "w" {
+		t.Fatalf("after the takeover: %+v, %d calls", c, len(*calls))
+	}
+	d := f.issuanceDetail(c.Issuance.ID)
+	if keys := logKeys(d); keys[0] != i18n.CertsLogTakeOver || slices.Contains(keys, i18n.CertsLogKey) {
+		t.Errorf("log %v", keys)
+	}
+	if got := stepStates(d); !strings.HasPrefix(got, "key done, ") {
+		t.Errorf("steps %s", got)
+	}
+}
+
+func TestIssueFailureDropsKey(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+	f.failWith(errors.New("timeout"))
+	f.run()
+	if key, state := f.sealed(f.certificate(c.ID).Issuance.ID); !key || state {
+		t.Fatalf("a retry keeps the key: key %v, state %v", key, state)
+	}
+	f.failWith(retry.Permanent(errors.New("refused")))
+	f.now = *f.certificate(c.ID).Issuance.NextAt
+	f.run()
+	is := f.certificate(c.ID).Issuance
+	if key, _ := f.sealed(is.ID); is.State != "failed" || key {
+		t.Errorf("failed with no order: %+v, key %v", is, key)
 	}
 }
 

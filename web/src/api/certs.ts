@@ -56,7 +56,11 @@ export function useRuns(days: MaybeRefOrGetter<number>) {
   return useQuery({
     queryKey: computed(() => [...all, 'runs', toValue(days)] as const),
     queryFn: () => unwrap(api.GET('/certs/runs', { params: { query: { days: toValue(days) } } })),
-    refetchInterval: (q) => (q.state.data?.runs.some((r) => r.state === 'running' || (r.state === 'pending' && !r.error)) ? 3000 : false),
+    refetchInterval: (q) => {
+      const runs = q.state.data?.runs ?? []
+      if (runs.some((r) => r.state === 'running' || (r.state === 'pending' && !r.error))) return 3000
+      return runs.some((r) => r.state === 'waiting') ? 30_000 : false
+    },
   })
 }
 
@@ -74,11 +78,11 @@ export function useIssuance(id: MaybeRefOrGetter<number>) {
       }
       return detail
     },
-    // Quick while an attempt runs or is about to; slow while a retry waits.
+    // Quick while an attempt runs or is about to; slow while a retry or the source waits.
     refetchInterval: (query) => {
       const is = query.state.data?.issuance
       if (is?.state === 'running' || (is?.state === 'pending' && !is.error)) return 2000
-      return is?.state === 'pending' ? 30_000 : false
+      return is?.state === 'pending' || is?.state === 'waiting' ? 30_000 : false
     },
   })
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Circle, CircleCheck, CircleX, LoaderCircle, OctagonX, RotateCw, TriangleAlert } from '@lucide/vue'
+import { Circle, CircleCheck, CircleX, Hourglass, LoaderCircle, OctagonX, RotateCw, TriangleAlert } from '@lucide/vue'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -36,13 +36,13 @@ const steps = computed(() => detail.data.value?.steps ?? [])
 const lines = computed(() => detail.data.value?.log ?? [])
 const life = computed(() => (cert.value ? certLife(cert.value) : null))
 
-const running = computed(() => is.value?.state === 'running' || (is.value?.state === 'pending' && !is.value.error))
+const running = computed(() => is.value?.state === 'running' || is.value?.state === 'waiting' || (is.value?.state === 'pending' && !is.value.error))
 const retrying = computed(() => is.value?.state === 'pending' && !!is.value.error)
 
+const source = computed(() => sources.data.value?.find((p) => p.id === cert.value?.sourceProvider)?.name ?? '')
 const via = computed(() => {
-  const source = sources.data.value?.find((p) => p.id === cert.value?.sourceProvider)?.name ?? ''
   const dns = solvers.data.value?.find((p) => p.id === cert.value?.solverProvider)?.name
-  return dns ? t('certs.issuance.via_dns', { source, dns }) : t('certs.issuance.via', { source })
+  return dns ? t('certs.issuance.via_dns', { source: source.value, dns }) : t('certs.issuance.via', { source: source.value })
 })
 
 const params = (p?: Record<string, unknown>) => (p ?? {}) as Params
@@ -100,6 +100,15 @@ async function retry() {
           </span>
         </div>
         <LifeBar v-if="life" :life="life" class="w-40 flex-none" />
+      </section>
+      <section v-else-if="is.state === 'waiting'" role="status" class="flex gap-3 rounded-lg border border-line bg-info-soft p-4">
+        <Hourglass class="size-6 flex-none text-info-ink" aria-hidden="true" />
+        <div class="flex min-w-0 flex-col gap-0.5">
+          <strong class="text-heading text-info-ink [overflow-wrap:anywhere]">{{ t('certs.issuance.waiting', { source }) }}</strong>
+          <span v-if="is.nextAt" class="text-small text-ink-muted">
+            {{ t('certs.issuance.next_check') }} <time :datetime="is.nextAt">{{ intl.dateTime(is.nextAt) }}</time>
+          </span>
+        </div>
       </section>
       <section v-else-if="retrying" role="status" class="flex gap-3 rounded-lg border border-line bg-warn-soft p-4">
         <TriangleAlert class="size-6 flex-none text-warn-ink" aria-hidden="true" />

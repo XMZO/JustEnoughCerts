@@ -201,7 +201,8 @@
       "show_log": "See the log",
       "show_progress": "See the progress",
       "title": "Certificate",
-      "validity": "Validity"
+      "validity": "Validity",
+      "waiting": "A new certificate is being issued; the source is not done yet."
     },
     "domains": {
       "placeholder": "Add a domain, then press Enter",
@@ -272,6 +273,7 @@
       "failed_hint": "No more automatic attempts. Once the cause is fixed, choose Try again.",
       "heading": "Issuing {domain}",
       "log": "Log",
+      "next_check": "Next check:",
       "next_try": "Next attempt:",
       "no_log": "No log yet.",
       "progress": "Step {step} of {steps}: {name}",
@@ -283,12 +285,14 @@
         "failed": "Failed",
         "pending": "Waiting",
         "retrying": "Retrying later",
-        "running": "Running"
+        "running": "Running",
+        "waiting": "Waiting on the source"
       },
       "steps": "Steps",
       "title": "Issuance",
       "via": "From {source}",
-      "via_dns": "From {source}, validated through {dns}"
+      "via_dns": "From {source}, validated through {dns}",
+      "waiting": "{source} is not done yet; JEC checks back regularly"
     },
     "key": {
       "ecdsa": "ECDSA {curve}",
@@ -318,7 +322,8 @@
       "interrupted": "JEC stopped during the issuance; starting over",
       "key": "New private key: {kind, select, rsa {RSA {size}} ecdsa {ECDSA {size}} other {{kind}}}",
       "retry": "Trying again in {minutes, plural, one {# minute} other {# minutes}}",
-      "stored": "Certificate saved, valid for {days, plural, one {# day} other {# days}}"
+      "stored": "Certificate saved, valid for {days, plural, one {# day} other {# days}}",
+      "take_over": "Picking up the order the last issuance left, with its private key"
     },
     "module": {
       "description": "Keeps track of each certificate and its versions, and warns before one expires.",

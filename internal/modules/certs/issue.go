@@ -2,6 +2,7 @@ package certs
 
 import (
 	"context"
+	"crypto"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -23,6 +24,7 @@ import (
 const (
 	issuancePending = "pending" // the next attempt starts at NextAt
 	issuanceRunning = "running"
+	issuanceWaiting = "waiting" // on its source, asked again at NextAt in the same attempt
 	issuanceDone    = "done"
 	issuanceFailed  = "failed" // no attempt follows unless a person starts one
 )
@@ -46,7 +48,22 @@ const (
 	// issuance of it failed for good.
 	failedPause  = 24 * time.Hour
 	maxDetailLen = 4000 // bytes of raw text kept with a log line
+	// waitMin and waitMax bound how long an issuance waits on its source
+	// before asking again.
+	waitMin = time.Minute
+	waitMax = 24 * time.Hour
 )
+
+// keyContext and stateContext are what an issuance's key and its source's
+// state are sealed for. They name the certificate, not the issuance, so
+// that a new issuance can take them over (startIssuance).
+func keyContext(certificateID int64) string {
+	return "issuance-key:" + strconv.FormatInt(certificateID, 10)
+}
+
+func stateContext(certificateID int64) string {
+	return "issuance-state:" + strconv.FormatInt(certificateID, 10)
+}
 
 // errNoSource: the certificate gets new versions by upload only.
 var errNoSource = errors.New("the certificate has no source to issue it")
@@ -108,7 +125,7 @@ func (r *issuanceRow) issuance() (*Issuance, error) {
 
 // open is the issuance of a certificate that is under way, if any.
 func (s *service) openIssuance(ctx context.Context, q querier, certificateID int64) (*Issuance, error) {
-	list, err := s.queryIssuances(ctx, q, "WHERE i.certificate_id = ? AND i.state IN ('pending', 'running')", certificateID)
+	list, err := s.queryIssuances(ctx, q, "WHERE i.certificate_id = ? AND i.state IN ('pending', 'running', 'waiting')", certificateID)
 	if err != nil || len(list) == 0 {
 		return nil, err
 	}
@@ -156,7 +173,9 @@ func (s *service) queryIssuances(ctx context.Context, q querier, where string, a
 
 // startIssuance opens an issuance of certificate id, due now, in tx. If
 // one is under way, it returns that one, made due now if it was waiting to
-// retry.
+// retry or on its source. A new issuance takes over the key and source
+// state of the last one if that failed while its source still had an
+// order: a vendor may yet issue the certificate for that key.
 func (s *service) startIssuance(ctx context.Context, tx *sql.Tx, certificateID int64, reason string) (int64, error) {
 	now := s.now().UnixMilli()
 	open, err := s.openIssuance(ctx, tx, certificateID)
@@ -164,7 +183,7 @@ func (s *service) startIssuance(ctx context.Context, tx *sql.Tx, certificateID i
 		return 0, err
 	}
 	if open != nil {
-		if open.State == issuancePending {
+		if open.State == issuancePending || open.State == issuanceWaiting {
 			_, err = tx.ExecContext(ctx, "UPDATE certs_issuances SET next_at = ? WHERE id = ?", now, open.ID)
 		}
 		return open.ID, err
@@ -174,6 +193,27 @@ func (s *service) startIssuance(ctx context.Context, tx *sql.Tx, certificateID i
 		`INSERT INTO certs_issuances (certificate_id, reason, state, attempts, next_at, error_key, error_params, created_at)
 		 VALUES (?, ?, 'pending', 0, ?, '', '', ?) RETURNING id`,
 		certificateID, reason, now, now).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+	var took bool
+	err = tx.QueryRowContext(ctx,
+		`UPDATE certs_issuances SET (sealed_key, sealed_state) = (SELECT sealed_key, sealed_state FROM certs_issuances
+		   WHERE certificate_id = ? AND state = 'failed' AND sealed_state IS NOT NULL ORDER BY id DESC LIMIT 1)
+		 WHERE id = ? RETURNING sealed_state IS NOT NULL`, certificateID, id).Scan(&took)
+	if err != nil {
+		return 0, err
+	}
+	if !took {
+		return id, nil
+	}
+	if _, err = tx.ExecContext(ctx, "UPDATE certs_issuances SET sealed_key = NULL, sealed_state = NULL WHERE certificate_id = ? AND id < ?",
+		certificateID, id); err != nil {
+		return 0, err
+	}
+	// The key step is done: the first attempt logs no key of its own.
+	_, err = tx.ExecContext(ctx, issuanceLogTable.insert, id, id, now, 1, string(contracts.Info), string(contracts.StepKey),
+		string(i18n.CertsLogTakeOver), "", "")
 	return id, err
 }
 
@@ -207,10 +247,13 @@ func (s *service) issue(ctx context.Context, id int64) (int64, error) {
 	return issuance, nil
 }
 
-// claimed is an issuance an attempt was started for.
+// claimed is an issuance an attempt was started for, or continued for
+// after a wait on its source.
 type claimed struct {
 	id, certificateID int64
 	attempt           int
+	started           time.Time // the attempt
+	resumed           bool      // after a wait
 }
 
 // runIssuances is the job certs.issue: it runs the due issuances (see
@@ -247,19 +290,42 @@ func (s *service) resume(ctx context.Context) error {
 	return nil
 }
 
-// claim marks the issuance due the longest as running, counting the
-// attempt, and returns it; nil if none is due.
+// claim marks the issuance due the longest as running and returns it; nil
+// if none is due. A pending issuance starts a new attempt, which counts; a
+// waiting one goes on with its attempt.
 func (s *service) claim(ctx context.Context) (*claimed, error) {
-	now := s.now().UnixMilli()
+	now := s.now()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
 	c := &claimed{}
-	err := s.db.QueryRowContext(ctx,
-		`UPDATE certs_issuances SET state = 'running', attempts = attempts + 1, started_at = ?
-		 WHERE id = (SELECT id FROM certs_issuances WHERE state = 'pending' AND next_at <= ? ORDER BY next_at, id LIMIT 1)
-		 RETURNING id, certificate_id, attempts`, now, now).Scan(&c.id, &c.certificateID, &c.attempt)
+	var state string
+	var started sql.NullInt64
+	err = tx.QueryRowContext(ctx,
+		`SELECT id, certificate_id, state, attempts, started_at FROM certs_issuances
+		 WHERE state IN ('pending', 'waiting') AND next_at <= ? ORDER BY next_at, id LIMIT 1`, now.UnixMilli()).
+		Scan(&c.id, &c.certificateID, &state, &c.attempt, &started)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
-	return c, err
+	if err != nil {
+		return nil, err
+	}
+	if state == issuanceWaiting && started.Valid {
+		c.resumed, c.started = true, time.UnixMilli(started.Int64)
+		_, err = tx.ExecContext(ctx, "UPDATE certs_issuances SET state = 'running' WHERE id = ?", c.id)
+	} else {
+		c.attempt++
+		c.started = now
+		_, err = tx.ExecContext(ctx, "UPDATE certs_issuances SET state = 'running', attempts = ?, started_at = ? WHERE id = ?",
+			c.attempt, now.UnixMilli(), c.id)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return c, tx.Commit()
 }
 
 // attempt tries once to issue the certificate of c, within attemptCtx. The
@@ -267,21 +333,27 @@ func (s *service) claim(ctx context.Context) (*claimed, error) {
 // to start over after the restart.
 func (s *service) attempt(ctx, attemptCtx context.Context, c *claimed) {
 	log := s.taskLogger(issuanceLogTable, c.id, c.attempt)
-	if c.attempt > 1 {
+	if c.attempt > 1 && !c.resumed {
 		log.add(contracts.LogLine{Level: contracts.Info, Key: i18n.CertsLogAttempt, Params: map[string]any{"attempt": c.attempt}})
 	}
-	start := s.now()
-	b, err := s.obtain(attemptCtx, c.certificateID, log.add)
-	if err == nil {
-		// Store what the source gave, even if JEC is stopping now.
-		storeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+	b, err := s.obtain(attemptCtx, c, log.add)
+	// Store what the source gave, even if JEC is stopping now.
+	storeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+	defer cancel()
+	var wait *contracts.Wait
+	switch {
+	case err == nil:
 		err = s.complete(storeCtx, c, b, log)
-		cancel()
 		if err == nil {
-			seconds := int(s.now().Sub(start).Round(time.Second) / time.Second)
+			seconds := int(s.now().Sub(c.started).Round(time.Second) / time.Second)
 			log.add(contracts.LogLine{Level: contracts.OK, Key: i18n.CertsLogDone, Params: map[string]any{"seconds": seconds}})
 			return
 		}
+	case errors.As(err, &wait):
+		if err := s.wait(storeCtx, c, wait); err != nil {
+			s.log.Error("record waiting issuance", "issuance", c.id, "err", err)
+		}
+		return
 	}
 	if ctx.Err() != nil || errors.Is(err, errNotFound) {
 		return // stopping, or the certificate was deleted
@@ -289,10 +361,10 @@ func (s *service) attempt(ctx, attemptCtx context.Context, c *claimed) {
 	s.fail(context.WithoutCancel(ctx), c, err, log)
 }
 
-// obtain gets a new certificate for certificate id from its source, with a
-// new private key.
-func (s *service) obtain(ctx context.Context, id int64, log func(contracts.LogLine)) (*cryptox.Bundle, error) {
-	c, err := s.load(ctx, s.db, id)
+// obtain gets a new certificate for the certificate of c from its source,
+// with the issuance's private key, which its first attempt makes.
+func (s *service) obtain(ctx context.Context, cl *claimed, log func(contracts.LogLine)) (*cryptox.Bundle, error) {
+	c, err := s.load(ctx, s.db, cl.certificateID)
 	if err != nil {
 		return nil, err
 	}
@@ -312,13 +384,11 @@ func (s *service) obtain(ctx context.Context, id int64, log func(contracts.LogLi
 		}
 		defer closeProvider(solver, s)
 	}
-	kind, size, _ := strings.Cut(c.KeyType, "-")
-	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepKey, Key: i18n.CertsLogKey, Params: map[string]any{"kind": kind, "size": keySize(size)}})
-	key, err := cryptox.GenerateKey(c.KeyType)
+	key, state, err := s.kept(ctx, cl, c.KeyType, log)
 	if err != nil {
-		return nil, retry.Permanent(err)
+		return nil, err
 	}
-	chain, err := source.Issue(ctx, contracts.IssueRequest{Domains: c.Domains, Key: key, Solver: solver, Log: log})
+	chain, err := source.Issue(ctx, contracts.IssueRequest{Domains: c.Domains, Key: key, Solver: solver, State: state, Log: log})
 	if err != nil {
 		return nil, err
 	}
@@ -330,6 +400,67 @@ func (s *service) obtain(ctx context.Context, id int64, log func(contracts.LogLi
 		return nil, &contracts.Problem{Key: i18n.CertsErrorNamesMissing, Params: map[string]any{"domains": strings.Join(missing, ", ")}}
 	}
 	return b, nil
+}
+
+// kept returns the private key of the issuance of c, making it of
+// keyType and storing it sealed on the first attempt, and what its source
+// kept from the last attempt, if anything.
+func (s *service) kept(ctx context.Context, c *claimed, keyType string, log func(contracts.LogLine)) (crypto.Signer, []byte, error) {
+	var sealedKey, sealedState []byte
+	err := s.db.QueryRowContext(ctx, "SELECT sealed_key, sealed_state FROM certs_issuances WHERE id = ?", c.id).Scan(&sealedKey, &sealedState)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil, errNotFound
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	var state []byte
+	if sealedState != nil {
+		if state, err = s.secrets.Open(sealedState, stateContext(c.certificateID)); err != nil {
+			return nil, nil, retry.Permanent(err)
+		}
+	}
+	if sealedKey != nil {
+		pemKey, err := s.secrets.Open(sealedKey, keyContext(c.certificateID))
+		if err != nil {
+			return nil, nil, retry.Permanent(err)
+		}
+		key, err := cryptox.ParseKey(pemKey)
+		return key, state, err
+	}
+	kind, size, _ := strings.Cut(keyType, "-")
+	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepKey, Key: i18n.CertsLogKey, Params: map[string]any{"kind": kind, "size": keySize(size)}})
+	key, err := cryptox.GenerateKey(keyType)
+	if err != nil {
+		return nil, nil, retry.Permanent(err)
+	}
+	pemKey, err := cryptox.EncodeKey(key)
+	if err != nil {
+		return nil, nil, err
+	}
+	res, err := s.db.ExecContext(ctx, "UPDATE certs_issuances SET sealed_key = ? WHERE id = ? AND state = 'running'",
+		s.secrets.Seal(pemKey, keyContext(c.certificateID)), c.id)
+	if err != nil {
+		return nil, nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, nil, errNotFound // deleted meanwhile
+	}
+	return key, state, nil
+}
+
+// wait records that the source of the issuance of c is not done: the
+// issuance waits, keeping what the source asked to, and asks again later.
+func (s *service) wait(ctx context.Context, c *claimed, w *contracts.Wait) error {
+	var state any // NULL when the source keeps nothing
+	if w.State != nil {
+		state = s.secrets.Seal(w.State, stateContext(c.certificateID))
+	}
+	next := s.now().Add(min(max(w.After, waitMin), waitMax))
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE certs_issuances SET state = 'waiting', next_at = ?, sealed_state = ?, error_key = '', error_params = ''
+		 WHERE id = ? AND state = 'running'`, next.UnixMilli(), state, c.id)
+	return err
 }
 
 // keySize writes the size part of a key type as the UI shows it: 2048, or
@@ -386,13 +517,18 @@ func (s *service) complete(ctx context.Context, c *claimed, b *cryptox.Bundle, l
 		return err
 	}
 	res, err := tx.ExecContext(ctx,
-		`UPDATE certs_issuances SET state = 'done', version_id = ?, finished_at = ?, error_key = '', error_params = ''
-		 WHERE id = ? AND state = 'running'`, version, now, c.id)
+		`UPDATE certs_issuances SET state = 'done', version_id = ?, finished_at = ?, error_key = '', error_params = '',
+		 sealed_key = NULL, sealed_state = NULL WHERE id = ? AND state = 'running'`, version, now, c.id)
 	if err != nil {
 		return err
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
 		return errNotFound // deleted meanwhile
+	}
+	// The new version settles any order an earlier issuance left behind.
+	if _, err := tx.ExecContext(ctx, "UPDATE certs_issuances SET sealed_key = NULL, sealed_state = NULL WHERE certificate_id = ? AND id < ?",
+		c.certificateID, c.id); err != nil {
+		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err
@@ -442,8 +578,10 @@ func (s *service) recordFailure(ctx context.Context, c *claimed, msg contracts.M
 	defer func() { _ = tx.Rollback() }()
 	var res sql.Result
 	if next.IsZero() {
+		// The key stays only with an order the source may still fill.
 		res, err = tx.ExecContext(ctx,
-			`UPDATE certs_issuances SET state = 'failed', finished_at = ?, error_key = ?, error_params = ?
+			`UPDATE certs_issuances SET state = 'failed', finished_at = ?, error_key = ?, error_params = ?,
+			 sealed_key = CASE WHEN sealed_state IS NULL THEN NULL ELSE sealed_key END
 			 WHERE id = ? AND state = 'running'`, now.UnixMilli(), string(msg.Key), params, c.id)
 	} else {
 		res, err = tx.ExecContext(ctx,
@@ -517,7 +655,7 @@ func (s *service) renew(ctx context.Context) error {
 		}
 		if is := c.Issuance; is != nil {
 			switch {
-			case is.State == issuancePending, is.State == issuanceRunning:
+			case is.State == issuancePending, is.State == issuanceRunning, is.State == issuanceWaiting:
 				continue
 			case is.State == issuanceFailed && now.Sub(is.FinishedAt) < failedPause:
 				continue
@@ -558,8 +696,10 @@ type StepState struct {
 }
 
 // steps tells how far each step got in the last attempt of is, given its
-// log. A certificate without a solver skips the steps of the domain
-// validation; a done issuance lists the steps it went through.
+// log. A step that an earlier attempt went through counts as done once the
+// last attempt goes past it, as when that attempt went on with the order of
+// the one before. A certificate without a solver skips the steps of the
+// domain validation; a done issuance lists the steps it went through.
 func steps(is *Issuance, lines []LogEntry, withSolver bool) []StepState {
 	var out []StepState
 	index := map[contracts.Step]int{}
@@ -571,17 +711,27 @@ func steps(is *Issuance, lines []LogEntry, withSolver bool) []StepState {
 		out = append(out, StepState{Step: st, State: issuancePending})
 	}
 	var last contracts.Step
+	before := map[contracts.Step]time.Time{} // the last line of each step in earlier attempts
 	for _, l := range lines {
 		i, ok := index[l.Step]
-		if l.Attempt != is.Attempts || !ok {
+		switch {
+		case !ok:
+			continue
+		case l.Attempt != is.Attempts:
+			before[l.Step] = l.At
 			continue
 		}
 		out[i].State, out[i].At = issuanceDone, l.At
 		last = l.Step
 	}
 	if i, ok := index[last]; ok {
+		for j := range i {
+			if at, ok := before[out[j].Step]; ok && out[j].State == issuancePending {
+				out[j].State, out[j].At = issuanceDone, at
+			}
+		}
 		switch {
-		case is.State == issuanceRunning:
+		case is.State == issuanceRunning, is.State == issuanceWaiting:
 			out[i].State = issuanceRunning
 		case is.State == issuanceFailed, is.State == issuancePending && is.Error.Key != "":
 			out[i].State = issuanceFailed

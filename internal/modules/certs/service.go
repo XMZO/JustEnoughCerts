@@ -148,7 +148,7 @@ type Version struct {
 func (c *Certificate) state(now time.Time) string {
 	if is := c.Issuance; is != nil {
 		switch {
-		case is.State == issuanceRunning, is.State == issuancePending && is.Error.Key == "":
+		case is.State == issuanceRunning, is.State == issuanceWaiting, is.State == issuancePending && is.Error.Key == "":
 			return stateIssuing
 		case is.State == issuancePending, is.State == issuanceFailed && (c.Current == nil || is.CreatedAt.After(c.Current.CreatedAt)):
 			return stateFailed

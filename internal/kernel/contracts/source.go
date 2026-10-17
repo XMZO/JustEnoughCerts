@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
+	"time"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 )
@@ -53,10 +54,13 @@ type IssueRequest struct {
 	// Domains to cover, the primary first.
 	Domains []string
 	// Key is the new certificate's private key, which the caller made and
-	// keeps.
+	// keeps. Every attempt of an issuance gets the same key.
 	Key crypto.Signer
 	// Solver proves control of the domains, for sources that need it.
 	Solver Solver
+	// State is what the source kept when the last attempt of this issuance
+	// ended in a Wait; nil before that.
+	State []byte
 	// Log receives the steps of the issuance.
 	Log func(LogLine)
 }
@@ -64,10 +68,23 @@ type IssueRequest struct {
 // Source gets certificates, such as an ACME account. The providers of kind
 // "source" make Sources.
 type Source interface {
-	// Issue returns the certificate for req.Key and its chain, leaf first.
+	// Issue returns the certificate for req.Key and its chain, leaf first,
+	// or a *Wait when the certificate is not ready yet.
 	Issue(ctx context.Context, req IssueRequest) ([]*x509.Certificate, error)
 	Close() error
 }
+
+// Wait is the error of a Source whose certificate takes longer than an
+// attempt, as when a CA reviews an order, or a vendor has yet to make the
+// next certificate of a subscription. The issuance keeps its key and the
+// sealed State, and asks the source again after After, as many times as it
+// takes: waiting is not failing, so the source decides when to give up.
+type Wait struct {
+	State []byte
+	After time.Duration
+}
+
+func (w *Wait) Error() string { return "the certificate is not ready yet" }
 
 // Problem is an error a provider can explain: a message key with its
 // arguments, which the UI shows in the viewer's language, and the error

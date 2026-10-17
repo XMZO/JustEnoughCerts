@@ -27,9 +27,9 @@ type IssuanceBody struct {
 	ID            int64        `json:"id"`
 	CertificateID int64        `json:"certificateId"`
 	Reason        string       `json:"reason" enum:"first,renewal,manual" doc:"first: the certificate was added, or has no version yet; renewal; manual: someone asked"`
-	State         string       `json:"state" enum:"pending,running,done,failed" doc:"pending: the next attempt starts at nextAt, a retry when error is set; failed: no attempt follows unless someone starts one"`
-	Attempts      int          `json:"attempts" doc:"Attempts started so far"`
-	NextAt        *time.Time   `json:"nextAt,omitempty" doc:"When the next attempt starts, for a pending issuance"`
+	State         string       `json:"state" enum:"pending,running,waiting,done,failed" doc:"pending: the next attempt starts at nextAt, a retry when error is set; waiting: the source is not done, as when a CA reviews the order, and is asked again at nextAt; failed: no attempt follows unless someone starts one"`
+	Attempts      int          `json:"attempts" doc:"Attempts started so far; waiting for the source goes on with an attempt"`
+	NextAt        *time.Time   `json:"nextAt,omitempty" doc:"When the next attempt starts, for a pending issuance, or when the source is asked again, for a waiting one"`
 	VersionID     int64        `json:"versionId,omitempty" doc:"The version issued"`
 	Error         *MessageBody `json:"error,omitempty" doc:"Why the last attempt failed"`
 	CreatedAt     time.Time    `json:"createdAt"`
@@ -75,7 +75,7 @@ func issuanceBody(is *Issuance) IssuanceBody {
 		ID: is.ID, CertificateID: is.CertificateID, Reason: is.Reason, State: is.State, Attempts: is.Attempts,
 		VersionID: is.VersionID, CreatedAt: is.CreatedAt,
 	}
-	if is.State == issuancePending {
+	if is.State == issuancePending || is.State == issuanceWaiting {
 		b.NextAt = timePtr(is.NextAt)
 	}
 	if !is.StartedAt.IsZero() {

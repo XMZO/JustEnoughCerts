@@ -583,7 +583,7 @@ export interface components {
         IssuanceBody: {
             /**
              * Format: int64
-             * @description Attempts started so far
+             * @description Attempts started so far; waiting for the source goes on with an attempt
              */
             attempts: number;
             /** Format: int64 */
@@ -598,7 +598,7 @@ export interface components {
             id: number;
             /**
              * Format: date-time
-             * @description When the next attempt starts, for a pending issuance
+             * @description When the next attempt starts, for a pending issuance, or when the source is asked again, for a waiting one
              */
             nextAt?: string;
             /**
@@ -612,10 +612,10 @@ export interface components {
              */
             startedAt?: string;
             /**
-             * @description pending: the next attempt starts at nextAt, a retry when error is set; failed: no attempt follows unless someone starts one
+             * @description pending: the next attempt starts at nextAt, a retry when error is set; waiting: the source is not done, as when a CA reviews the order, and is asked again at nextAt; failed: no attempt follows unless someone starts one
              * @enum {string}
              */
-            state: "pending" | "running" | "done" | "failed";
+            state: "pending" | "running" | "waiting" | "done" | "failed";
             /**
              * Format: int64
              * @description The version issued
@@ -767,8 +767,11 @@ export interface components {
              * @description Of the last attempt
              */
             startedAt?: string;
-            /** @enum {string} */
-            state: "pending" | "running" | "done" | "failed" | "canceled";
+            /**
+             * @description waiting: an issuance whose source is not done yet
+             * @enum {string}
+             */
+            state: "pending" | "running" | "waiting" | "done" | "failed" | "canceled";
             /**
              * Format: int64
              * @description The target of a deployment

@@ -34,6 +34,7 @@ export function issuanceState(is: Issuance): MessageKey {
   if (is.state === 'pending') return is.error ? 'certs.issuance.state.retrying' : 'certs.issuance.state.pending'
   return {
     running: 'certs.issuance.state.running',
+    waiting: 'certs.issuance.state.waiting',
     done: 'certs.issuance.state.done',
     failed: 'certs.issuance.state.failed',
   }[is.state] as MessageKey

@@ -513,7 +513,7 @@
         "additionalProperties": false,
         "properties": {
           "attempts": {
-            "description": "Attempts started so far",
+            "description": "Attempts started so far; waiting for the source goes on with an attempt",
             "format": "int64",
             "type": "integer"
           },
@@ -538,7 +538,7 @@
             "type": "integer"
           },
           "nextAt": {
-            "description": "When the next attempt starts, for a pending issuance",
+            "description": "When the next attempt starts, for a pending issuance, or when the source is asked again, for a waiting one",
             "format": "date-time",
             "type": "string"
           },
@@ -557,10 +557,11 @@
             "type": "string"
           },
           "state": {
-            "description": "pending: the next attempt starts at nextAt, a retry when error is set; failed: no attempt follows unless someone starts one",
+            "description": "pending: the next attempt starts at nextAt, a retry when error is set; waiting: the source is not done, as when a CA reviews the order, and is asked again at nextAt; failed: no attempt follows unless someone starts one",
             "enum": [
               "pending",
               "running",
+              "waiting",
               "done",
               "failed"
             ],
@@ -979,9 +980,11 @@
             "type": "string"
           },
           "state": {
+            "description": "waiting: an issuance whose source is not done yet",
             "enum": [
               "pending",
               "running",
+              "waiting",
               "done",
               "failed",
               "canceled"

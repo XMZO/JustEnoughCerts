@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleX, Download, LoaderCircle, Pencil, Plus, Send, ShieldCheck, Trash2, Upload } from '@lucide/vue'
+import { CircleX, Download, Hourglass, LoaderCircle, Pencil, Plus, Send, ShieldCheck, Trash2, Upload } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
@@ -268,8 +268,14 @@ async function confirmDelete() {
         role="status"
         class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line bg-info-soft px-4 py-3"
       >
-        <LoaderCircle class="size-5 flex-none animate-spin text-info-ink" aria-hidden="true" />
-        <span class="min-w-0 flex-1 font-semibold text-info-ink">{{ t('certs.detail.issuing') }}</span>
+        <Hourglass v-if="latest.state === 'waiting'" class="size-5 flex-none text-info-ink" aria-hidden="true" />
+        <LoaderCircle v-else class="size-5 flex-none animate-spin text-info-ink" aria-hidden="true" />
+        <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span class="font-semibold text-info-ink">{{ t(latest.state === 'waiting' ? 'certs.detail.waiting' : 'certs.detail.issuing') }}</span>
+          <span v-if="latest.state === 'waiting' && latest.nextAt" class="text-small text-ink-muted">
+            {{ t('certs.issuance.next_check') }} <time :datetime="latest.nextAt">{{ intl.dateTime(latest.nextAt) }}</time>
+          </span>
+        </span>
         <RouterLink :to="latestLink" class="font-semibold">{{ t('certs.detail.show_progress') }}</RouterLink>
       </section>
       <section v-else-if="latest && cert.state === 'failed'" role="status" class="flex flex-wrap gap-x-3 gap-y-2 rounded-lg border border-line bg-danger-soft px-4 py-3">
@@ -382,7 +388,7 @@ async function confirmDelete() {
                 >
                   <time :datetime="is.createdAt" class="flex-none text-ink-muted tabular-nums">{{ intl.dateTime(is.createdAt) }}</time>
                   <span class="min-w-[8rem] flex-1 [overflow-wrap:anywhere]">{{ t(reasonText[is.reason]) }}</span>
-                  <span :class="['flex-none font-semibold', is.state === 'done' ? 'text-ok-ink' : is.state === 'running' || (is.state === 'pending' && !is.error) ? 'text-info-ink' : 'text-danger-ink']">
+                  <span :class="['flex-none font-semibold', is.state === 'done' ? 'text-ok-ink' : is.state === 'running' || is.state === 'waiting' || (is.state === 'pending' && !is.error) ? 'text-info-ink' : 'text-danger-ink']">
                     {{ t(issuanceState(is)) }}
                   </span>
                 </RouterLink>
