@@ -1,9 +1,10 @@
 // Package module defines the modules JEC is built from and tracks which of
 // them are switched on.
 //
-// A module is compiled in by one registration file under cmd/jec. It can be
-// switched off at run time: its API then answers 404 and nothing of it runs,
-// but its data stays for when it is switched back on.
+// A module is compiled in by its registration file in internal/modules/all.
+// It can be switched off at run time: its API then answers 404, its event
+// deliveries wait and its jobs do not run, but its data stays for when it
+// is switched back on.
 package module
 
 import (
@@ -14,6 +15,8 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
 )
 
 // Category groups modules on the Modules page.
@@ -53,9 +56,9 @@ type Module interface {
 	Manifest() Manifest
 	// Migrations returns the module's *.sql migrations, or nil.
 	Migrations() fs.FS
-	// Register adds the module's API operations and other parts. It runs
-	// once at startup whether the module is on or not; the kernel keeps what
-	// it registers inactive while the module is off.
+	// Register adds the module's API operations, event subscriptions and
+	// jobs. It runs once at startup whether the module is on or not; the
+	// kernel keeps what it registers inactive while the module is off.
 	Register(r *Registry) error
 }
 
@@ -67,4 +70,9 @@ type Registry struct {
 	DB *sql.DB
 	// Log is the module's logger.
 	Log *slog.Logger
+	// Events publishes the module's events and subscribes it to events of
+	// other modules. Subscribe in Register; publish once JEC runs.
+	Events *events.Scope
+	// Jobs takes the module's periodic jobs.
+	Jobs *jobs.Scope
 }

@@ -1,5 +1,5 @@
-// Package kernel assembles the server: the store, the modules and the HTTP
-// API in front of them.
+// Package kernel assembles the server: the store, the modules, the HTTP API
+// in front of them, and the event bus and scheduler behind them.
 package kernel
 
 import (
@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
@@ -19,11 +21,17 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/buildinfo"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/config"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 	"github.com/XMZO/JustEnoughCerts/web"
 )
+
+// owner names the kernel where it stands beside the modules: in migration
+// tables, events and jobs.
+const owner = "kernel"
 
 // App is the assembled server.
 type App struct {
@@ -31,6 +39,11 @@ type App struct {
 	modules *module.Set
 	api     *api.API
 	handler http.Handler
+	bus     *events.Bus
+	jobs    *jobs.Scheduler
+
+	stop    context.CancelFunc
+	running sync.WaitGroup
 }
 
 // New opens and migrates the store, loads which modules are on and lets
@@ -50,7 +63,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		}
 	}()
 
-	if err := migrate(ctx, st, log, "kernel", migrations.FS); err != nil {
+	if err := migrate(ctx, st, log, owner, migrations.FS); err != nil {
 		return nil, err
 	}
 	for _, m := range set.Modules() {
@@ -61,6 +74,9 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	if err := set.Load(ctx, st.DB()); err != nil {
 		return nil, err
 	}
+	enabled := func(id string) bool { return id == owner || set.Enabled(id) }
+	bus := events.New(st.DB(), log, enabled)
+	sched := jobs.New(st.DB(), log, enabled)
 
 	cookiePath := cfg.BasePath()
 	if cookiePath == "" {
@@ -87,14 +103,20 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	for _, m := range set.Modules() {
 		id := m.Manifest().ID
 		r := &module.Registry{
-			API: a.Module(id, func() bool { return set.Enabled(id) }),
-			DB:  st.DB(),
-			Log: log.With("module", id),
+			API:    a.Module(id, func() bool { return set.Enabled(id) }),
+			DB:     st.DB(),
+			Log:    log.With("module", id),
+			Events: bus.Scope(id),
+			Jobs:   sched.Scope(id),
 		}
 		if err := m.Register(r); err != nil {
 			return nil, fmt.Errorf("module %s: %w", id, err)
 		}
 	}
+	if err := sched.Scope(owner).Add(jobs.Job{Name: "prune_events", Every: 24 * time.Hour, Run: bus.Prune}); err != nil {
+		return nil, err
+	}
+	bus.Seal()
 
 	router := chi.NewRouter()
 	router.Mount(cfg.BasePath()+api.Prefix, a.Handler())
@@ -110,7 +132,22 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 			router.Handle(cfg.BasePath(), ui)
 		}
 	}
-	return &App{store: st, modules: set, api: a, handler: router}, nil
+	return &App{store: st, modules: set, api: a, handler: router, bus: bus, jobs: sched}, nil
+}
+
+// Start runs the event bus and the scheduler in the background until Close.
+func (a *App) Start() {
+	ctx, cancel := context.WithCancel(context.Background())
+	a.stop = cancel
+	a.running.Add(2)
+	go func() {
+		defer a.running.Done()
+		a.bus.Run(ctx)
+	}()
+	go func() {
+		defer a.running.Done()
+		a.jobs.Run(ctx)
+	}()
 }
 
 // OpenAPI returns the document describing the API, every module included.
@@ -142,5 +179,12 @@ func (a *App) Handler() http.Handler { return a.handler }
 // Modules returns the module set.
 func (a *App) Modules() *module.Set { return a.modules }
 
-// Close releases the store.
-func (a *App) Close() error { return a.store.Close() }
+// Close stops what Start started, waiting for the event handlers and jobs
+// that are running, and releases the store.
+func (a *App) Close() error {
+	if a.stop != nil {
+		a.stop()
+		a.running.Wait()
+	}
+	return a.store.Close()
+}

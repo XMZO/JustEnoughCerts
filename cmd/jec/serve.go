@@ -37,7 +37,7 @@ func runServe(ctx context.Context, args []string, _, stderr io.Writer) int {
 	return exitOK
 }
 
-func serve(ctx context.Context, cfg config.Config, log *slog.Logger) (err error) {
+func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	if err := checkDataDir(cfg.DataDir); err != nil {
 		return err
 	}
@@ -47,14 +47,18 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) (err error)
 	if err != nil {
 		return err
 	}
-	defer func() { err = errors.Join(err, app.Close()) }()
 	ln, err := net.Listen("tcp", cfg.Listen)
 	if err != nil {
-		return err
+		return errors.Join(err, app.Close())
 	}
 	log.Info("listening", "addr", ln.Addr().String(), "base_url", cfg.BaseURL)
-	defer log.Info("stopped")
-	return httpserver.New(cfg, log, app.Handler()).Serve(ctx, ln)
+	app.Start()
+	err = httpserver.New(cfg, log, app.Handler()).Serve(ctx, ln)
+	// The HTTP server is down, so no request publishes events any more;
+	// Close then waits for the event handlers and jobs still running.
+	err = errors.Join(err, app.Close())
+	log.Info("stopped")
+	return err
 }
 
 // newLogger returns the process logger. Timestamps are always UTC, so logs

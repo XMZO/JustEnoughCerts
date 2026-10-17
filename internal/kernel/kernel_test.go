@@ -10,15 +10,18 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/config"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
 )
 
@@ -178,5 +181,94 @@ func TestBadModules(t *testing.T) {
 	cfg.DataDir = t.TempDir()
 	if _, err := New(t.Context(), cfg, slog.New(slog.DiscardHandler), []module.Module{notes{}, notes{}}); err == nil {
 		t.Error("a module registered twice was accepted")
+	}
+}
+
+// writer publishes note.added for each note it adds, in the transaction
+// that adds it; reader collects those events.
+type writer struct{}
+
+func (writer) Manifest() module.Manifest {
+	return module.Manifest{ID: "writer", Category: module.Feature, Name: "writer.module.name", Description: "writer.module.description"}
+}
+
+func (writer) Migrations() fs.FS {
+	return fstest.MapFS{"00001_writer.sql": {Data: []byte("-- +goose Up\nCREATE TABLE writer_notes (id INTEGER PRIMARY KEY, text TEXT NOT NULL) STRICT;\n")}}
+}
+
+type addInput struct {
+	Body struct {
+		Text string `json:"text"`
+	}
+}
+
+func (writer) Register(r *module.Registry) error {
+	huma.Register(r.API, huma.Operation{OperationID: "writer-add", Method: http.MethodPost, Path: "/notes", DefaultStatus: http.StatusNoContent},
+		func(ctx context.Context, in *addInput) (*struct{}, error) {
+			tx, err := r.DB.BeginTx(ctx, nil)
+			if err != nil {
+				return nil, err
+			}
+			defer func() { _ = tx.Rollback() }()
+			var id int64
+			if err := tx.QueryRowContext(ctx, "INSERT INTO writer_notes (text) VALUES (?) RETURNING id", in.Body.Text).Scan(&id); err != nil {
+				return nil, err
+			}
+			if err := r.Events.PublishTx(ctx, tx, "note.added", strconv.FormatInt(id, 10), map[string]string{"text": in.Body.Text}); err != nil {
+				return nil, err
+			}
+			return nil, tx.Commit()
+		})
+	return nil
+}
+
+type reader struct{ got chan events.Event }
+
+func (reader) Manifest() module.Manifest {
+	return module.Manifest{ID: "reader", Category: module.Notifier, Name: "reader.module.name", Description: "reader.module.description"}
+}
+
+func (reader) Migrations() fs.FS { return nil }
+
+func (m reader) Register(r *module.Registry) error {
+	return r.Events.Subscribe(events.Subscription{Name: "notes", Types: []string{"note.*"}, Handler: func(_ context.Context, ev events.Event) error {
+		m.got <- ev
+		return nil
+	}})
+}
+
+func TestEvents(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.DataDir = t.TempDir()
+	var logs syncBuffer
+	got := make(chan events.Event, 1)
+	app, err := New(t.Context(), cfg, slog.New(slog.NewTextHandler(&logs, nil)), []module.Module{writer{}, reader{got}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	app.Start()
+	c := &client{t: t, srv: httptest.NewServer(app.Handler())}
+	defer c.srv.Close()
+	m := setupToken.FindStringSubmatch(logs.String())
+	if m == nil {
+		t.Fatal("no setup token in the log")
+	}
+	if status, body := c.call(http.MethodPost, "/api/v1/setup", `{"token": "`+m[1]+`", "username": "admin", "password": "correct horse"}`); status != http.StatusCreated {
+		t.Fatalf("setup = %d %s", status, body)
+	}
+	if status, body := c.call(http.MethodPost, "/api/v1/writer/notes", `{"text": "renew example.com"}`); status != http.StatusNoContent {
+		t.Fatalf("add a note = %d %s", status, body)
+	}
+	select {
+	case ev := <-got:
+		var data struct{ Text string }
+		if err := ev.Decode(&data); err != nil || ev.Type != "note.added" || ev.Source != "writer" || ev.Subject != "1" || data.Text != "renew example.com" {
+			t.Errorf("reader got %+v (%v)", ev, err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the event did not reach the subscriber")
+	}
+	if err := app.Close(); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -175,7 +175,8 @@ func (*Module) Manifest() module.Manifest {
 // and return them from an embed.FS.
 func (*Module) Migrations() fs.FS { return nil }
 
-// Register adds the module's API operations, under /api/v1/{{.ID}}.
+// Register adds the module's API operations, under /api/v1/{{.ID}}, its
+// event subscriptions and its jobs.
 func (*Module) Register(*module.Registry) error { return nil }
 `
 
