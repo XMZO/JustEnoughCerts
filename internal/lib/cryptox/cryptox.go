@@ -22,7 +22,9 @@ import (
 // Errors of ParseBundle, for callers to tell the user what is wrong.
 var (
 	ErrNoCertificate  = errors.New("no certificate found")
+	ErrBadCertificate = errors.New("a certificate cannot be read")
 	ErrNoKey          = errors.New("no private key found")
+	ErrBadKey         = errors.New("the private key cannot be read")
 	ErrEncryptedKey   = errors.New("the private key is encrypted")
 	ErrSeveralKeys    = errors.New("more than one private key")
 	ErrKeyMismatch    = errors.New("the private key belongs to none of the certificates")
@@ -102,7 +104,7 @@ func parsePEM(data []byte) ([]*x509.Certificate, []crypto.Signer, error) {
 		case "CERTIFICATE":
 			c, err := x509.ParseCertificate(block.Bytes)
 			if err != nil {
-				return nil, nil, fmt.Errorf("certificate: %w", err)
+				return nil, nil, fmt.Errorf("%w: %w", ErrBadCertificate, err)
 			}
 			certs = append(certs, c)
 		case "ENCRYPTED PRIVATE KEY":
@@ -132,7 +134,7 @@ func parseKey(block *pem.Block) (crypto.Signer, error) {
 		key, err = x509.ParsePKCS8PrivateKey(block.Bytes)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("private key: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrBadKey, err)
 	}
 	switch k := key.(type) {
 	case *rsa.PrivateKey:

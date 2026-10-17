@@ -185,8 +185,8 @@ func TestParseBundleErrors(t *testing.T) {
 		{"wrong key", chain, pemKey(t, newECKey(t)), ErrKeyMismatch, ""},
 		{"encrypted PKCS #8", chain, pem.EncodeToMemory(&pem.Block{Type: "ENCRYPTED PRIVATE KEY", Bytes: []byte{1}}), ErrEncryptedKey, ""},
 		{"encrypted legacy PEM", chain, legacy, ErrEncryptedKey, ""},
-		{"broken certificate", pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte{1, 2}}), pemKey(t, key), nil, "certificate:"},
-		{"broken key", chain, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: []byte{1, 2}}), nil, "private key:"},
+		{"broken certificate", pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte{1, 2}}), pemKey(t, key), ErrBadCertificate, "a certificate cannot be read: x509:"},
+		{"broken key", chain, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: []byte{1, 2}}), ErrBadKey, "the private key cannot be read: "},
 	} {
 		_, err := ParseBundle(tt.certs, tt.key)
 		switch {
