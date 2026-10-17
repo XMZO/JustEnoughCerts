@@ -37,8 +37,9 @@ Working on the main branch:
   time or left out at build time.
 - One small container image or one static binary, with SQLite.
 
-Planned: vendor APIs such as Namecheap's, HTTP and manual validation,
-hooks, and more CDNs, panels and notification channels.
+Planned: Namecheap's paid certificates through its SSL Manager, with JEC
+acting as its client, HTTP and manual validation, hooks, and more CDNs,
+panels and notification channels.
 
 ## Quick start
 

@@ -35,8 +35,8 @@
 
 用户自己的使用场景（也是 M2 的验收场景）：域名在阿里云 ESA 国内版建站（`esa.cn-hangzhou.aliyuncs.com`），DNS 在腾讯云 DNSPod，证书是 Namecheap 买的 PositiveSSL。证书最长有效期已降到 200 天，一年的订阅要签两张，需要自动重签、验证、部署到 ESA、删掉旧证书。
 
-- **Namecheap API**：`namecheap.ssl.reissue` / `ssl.activate` / `ssl.getInfo`，域名验证用 `DNSDCValidation=CNAME`。开通门槛：账号里有 20 个域名，或余额 $50，或近两年消费满 $50；必须设置 IPv4 白名单。重签后证书 ID 会变。
-- **Namecheap SSL Manager**：Namecheap / Spaceship 自有的闭源工具（后端 externalautossl.service.spaceship.com），不是通用协议。只作为实验模块，默认关闭。
+- **Namecheap SSL Manager**（M2 的第一个厂商来源，`PLAN.md` 5.6）：Namecheap 给直客的服务器端自动化工具，闭源，后端 externalautossl.service.spaceship.com。账户面板激活或重签时选 “Server-side automation”，得到安装命令和一次性令牌（24 小时有效）；装好后靠 cron 自动取得每一张 200 天的证书。私钥和 CSR 在本地生成，HTTP 文件验证，目前只支持单域名证书。JEC 扮演它的客户端，做成实验模块，默认关闭；协议要等用户拿到安装命令或 `ssl-manager.php` 后分析。
+- **Namecheap 官方 API**（排到“以后”）：`namecheap.ssl.reissue` / `ssl.activate` / `ssl.getInfo`，域名验证用 `DNSDCValidation=CNAME`。开通门槛：账号里有 20 个域名，或余额 $50，或近两年消费满 $50；必须设置 IPv4 白名单。重签后证书 ID 会变。
 - **阿里云 ESA API（2024-09-10 版）**：`SetCertificate`（Type=upload）、`ListCertificates`、`DeleteCertificate`。免费版每个站点最多 2 张自定义证书，所以部署新证书后要删旧证书。RAM 子账号最小权限：`esa:ListSites`、`ListCertificates`、`SetCertificate`、`DeleteCertificate`。
 - **通用路线**：以 ACME + EAB（RFC 8555）为核心，大多数 CA 都支持；lego v5.5.2 内置 223 个 DNS 服务商（去掉 `manual`、`exec` 后 221 个可用）。lego v5 删除了旧的 `dnspod`，DNSPod 用腾讯云 API 密钥（`tencentcloud`）。厂商专有 API（如 Namecheap）是可选模块。
 - **lego 的坑**（`PLAN.md` 5.5）：DNS 服务商只能靠环境变量配置，所以放在子进程里跑；全部服务商会让程序涨到约 69 MiB；lego 会改写传入的 `http.Client`；依赖里已有阿里云 ESA 2024-09-10 版的 Go SDK（`github.com/go-acme/esa-20240910/v3`），ESA 部署目标可以直接用。
