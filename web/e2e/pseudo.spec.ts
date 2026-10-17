@@ -73,7 +73,14 @@ async function problems(page: Page): Promise<string[]> {
       found.push(`${clipped ? 'clipped' : 'overflowing'} text in ${where(el)}: ${el.textContent.trim().slice(0, 80)}`)
     }
     const width = document.documentElement.scrollWidth
-    if (width > window.innerWidth + 1) found.push(`the page scrolls sideways: ${width}px wide in a ${window.innerWidth}px window`)
+    if (width > window.innerWidth + 1) {
+      // Name the innermost elements that reach past the window.
+      const past = (el: Element) => el.getBoundingClientRect().right > window.innerWidth + 1
+      const culprits = [...document.body.querySelectorAll('*')].filter((el) => past(el) && ![...el.children].some(past))
+      found.push(
+        `the page scrolls sideways: ${width}px wide in a ${window.innerWidth}px window, past it: ${culprits.slice(0, 3).map(where).join(', ')}`,
+      )
+    }
     return found
   })
 }
