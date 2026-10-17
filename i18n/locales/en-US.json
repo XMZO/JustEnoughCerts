@@ -352,6 +352,32 @@
       "title": "Upload a new certificate"
     }
   },
+  "files": {
+    "directory": {
+      "description": "Writes cert.pem, chain.pem, fullchain.pem and privkey.pem as certbot does; a new version replaces the files.",
+      "name": "Local directory"
+    },
+    "error": {
+      "relative": "The directory must be an absolute path: {directory}",
+      "write": "Could not write to {directory}. Check that it exists and that JEC may write there."
+    },
+    "field": {
+      "directory": "Directory",
+      "directory_help": "An absolute path JEC can write to. In a container, a mounted directory, such as /data/certs.",
+      "layout": "Where the files go"
+    },
+    "layout": {
+      "by_domain": "A subdirectory for each certificate, named after its primary domain",
+      "flat": "Right in this directory"
+    },
+    "log": {
+      "write": "Writing to {directory}"
+    },
+    "module": {
+      "description": "Writes certificates to a directory on JEC's machine, for a web server there or a mounted volume to read.",
+      "name": "Local files"
+    }
+  },
   "kernel": {
     "account": {
       "confirm_password": "Your password",

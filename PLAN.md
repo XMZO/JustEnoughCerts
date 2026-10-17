@@ -323,6 +323,8 @@ DNS 验证分成两种能力，实现方式不同：
 | 面板与应用 | 1Panel、宝塔、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Caddy 管理 API | M3 |
 | 通用 | Webhook、外部插件 | M1 |
 
+**本地文件的实现**（`internal/modules/files`，M1）：部署目标类型 `files.directory`：目录（绝对路径）和放法（每张证书一个以主域名命名的子目录，`*` 写成 `star`；或者直接放在这个目录里）。按 certbot 的文件名写 `cert.pem`、`chain.pem`、`fullchain.pem`、`privkey.pem`（私钥只有所有者可读），每个文件先写到临时文件再改名，读的程序不会读到写了一半的文件；新版本直接覆盖，没有旧版本要删。目录是相对路径、没有写入权限时不自动重试。部署后重载 Web 服务器的命令还没有做，和钩子（5.2）一起做。
+
 #### 5.3.4 通知渠道
 
 | 阶段 | 渠道 |

@@ -352,6 +352,32 @@
       "title": "上传新证书"
     }
   },
+  "files": {
+    "directory": {
+      "description": "按 certbot 的方式写入 cert.pem、chain.pem、fullchain.pem 和 privkey.pem，新版本覆盖旧文件。",
+      "name": "本地目录"
+    },
+    "error": {
+      "relative": "目录必须是绝对路径：{directory}",
+      "write": "没能写入 {directory}。请检查目录是否存在、JEC 有没有写入权限。"
+    },
+    "field": {
+      "directory": "目录",
+      "directory_help": "JEC 能写入的绝对路径。在容器里运行时，填挂载进来的目录，比如 /data/certs。",
+      "layout": "文件放在哪里"
+    },
+    "layout": {
+      "by_domain": "每张证书一个子目录，以主域名命名",
+      "flat": "直接放在这个目录里"
+    },
+    "log": {
+      "write": "写入 {directory}"
+    },
+    "module": {
+      "description": "把证书写到 JEC 所在机器的一个目录里，供同一台机器上的 Web 服务器或挂载的卷读取。",
+      "name": "本地文件"
+    }
+  },
   "kernel": {
     "account": {
       "confirm_password": "你的登录密码",
