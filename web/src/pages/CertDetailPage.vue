@@ -276,7 +276,7 @@ async function confirmDelete() {
         <CircleX class="mt-0.5 size-5 flex-none text-danger-ink" aria-hidden="true" />
         <div class="flex min-w-0 flex-[1_1_240px] flex-col gap-0.5">
           <strong class="text-danger-ink">{{ t(latest.state === 'failed' ? 'certs.detail.failed' : 'certs.detail.retrying') }}</strong>
-          <span class="text-small">{{ errorText(latest.error) }}</span>
+          <span class="text-small [overflow-wrap:anywhere]">{{ errorText(latest.error) }}</span>
           <span v-if="latest.state === 'pending' && latest.nextAt" class="text-small text-ink-muted">
             {{ t('certs.issuance.next_try') }} <time :datetime="latest.nextAt">{{ intl.dateTime(latest.nextAt) }}</time>
           </span>
@@ -289,7 +289,7 @@ async function confirmDelete() {
           <strong class="text-danger-ink [overflow-wrap:anywhere]">
             {{ t(failing.state === 'failed' ? 'certs.detail.deploy_failed' : 'certs.detail.deploy_retrying', { target: targetLabel(failing.target).name }) }}
           </strong>
-          <span class="text-small">{{ errorText(failing.error) }}</span>
+          <span class="text-small [overflow-wrap:anywhere]">{{ errorText(failing.error) }}</span>
           <span v-if="failing.state === 'pending' && failing.nextAt" class="text-small text-ink-muted">
             {{ t('certs.issuance.next_try') }} <time :datetime="failing.nextAt">{{ intl.dateTime(failing.nextAt) }}</time>
           </span>

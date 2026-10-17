@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Ellipsis, Globe, LayoutGrid, LogOut, Menu, Package, Server, ShieldCheck, X } from '@lucide/vue'
+import { Bell, Ellipsis, Globe, History, LayoutGrid, LogOut, Menu, Package, Server, ShieldCheck, X } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
@@ -31,6 +31,7 @@ interface Link {
 const links = computed<Link[]>(() => [
   { to: '/', label: 'kernel.overview.title', icon: LayoutGrid },
   { to: '/certificates', label: 'certs.list.title', icon: ShieldCheck, count: certificates.data.value?.length },
+  { to: '/history', label: 'certs.runs.title', icon: History },
 ])
 const tabs = computed<Link[]>(() => [...links.value, { to: '/more', label: 'kernel.shell.more', icon: Ellipsis }])
 // Where providers are configured; on phones, the More tab lists them.

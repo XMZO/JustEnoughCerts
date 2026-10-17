@@ -50,6 +50,12 @@ export const router = createRouter({
           meta: { title: 'certs.deployment.title', for: 'app' },
         },
         {
+          path: 'history',
+          name: 'history',
+          component: () => import('./pages/HistoryPage.vue'),
+          meta: { title: 'certs.runs.title', for: 'app' },
+        },
+        {
           path: 'sources',
           name: 'sources',
           component: () => import('./pages/ProvidersPage.vue'),

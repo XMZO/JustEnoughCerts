@@ -105,7 +105,7 @@ async function retry() {
         <TriangleAlert class="size-6 flex-none text-warn-ink" aria-hidden="true" />
         <div class="flex min-w-0 flex-col gap-0.5">
           <strong class="text-heading text-warn-ink">{{ t('certs.issuance.retrying', { attempt: is.attempts }) }}</strong>
-          <span v-if="is.error" class="text-small">{{ message(is.error) }}</span>
+          <span v-if="is.error" class="text-small [overflow-wrap:anywhere]">{{ message(is.error) }}</span>
           <span v-if="is.nextAt" class="text-small text-ink-muted">
             {{ t('certs.issuance.next_try') }} <time :datetime="is.nextAt">{{ intl.dateTime(is.nextAt) }}</time>
           </span>
@@ -115,7 +115,7 @@ async function retry() {
         <CircleX class="size-6 flex-none text-danger-ink" aria-hidden="true" />
         <div class="flex min-w-0 flex-col gap-0.5">
           <strong class="text-heading text-danger-ink">{{ t('certs.issuance.failed', { attempts: is.attempts }) }}</strong>
-          <span v-if="is.error" class="text-small">{{ message(is.error) }}</span>
+          <span v-if="is.error" class="text-small [overflow-wrap:anywhere]">{{ message(is.error) }}</span>
           <span class="text-small text-ink-muted">{{ t('certs.issuance.failed_hint') }}</span>
         </div>
       </section>

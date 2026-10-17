@@ -88,6 +88,26 @@
       "upload": "上传新证书",
       "upload_short": "上传"
     },
+    "activity": {
+      "all": "全部记录",
+      "deploy": {
+        "failed": "{domain} 部署到 {target} 失败",
+        "ok": "{domain} 已部署到 {target}",
+        "running": "{domain} 正在部署到 {target}"
+      },
+      "issue": {
+        "failed": "{domain} 签发失败",
+        "ok": "{domain} 已签发",
+        "running": "{domain} 正在签发"
+      },
+      "none": "最近 7 天没有签发或部署。",
+      "renew": {
+        "failed": "{domain} 续期失败",
+        "ok": "{domain} 已续期",
+        "running": "{domain} 正在续期"
+      },
+      "title": "最近动态"
+    },
     "add": {
       "certificate": "证书（PEM，含中间证书）",
       "certificate_help": "证书和中间证书，顺序不限。私钥也可以一起放在这里。",
@@ -338,6 +358,58 @@
       "first": "首次签发",
       "manual": "手动签发",
       "renewal": "自动续期"
+    },
+    "runs": {
+      "action": {
+        "all": "全部操作",
+        "deploy": "部署",
+        "issue": "签发",
+        "renew": "续期"
+      },
+      "column": {
+        "action": "操作",
+        "cert": "证书",
+        "duration": "用时",
+        "note": "说明",
+        "result": "结果",
+        "time": "时间"
+      },
+      "empty": "这段时间没有签发或部署。",
+      "export": "导出 CSV",
+      "filter": "按结果筛选",
+      "instant": "不到 1 秒",
+      "intro": "每一次签发、续期和部署都记在这里，点一行查看完整日志。",
+      "minutes": "{minutes} 分 {seconds} 秒",
+      "more": "这段时间的记录太多，只列出了最近的 {count} 条。",
+      "no_match": "没有符合条件的记录。",
+      "note": {
+        "target": "部署到 {target}",
+        "valid_until": "新证书有效期到 {date}"
+      },
+      "range": {
+        "all": "全部",
+        "days_30": "最近 30 天",
+        "days_7": "最近 7 天",
+        "days_90": "最近 90 天",
+        "label": "时间范围"
+      },
+      "result": {
+        "all": "全部",
+        "canceled": "已取消",
+        "failed": "失败",
+        "ok": "成功",
+        "running": "进行中"
+      },
+      "seconds": "{seconds} 秒",
+      "summary": "显示 {shown} 条，共 {total} 条。",
+      "target_gone": "已删除的部署目标",
+      "title": "签发记录",
+      "today": "今天",
+      "trigger": {
+        "auto": "自动",
+        "manual": "手动"
+      },
+      "yesterday": "昨天"
     },
     "search": {
       "label": "搜索域名"

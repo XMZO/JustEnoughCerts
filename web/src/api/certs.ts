@@ -15,6 +15,7 @@ export type LogLine = components['schemas']['LogLineBody']
 export type Step = components['schemas']['StepBody']
 export type KeyType = NonNullable<IssueRequest['keyType']>
 export type Deployment = components['schemas']['DeploymentBody']
+export type Run = components['schemas']['RunBody']
 export type DeploymentDetail = components['schemas']['DeploymentDetailOutputBody']
 
 /** A certificate with its PEM private key, as pasted. */
@@ -47,6 +48,15 @@ function useCertsMutation<V, R>(fn: (vars: V) => Promise<R>) {
   return useMutation({
     mutationFn: fn,
     onSuccess: () => client.invalidateQueries({ queryKey: all }),
+  })
+}
+
+/** The issuances and deployments of the last days (0 for all), polled while some are under way. */
+export function useRuns(days: MaybeRefOrGetter<number>) {
+  return useQuery({
+    queryKey: computed(() => [...all, 'runs', toValue(days)] as const),
+    queryFn: () => unwrap(api.GET('/certs/runs', { params: { query: { days: toValue(days) } } })),
+    refetchInterval: (q) => (q.state.data?.runs.some((r) => r.state === 'running' || (r.state === 'pending' && !r.error)) ? 3000 : false),
   })
 }
 

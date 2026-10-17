@@ -17,6 +17,8 @@ export function useIntl() {
     /** time: 14:20:02, the time of day to the second. */
     time: (at: string | number | Date) =>
       new Intl.DateTimeFormat(locale.value, { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(at)),
+    /** clock: 14:20, the time of day to the minute. */
+    clock: (at: string | number | Date) => new Intl.DateTimeFormat(locale.value, { hour: '2-digit', minute: '2-digit' }).format(new Date(at)),
     /** dateTime: Oct 21, 14:20 in English. */
     dateTime: (at: string | number | Date) =>
       new Intl.DateTimeFormat(locale.value, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(at)),

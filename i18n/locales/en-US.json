@@ -88,6 +88,26 @@
       "upload": "Upload new certificate",
       "upload_short": "Upload"
     },
+    "activity": {
+      "all": "All of it",
+      "deploy": {
+        "failed": "{domain} could not be deployed to {target}",
+        "ok": "{domain} was deployed to {target}",
+        "running": "{domain} is being deployed to {target}"
+      },
+      "issue": {
+        "failed": "{domain} could not be issued",
+        "ok": "{domain} was issued",
+        "running": "{domain} is being issued"
+      },
+      "none": "No issuances or deployments in the last 7 days.",
+      "renew": {
+        "failed": "{domain} could not be renewed",
+        "ok": "{domain} was renewed",
+        "running": "{domain} is being renewed"
+      },
+      "title": "Recent activity"
+    },
     "add": {
       "certificate": "Certificate (PEM, with intermediates)",
       "certificate_help": "The certificate and its intermediates, in any order. The private key may go here too.",
@@ -338,6 +358,58 @@
       "first": "First issuance",
       "manual": "Issued by hand",
       "renewal": "Renewal"
+    },
+    "runs": {
+      "action": {
+        "all": "All actions",
+        "deploy": "Deployment",
+        "issue": "Issue",
+        "renew": "Renewal"
+      },
+      "column": {
+        "action": "Action",
+        "cert": "Certificate",
+        "duration": "Took",
+        "note": "Note",
+        "result": "Result",
+        "time": "Time"
+      },
+      "empty": "No issuances or deployments in this time.",
+      "export": "Export CSV",
+      "filter": "Filter by result",
+      "instant": "Under a second",
+      "intro": "Every issuance, renewal and deployment, each with its full log.",
+      "minutes": "{minutes} min {seconds} s",
+      "more": "There are more in this time: only the latest {count} are listed.",
+      "no_match": "Nothing matches.",
+      "note": {
+        "target": "To {target}",
+        "valid_until": "Valid until {date}"
+      },
+      "range": {
+        "all": "All time",
+        "days_30": "Last 30 days",
+        "days_7": "Last 7 days",
+        "days_90": "Last 90 days",
+        "label": "Time range"
+      },
+      "result": {
+        "all": "All",
+        "canceled": "Called off",
+        "failed": "Failed",
+        "ok": "Succeeded",
+        "running": "Under way"
+      },
+      "seconds": "{seconds} s",
+      "summary": "{shown} of {total} shown.",
+      "target_gone": "a deleted target",
+      "title": "History",
+      "today": "Today",
+      "trigger": {
+        "auto": "automatic",
+        "manual": "by hand"
+      },
+      "yesterday": "Yesterday"
     },
     "search": {
       "label": "Search domains"

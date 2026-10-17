@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { ChevronRight, CircleX, Plus, Search, TriangleAlert } from '@lucide/vue'
+import { ChevronRight, CircleCheck, CircleSlash, CircleX, LoaderCircle, OctagonX, Plus, Search, TriangleAlert } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
-import { useCertificates, type Certificate, type CertificateState } from '../api/certs'
+import { useCertificates, useRuns, type Certificate, type CertificateState } from '../api/certs'
 import { useProviders } from '../api/providers'
 import { failingDeployment, useDeployNote } from '../certs/deployment'
+import { runAt, runLink, runResult, useRunText } from '../certs/runs'
 import { certLife, lifeText, needsAttention, type Life } from '../certs/life'
 import CertSlot from '../components/CertSlot.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -132,6 +133,25 @@ const upcoming = computed(() =>
     .filter((x): x is { cert: Certificate; life: Life } => !!x.life && !x.life.expired && x.life.days <= horizon),
 )
 const marks = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill' }
+
+// The last few issuances and deployments of the week.
+const recent = useRuns(7)
+const runText = useRunText()
+const activity = computed(() => {
+  const today = new Date().toDateString()
+  return [...(recent.data.value?.runs ?? [])]
+    .sort((a, b) => Date.parse(runAt(b)) - Date.parse(runAt(a)))
+    .map((r) => ({ run: r, result: runResult(r), text: runText.activity(r), at: runAt(r), link: runLink(r) }))
+    .filter((a) => a.text)
+    .slice(0, 5)
+    .map((a) => ({ ...a, when: new Date(a.at).toDateString() === today ? intl.clock(a.at) : intl.shortDate(a.at) }))
+})
+const activityLooks = {
+  ok: { icon: CircleCheck, ink: 'text-ok-ink' },
+  failed: { icon: OctagonX, ink: 'text-danger-ink' },
+  running: { icon: LoaderCircle, ink: 'text-info-ink' },
+  canceled: { icon: CircleSlash, ink: 'text-ink-muted' },
+} as const
 const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger: 'font-semibold text-danger-ink' }
 </script>
 
@@ -222,7 +242,7 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
               </dd>
             </template>
           </dl>
-          <p class="m-0 text-small text-ink-muted">{{ plan(selected, selectedLife) }}</p>
+          <p class="m-0 text-small text-ink-muted [overflow-wrap:anywhere]">{{ plan(selected, selectedLife) }}</p>
           <div class="mt-auto flex flex-wrap gap-2">
             <JecButton
               v-if="selected.source === 'upload'"
@@ -251,7 +271,7 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
             <TriangleAlert v-else class="mt-[3px] size-4 flex-none text-warn-ink" aria-hidden="true" />
             <div class="min-w-0 flex-1">
               <div class="font-semibold [overflow-wrap:anywhere]">{{ item.title }}</div>
-              <div class="text-small text-ink-muted">{{ item.detail }}</div>
+              <div class="text-small text-ink-muted [overflow-wrap:anywhere]">{{ item.detail }}</div>
             </div>
             <JecButton variant="ghost" size="sm" :to="item.to" class="max-sm:hidden">
               {{ t(item.action) }}
@@ -299,6 +319,21 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
                 {{ u.cert.domains[0] }}
               </RouterLink>
               <span :class="['flex-none tabular-nums', inks[u.life.level]]">{{ lifeWords(u.life) }}</span>
+            </li>
+          </ol>
+        </section>
+
+        <section aria-labelledby="activity" class="hidden min-w-0 flex-[1_1_300px] flex-col gap-0.5 rounded-lg border border-line bg-surface-raised p-4 sm:flex">
+          <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+            <h2 id="activity" class="m-0 text-section-title font-semibold">{{ t('certs.activity.title') }}</h2>
+            <RouterLink to="/history" class="text-small">{{ t('certs.activity.all') }}</RouterLink>
+          </div>
+          <p v-if="recent.isSuccess.value && !activity.length" class="m-0 py-2 text-small text-ink-muted">{{ t('certs.activity.none') }}</p>
+          <ol class="m-0 flex list-none flex-col p-0 text-small">
+            <li v-for="a in activity" :key="`${a.run.kind}-${a.run.id}`" class="flex items-start gap-2.5 border-b border-line py-2 last:border-b-0">
+              <component :is="activityLooks[a.result].icon" :class="['mt-0.5 size-4 flex-none', activityLooks[a.result].ink]" aria-hidden="true" />
+              <RouterLink :to="a.link" class="min-w-0 flex-1 text-ink no-underline [overflow-wrap:anywhere] hover:text-ink">{{ a.text }}</RouterLink>
+              <time :datetime="a.at" class="flex-none text-ink-muted tabular-nums">{{ a.when }}</time>
             </li>
           </ol>
         </section>

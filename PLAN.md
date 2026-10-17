@@ -426,7 +426,8 @@ M0 落地时的做法（`web/`）：
 - **API 类型**：`go run ./tools/openapi` 把带全部模块的 OpenAPI 文档写到 `web/openapi.json`，`pnpm -C web gen:api` 用 openapi-typescript 生成 `src/api/schema.d.ts`，请求用 openapi-fetch。CI 检查两个文件都是最新的。
 - **设计 token**：样式直接 import `docs/design/system/tokens.css`，只有这一份。Tailwind 的 `@theme` 里只保留 token 对应的颜色和字号，用不了默认调色板。颜色用 `@theme inline` 映射，切换 `data-theme` 时立即生效。
 - **代码检查**：ESLint 用 `eslint-plugin-vue` 的 essential 规则（排版交给编辑器），加 `@intlify/vue-i18n` 的 `no-raw-text` 和 `no-missing-keys`。
-- **应用框架**：登录后的页面都在 `AppShell` 里：1024px 以上侧栏常驻，640–1024px 侧栏从菜单按钮打开，640px 以下用底部标签栏（总览、证书、更多）。页面标题用 `PageHeader`：手机上是顶部的固定栏（返回按钮或标志、标题、图标按钮），更宽时是面包屑、标题、副标题和按钮；`PageHeader` 的按钮只在宽屏显示，手机上由页面自己在内容里放一组。侧栏的“配置”分组有证书来源、域名验证、部署目标和通知，手机上在“更多”里。还没做的页面（签发记录、设置）不放进导航。
+- **应用框架**：登录后的页面都在 `AppShell` 里：1024px 以上侧栏常驻，640–1024px 侧栏从菜单按钮打开，640px 以下用底部标签栏（总览、证书、签发记录、更多）。页面标题用 `PageHeader`：手机上是顶部的固定栏（返回按钮或标志、标题、图标按钮），更宽时是面包屑、标题、副标题和按钮；`PageHeader` 的按钮只在宽屏显示，手机上由页面自己在内容里放一组。侧栏的“配置”分组有证书来源、域名验证、部署目标和通知，手机上在“更多”里。还没做的页面（设置）不放进导航。
+- **签发记录**（`/history`）：签发、续期和部署按天分组，最新的在前；按结果、操作、时间范围（7、30、90 天或全部）和域名筛选，代替分页；宽屏是表格，手机上是列表，每一行通向它的日志；可以把当前显示的行导出成 CSV（本地时间，带 BOM 方便表格软件识别 UTF-8）。总览的“最近动态”列出最近 7 天的最后 5 条。
 - **API 里的数组**：后端设置 `huma.DefaultArrayNullable = false`，生成的类型里数组没有 `| null`，前端不用判空。这只管文档：Go 的 nil 切片仍会编码成 `null`，所以返回数组的地方要给空切片而不是 nil。
 - **嵌进二进制**：Go 用 `//go:embed all:dist` 嵌入 `web/dist`。服务端行为：
   - 把 `index.html` 里的 `<base href>` 改成 base 路径，同一份构建在根路径和子路径下都能用；

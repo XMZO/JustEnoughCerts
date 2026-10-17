@@ -328,6 +328,14 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.goto('./')
   expect.soft(await problems(page), 'overview with a failed issuance').toEqual([])
 
+  // The history of all that, then filtered down to nothing.
+  await page.goto('./history')
+  await expect(page.getByText(label('certs.runs.result.failed')).first()).toBeVisible()
+  expect.soft(await problems(page), 'history').toEqual([])
+  await page.getByRole('searchbox').fill('nothing.example')
+  await expect(page.getByText(label('certs.runs.no_match'))).toBeVisible()
+  expect.soft(await problems(page), 'history with no match').toEqual([])
+
   await page.goto('./more')
   expect.soft(await problems(page), 'more').toEqual([])
   await page.getByRole('button', { name: label('kernel.shell.sign_out') }).filter({ visible: true }).first().click()
