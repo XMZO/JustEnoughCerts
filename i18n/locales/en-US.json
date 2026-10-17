@@ -4,6 +4,25 @@
     "dir": "ltr",
     "completeness": 100
   },
+  "certs": {
+    "error": {
+      "bad_certificate": "A certificate cannot be read. Paste it again in full, from -----BEGIN CERTIFICATE----- to -----END CERTIFICATE-----.",
+      "bad_key": "The private key cannot be read. Paste it again in full.",
+      "duplicate": "This certificate has been added already.",
+      "encrypted_key": "The private key is protected by a passphrase. Remove it first, for example with openssl pkey -in key.pem -out plain.pem, then paste the key again.",
+      "key_mismatch": "The private key does not belong to this certificate. Check that both come from the same order or CSR.",
+      "no_certificate": "No certificate found. Paste the certificate in PEM format, starting with -----BEGIN CERTIFICATE-----.",
+      "no_key": "No private key found. Paste the private key in PEM format.",
+      "not_newer": "This certificate expires before the one in use. Upload a newer certificate.",
+      "other_domains": "This certificate is not for {domain}. Upload one that covers {domain}, or add it as a new certificate.",
+      "several_keys": "More than one private key was pasted. Keep only the key of this certificate.",
+      "unsupported_key": "This type of private key is not supported. Use an RSA, ECDSA or Ed25519 key."
+    },
+    "module": {
+      "description": "Keeps track of each certificate and its versions, and warns before one expires.",
+      "name": "Certificates"
+    }
+  },
   "kernel": {
     "account": {
       "password": "Password",

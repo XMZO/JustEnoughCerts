@@ -4,6 +4,25 @@
     "dir": "ltr",
     "completeness": 100
   },
+  "certs": {
+    "error": {
+      "bad_certificate": "有一张证书读不出来。请完整地重新粘贴，从 -----BEGIN CERTIFICATE----- 到 -----END CERTIFICATE-----。",
+      "bad_key": "私钥读不出来。请完整地重新粘贴。",
+      "duplicate": "这张证书已经添加过了。",
+      "encrypted_key": "私钥设置了密码。请先去掉密码，例如运行 openssl pkey -in key.pem -out plain.pem，再重新粘贴。",
+      "key_mismatch": "私钥和证书不匹配。请确认两者来自同一个订单或同一份 CSR。",
+      "no_certificate": "没有找到证书。请粘贴 PEM 格式的证书，开头是 -----BEGIN CERTIFICATE-----。",
+      "no_key": "没有找到私钥。请粘贴 PEM 格式的私钥。",
+      "not_newer": "这张证书比正在使用的那张更早到期。请上传更新的证书。",
+      "other_domains": "这张证书不包含 {domain}。请上传包含 {domain} 的证书，或者把它添加为新证书。",
+      "several_keys": "粘贴了不止一个私钥。只保留这张证书的私钥。",
+      "unsupported_key": "不支持这种私钥。请使用 RSA、ECDSA 或 Ed25519 私钥。"
+    },
+    "module": {
+      "description": "记录每张证书和它的各个版本，到期前发出提醒。",
+      "name": "证书"
+    }
+  },
   "kernel": {
     "account": {
       "password": "密码",

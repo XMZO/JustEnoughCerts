@@ -4,6 +4,60 @@
  */
 
 export interface paths {
+    "/certs/certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the certificates */
+        get: operations["certs-list"];
+        put?: never;
+        /** Add a certificate by uploading it with its private key */
+        post: operations["certs-add"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/certs/certificates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a certificate with its versions and chain */
+        get: operations["certs-get"];
+        put?: never;
+        post?: never;
+        /** Delete a certificate with all its versions */
+        delete: operations["certs-delete"];
+        options?: never;
+        head?: never;
+        /** Change the renewal policy of a certificate */
+        patch: operations["certs-update"];
+        trace?: never;
+    };
+    "/certs/certificates/{id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload a new version of a certificate */
+        post: operations["certs-upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/manifest": {
         parameters: {
             query?: never;
@@ -67,6 +121,57 @@ export interface components {
             locale?: string;
             username: string;
         };
+        AddInputBody: {
+            /** @description PEM certificates: the leaf and its intermediates, in any order. The private key may come along. */
+            certificate: string;
+            /** @description The PEM private key, unless it is in certificate */
+            privateKey?: string;
+            /**
+             * Format: int64
+             * @description Days before the end to send a reminder; 30 if left out
+             */
+            renewBeforeDays?: number;
+        };
+        CertificateBody: {
+            /** Format: date-time */
+            createdAt: string;
+            /** @description The version in use */
+            current?: components["schemas"]["VersionBody"];
+            /** @description The domains, the primary first */
+            domains: string[] | null;
+            /** Format: int64 */
+            id: number;
+            /** @description Type and size of the key, such as rsa-2048 or ecdsa-p256 */
+            keyType: string;
+            /**
+             * Format: int64
+             * @description How many days before the end the certificate is renewed, or a reminder sent
+             */
+            renewBeforeDays: number;
+            /**
+             * @description Where new versions come from
+             * @enum {string}
+             */
+            source: "upload";
+            /**
+             * @description ok; expiring: within RenewBeforeDays of the end; expired
+             * @enum {string}
+             */
+            state: "ok" | "expiring" | "expired";
+        };
+        ChainEntry: {
+            issuer: string;
+            /** Format: date-time */
+            notAfter: string;
+            subject: string;
+        };
+        DetailOutputBody: {
+            certificate: components["schemas"]["CertificateBody"];
+            /** @description The chain of the current version, the leaf first */
+            chain: components["schemas"]["ChainEntry"][] | null;
+            /** @description Every version, the newest first */
+            versions: components["schemas"]["VersionBody"][] | null;
+        };
         Error: {
             /** @description Message key, rendered by the client in the viewer's language */
             code: string;
@@ -82,6 +187,10 @@ export interface components {
             code: string;
             /** @description Where in the request, e.g. body.domains[1] */
             location: string;
+        };
+        ListOutputBody: {
+            /** @description The soonest to expire first */
+            certificates: components["schemas"]["CertificateBody"][] | null;
         };
         ManifestBody: {
             /** @description Every module compiled in, by category and ID */
@@ -108,6 +217,12 @@ export interface components {
             /** @description Switched on by itself */
             switched: boolean;
         };
+        PEMFields: {
+            /** @description PEM certificates: the leaf and its intermediates, in any order. The private key may come along. */
+            certificate: string;
+            /** @description The PEM private key, unless it is in certificate */
+            privateKey?: string;
+        };
         SetupInputBody: {
             /** @description BCP 47 tag of the language the account starts with */
             locale?: string;
@@ -125,6 +240,33 @@ export interface components {
             password: string;
             username: string;
         };
+        UpdateInputBody: {
+            /** Format: int64 */
+            renewBeforeDays: number;
+        };
+        VersionBody: {
+            /** Format: date-time */
+            createdAt: string;
+            /** @description SHA-256 of the certificate, lowercase hex */
+            fingerprint: string;
+            /** Format: int64 */
+            id: number;
+            issuer: string;
+            keyType: string;
+            /** @description The names the certificate is valid for */
+            names: string[] | null;
+            /** Format: date-time */
+            notAfter: string;
+            /** Format: date-time */
+            notBefore: string;
+            /**
+             * @description How the version came
+             * @enum {string}
+             */
+            origin: "upload";
+            /** @description Serial number, lowercase hex */
+            serial: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -134,6 +276,198 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "certs-list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-add": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddInputBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DetailOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PEMFields"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     "get-manifest": {
         parameters: {
             query?: never;

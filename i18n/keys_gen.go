@@ -4,6 +4,19 @@ package i18n
 
 // Message keys, from locales/en-US.json.
 const (
+	CertsErrorBadCertificate      Key = "certs.error.bad_certificate"
+	CertsErrorBadKey              Key = "certs.error.bad_key"
+	CertsErrorDuplicate           Key = "certs.error.duplicate"
+	CertsErrorEncryptedKey        Key = "certs.error.encrypted_key"
+	CertsErrorKeyMismatch         Key = "certs.error.key_mismatch"
+	CertsErrorNoCertificate       Key = "certs.error.no_certificate"
+	CertsErrorNoKey               Key = "certs.error.no_key"
+	CertsErrorNotNewer            Key = "certs.error.not_newer"
+	CertsErrorOtherDomains        Key = "certs.error.other_domains"
+	CertsErrorSeveralKeys         Key = "certs.error.several_keys"
+	CertsErrorUnsupportedKey      Key = "certs.error.unsupported_key"
+	CertsModuleDescription        Key = "certs.module.description"
+	CertsModuleName               Key = "certs.module.name"
 	KernelAccountPassword         Key = "kernel.account.password"
 	KernelAccountPasswordAgain    Key = "kernel.account.password_again"
 	KernelAccountPasswordHint     Key = "kernel.account.password_hint"

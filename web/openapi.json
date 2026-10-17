@@ -17,6 +17,150 @@
         ],
         "type": "object"
       },
+      "AddInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "certificate": {
+            "description": "PEM certificates: the leaf and its intermediates, in any order. The private key may come along.",
+            "maxLength": 262144,
+            "minLength": 1,
+            "type": "string"
+          },
+          "privateKey": {
+            "description": "The PEM private key, unless it is in certificate",
+            "maxLength": 65536,
+            "type": "string"
+          },
+          "renewBeforeDays": {
+            "description": "Days before the end to send a reminder; 30 if left out",
+            "format": "int64",
+            "maximum": 365,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "certificate"
+        ],
+        "type": "object"
+      },
+      "CertificateBody": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "current": {
+            "$ref": "#/components/schemas/VersionBody",
+            "description": "The version in use"
+          },
+          "domains": {
+            "description": "The domains, the primary first",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "keyType": {
+            "description": "Type and size of the key, such as rsa-2048 or ecdsa-p256",
+            "type": "string"
+          },
+          "renewBeforeDays": {
+            "description": "How many days before the end the certificate is renewed, or a reminder sent",
+            "format": "int64",
+            "type": "integer"
+          },
+          "source": {
+            "description": "Where new versions come from",
+            "enum": [
+              "upload"
+            ],
+            "type": "string"
+          },
+          "state": {
+            "description": "ok; expiring: within RenewBeforeDays of the end; expired",
+            "enum": [
+              "ok",
+              "expiring",
+              "expired"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "domains",
+          "source",
+          "keyType",
+          "renewBeforeDays",
+          "state",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "ChainEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "issuer": {
+            "type": "string"
+          },
+          "notAfter": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "issuer",
+          "notAfter"
+        ],
+        "type": "object"
+      },
+      "DetailOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "certificate": {
+            "$ref": "#/components/schemas/CertificateBody"
+          },
+          "chain": {
+            "description": "The chain of the current version, the leaf first",
+            "items": {
+              "$ref": "#/components/schemas/ChainEntry"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "versions": {
+            "description": "Every version, the newest first",
+            "items": {
+              "$ref": "#/components/schemas/VersionBody"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "certificate",
+          "versions",
+          "chain"
+        ],
+        "type": "object"
+      },
       "Error": {
         "additionalProperties": false,
         "properties": {
@@ -60,6 +204,25 @@
         "required": [
           "location",
           "code"
+        ],
+        "type": "object"
+      },
+      "ListOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "certificates": {
+            "description": "The soonest to expire first",
+            "items": {
+              "$ref": "#/components/schemas/CertificateBody"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "certificates"
         ],
         "type": "object"
       },
@@ -148,6 +311,26 @@
         ],
         "type": "object"
       },
+      "PEMFields": {
+        "additionalProperties": false,
+        "properties": {
+          "certificate": {
+            "description": "PEM certificates: the leaf and its intermediates, in any order. The private key may come along.",
+            "maxLength": 262144,
+            "minLength": 1,
+            "type": "string"
+          },
+          "privateKey": {
+            "description": "The PEM private key, unless it is in certificate",
+            "maxLength": 65536,
+            "type": "string"
+          }
+        },
+        "required": [
+          "certificate"
+        ],
+        "type": "object"
+      },
       "SetupInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -211,6 +394,86 @@
           "password"
         ],
         "type": "object"
+      },
+      "UpdateInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "renewBeforeDays": {
+            "format": "int64",
+            "maximum": 365,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "renewBeforeDays"
+        ],
+        "type": "object"
+      },
+      "VersionBody": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "fingerprint": {
+            "description": "SHA-256 of the certificate, lowercase hex",
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "keyType": {
+            "type": "string"
+          },
+          "names": {
+            "description": "The names the certificate is valid for",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "notAfter": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "notBefore": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "origin": {
+            "description": "How the version came",
+            "enum": [
+              "upload"
+            ],
+            "type": "string"
+          },
+          "serial": {
+            "description": "Serial number, lowercase hex",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "origin",
+          "names",
+          "serial",
+          "fingerprint",
+          "issuer",
+          "keyType",
+          "notBefore",
+          "notAfter",
+          "createdAt"
+        ],
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -227,6 +490,253 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/certs/certificates": {
+      "get": {
+        "operationId": "certs-list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the certificates",
+        "tags": [
+          "certs"
+        ]
+      },
+      "post": {
+        "operationId": "certs-add",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Add a certificate by uploading it with its private key",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/certificates/{id}": {
+      "delete": {
+        "operationId": "certs-delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Delete a certificate with all its versions",
+        "tags": [
+          "certs"
+        ]
+      },
+      "get": {
+        "operationId": "certs-get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetailOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get a certificate with its versions and chain",
+        "tags": [
+          "certs"
+        ]
+      },
+      "patch": {
+        "operationId": "certs-update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Change the renewal policy of a certificate",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/certificates/{id}/versions": {
+      "post": {
+        "operationId": "certs-upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PEMFields"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Upload a new version of a certificate",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
     "/manifest": {
       "get": {
         "operationId": "get-manifest",
