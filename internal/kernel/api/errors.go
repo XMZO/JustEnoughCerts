@@ -34,6 +34,13 @@ func NewError(status int, code i18n.Key, params map[string]any) *Error {
 	return &Error{status: status, Code: code, Params: params}
 }
 
+// WithField adds a request field at fault, such as body.privateKey, with
+// the message key that explains what is wrong with it.
+func (e *Error) WithField(location string, code i18n.Key) *Error {
+	e.Fields = append(e.Fields, FieldError{Location: location, Code: code})
+	return e
+}
+
 func (e *Error) Error() string {
 	if len(e.Params) == 0 {
 		return string(e.Code)
