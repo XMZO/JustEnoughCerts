@@ -325,6 +325,21 @@ DNS 验证分成两种能力，实现方式不同：
 
 **Vue 3** + TypeScript + Vite + Tailwind CSS + shadcn-vue（基于 Reka UI 的无样式组件，样式完全可控），路由用 Vue Router，状态用 Pinia，数据请求用 TanStack Query，国际化用 vue-i18n，API 类型由后端 OpenAPI 文档自动生成。
 
+M0 落地时的做法（`web/`）：
+
+- **版本**：TypeScript 先停在 6.0，因为 typescript-eslint 和 openapi-typescript 还不支持 7.0（原生编译器）。Dependabot 不升 TypeScript 的大版本。
+- **按需引入**：shadcn-vue（Reka UI）和 Pinia 在第一次真正用到时再加；登录页和初始化向导用不到。
+- **API 类型**：`go run ./tools/openapi` 把带全部模块的 OpenAPI 文档写到 `web/openapi.json`，`pnpm -C web gen:api` 用 openapi-typescript 生成 `src/api/schema.d.ts`，请求用 openapi-fetch。CI 检查两个文件都是最新的。
+- **设计 token**：样式直接 import `docs/design/system/tokens.css`，只有这一份。Tailwind 的 `@theme` 里只保留 token 对应的颜色和字号，用不了默认调色板。颜色用 `@theme inline` 映射，切换 `data-theme` 时立即生效。
+- **代码检查**：ESLint 用 `eslint-plugin-vue` 的 essential 规则（排版交给编辑器），加 `@intlify/vue-i18n` 的 `no-raw-text` 和 `no-missing-keys`。
+- **嵌进二进制**：Go 用 `//go:embed all:dist` 嵌入 `web/dist`。服务端行为：
+  - 把 `index.html` 里的 `<base href>` 改成 base 路径，同一份构建在根路径和子路径下都能用；
+  - 非文件路径一律返回 `index.html`，交给前端路由；
+  - `assets/` 下带哈希的文件按 `immutable` 缓存；
+  - 按 `Accept-Encoding` 直接发预压缩的 br / gz 文件，每种编码有各自的 ETag；
+  - 页面带 CSP（只允许本站脚本、样式和 API）、`X-Frame-Options: DENY`、`nosniff`。
+  - 没构建前端时，`web/dist` 里只有 `.gitkeep`，服务启动时打印一条警告，API 照常工作。
+
 ### 6.4 前端体积
 
 - 不打包网页字体，全部用系统字体。
@@ -333,7 +348,7 @@ DNS 验证分成两种能力，实现方式不同：
 - 语言文件按需加载，只下载当前使用的语言。
 - 不引入大型图表库，到期时间线用手写 SVG。
 - 构建时预先生成 brotli 和 gzip 压缩版本，按浏览器支持直接返回，服务端不用实时压缩。
-- 预算：首屏 JS 压缩后不超过 150KB，CI 里检查。
+- 预算：首屏 JS 压缩后不超过 150KB，CI 里检查（`pnpm -C web size`，按 gzip 计，结果写进 CI 摘要）。M0 的登录页约 77KB，大头是 Vue、路由、TanStack Query、vue-i18n 和 FormatJS 的公共包。
 
 ## 7. 国际化（i18n）
 
