@@ -34,6 +34,8 @@ docker logs jec 2>&1 | grep setup_token
 
 容器以 65532:65532 用户运行，数据库等所有数据都在 `./data`，备份这个目录就够了。想以已有目录的属主运行，在 `docker-compose.yml` 里设置 `user:`。
 
+私钥和凭据在数据库里是加密存放的，密钥在 `./data/secret.key`，第一次启动时自动生成。没有这个文件，加密的内容就再也读不出来，所以要和数据库一起备份；也可以把密钥放在别处，通过 `JEC_SECRET_KEY` 传入。
+
 忘了密码可以重新设置，同时会让这个账号在所有地方退出登录：
 
 ```sh
@@ -65,6 +67,9 @@ tar -xzf jec_<版本>_linux_amd64.tar.gz
 | `-log-level` | `JEC_LOG_LEVEL` | `log.level` | `info` |
 | `-log-format` | `JEC_LOG_FORMAT` | `log.format` | `text`（或 `json`） |
 | `-config` | `JEC_CONFIG` | | `<data-dir>/config.yaml`（存在时） |
+| | `JEC_SECRET_KEY` | | `<data-dir>/secret.key` |
+
+`JEC_SECRET_KEY` 是 32 个随机字节的 base64，可以用 `openssl rand -base64 32` 生成。它只能通过环境变量传入；如果和加密数据库时用的密钥不一致，JEC 会拒绝启动。
 
 `jec <命令> -h` 列出一个命令的全部参数。
 

@@ -49,6 +49,11 @@ The container runs as user 65532:65532 and keeps everything, the database
 included, in `./data`: back up that directory. To run as the owner of an
 existing directory instead, set `user:` in `docker-compose.yml`.
 
+Private keys and credentials are encrypted in the database with the key in
+`./data/secret.key`, which JEC creates on first start. Without that file,
+nothing encrypted can be read again, so keep it with the database backups,
+or keep the key elsewhere and pass it as `JEC_SECRET_KEY`.
+
 Forgot the password? Set a new one; this also signs the account out
 everywhere:
 
@@ -85,6 +90,11 @@ the config file, an environment variable and a command-line flag.
 | `-log-level` | `JEC_LOG_LEVEL` | `log.level` | `info` |
 | `-log-format` | `JEC_LOG_FORMAT` | `log.format` | `text` (or `json`) |
 | `-config` | `JEC_CONFIG` | | `<data-dir>/config.yaml`, if it exists |
+| | `JEC_SECRET_KEY` | | `<data-dir>/secret.key` |
+
+`JEC_SECRET_KEY` is base64 of 32 random bytes, as from
+`openssl rand -base64 32`. It can only come from the environment, and JEC
+refuses to start when it is not the key the database was encrypted with.
 
 `jec <command> -h` lists the flags of a command.
 
