@@ -607,7 +607,8 @@ JustEnoughCerts/
 ├── Dockerfile
 ├── Makefile
 ├── LICENSE                     # MIT
-└── README.md
+├── README.md                   # 英文说明：快速上手、配置、校验发布文件、开发
+└── README.zh-CN.md             # 中文说明，内容和英文版一致
 ```
 
 ## 13. 路线图
