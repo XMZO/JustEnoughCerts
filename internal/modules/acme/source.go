@@ -62,6 +62,7 @@ func (s *source) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509
 	if location != "" {
 		u.reg = &legoacme.ExtendedAccount{Location: location}
 	}
+	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.AcmeLogConnect, Params: map[string]any{"directory": directory}})
 	cfg := lego.NewConfig(u)
 	cfg.CADirURL = directory
 	cfg.UserAgent = "JustEnoughCerts/" + buildinfo.Get().Version

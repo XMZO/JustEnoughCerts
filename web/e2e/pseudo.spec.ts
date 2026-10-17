@@ -51,7 +51,8 @@ async function problems(page: Page): Promise<string[]> {
       }
     }
     for (const el of document.body.querySelectorAll('*')) {
-      if (!el.textContent?.trim() || el.closest('svg') || el.clientWidth === 0) continue
+      // Text for screen readers only is clipped on purpose; its markers are checked above.
+      if (!el.textContent?.trim() || el.closest('svg, .sr-only') || el.clientWidth === 0) continue
       if (el.scrollWidth <= el.clientWidth + 1) continue
       const style = getComputedStyle(el)
       if (style.overflowX === 'auto' || style.overflowX === 'scroll') continue
@@ -158,6 +159,63 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page.locator('dialog[open]')).toBeVisible()
   expect.soft(await problems(page), 'delete a certificate').toEqual([])
   await page.keyboard.press('Escape')
+
+  // Certificate sources: an ACME account at a CA that is not there, so
+  // that issuing fails at once and nothing leaves this machine.
+  await page.goto('./sources')
+  expect.soft(await problems(page), 'certificate sources').toEqual([])
+  await page.getByRole('button', { name: label('kernel.providers.source.add') }).filter({ visible: true }).first().click()
+  const dialog = page.locator('dialog[open]')
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'add a source').toEqual([])
+  await dialog.getByLabel(label('acme.field.ca')).selectOption('custom')
+  await dialog.locator('button[type=submit]').click()
+  await expect(dialog.getByText(label('kernel.error.field_required'))).toBeVisible()
+  expect.soft(await problems(page), 'add a source with an error').toEqual([])
+  await dialog.getByLabel(label('acme.field.directory')).fill('https://127.0.0.1:9/directory')
+  await dialog.locator('button[type=submit]').click()
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  expect.soft(await problems(page), 'certificate sources with one').toEqual([])
+
+  // DNS providers: the choice among lego's, then the form of one.
+  await page.goto('./dns')
+  expect.soft(await problems(page), 'domain validation').toEqual([])
+  await page.getByRole('button', { name: label('kernel.providers.solver.add') }).filter({ visible: true }).first().click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'add a DNS provider').toEqual([])
+  await dialog.getByRole('searchbox').fill('http')
+  await dialog.getByRole('option', { name: 'HTTP request' }).click()
+  await expect(dialog.getByLabel('HTTPREQ_ENDPOINT')).toBeVisible()
+  expect.soft(await problems(page), 'add a DNS provider: its form').toEqual([])
+  await dialog.getByLabel('HTTPREQ_ENDPOINT').fill('http://127.0.0.1:9')
+  await dialog.locator('button[type=submit]').click()
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  expect.soft(await problems(page), 'domain validation with one').toEqual([])
+
+  // A certificate from the source: the form, its errors, the issuance.
+  await page.goto('./certificates/new')
+  await expect(page.locator('#domain-input')).toBeVisible()
+  expect.soft(await problems(page), 'add a certificate from a source').toEqual([])
+  await page.locator('button[form=add-form]').click()
+  await expect(page.locator('#domains-help')).toHaveText(label('kernel.error.invalid_field'))
+  expect.soft(await problems(page), 'add a certificate from a source with an error').toEqual([])
+  await page.locator('#domain-input').fill('issued.example.com')
+  await page.locator('#domain-input').press('Enter')
+  await page.locator('#domain-input').fill('*.issued.example.com')
+  await page.locator('#domain-input').press('Enter')
+  await page.locator('button[form=add-form]').click()
+  await expect(page).toHaveURL(/\/certificates\/\d+\/issuances\/\d+$/)
+  await expect(page.getByText(label('certs.issuance.next_try')).first()).toBeVisible() // the first attempt failed
+  expect.soft(await problems(page), 'an issuance that failed').toEqual([])
+  await page.getByRole('checkbox', { name: label('certs.issuance.show_detail') }).check()
+  expect.soft(await problems(page), 'an issuance with raw details').toEqual([])
+  await page.getByRole('link', { name: label('certs.action.details') }).filter({ visible: true }).first().click()
+  await expect(page).toHaveURL(/\/certificates\/\d+$/)
+  expect.soft(await problems(page), 'a certificate whose issuance failed').toEqual([])
+  await page.goto('./certificates')
+  expect.soft(await problems(page), 'certificates with a failed one').toEqual([])
+  await page.goto('./')
+  expect.soft(await problems(page), 'overview with a failed issuance').toEqual([])
 
   await page.goto('./more')
   expect.soft(await problems(page), 'more').toEqual([])

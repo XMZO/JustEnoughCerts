@@ -5,6 +5,7 @@ import { RouterLink } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
 import { useCertificates, type Certificate } from '../api/certs'
+import { useProviders } from '../api/providers'
 import { barPercent, certLife, lifeText, needsAttention, stateText } from '../certs/life'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
@@ -12,7 +13,7 @@ import LifeBar from '../components/LifeBar.vue'
 import PageHeader from '../components/PageHeader.vue'
 import SearchBox from '../components/SearchBox.vue'
 import StatusBadge from '../components/StatusBadge.vue'
-import { useT, type MessageKey } from '../i18n'
+import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
 
 // The certificate list (docs/design/boards/Certs and CertsMobile): a
@@ -21,6 +22,7 @@ import { useIntl } from '../i18n/intl'
 const { t } = useT()
 const intl = useIntl()
 const certificates = useCertificates()
+const sources = useProviders('source')
 
 const error = computed(() => {
   const err = certificates.error.value
@@ -54,6 +56,29 @@ interface Row {
   lifeWords: string
   label: string
   note: string
+  /** Where new versions come from: a configured source by its name, or uploads. */
+  source: string
+  /** What happens next: the renewal, or the upload someone has to do. */
+  next: string
+}
+
+const day = 86_400_000
+
+/** note says why a certificate needs attention. */
+function note(c: Certificate): string {
+  if (c.state === 'failed' && c.issuance?.error) return t(c.issuance.error.key as MessageKey, (c.issuance.error.params ?? {}) as Params)
+  if (c.state === 'ok' || c.state === 'issuing') return ''
+  if (c.source === 'provider') return t('certs.note.renewing')
+  return t(c.state === 'expired' ? 'certs.note.expired' : 'certs.note.manual')
+}
+
+/** next says what happens to a certificate next. */
+function next(c: Certificate): string {
+  if (c.source !== 'provider') return t('certs.next.manual')
+  if (c.state === 'issuing') return t('certs.next.issuing')
+  if (c.state === 'failed') return t('certs.next.failed')
+  if (!c.current) return t('certs.next.first')
+  return t('certs.next.auto', { date: intl.date(Date.parse(c.current.notAfter) - c.renewBeforeDays * day) })
 }
 
 const rows = computed<Row[]>(() =>
@@ -62,7 +87,6 @@ const rows = computed<Row[]>(() =>
     const text = l ? lifeText(l) : null
     const lifeWords = text ? t(text.key, text.params) : ''
     const domain = c.domains[0] ?? ''
-    const note = c.state === 'ok' ? '' : t(c.state === 'expired' ? 'certs.note.expired' : 'certs.note.manual')
     return {
       cert: c,
       domain,
@@ -70,7 +94,9 @@ const rows = computed<Row[]>(() =>
       life: l,
       lifeWords,
       label: t('certs.cert.label', { domain, state: t(stateText[c.state]), life: lifeWords }),
-      note,
+      note: note(c),
+      source: c.source === 'provider' ? (sources.data.value?.find((p) => p.id === c.sourceProvider)?.name ?? '') : t('certs.source.upload'),
+      next: next(c),
     }
   }),
 )
@@ -163,8 +189,14 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
               </td>
               <td class="border-b border-line px-3 py-1.5"><StatusBadge :state="r.cert.state" /></td>
               <td class="border-b border-line px-3 py-1.5"><LifeBar v-if="r.life" :life="r.life" inline /></td>
-              <td class="border-b border-line px-3 py-1.5 whitespace-nowrap text-ink-muted">{{ t('certs.source.upload') }}</td>
-              <td class="border-b border-line px-3 py-1.5 whitespace-nowrap text-ink-muted">{{ t('certs.next.manual') }}</td>
+              <td
+                class="max-w-48 truncate border-b border-line px-3 py-1.5 whitespace-nowrap text-ink-muted"
+                :translate="r.cert.source === 'provider' ? 'no' : undefined"
+                :title="r.source"
+              >
+                {{ r.source }}
+              </td>
+              <td class="max-w-56 truncate border-b border-line px-3 py-1.5 whitespace-nowrap text-ink-muted" :title="r.next">{{ r.next }}</td>
             </tr>
           </tbody>
         </table>

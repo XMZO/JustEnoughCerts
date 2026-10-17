@@ -45,7 +45,7 @@
     "field": {
       "ca": "证书颁发机构",
       "ca_help": "其他支持 ACME 的 CA 选“自定义”，再填写它的目录地址。",
-      "directory": "目录地址（仅自定义时填写）",
+      "directory": "目录地址",
       "directory_help": "CA 的 ACME 目录地址，在它的文档里能找到，通常以 /directory 结尾。",
       "eab_hmac": "EAB HMAC Key（可选）",
       "eab_hmac_help": "和 Key ID 一起给出，注册账号时使用。",
@@ -57,6 +57,7 @@
     "log": {
       "cleanup": "正在删除 {domain} 的验证记录",
       "cleanup_failed": "没能删除 {domain} 的验证记录，可以到 DNS 服务商那里手动删除",
+      "connect": "连接证书颁发机构：{directory}",
       "issued": "证书颁发机构已签发证书",
       "not_visible": "还没查到 {domain} 的验证记录，稍后再查",
       "order": "正在申请 {domains} 的证书",
@@ -78,6 +79,9 @@
       "details": "查看详情",
       "download": "下载",
       "download_version": "下载 {range} 这一版",
+      "issue": "签发证书",
+      "issue_now": "立即签发",
+      "retry": "重试",
       "save": "保存证书",
       "upload": "上传新证书",
       "upload_short": "上传"
@@ -85,17 +89,33 @@
     "add": {
       "certificate": "证书（PEM，含中间证书）",
       "certificate_help": "证书和中间证书，顺序不限。私钥也可以一起放在这里。",
+      "dns": "DNS 服务商",
+      "dns_help": "JEC 在这里添加 TXT 验证记录，验证后删除。它必须管理上面的域名。",
+      "domains": "域名",
+      "domains_help": "每输入一个按回车。第一个是主域名，通配符写成 *.example.com。",
       "intro": "选好证书来源，再填写需要的内容。",
       "key": "私钥",
       "key_help": "加密保存在 JEC 的数据目录里。如果上面已经包含私钥，这里留空。",
+      "key_type": "密钥类型",
+      "key_type_help": "每次续期都会生成新私钥。老旧客户端多就选 RSA。",
+      "manage_dns": "管理 DNS 服务商",
+      "new_source": "添加证书来源",
+      "new_source_desc": "ACME 账号，例如 Let's Encrypt。",
+      "no_dns": "还没有 DNS 服务商。先添加管理这些域名的那一家。",
       "plan": "接下来的步骤",
       "reminder": "到期提醒",
-      "source": "证书来源"
+      "renew_days": "提前续期",
+      "renew_days_help": "证书只剩这么多天时自动续期，可以填 1 到 365。",
+      "renewal": "续期",
+      "source": "证书来源",
+      "validation": "域名验证"
     },
     "attention": {
       "expired": "{domain} 已过期",
       "expired_detail": "{life}，请上传新证书替换它。",
+      "failed": "{domain} 签发失败",
       "none": "现在没有需要你处理的事。",
+      "renewing": "{domain} 即将到期",
       "replace": "{domain} 需要手动更换",
       "replace_detail": "手动上传的证书无法自动续期，{life}。",
       "title": "需要处理"
@@ -122,8 +142,19 @@
     },
     "detail": {
       "also": "另含 {names}",
+      "failed": "签发失败，不再自动重试",
+      "issuances": "签发记录",
+      "issuing": "正在签发新证书。",
+      "no_issuances": "还没有签发记录。",
+      "retrying": "签发失败，稍后自动重试",
+      "show_log": "查看日志",
+      "show_progress": "查看进度",
       "title": "证书",
       "validity": "有效期"
+    },
+    "domains": {
+      "placeholder": "添加域名，回车确认",
+      "remove": "移除 {domain}"
     },
     "download": {
       "files": "ZIP 文件，内含 cert.pem、chain.pem、fullchain.pem 和 privkey.pem，大多数 Web 服务器都能直接用。",
@@ -160,8 +191,10 @@
       "not_after": "到期时间",
       "not_before": "签发时间",
       "reminder": "到期提醒",
+      "renewal": "自动续期",
       "serial": "序列号",
       "source": "来源",
+      "validation": "域名验证",
       "validity": "有效期"
     },
     "filter": {
@@ -176,6 +209,33 @@
     },
     "info": {
       "title": "证书信息"
+    },
+    "issuance": {
+      "background": "在后台继续",
+      "done": "证书已签发",
+      "done_until": "有效期到 {date}。",
+      "download_log": "下载完整日志",
+      "failed": "签发失败，共试了 {attempts, plural, other {# 次}}",
+      "failed_hint": "不再自动重试。解决问题后，点“重试”。",
+      "heading": "签发 {domain}",
+      "log": "日志",
+      "next_try": "下次尝试：",
+      "no_log": "还没有日志。",
+      "progress": "第 {step} 步，共 {steps} 步：{name}",
+      "queued": "排队中，马上开始。",
+      "retrying": "第 {attempt} 次尝试失败",
+      "show_detail": "显示原始信息",
+      "state": {
+        "done": "成功",
+        "failed": "失败",
+        "pending": "等待中",
+        "retrying": "等待重试",
+        "running": "进行中"
+      },
+      "steps": "步骤",
+      "title": "签发",
+      "via": "来源：{source}",
+      "via_dns": "来源：{source}，用 {dns} 验证域名"
     },
     "key": {
       "ecdsa": "ECDSA {curve}",
@@ -210,11 +270,16 @@
       "name": "证书"
     },
     "next": {
+      "auto": "{date} 自动续期",
+      "failed": "签发失败",
+      "first": "等待首次签发",
+      "issuing": "正在签发",
       "manual": "需手动更换"
     },
     "note": {
       "expired": "请上传新证书",
-      "manual": "无法自动续期，请上传新证书"
+      "manual": "无法自动续期，请上传新证书",
+      "renewing": "即将自动续期"
     },
     "overview": {
       "badge": "{label} {count}",
@@ -225,11 +290,21 @@
     },
     "plan": {
       "check": "检查证书和私钥是否匹配",
+      "dns": "在 {dns} 添加验证记录，验证后删除",
+      "download": "证书颁发机构验证域名后，下载证书",
       "expired": "这张证书已经过期，请上传新证书替换它。",
+      "key": "生成新私钥：{key}",
+      "order": "向 {source} 申请证书",
       "remind": "到期前 {days, plural, other {# 天}}提醒你上传新证书",
+      "renew": "到期前 {days, plural, other {# 天}}自动续期",
       "store": "加密保存私钥",
       "upload": "手动上传的证书无法自动续期，到期前 {days, plural, other {# 天}}会提醒你上传新证书。",
       "upload_due": "请在 {date} 前上传新证书。"
+    },
+    "reason": {
+      "first": "首次签发",
+      "manual": "手动签发",
+      "renewal": "自动续期"
     },
     "search": {
       "label": "搜索域名"
@@ -251,6 +326,20 @@
       "failed": "失败",
       "issuing": "签发中",
       "ok": "正常"
+    },
+    "step": {
+      "challenge": "添加验证记录",
+      "cleanup": "删除验证记录",
+      "download": "下载证书",
+      "key": "生成私钥",
+      "order": "申请证书",
+      "validate": "等待验证"
+    },
+    "step_state": {
+      "done": "已完成",
+      "failed": "失败",
+      "pending": "未开始",
+      "running": "进行中"
     },
     "timeline": {
       "marker": "{domain}，{date} 到期",
@@ -276,6 +365,7 @@
       "cancel": "取消",
       "close": "关闭",
       "copied": "已复制",
+      "delete": "删除",
       "edit": "编辑",
       "save": "保存"
     },
@@ -314,6 +404,47 @@
     "overview": {
       "title": "总览"
     },
+    "providers": {
+      "advanced": "更多设置（{count}）",
+      "choose": "服务商",
+      "choose_other": "换一个服务商",
+      "count": "共 {count} 个",
+      "delete": {
+        "body": "它的设置和保存的凭据会一起删除。还有证书在用时不能删除。",
+        "title": "删除 {name}？"
+      },
+      "edit": "编辑 {name}",
+      "field": {
+        "name": "名称",
+        "name_help": "用来在 JEC 里区分它，比如“主账号”。"
+      },
+      "no_match": "没有找到。",
+      "no_secrets": "没有保密设置",
+      "pick_first": "先在左边选一个服务商。",
+      "search": "搜索服务商",
+      "secret_saved": "已保存，留空不修改",
+      "secrets_saved": "已保存 {count, plural, other {# 项}}保密设置",
+      "solver": {
+        "add": "添加 DNS 服务商",
+        "empty": "还没有 DNS 服务商。签发证书前，先添加管理你的域名的那一家。",
+        "intro": "JEC 用这些 DNS 服务商的 API 自动添加和删除验证记录。",
+        "title": "域名验证"
+      },
+      "source": {
+        "add": "添加证书来源",
+        "empty": "还没有证书来源。添加一个 ACME 账号，JEC 就能自动签发和续期证书。",
+        "intro": "证书从哪里来：支持 ACME 的证书颁发机构，例如 Let's Encrypt。手动上传不用在这里设置。",
+        "title": "证书来源"
+      },
+      "tag": {
+        "all": "全部",
+        "china": "国内",
+        "popular": "常用",
+        "self_hosted": "自建"
+      },
+      "type_gone": "类型不可用，所属模块可能已停用",
+      "uses": "{count, plural, =0 {没有证书在用} other {# 张证书在用}}"
+    },
     "setup": {
       "intro": "创建管理员账号。初始化令牌在服务器日志里 setup_token= 的后面。用 Docker 部署时运行：",
       "submit": "创建账号",
@@ -323,6 +454,7 @@
     "shell": {
       "breadcrumb": "位置",
       "close_menu": "关闭菜单",
+      "config": "配置",
       "menu": "打开菜单",
       "more": "更多",
       "navigation": "主导航",

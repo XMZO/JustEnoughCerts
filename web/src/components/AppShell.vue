@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ellipsis, LayoutGrid, LogOut, Menu, ShieldCheck, X } from '@lucide/vue'
+import { Ellipsis, Globe, LayoutGrid, LogOut, Menu, Package, ShieldCheck, X } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
@@ -33,8 +33,13 @@ const links = computed<Link[]>(() => [
   { to: '/certificates', label: 'certs.list.title', icon: ShieldCheck, count: certificates.data.value?.length },
 ])
 const tabs = computed<Link[]>(() => [...links.value, { to: '/more', label: 'kernel.shell.more', icon: Ellipsis }])
+// Where providers are configured; on phones, the More tab lists them.
+const config: Link[] = [
+  { to: '/sources', label: 'kernel.providers.source.title', icon: Package },
+  { to: '/dns', label: 'kernel.providers.solver.title', icon: Globe },
+]
 
-const current = (to: string) => (to === '/' ? route.path === '/' : route.path.startsWith(to))
+const current = (to: string) => (to === '/' ? route.path === '/' : route.path === to || route.path.startsWith(`${to}/`))
 
 const drawer = ref(false)
 watch(() => route.fullPath, () => (drawer.value = false))
@@ -103,6 +108,22 @@ async function leave() {
           <component :is="link.icon" :class="['size-[18px] flex-none', current(link.to) ? 'text-brand' : '']" aria-hidden="true" />
           <span class="min-w-0 flex-1 truncate" :title="t(link.label)">{{ t(link.label) }}</span>
           <data v-if="link.count !== undefined" :value="link.count" class="text-caption text-ink-muted tabular-nums">{{ link.count }}</data>
+        </RouterLink>
+      </nav>
+      <nav :aria-label="t('kernel.shell.config')" class="flex flex-col gap-0.5">
+        <span class="px-2.5 pb-1 text-caption font-semibold text-ink-muted">{{ t('kernel.shell.config') }}</span>
+        <RouterLink
+          v-for="link in config"
+          :key="link.to"
+          :to="link.to"
+          :aria-current="current(link.to) ? 'page' : undefined"
+          :class="[
+            'flex h-9 items-center gap-2.5 rounded-md px-2.5 font-medium no-underline',
+            current(link.to) ? 'bg-brand-soft font-semibold text-ink hover:text-ink' : 'text-ink-muted hover:bg-surface-sunken hover:text-ink',
+          ]"
+        >
+          <component :is="link.icon" :class="['size-[18px] flex-none', current(link.to) ? 'text-brand' : '']" aria-hidden="true" />
+          <span class="min-w-0 flex-1 truncate" :title="t(link.label)">{{ t(link.label) }}</span>
         </RouterLink>
       </nav>
       <div class="mt-auto flex flex-col gap-2 border-t border-line px-2.5 pt-3 text-caption text-ink-muted">

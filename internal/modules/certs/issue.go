@@ -366,12 +366,7 @@ func (s *service) obtain(ctx context.Context, id int64, log func(contracts.LogLi
 	if c.Source != sourceProvider {
 		return nil, retry.Permanent(errNoSource)
 	}
-	kind, size, _ := strings.Cut(c.KeyType, "-")
-	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepKey, Key: i18n.CertsLogKey, Params: map[string]any{"kind": kind, "size": keySize(size)}})
-	key, err := cryptox.GenerateKey(c.KeyType)
-	if err != nil {
-		return nil, retry.Permanent(err)
-	}
+	// The providers first: a problem with them belongs to no step.
 	source, err := openProvider[contracts.Source](ctx, s.providers, c.SourceProvider)
 	if err != nil {
 		return nil, err
@@ -383,6 +378,12 @@ func (s *service) obtain(ctx context.Context, id int64, log func(contracts.LogLi
 			return nil, err
 		}
 		defer closeProvider(solver, s)
+	}
+	kind, size, _ := strings.Cut(c.KeyType, "-")
+	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepKey, Key: i18n.CertsLogKey, Params: map[string]any{"kind": kind, "size": keySize(size)}})
+	key, err := cryptox.GenerateKey(c.KeyType)
+	if err != nil {
+		return nil, retry.Permanent(err)
 	}
 	chain, err := source.Issue(ctx, contracts.IssueRequest{Domains: c.Domains, Key: key, Solver: solver, Log: log})
 	if err != nil {

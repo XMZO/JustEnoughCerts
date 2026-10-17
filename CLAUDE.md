@@ -50,7 +50,8 @@
 - 前端：应用框架 `web/src/components/AppShell.vue`（侧栏、手机底部标签栏）、总览、证书列表、证书详情（上传新版本、下载、删除、续期设置；下载前要重新输入密码）、添加证书（目前只有手动上传）、手机端“更多”页；证书寿命的计算和文字在 `web/src/certs/life.ts`。单独显示的日期用 `<time>`、数字用 `<data>`、域名等数据加 `translate="no"`，伪语言测试会跳过它们（`PLAN.md` 7.4）。
 - M1 还完成了：provider 注册表 `internal/kernel/providers`（模块用 `r.Providers` 登记类型、打开实例；接口在 `/api/v1/providers`）；子进程机制 `internal/kernel/children`；lego 模块 `internal/modules/lego`（221 家 DNS 服务商，每家在子进程里跑，目录 `catalog.json` 由 `go run ./tools/legocatalog` 生成）；ACME 模块 `internal/modules/acme`（账号就是 provider 实例，用 lego 签发，CI 里对着 Pebble 测）。体积预算已按 lego 实测提高到程序 80 MiB、压缩包和镜像 27 MiB。
 - M1 还完成了：证书模块的签发和续期（`PLAN.md` 4.3 的“实现”、4.6）：证书来源选 ACME 账号等来源实例、验证选 DNS 服务商实例，签发记录和逐行日志存在数据库里，失败按退避重试，进入续期窗口自动续期，签发中、失败两种状态；接口 `POST /api/v1/certs/certificates/issue` 等。
-- 下一步：前端的配置 provider 页面（证书来源、域名验证）、添加证书选 ACME、签发进度页；然后是部署目标（阿里云 ESA、本地文件、SSH、Webhook）和通知。
+- M1 还完成了：前端的配置页 `/sources`、`/dns`（provider 表单由类型的字段生成，字段可标 `advanced`、`when`，`PLAN.md` 5.5），添加证书可选证书来源和 DNS 服务商，签发进度页 `/certificates/:id/issuances/:issuance`（步骤和日志，进行中自动刷新），证书详情的签发记录和“立即签发”。
+- 下一步：部署目标（先做阿里云 ESA，再做本地文件、SSH、Webhook），签发成功后自动部署；然后是通知（Telegram、邮件、Webhook）。
 
 ## 工程约定
 

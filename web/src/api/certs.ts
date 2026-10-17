@@ -8,6 +8,12 @@ export type Certificate = components['schemas']['CertificateBody']
 export type Version = components['schemas']['VersionBody']
 export type ChainEntry = components['schemas']['ChainEntry']
 export type CertificateState = Certificate['state']
+export type Issuance = components['schemas']['IssuanceBody']
+export type IssuanceDetail = components['schemas']['IssuanceDetailOutputBody']
+export type IssueRequest = components['schemas']['IssueRequest']
+export type LogLine = components['schemas']['LogLineBody']
+export type Step = components['schemas']['StepBody']
+export type KeyType = NonNullable<IssueRequest['keyType']>
 
 /** A certificate with its PEM private key, as pasted. */
 export interface PEMUpload {
@@ -40,6 +46,50 @@ function useCertsMutation<V, R>(fn: (vars: V) => Promise<R>) {
     mutationFn: fn,
     onSuccess: () => client.invalidateQueries({ queryKey: all }),
   })
+}
+
+/** An issuance with its steps and log, polled while it is under way. */
+export function useIssuance(id: MaybeRefOrGetter<number>) {
+  const client = useQueryClient()
+  return useQuery({
+    queryKey: computed(() => [...all, 'issuance', toValue(id)] as const),
+    queryFn: async () => {
+      const detail = await unwrap(api.GET('/certs/issuances/{id}', { params: { path: { id: toValue(id) } } }))
+      if (detail.issuance.state === 'done' || detail.issuance.state === 'failed') {
+        // The certificate changed: its pages show it from now on.
+        void client.invalidateQueries({ queryKey: listKey })
+        void client.invalidateQueries({ queryKey: [...all, 'detail', detail.issuance.certificateId] })
+      }
+      return detail
+    },
+    // Quick while an attempt runs or is about to; slow while a retry waits.
+    refetchInterval: (query) => {
+      const is = query.state.data?.issuance
+      if (is?.state === 'running' || (is?.state === 'pending' && !is.error)) return 2000
+      return is?.state === 'pending' ? 30_000 : false
+    },
+  })
+}
+
+/** The latest issuances of certificate id. */
+export function useIssuances(id: MaybeRefOrGetter<number>, enabled: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: computed(() => [...all, 'issuances', toValue(id)] as const),
+    queryFn: async () =>
+      (await unwrap(api.GET('/certs/certificates/{id}/issuances', { params: { path: { id: toValue(id) }, query: { limit: 10 } } })))
+        .issuances ?? [],
+    enabled: computed(() => toValue(enabled)),
+  })
+}
+
+/** Adds a certificate that a source provider issues. */
+export function useIssueCertificate() {
+  return useCertsMutation((body: IssueRequest) => unwrap(api.POST('/certs/certificates/issue', { body })))
+}
+
+/** Starts an issuance of certificate id now, or returns the one under way. */
+export function useIssueNow(id: MaybeRefOrGetter<number>) {
+  return useCertsMutation(() => unwrap(api.POST('/certs/certificates/{id}/issue', { params: { path: { id: toValue(id) } } })))
 }
 
 export function useAddCertificate() {

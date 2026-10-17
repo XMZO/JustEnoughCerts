@@ -1,10 +1,21 @@
 <script setup lang="ts">
-import { Download, Pencil, Trash2, Upload } from '@lucide/vue'
+import { CircleX, Download, LoaderCircle, Pencil, ShieldCheck, Trash2, Upload } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
-import { saveFile, useCertificate, useDeleteCertificate, useDownload, useUpdateCertificate, useUploadVersion } from '../api/certs'
+import {
+  saveFile,
+  useCertificate,
+  useDeleteCertificate,
+  useDownload,
+  useIssuances,
+  useIssueNow,
+  useUpdateCertificate,
+  useUploadVersion,
+} from '../api/certs'
 import { useApiError } from '../api/errors'
+import { useProviders } from '../api/providers'
+import { issuanceState, reasonText } from '../certs/issuance'
 import { certLife, colonHex, keyText } from '../certs/life'
 import CertSlot from '../components/CertSlot.vue'
 import CopyButton from '../components/CopyButton.vue'
@@ -17,12 +28,13 @@ import LifeBar from '../components/LifeBar.vue'
 import PageHeader from '../components/PageHeader.vue'
 import PemFields from '../components/PemFields.vue'
 import StatusBadge from '../components/StatusBadge.vue'
-import { useT } from '../i18n'
+import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
 
 // A certificate (docs/design/boards/CertDetail and CertDetailMobile): its
 // validity, details, renewal settings, versions and chain, with the upload
-// of a new version and deletion.
+// of a new version and deletion. One with a source also shows its latest
+// issuances and can be issued again at once.
 const props = defineProps<{ id: number }>()
 
 const { t } = useT()
@@ -48,6 +60,28 @@ const reminderAt = computed(() =>
   current.value && cert.value ? Date.parse(current.value.notAfter) - cert.value.renewBeforeDays * day : 0,
 )
 const key = computed(() => (current.value ? keyText(current.value.keyType) : null))
+
+// Issuing, for a certificate with a source.
+const issued = computed(() => cert.value?.source === 'provider')
+const sources = useProviders('source')
+const solvers = useProviders('solver')
+const sourceName = computed(() => sources.data.value?.find((p) => p.id === cert.value?.sourceProvider)?.name)
+const solverName = computed(() => solvers.data.value?.find((p) => p.id === cert.value?.solverProvider)?.name)
+const issuances = useIssuances(() => props.id, issued)
+const latest = computed(() => cert.value?.issuance)
+const latestLink = computed(() => (latest.value ? `/certificates/${props.id}/issuances/${latest.value.id}` : ''))
+const issueNow = useIssueNow(() => props.id)
+const issueError = useApiError(issueNow.error)
+async function startIssue() {
+  let next
+  try {
+    next = await issueNow.mutateAsync(undefined)
+  } catch {
+    return // shown under the header
+  }
+  await router.push(`/certificates/${props.id}/issuances/${next.id}`)
+}
+const errorText = (e?: { key: string; params?: Record<string, unknown> }) => (e ? t(e.key as MessageKey, (e.params ?? {}) as Params) : '')
 
 // A version was replaced when the next newer one came.
 const history = computed(() =>
@@ -168,14 +202,40 @@ async function confirmDelete() {
       <JecButton v-if="current" @click="startDownload(current.id)">
         <Download class="size-4" aria-hidden="true" />{{ t('certs.action.download') }}
       </JecButton>
-      <JecButton variant="primary" @click="uploading = true"><Upload class="size-4" aria-hidden="true" />{{ t('certs.action.upload') }}</JecButton>
+      <JecButton :variant="issued ? 'default' : 'primary'" @click="uploading = true">
+        <Upload class="size-4" aria-hidden="true" />{{ t('certs.action.upload') }}
+      </JecButton>
+      <JecButton v-if="issued" variant="primary" :busy="issueNow.isPending.value" @click="startIssue">
+        <ShieldCheck class="size-4" aria-hidden="true" />{{ t('certs.action.issue_now') }}
+      </JecButton>
     </template>
   </PageHeader>
 
   <div class="flex flex-col gap-3 px-4 pt-3 sm:mt-4 sm:gap-4 sm:p-0">
     <JecAlert v-if="loadError.error.value" :code="loadError.error.value.code" :params="loadError.error.value.params" />
+    <JecAlert v-if="issueError.error.value" :code="issueError.error.value.code" :params="issueError.error.value.params" />
 
     <template v-if="cert">
+      <section
+        v-if="latest && cert.state === 'issuing'"
+        role="status"
+        class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line bg-info-soft px-4 py-3"
+      >
+        <LoaderCircle class="size-5 flex-none animate-spin text-info-ink" aria-hidden="true" />
+        <span class="min-w-0 flex-1 font-semibold text-info-ink">{{ t('certs.detail.issuing') }}</span>
+        <RouterLink :to="latestLink" class="font-semibold">{{ t('certs.detail.show_progress') }}</RouterLink>
+      </section>
+      <section v-else-if="latest && cert.state === 'failed'" role="status" class="flex flex-wrap gap-x-3 gap-y-2 rounded-lg border border-line bg-danger-soft px-4 py-3">
+        <CircleX class="mt-0.5 size-5 flex-none text-danger-ink" aria-hidden="true" />
+        <div class="flex min-w-0 flex-[1_1_240px] flex-col gap-0.5">
+          <strong class="text-danger-ink">{{ t(latest.state === 'failed' ? 'certs.detail.failed' : 'certs.detail.retrying') }}</strong>
+          <span class="text-small">{{ errorText(latest.error) }}</span>
+          <span v-if="latest.state === 'pending' && latest.nextAt" class="text-small text-ink-muted">
+            {{ t('certs.issuance.next_try') }} <time :datetime="latest.nextAt">{{ intl.dateTime(latest.nextAt) }}</time>
+          </span>
+        </div>
+        <RouterLink :to="latestLink" class="self-center font-semibold">{{ t('certs.detail.show_log') }}</RouterLink>
+      </section>
       <div class="flex items-center gap-3 sm:hidden">
         <StatusBadge :state="cert.state" />
         <p v-if="also" class="m-0 min-w-0 truncate text-small text-ink-muted" :title="t('certs.detail.also', { names: also })">
@@ -184,6 +244,7 @@ async function confirmDelete() {
       </div>
 
       <section
+        v-if="current"
         :aria-label="t('certs.detail.validity')"
         class="flex flex-wrap items-end gap-x-8 gap-y-4 rounded-lg border border-line bg-surface-raised p-4"
       >
@@ -203,7 +264,7 @@ async function confirmDelete() {
             <dd class="m-0 mt-0.5 font-semibold tabular-nums">{{ t('certs.field.days', { days: validityDays }) }}</dd>
           </div>
           <div>
-            <dt class="text-caption text-ink-muted">{{ t('certs.field.reminder') }}</dt>
+            <dt class="text-caption text-ink-muted">{{ t(issued ? 'certs.field.renewal' : 'certs.field.reminder') }}</dt>
             <dd class="m-0 mt-0.5 font-semibold tabular-nums"><time :datetime="new Date(reminderAt).toISOString()">{{ intl.date(reminderAt) }}</time></dd>
           </div>
         </dl>
@@ -211,7 +272,26 @@ async function confirmDelete() {
 
       <div class="flex flex-wrap items-start gap-3 sm:gap-4">
         <div class="flex min-w-0 flex-[999_1_480px] flex-col gap-3 sm:gap-4">
-          <section aria-labelledby="versions" class="rounded-lg border border-line bg-surface-raised p-4">
+          <section v-if="issued" aria-labelledby="issuances" class="rounded-lg border border-line bg-surface-raised p-4">
+            <h2 id="issuances" class="m-0 mb-1 text-section-title font-semibold">{{ t('certs.detail.issuances') }}</h2>
+            <p v-if="issuances.isSuccess.value && !issuances.data.value?.length" class="m-0 text-small text-ink-muted">{{ t('certs.detail.no_issuances') }}</p>
+            <ol class="m-0 list-none p-0 text-small">
+              <li v-for="is in issuances.data.value ?? []" :key="is.id" class="border-b border-line last:border-b-0">
+                <RouterLink
+                  :to="`/certificates/${id}/issuances/${is.id}`"
+                  class="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-0.5 py-2 text-ink no-underline hover:text-ink"
+                >
+                  <time :datetime="is.createdAt" class="flex-none text-ink-muted tabular-nums">{{ intl.dateTime(is.createdAt) }}</time>
+                  <span class="min-w-0 flex-1">{{ t(reasonText[is.reason]) }}</span>
+                  <span :class="['flex-none font-semibold', is.state === 'done' ? 'text-ok-ink' : is.state === 'running' || (is.state === 'pending' && !is.error) ? 'text-info-ink' : 'text-danger-ink']">
+                    {{ t(issuanceState(is)) }}
+                  </span>
+                </RouterLink>
+              </li>
+            </ol>
+          </section>
+
+          <section v-if="versions.length" aria-labelledby="versions" class="rounded-lg border border-line bg-surface-raised p-4">
             <h2 id="versions" class="m-0 mb-1 text-section-title font-semibold">{{ t('certs.history.title') }}</h2>
             <ol class="m-0 list-none p-0 text-small">
               <li v-for="h in history" :key="h.version.id" class="flex items-center gap-2 border-b border-line py-2 last:border-b-0">
@@ -232,7 +312,7 @@ async function confirmDelete() {
             </ol>
           </section>
 
-          <section aria-labelledby="chain" class="rounded-lg border border-line bg-surface-raised p-4">
+          <section v-if="chain.length" aria-labelledby="chain" class="rounded-lg border border-line bg-surface-raised p-4">
             <h2 id="chain" class="m-0 mb-1 text-section-title font-semibold">{{ t('certs.chain.title') }}</h2>
             <ol class="m-0 list-none p-0 text-small">
               <li v-for="(c, i) in chain" :key="i" class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-b border-line py-2 last:border-b-0">
@@ -247,29 +327,39 @@ async function confirmDelete() {
         <div class="flex min-w-0 flex-[1_1_320px] flex-col gap-3 sm:gap-4">
           <section aria-labelledby="info" class="rounded-lg border border-line bg-surface-raised p-4">
             <h2 id="info" class="m-0 mb-1 text-section-title font-semibold">{{ t('certs.info.title') }}</h2>
-            <dl v-if="current" class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-small">
+            <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-small">
               <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.domains') }}</dt>
               <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ intl.list(cert.domains) }}</dd>
-              <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.issuer') }}</dt>
-              <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ current.issuer }}</dd>
+              <template v-if="current">
+                <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.issuer') }}</dt>
+                <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ current.issuer }}</dd>
+              </template>
               <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.source') }}</dt>
-              <dd class="m-0">{{ t('certs.source.upload') }}</dd>
+              <dd v-if="issued" class="m-0 [overflow-wrap:anywhere]" translate="no">{{ sourceName ?? '' }}</dd>
+              <dd v-else class="m-0">{{ t('certs.source.upload') }}</dd>
+              <template v-if="issued && cert.solverProvider">
+                <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.validation') }}</dt>
+                <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ solverName ?? '' }}</dd>
+              </template>
               <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.key') }}</dt>
-              <dd class="m-0"><template v-if="key">{{ t(key.key, key.params) }}</template></dd>
-              <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.serial') }}</dt>
-              <dd class="m-0 flex min-w-0 items-start gap-1">
-                <span class="min-w-0 flex-1 truncate font-mono text-caption leading-5" translate="no" :title="colonHex(current.serial)">
-                  {{ colonHex(current.serial) }}
-                </span>
-                <CopyButton :value="colonHex(current.serial)" label="certs.action.copy_serial" />
-              </dd>
-              <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.fingerprint') }}</dt>
-              <dd class="m-0 flex min-w-0 items-start gap-1">
-                <span class="min-w-0 flex-1 truncate font-mono text-caption leading-5" translate="no" :title="colonHex(current.fingerprint)">
-                  {{ colonHex(current.fingerprint) }}
-                </span>
-                <CopyButton :value="colonHex(current.fingerprint)" label="certs.action.copy_fingerprint" />
-              </dd>
+              <dd v-if="key" class="m-0">{{ t(key.key, key.params) }}</dd>
+              <dd v-else class="m-0">{{ t(keyText(cert.keyType).key, keyText(cert.keyType).params) }}</dd>
+              <template v-if="current">
+                <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.serial') }}</dt>
+                <dd class="m-0 flex min-w-0 items-start gap-1">
+                  <span class="min-w-0 flex-1 truncate font-mono text-caption leading-5" translate="no" :title="colonHex(current.serial)">
+                    {{ colonHex(current.serial) }}
+                  </span>
+                  <CopyButton :value="colonHex(current.serial)" label="certs.action.copy_serial" />
+                </dd>
+                <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.fingerprint') }}</dt>
+                <dd class="m-0 flex min-w-0 items-start gap-1">
+                  <span class="min-w-0 flex-1 truncate font-mono text-caption leading-5" translate="no" :title="colonHex(current.fingerprint)">
+                    {{ colonHex(current.fingerprint) }}
+                  </span>
+                  <CopyButton :value="colonHex(current.fingerprint)" label="certs.action.copy_fingerprint" />
+                </dd>
+              </template>
             </dl>
           </section>
 
@@ -281,7 +371,7 @@ async function confirmDelete() {
               </JecButton>
             </div>
             <dl v-if="!editing" class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-small">
-              <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.reminder') }}</dt>
+              <dt class="whitespace-nowrap text-ink-muted">{{ t(issued ? 'certs.field.renewal' : 'certs.field.reminder') }}</dt>
               <dd class="m-0">{{ t('certs.settings.reminder_value', { days: cert.renewBeforeDays }) }}</dd>
             </dl>
             <form v-else class="flex flex-col gap-3" novalidate @submit.prevent="saveSettings">
@@ -311,6 +401,9 @@ async function confirmDelete() {
           </section>
 
           <div class="flex flex-col gap-2 sm:hidden">
+            <JecButton v-if="issued" variant="primary" :busy="issueNow.isPending.value" @click="startIssue">
+              <ShieldCheck class="size-4" aria-hidden="true" />{{ t('certs.action.issue_now') }}
+            </JecButton>
             <JecButton v-if="current" @click="startDownload(current.id)">
               <Download class="size-4" aria-hidden="true" />{{ t('certs.action.download') }}
             </JecButton>

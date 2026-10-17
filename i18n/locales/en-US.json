@@ -45,7 +45,7 @@
     "field": {
       "ca": "Certificate authority",
       "ca_help": "For any other CA that speaks ACME, choose Custom and fill in its directory URL.",
-      "directory": "Directory URL (only for Custom)",
+      "directory": "Directory URL",
       "directory_help": "The CA's ACME directory, given in its documentation; it usually ends in /directory.",
       "eab_hmac": "EAB HMAC key (optional)",
       "eab_hmac_help": "Comes with the Key ID; JEC uses it to register the account.",
@@ -57,6 +57,7 @@
     "log": {
       "cleanup": "Removing the validation record for {domain}",
       "cleanup_failed": "Could not remove the record for {domain}; you can remove it at the DNS provider",
+      "connect": "Contacting the certificate authority at {directory}",
       "issued": "The certificate authority issued the certificate",
       "not_visible": "The record for {domain} does not show yet; checking again",
       "order": "Asking for a certificate for {domains}",
@@ -78,6 +79,9 @@
       "details": "View details",
       "download": "Download",
       "download_version": "Download the version {range}",
+      "issue": "Issue the certificate",
+      "issue_now": "Issue now",
+      "retry": "Try again",
       "save": "Save certificate",
       "upload": "Upload new certificate",
       "upload_short": "Upload"
@@ -85,17 +89,33 @@
     "add": {
       "certificate": "Certificate (PEM, with intermediates)",
       "certificate_help": "The certificate and its intermediates, in any order. The private key may go here too.",
+      "dns": "DNS provider",
+      "dns_help": "JEC adds the TXT records there and removes them afterwards. It must serve the domains above.",
+      "domains": "Domains",
+      "domains_help": "Press Enter after each. The first is the primary domain; write a wildcard as *.example.com.",
       "intro": "Choose where the certificate comes from, then fill in what it needs.",
       "key": "Private key",
       "key_help": "Stored encrypted in the data directory. Leave it empty if the key is in the field above.",
+      "key_type": "Key type",
+      "key_type_help": "Each renewal makes a new private key. Choose RSA where old clients are common.",
+      "manage_dns": "Manage DNS providers",
+      "new_source": "Add a source",
+      "new_source_desc": "An ACME account, such as Let's Encrypt.",
+      "no_dns": "No DNS providers yet. First add the one that serves these domains.",
       "plan": "What happens next",
       "reminder": "Reminder",
-      "source": "Source"
+      "renew_days": "Renew ahead",
+      "renew_days_help": "The certificate renews when this many days are left: 1 to 365.",
+      "renewal": "Renewal",
+      "source": "Source",
+      "validation": "Domain validation"
     },
     "attention": {
       "expired": "{domain} has expired",
       "expired_detail": "{life}. Upload a new certificate to replace it.",
+      "failed": "{domain} could not be issued",
       "none": "Nothing needs you right now.",
+      "renewing": "{domain} expires soon",
       "replace": "{domain} needs replacing",
       "replace_detail": "Uploaded certificates are not renewed automatically: {life}.",
       "title": "Needs attention"
@@ -122,8 +142,19 @@
     },
     "detail": {
       "also": "Also covers {names}",
+      "failed": "The issuance failed; no more automatic attempts",
+      "issuances": "Issuances",
+      "issuing": "A new certificate is being issued.",
+      "no_issuances": "No issuances yet.",
+      "retrying": "The issuance failed; trying again later",
+      "show_log": "See the log",
+      "show_progress": "See the progress",
       "title": "Certificate",
       "validity": "Validity"
+    },
+    "domains": {
+      "placeholder": "Add a domain, then press Enter",
+      "remove": "Remove {domain}"
     },
     "download": {
       "files": "A ZIP file with cert.pem, chain.pem, fullchain.pem and privkey.pem, the format most web servers take.",
@@ -160,8 +191,10 @@
       "not_after": "Expires on",
       "not_before": "Valid from",
       "reminder": "Reminder",
+      "renewal": "Renewal",
       "serial": "Serial number",
       "source": "Source",
+      "validation": "Validation",
       "validity": "Validity"
     },
     "filter": {
@@ -176,6 +209,33 @@
     },
     "info": {
       "title": "Certificate details"
+    },
+    "issuance": {
+      "background": "Continue in the background",
+      "done": "Certificate issued",
+      "done_until": "Valid until {date}.",
+      "download_log": "Download the full log",
+      "failed": "The issuance failed after {attempts, plural, one {# attempt} other {# attempts}}",
+      "failed_hint": "No more automatic attempts. Once the cause is fixed, choose Try again.",
+      "heading": "Issuing {domain}",
+      "log": "Log",
+      "next_try": "Next attempt:",
+      "no_log": "No log yet.",
+      "progress": "Step {step} of {steps}: {name}",
+      "queued": "Queued; starting shortly.",
+      "retrying": "Attempt {attempt} failed",
+      "show_detail": "Show raw details",
+      "state": {
+        "done": "Done",
+        "failed": "Failed",
+        "pending": "Waiting",
+        "retrying": "Retrying later",
+        "running": "Running"
+      },
+      "steps": "Steps",
+      "title": "Issuance",
+      "via": "From {source}",
+      "via_dns": "From {source}, validated through {dns}"
     },
     "key": {
       "ecdsa": "ECDSA {curve}",
@@ -210,11 +270,16 @@
       "name": "Certificates"
     },
     "next": {
+      "auto": "Renews on {date}",
+      "failed": "Issuance failed",
+      "first": "Waiting for the first issuance",
+      "issuing": "Issuing now",
       "manual": "Replace by hand"
     },
     "note": {
       "expired": "Upload a new certificate",
-      "manual": "Not renewed automatically, upload a new one"
+      "manual": "Not renewed automatically, upload a new one",
+      "renewing": "Renewing soon"
     },
     "overview": {
       "badge": "{label} {count}",
@@ -225,11 +290,21 @@
     },
     "plan": {
       "check": "Check that the certificate and the private key match",
+      "dns": "Add the validation records at {dns}, and remove them afterwards",
+      "download": "Download the certificate once the CA has validated the domains",
       "expired": "This certificate has expired. Upload a new one to replace it.",
+      "key": "Make a new private key: {key}",
+      "order": "Order the certificate from {source}",
       "remind": "Remind you {days, plural, one {# day} other {# days}} before expiry to upload a new certificate",
+      "renew": "Renew {days, plural, one {# day} other {# days}} before the end",
       "store": "Store the private key encrypted",
       "upload": "Uploaded certificates are not renewed automatically. JEC reminds you {days, plural, one {# day} other {# days}} before this one expires.",
       "upload_due": "Upload a new certificate before {date}."
+    },
+    "reason": {
+      "first": "First issuance",
+      "manual": "Issued by hand",
+      "renewal": "Renewal"
     },
     "search": {
       "label": "Search domains"
@@ -251,6 +326,20 @@
       "failed": "Failed",
       "issuing": "Issuing",
       "ok": "Healthy"
+    },
+    "step": {
+      "challenge": "Add the validation records",
+      "cleanup": "Remove the validation records",
+      "download": "Download the certificate",
+      "key": "Make the private key",
+      "order": "Order the certificate",
+      "validate": "Wait for the validation"
+    },
+    "step_state": {
+      "done": "done",
+      "failed": "failed",
+      "pending": "not started",
+      "running": "in progress"
     },
     "timeline": {
       "marker": "{domain}, expires {date}",
@@ -276,6 +365,7 @@
       "cancel": "Cancel",
       "close": "Close",
       "copied": "Copied",
+      "delete": "Delete",
       "edit": "Edit",
       "save": "Save"
     },
@@ -314,6 +404,47 @@
     "overview": {
       "title": "Overview"
     },
+    "providers": {
+      "advanced": "More settings ({count})",
+      "choose": "Providers",
+      "choose_other": "Choose another",
+      "count": "{count} in all",
+      "delete": {
+        "body": "Its settings and saved credentials go with it. A provider that certificates use cannot be deleted.",
+        "title": "Delete {name}?"
+      },
+      "edit": "Edit {name}",
+      "field": {
+        "name": "Name",
+        "name_help": "Tells it apart in JEC, such as “Main account”."
+      },
+      "no_match": "None found.",
+      "no_secrets": "No secrets",
+      "pick_first": "Choose a provider on the left first.",
+      "search": "Search providers",
+      "secret_saved": "Saved; leave empty to keep it",
+      "secrets_saved": "{count, plural, one {# secret} other {# secrets}} saved",
+      "solver": {
+        "add": "Add a DNS provider",
+        "empty": "No DNS providers yet. Before issuing, add the one that serves your domains.",
+        "intro": "JEC adds and removes the validation records through the APIs of these DNS providers.",
+        "title": "Domain validation"
+      },
+      "source": {
+        "add": "Add a source",
+        "empty": "No sources yet. Add an ACME account, and JEC issues and renews certificates by itself.",
+        "intro": "Where certificates come from: certificate authorities that speak ACME, such as Let's Encrypt. Uploads need no setup here.",
+        "title": "Certificate sources"
+      },
+      "tag": {
+        "all": "All",
+        "china": "China",
+        "popular": "Popular",
+        "self_hosted": "Self-hosted"
+      },
+      "type_gone": "Type not available; its module may be off",
+      "uses": "{count, plural, =0 {Used by no certificate} one {Used by # certificate} other {Used by # certificates}}"
+    },
     "setup": {
       "intro": "Create the admin account. The setup token is in the server log, after setup_token=. With Docker, run:",
       "submit": "Create account",
@@ -323,6 +454,7 @@
     "shell": {
       "breadcrumb": "Location",
       "close_menu": "Close the menu",
+      "config": "Configuration",
       "menu": "Open the menu",
       "more": "More",
       "navigation": "Main navigation",

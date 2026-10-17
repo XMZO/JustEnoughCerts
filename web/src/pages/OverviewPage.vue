@@ -5,6 +5,7 @@ import { RouterLink } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
 import { useCertificates, type Certificate, type CertificateState } from '../api/certs'
+import { useProviders } from '../api/providers'
 import { certLife, lifeText, needsAttention, type Life } from '../certs/life'
 import CertSlot from '../components/CertSlot.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -13,7 +14,7 @@ import LifeBar from '../components/LifeBar.vue'
 import PageHeader from '../components/PageHeader.vue'
 import SearchBox from '../components/SearchBox.vue'
 import StatusBadge from '../components/StatusBadge.vue'
-import { useT } from '../i18n'
+import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
 
 // The overview (docs/design/boards/Main and OverviewMobile): every
@@ -31,6 +32,8 @@ const error = computed(() => {
 })
 
 const all = computed(() => certificates.data.value ?? [])
+const sources = useProviders('source')
+const sourceName = (c: Certificate) => sources.data.value?.find((p) => p.id === c.sourceProvider)?.name ?? ''
 const shown = computed(() => {
   const q = query.value.trim().toLowerCase()
   return q ? all.value.filter((c) => c.domains.some((d) => d.includes(q))) : all.value
@@ -47,7 +50,7 @@ const selectedExtra = computed(() => {
 
 const subtitle = computed(() => t('certs.overview.summary', { count: all.value.length, attention: attention.value.length }))
 
-const order: CertificateState[] = ['expired', 'expiring', 'ok']
+const order: CertificateState[] = ['failed', 'expired', 'expiring', 'issuing', 'ok']
 const counts = computed(() =>
   order.map((state) => ({ state, count: all.value.filter((c) => c.state === state).length })).filter((s) => s.count > 0),
 )
@@ -58,30 +61,55 @@ function lifeWords(l: Life | null): string {
   return t(text.key, text.params)
 }
 
+const day = 86_400_000
+
+const errorText = (c: Certificate) =>
+  c.issuance?.error ? t(c.issuance.error.key as MessageKey, (c.issuance.error.params ?? {}) as Params) : ''
+
 /** plan says what happens next to c. */
 function plan(c: Certificate, l: Life | null): string {
+  if (c.source === 'provider') {
+    if (c.state === 'issuing') return t('certs.next.issuing')
+    if (c.state === 'failed') return errorText(c)
+    if (!c.current) return t('certs.next.first')
+    return t('certs.next.auto', { date: intl.date(Date.parse(c.current.notAfter) - c.renewBeforeDays * day) })
+  }
   if (!l || l.expired) return t('certs.plan.expired')
   if (c.state === 'expiring' && c.current) return t('certs.plan.upload_due', { date: intl.date(c.current.notAfter) })
   return t('certs.plan.upload', { days: c.renewBeforeDays })
 }
 
+// What needs someone: a failed issuance shows its reason and leads to its
+// log; an uploaded certificate near its end asks for a new upload.
 const todo = computed(() =>
   attention.value.map((c) => {
     const l = certLife(c)
     const domain = c.domains[0] ?? ''
-    const expired = c.state === 'expired'
+    const expired = c.state === 'expired' || c.state === 'failed'
+    if (c.source === 'provider') {
+      const failed = c.state === 'failed' && c.issuance
+      return {
+        cert: c,
+        expired,
+        title: t(failed ? 'certs.attention.failed' : expired ? 'certs.attention.expired' : 'certs.attention.renewing', { domain }),
+        detail: failed ? errorText(c) : t('certs.note.renewing'),
+        to: failed ? `/certificates/${c.id}/issuances/${c.issuance!.id}` : `/certificates/${c.id}`,
+        action: (failed ? 'certs.detail.show_log' : 'certs.action.details') as MessageKey,
+      }
+    }
     return {
       cert: c,
       expired,
       title: t(expired ? 'certs.attention.expired' : 'certs.attention.replace', { domain }),
       detail: t(expired ? 'certs.attention.expired_detail' : 'certs.attention.replace_detail', { life: lifeWords(l) }),
+      to: { path: `/certificates/${c.id}`, query: { upload: '1' } },
+      action: 'certs.action.upload_short' as MessageKey,
     }
   }),
 )
 
 // The 90 days ahead, with a mark at each expiry and ticks every 30 days.
 const horizon = 90
-const day = 86_400_000
 const ticks = computed(() => [30, 60, 90].map((d) => ({ left: `${(d / horizon) * 100}%`, date: intl.shortDate(Date.now() + d * day) })))
 const upcoming = computed(() =>
   all.value
@@ -168,7 +196,10 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
           <LifeBar v-if="selectedLife" :life="selectedLife" />
           <dl class="m-0 hidden grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-small sm:grid">
             <dt class="text-ink-muted">{{ t('certs.field.source') }}</dt>
-            <dd class="m-0">{{ t('certs.source.upload') }}</dd>
+            <dd v-if="selected.source === 'provider'" class="m-0 min-w-0 truncate" translate="no" :title="sourceName(selected)">
+              {{ sourceName(selected) }}
+            </dd>
+            <dd v-else class="m-0">{{ t('certs.source.upload') }}</dd>
             <template v-if="selected.current">
               <dt class="text-ink-muted">{{ t('certs.field.expires') }}</dt>
               <dd class="m-0 tabular-nums">
@@ -178,7 +209,13 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
           </dl>
           <p class="m-0 text-small text-ink-muted">{{ plan(selected, selectedLife) }}</p>
           <div class="mt-auto flex flex-wrap gap-2">
-            <JecButton variant="primary" size="sm" :to="{ path: `/certificates/${selected.id}`, query: { upload: '1' } }" class="max-sm:flex-1">
+            <JecButton
+              v-if="selected.source === 'upload'"
+              variant="primary"
+              size="sm"
+              :to="{ path: `/certificates/${selected.id}`, query: { upload: '1' } }"
+              class="max-sm:flex-1"
+            >
               {{ t('certs.action.upload') }}
             </JecButton>
             <JecButton size="sm" :to="`/certificates/${selected.id}`" class="max-sm:flex-1">{{ t('certs.action.details') }}</JecButton>
@@ -201,12 +238,12 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
               <div class="font-semibold [overflow-wrap:anywhere]">{{ item.title }}</div>
               <div class="text-small text-ink-muted">{{ item.detail }}</div>
             </div>
-            <JecButton variant="ghost" size="sm" :to="{ path: `/certificates/${item.cert.id}`, query: { upload: '1' } }" class="max-sm:hidden">
-              {{ t('certs.action.upload_short') }}
+            <JecButton variant="ghost" size="sm" :to="item.to" class="max-sm:hidden">
+              {{ t(item.action) }}
             </JecButton>
             <RouterLink
-              :to="{ path: `/certificates/${item.cert.id}`, query: { upload: '1' } }"
-              :aria-label="t('certs.action.upload_short')"
+              :to="item.to"
+              :aria-label="t(item.action)"
               class="-my-2.5 grid size-11 flex-none place-items-center text-ink-muted sm:hidden"
             >
               <ChevronRight class="size-4" aria-hidden="true" />
