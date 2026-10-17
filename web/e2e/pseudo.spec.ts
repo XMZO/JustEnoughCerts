@@ -148,6 +148,12 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.keyboard.press('Escape')
   await expect(page.locator('dialog[open]')).toHaveCount(0)
 
+  await page.getByRole('button', { name: label('certs.action.download') }).filter({ visible: true }).first().click()
+  await expect(page.locator('dialog[open]')).toBeVisible()
+  expect.soft(await problems(page), 'download a certificate').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+
   await page.getByRole('button', { name: label('certs.action.delete') }).filter({ visible: true }).first().click()
   await expect(page.locator('dialog[open]')).toBeVisible()
   expect.soft(await problems(page), 'delete a certificate').toEqual([])

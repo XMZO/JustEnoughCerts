@@ -116,6 +116,8 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 			Events:  bus.Scope(id),
 			Jobs:    sched.Scope(id),
 			Secrets: box.Scope(id),
+
+			ConfirmPassword: accounts.ConfirmPassword,
 		}
 		if err := m.Register(r); err != nil {
 			return nil, fmt.Errorf("module %s: %w", id, err)

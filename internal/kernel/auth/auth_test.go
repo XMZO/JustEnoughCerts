@@ -73,6 +73,14 @@ func newFixture(t *testing.T, opts Options) *fixture {
 			}
 			return &struct{ Body string }{Body: u.Username}, nil
 		})
+	huma.Register(a.Kernel(), huma.Operation{OperationID: "confirm", Method: http.MethodPost, Path: "/confirm", DefaultStatus: http.StatusNoContent},
+		func(ctx context.Context, in *struct {
+			Body struct {
+				Password string `json:"password"`
+			}
+		}) (*struct{}, error) {
+			return nil, svc.ConfirmPassword(ctx, in.Body.Password)
+		})
 	f.srv = httptest.NewServer(a.Handler())
 	t.Cleanup(f.srv.Close)
 	return f
@@ -403,5 +411,31 @@ func TestPasswordDefaults(t *testing.T) {
 	hash, err := hashPassword("x")
 	if err != nil || !strings.HasPrefix(hash, "$argon2id$v=19$m=65536,t=3,p=4$") {
 		t.Errorf("hash = %q, %v", hash, err)
+	}
+}
+
+func TestConfirmPassword(t *testing.T) {
+	f := signedUp(t)
+	r := f.call(http.MethodPost, "/session", "", `{"username": "admin", "password": "correct horse"}`)
+	session := r.cookie.Value
+
+	if r := f.call(http.MethodPost, "/confirm", session, `{"password": "correct horse"}`); r.status != http.StatusNoContent {
+		t.Errorf("the right password = %d %s", r.status, r.body)
+	}
+	if r := f.call(http.MethodPost, "/confirm", "", `{"password": "correct horse"}`); r.status != http.StatusUnauthorized {
+		t.Errorf("without a session = %d %s", r.status, r.body)
+	}
+	for i := range maxFailures {
+		r := f.call(http.MethodPost, "/confirm", session, `{"password": "wrong horse"}`)
+		if r.status != http.StatusUnprocessableEntity || code(t, r.body) != i18n.KernelErrorPasswordWrong || !strings.Contains(r.body, `"location":"body.password"`) {
+			t.Fatalf("wrong password %d = %d %s", i+1, r.status, r.body)
+		}
+	}
+	// Wrong confirmations lock the client out like failed sign-ins.
+	if r := f.call(http.MethodPost, "/confirm", session, `{"password": "correct horse"}`); r.status != http.StatusTooManyRequests {
+		t.Errorf("after %d wrong passwords = %d %s", maxFailures, r.status, r.body)
+	}
+	if r := f.call(http.MethodPost, "/session", "", `{"username": "admin", "password": "correct horse"}`); r.status != http.StatusTooManyRequests {
+		t.Errorf("sign in after the lockout started = %d %s", r.status, r.body)
 	}
 }

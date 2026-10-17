@@ -1,6 +1,9 @@
 package certs
 
 import (
+	"archive/zip"
+	"bytes"
+	"context"
 	"crypto"
 	"database/sql"
 	"encoding/json"
@@ -14,6 +17,8 @@ import (
 
 	"github.com/danielgtaylor/huma/v2/humatest"
 
+	"github.com/XMZO/JustEnoughCerts/i18n"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
@@ -24,6 +29,8 @@ import (
 )
 
 var start = time.Date(2026, 10, 17, 8, 0, 0, 0, time.UTC)
+
+const testPassword = "correct horse"
 
 type fixture struct {
 	t   *testing.T
@@ -58,7 +65,12 @@ func newFixture(t *testing.T) *fixture {
 	f := &fixture{t: t, db: st.DB(), box: box.Scope("certs"), ca: cryptoxtest.NewCA(t), now: start}
 	f.svc = &service{db: st.DB(), events: bus.Scope("certs"), secrets: f.box, log: slog.New(slog.DiscardHandler), now: func() time.Time { return f.now }}
 	_, f.api = humatest.New(t)
-	registerAPI(f.api, f.svc)
+	registerAPI(f.api, f.svc, func(_ context.Context, password string) error {
+		if password != testPassword {
+			return api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorPasswordWrong, nil).WithField("body.password", i18n.KernelErrorPasswordWrong)
+		}
+		return nil
+	})
 	return f
 }
 
@@ -348,5 +360,58 @@ func TestCheckExpiry(t *testing.T) {
 	want := "soon.example.com=urgent soon.example.com=expired example.com=window example.com=urgent example.com=expired"
 	if got := strings.Join(expiring(), " "); got != want {
 		t.Errorf("notices:\n got %s\nwant %s", got, want)
+	}
+}
+
+func TestDownload(t *testing.T) {
+	f := newFixture(t)
+	u := f.leaf(90, "*.example.com", "example.com")
+	c := f.add(u)
+	path := "/certificates/" + strconv.FormatInt(c.ID, 10) + "/versions/" + strconv.FormatInt(c.Current.ID, 10) + "/download"
+
+	e := f.apiError(f.api.Post(path, map[string]any{"password": "wrong"}), http.StatusUnprocessableEntity)
+	if e.Code != "kernel.error.password_wrong" || len(e.Fields) != 1 || e.Fields[0].Location != "body.password" {
+		t.Errorf("wrong password: %+v", e)
+	}
+	f.apiError(f.api.Post("/certificates/999/versions/1/download", map[string]any{"password": testPassword}), http.StatusNotFound)
+	f.apiError(f.api.Post("/certificates/"+strconv.FormatInt(c.ID, 10)+"/versions/999/download", map[string]any{"password": testPassword}), http.StatusNotFound)
+
+	resp := f.api.Post(path, map[string]any{"password": testPassword})
+	if resp.Code != http.StatusOK || resp.Header().Get("Content-Type") != "application/zip" || resp.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("download: %d %v", resp.Code, resp.Header())
+	}
+	want := `attachment; filename="star.example.com_` + f.now.Add(90*day).Format(time.DateOnly) + `.zip"`
+	if got := resp.Header().Get("Content-Disposition"); got != want {
+		t.Errorf("Content-Disposition %q, want %q", got, want)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(resp.Body.Bytes()), int64(resp.Body.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{}
+	for _, zf := range zr.File {
+		r, err := zf.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var b bytes.Buffer
+		_, _ = b.ReadFrom(r)
+		_ = r.Close()
+		files[zf.Name] = b.String()
+	}
+	const end = "-----END CERTIFICATE-----\n"
+	leaf, inter, _ := strings.Cut(u.cert, end)
+	leaf += end
+	switch {
+	case len(files) != 4:
+		t.Errorf("files %v", len(files))
+	case files["cert.pem"] != leaf, files["chain.pem"] != inter, files["fullchain.pem"] != u.cert:
+		t.Errorf("certificates in the ZIP:\n%v", files)
+	case files["privkey.pem"] != u.key:
+		t.Error("privkey.pem is not the uploaded key")
+	}
+	evs := f.events()
+	if last := evs[len(evs)-1]; last.typ != contracts.CertificateKeyDownloaded || last.data.VersionID != c.Current.ID {
+		t.Errorf("events %+v", evs)
 	}
 }

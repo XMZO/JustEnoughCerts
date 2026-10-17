@@ -20,6 +20,9 @@ const (
 	// CertificateDeleted: a certificate and all its versions were deleted.
 	// Payload CertificateEvent without a version.
 	CertificateDeleted = "certificate.deleted"
+	// CertificateKeyDownloaded: someone downloaded a version with its
+	// private key. Payload CertificateEvent with Username set.
+	CertificateKeyDownloaded = "certificate.key_downloaded"
 )
 
 // Expiry says how close a certificate is to its end, in increasing order of
@@ -40,4 +43,5 @@ type CertificateEvent struct {
 	VersionID     int64     `json:"versionId,omitempty"`
 	NotAfter      time.Time `json:"notAfter,omitzero"` // the end of the version
 	Expiry        Expiry    `json:"expiry,omitempty"`
+	Username      string    `json:"username,omitempty"` // who did it, where a person did
 }

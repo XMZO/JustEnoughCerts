@@ -50,6 +50,6 @@ func (*Module) Migrations() fs.FS {
 // Register adds the API under /api/v1/certs and the expiry check.
 func (m *Module) Register(r *module.Registry) error {
 	s := &service{db: r.DB, events: r.Events, secrets: r.Secrets, log: r.Log, now: m.now}
-	registerAPI(r.API, s)
+	registerAPI(r.API, s, r.ConfirmPassword)
 	return r.Jobs.Add(jobs.Job{Name: "check_expiry", Every: time.Hour, Timeout: 5 * time.Minute, Run: s.checkExpiry})
 }

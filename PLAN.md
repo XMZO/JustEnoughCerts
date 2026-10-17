@@ -565,6 +565,7 @@ services:
   - 实现在 `internal/kernel/secrets`：`JEC_SECRET_KEY` 是 32 字节随机数的 base64，只能从环境变量读，不接受命令行参数（其他进程看得到）和配置文件；没有设置时用数据目录里的 `secret.key`，第一次启动时生成（权限 0600）。
   - 每段密文都绑定存放的位置（AES-GCM 的附加数据），模块之间互相隔开，所以密文复制到别处也解不开。
   - 库里存一段用主密钥加密的校验值，启动时主密钥对不上就直接拒绝启动，不会等到用私钥时才发现解不开。
+  - 下载私钥：`POST /api/v1/certs/certificates/{id}/versions/{version}/download` 带上当前账号的密码，内核的 `ConfirmPassword`（模块通过 `r.ConfirmPassword` 使用）先核对密码，输错和登录失败共用同一个锁定计数。返回 certbot 那样的 ZIP（cert.pem、chain.pem、fullchain.pem、privkey.pem），响应不缓存，并发出 `certificate.key_downloaded` 事件，留给审计日志模块记录。
 - **登录**：本地账号，密码用 argon2id 哈希（RFC 9106 第二组推荐参数：64 MiB、3 轮、4 线程，同时最多算 2 个），支持 TOTP 两步验证；以后支持 OIDC 单点登录。
   - 会话是随机令牌，库里只存 SHA-256，有效期 30 天。Cookie 设 `HttpOnly`、`SameSite=Lax`；base URL 是 https 时再加 `Secure`（纯 HTTP 访问时浏览器不收 Secure Cookie，局域网直连会登不上）。
   - CSRF 防护用 Go 标准库的 `http.CrossOriginProtection`，按 `Sec-Fetch-Site` 和 `Origin` 拒绝跨站的写请求；base URL 的 origin 被信任，反向代理改写 Host 时也能通过。

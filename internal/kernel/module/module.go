@@ -8,6 +8,7 @@
 package module
 
 import (
+	"context"
 	"database/sql"
 	"io/fs"
 	"log/slog"
@@ -79,4 +80,9 @@ type Registry struct {
 	// Secrets seals what the module stores but must not keep in the clear,
 	// such as private keys and credentials.
 	Secrets *secrets.Scope
+	// ConfirmPassword checks the password of the account a request is
+	// signed in as, before something sensitive such as a private key
+	// download. Its error is an API response: a wrong body.password, or
+	// too many attempts.
+	ConfirmPassword func(ctx context.Context, password string) error
 }

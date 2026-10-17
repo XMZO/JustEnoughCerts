@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 
-import { api, unwrap } from './client'
+import { api, ApiError, networkError, unwrap } from './client'
 import type { components } from './schema'
 
 export type Certificate = components['schemas']['CertificateBody']
@@ -62,4 +62,40 @@ export function useUpdateCertificate(id: MaybeRefOrGetter<number>) {
 
 export function useDeleteCertificate(id: MaybeRefOrGetter<number>) {
   return useCertsMutation(() => unwrap(api.DELETE('/certs/certificates/{id}', { params: { path: { id: toValue(id) } } })))
+}
+
+/**
+ * useDownload fetches a version of certificate id with its private key, as
+ * the ZIP the server names, once the password is confirmed.
+ */
+export function useDownload(id: MaybeRefOrGetter<number>) {
+  return useMutation({
+    mutationFn: async ({ version, password }: { version: number; password: string }) => {
+      let result
+      try {
+        result = await api.POST('/certs/certificates/{id}/versions/{version}/download', {
+          params: { path: { id: toValue(id), version } },
+          body: { password },
+          parseAs: 'blob',
+        })
+      } catch {
+        throw networkError
+      }
+      if (result.error !== undefined || !result.response.ok) {
+        throw new ApiError(result.response.status, result.error)
+      }
+      const disposition = result.response.headers.get('Content-Disposition') ?? ''
+      return { blob: result.data, name: /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'certificate.zip' }
+    },
+  })
+}
+
+/** saveFile hands blob to the browser as a download called name. */
+export function saveFile(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 0)
 }

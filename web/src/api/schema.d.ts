@@ -58,6 +58,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certs/certificates/{id}/versions/{version}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Download a version with its private key, as a ZIP of PEM files */
+        post: operations["certs-download"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/manifest": {
         parameters: {
             query?: never;
@@ -171,6 +188,10 @@ export interface components {
             chain: components["schemas"]["ChainEntry"][];
             /** @description Every version, the newest first */
             versions: components["schemas"]["VersionBody"][];
+        };
+        DownloadInputBody: {
+            /** @description The password of the signed-in account, asked again before a private key leaves JEC */
+            password: string;
         };
         Error: {
             /** @description Message key, rendered by the client in the viewer's language */
@@ -455,6 +476,45 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CertificateBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DownloadInputBody"];
+            };
+        };
+        responses: {
+            /** @description cert.pem, chain.pem (when there are intermediates), fullchain.pem and privkey.pem */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    "Content-Disposition"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
                 };
             };
             /** @description Error */

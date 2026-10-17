@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Pencil, Trash2, Upload } from '@lucide/vue'
+import { Download, Pencil, Trash2, Upload } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { useCertificate, useDeleteCertificate, useUpdateCertificate, useUploadVersion } from '../api/certs'
+import { saveFile, useCertificate, useDeleteCertificate, useDownload, useUpdateCertificate, useUploadVersion } from '../api/certs'
 import { useApiError } from '../api/errors'
 import { certLife, colonHex, keyText } from '../certs/life'
 import CertSlot from '../components/CertSlot.vue'
@@ -53,6 +53,7 @@ const key = computed(() => (current.value ? keyText(current.value.keyType) : nul
 const history = computed(() =>
   versions.value.map((v, i) => ({
     version: v,
+    range: t('certs.history.range', { from: intl.date(v.notBefore), to: intl.date(v.notAfter) }),
     note:
       v.id === current.value?.id
         ? t('certs.history.current')
@@ -102,6 +103,33 @@ async function saveSettings() {
   editing.value = false
 }
 
+// Downloading a version with its key, after the password once more.
+const downloading = ref<number | null>(null)
+const downloadOpen = computed({
+  get: () => downloading.value !== null,
+  set: (open) => {
+    if (!open) downloading.value = null
+  },
+})
+const password = ref('')
+const download = useDownload(() => props.id)
+const downloadError = useApiError(download.error)
+function startDownload(version: number) {
+  password.value = ''
+  download.reset()
+  downloading.value = version
+}
+async function submitDownload() {
+  if (downloading.value === null) return
+  try {
+    const file = await download.mutateAsync({ version: downloading.value, password: password.value })
+    saveFile(file.blob, file.name)
+  } catch {
+    return // shown in the dialog
+  }
+  downloading.value = null
+}
+
 const deleting = ref(false)
 const remove = useDeleteCertificate(() => props.id)
 const removeError = useApiError(remove.error)
@@ -137,6 +165,9 @@ async function confirmDelete() {
     </template>
     <template v-if="cert" #actions>
       <JecButton @click="deleting = true"><Trash2 class="size-4" aria-hidden="true" />{{ t('certs.action.delete') }}</JecButton>
+      <JecButton v-if="current" @click="startDownload(current.id)">
+        <Download class="size-4" aria-hidden="true" />{{ t('certs.action.download') }}
+      </JecButton>
       <JecButton variant="primary" @click="uploading = true"><Upload class="size-4" aria-hidden="true" />{{ t('certs.action.upload') }}</JecButton>
     </template>
   </PageHeader>
@@ -185,11 +216,18 @@ async function confirmDelete() {
             <ol class="m-0 list-none p-0 text-small">
               <li v-for="h in history" :key="h.version.id" class="flex items-center gap-2 border-b border-line py-2 last:border-b-0">
                 <div class="min-w-0 flex-1">
-                  <div class="tabular-nums">
-                    {{ t('certs.history.range', { from: intl.date(h.version.notBefore), to: intl.date(h.version.notAfter) }) }}
-                  </div>
+                  <div class="tabular-nums">{{ h.range }}</div>
                   <div class="text-ink-muted">{{ h.note }}</div>
                 </div>
+                <button
+                  type="button"
+                  :aria-label="t('certs.action.download_version', { range: h.range })"
+                  :title="t('certs.action.download_version', { range: h.range })"
+                  class="grid size-11 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink sm:size-8"
+                  @click="startDownload(h.version.id)"
+                >
+                  <Download class="size-4" aria-hidden="true" />
+                </button>
               </li>
             </ol>
           </section>
@@ -272,7 +310,12 @@ async function confirmDelete() {
             </form>
           </section>
 
-          <JecButton class="sm:hidden" @click="deleting = true"><Trash2 class="size-4" aria-hidden="true" />{{ t('certs.action.delete') }}</JecButton>
+          <div class="flex flex-col gap-2 sm:hidden">
+            <JecButton v-if="current" @click="startDownload(current.id)">
+              <Download class="size-4" aria-hidden="true" />{{ t('certs.action.download') }}
+            </JecButton>
+            <JecButton @click="deleting = true"><Trash2 class="size-4" aria-hidden="true" />{{ t('certs.action.delete') }}</JecButton>
+          </div>
         </div>
       </div>
     </template>
@@ -293,6 +336,30 @@ async function confirmDelete() {
       <JecButton @click="uploading = false">{{ t('kernel.action.cancel') }}</JecButton>
       <JecButton type="submit" form="upload-form" variant="primary" :busy="upload.isPending.value">
         <Upload class="size-4" aria-hidden="true" />{{ t('certs.action.upload_short') }}
+      </JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-if="cert" v-model:open="downloadOpen" :title="t('certs.download.title')" small>
+    <form id="download-form" class="flex flex-col gap-3" novalidate @submit.prevent="submitDownload">
+      <p class="m-0">{{ t('certs.download.intro') }}</p>
+      <p class="m-0 text-small text-ink-muted">{{ t('certs.download.files') }}</p>
+      <JecAlert v-if="downloadError.alert.value" :code="downloadError.alert.value.code" :params="downloadError.alert.value.params" />
+      <JecField id="download-password" label="kernel.account.confirm_password" :error="downloadError.fields.value.password">
+        <JecInput
+          id="download-password"
+          v-model="password"
+          type="password"
+          autocomplete="current-password"
+          :invalid="!!downloadError.fields.value.password"
+          required
+        />
+      </JecField>
+    </form>
+    <template #footer>
+      <JecButton @click="downloadOpen = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton type="submit" form="download-form" variant="primary" :busy="download.isPending.value" :disabled="!password">
+        <Download class="size-4" aria-hidden="true" />{{ t('certs.action.download') }}
       </JecButton>
     </template>
   </JecDialog>

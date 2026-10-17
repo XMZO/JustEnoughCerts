@@ -367,6 +367,36 @@ func (s *Service) signOut(ctx context.Context, _ *struct{}) (*signOutOutput, err
 	return &signOutOutput{SetCookie: s.cookie("", time.Time{})}, nil
 }
 
+// ConfirmPassword checks password against the account ctx is signed in
+// as: a second look before something sensitive, such as handing out a
+// private key. Wrong passwords count toward the same lockout as signing
+// in, and are reported as a wrong body.password.
+func (s *Service) ConfirmPassword(ctx context.Context, password string) error {
+	client := clientFrom(ctx)
+	if err := s.throttle(client); err != nil {
+		return err
+	}
+	u, ok := UserFrom(ctx)
+	if !ok {
+		return api.NewError(http.StatusUnauthorized, i18n.KernelErrorUnauthorized, nil)
+	}
+	var hash string
+	if err := s.db.QueryRowContext(ctx, "SELECT password_hash FROM kernel_users WHERE id = ?", u.ID).Scan(&hash); err != nil {
+		return err
+	}
+	ok, err := checkPassword(hash, password)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		s.limit.fail(client, s.now())
+		return api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorPasswordWrong, nil).
+			WithField("body.password", i18n.KernelErrorPasswordWrong)
+	}
+	s.limit.reset(client)
+	return nil
+}
+
 // throttle refuses a client that failed too often lately.
 func (s *Service) throttle(client string) error {
 	wait := s.limit.wait(client, s.now())

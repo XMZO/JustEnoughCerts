@@ -10,6 +10,7 @@ import (
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
 
@@ -105,6 +106,21 @@ type uploadInput struct {
 	Body PEMFields
 }
 
+type downloadInput struct {
+	ID      int64 `path:"id"`
+	Version int64 `path:"version"`
+	Body    struct {
+		Password string `json:"password" minLength:"1" maxLength:"1024" doc:"The password of the signed-in account, asked again before a private key leaves JEC"`
+	}
+}
+
+type downloadOutput struct {
+	ContentType        string `header:"Content-Type"`
+	ContentDisposition string `header:"Content-Disposition"`
+	CacheControl       string `header:"Cache-Control"`
+	Body               []byte
+}
+
 type updateInput struct {
 	ID   int64 `path:"id"`
 	Body struct {
@@ -112,7 +128,7 @@ type updateInput struct {
 	}
 }
 
-func registerAPI(a huma.API, s *service) {
+func registerAPI(a huma.API, s *service, confirm func(context.Context, string) error) {
 	huma.Register(a, huma.Operation{
 		OperationID: "certs-list", Method: http.MethodGet, Path: "/certificates",
 		Summary: "List the certificates",
@@ -200,6 +216,30 @@ func registerAPI(a huma.API, s *service) {
 			return nil, serviceError(err)
 		}
 		return s.output(ctx, in.ID)
+	})
+
+	huma.Register(a, huma.Operation{
+		OperationID: "certs-download", Method: http.MethodPost, Path: "/certificates/{id}/versions/{version}/download",
+		Summary: "Download a version with its private key, as a ZIP of PEM files",
+		Responses: map[string]*huma.Response{"200": {
+			Description: "cert.pem, chain.pem (when there are intermediates), fullchain.pem and privkey.pem",
+			Content:     map[string]*huma.MediaType{"application/zip": {Schema: &huma.Schema{Type: huma.TypeString, Format: "binary"}}},
+		}},
+	}, func(ctx context.Context, in *downloadInput) (*downloadOutput, error) {
+		if err := confirm(ctx, in.Body.Password); err != nil {
+			return nil, err
+		}
+		user, _ := auth.UserFrom(ctx)
+		data, name, err := s.download(ctx, in.ID, in.Version, user.Username)
+		if err != nil {
+			return nil, serviceError(err)
+		}
+		return &downloadOutput{
+			ContentType:        "application/zip",
+			ContentDisposition: `attachment; filename="` + name + `"`,
+			CacheControl:       "no-store",
+			Body:               data,
+		}, nil
 	})
 
 	huma.Register(a, huma.Operation{
