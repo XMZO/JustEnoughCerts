@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ellipsis, Globe, LayoutGrid, LogOut, Menu, Package, ShieldCheck, X } from '@lucide/vue'
+import { Ellipsis, Globe, LayoutGrid, LogOut, Menu, Package, Server, ShieldCheck, X } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
@@ -37,6 +37,7 @@ const tabs = computed<Link[]>(() => [...links.value, { to: '/more', label: 'kern
 const config: Link[] = [
   { to: '/sources', label: 'kernel.providers.source.title', icon: Package },
   { to: '/dns', label: 'kernel.providers.solver.title', icon: Globe },
+  { to: '/targets', label: 'kernel.providers.target.title', icon: Server },
 ]
 
 const current = (to: string) => (to === '/' ? route.path === '/' : route.path === to || route.path.startsWith(`${to}/`))

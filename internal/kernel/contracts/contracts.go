@@ -31,6 +31,13 @@ const (
 	// certificate's source failed. Payload CertificateEvent with Issuance
 	// set; the current version, if any, is still in use.
 	CertificateIssueFailed = "certificate.issue_failed"
+	// CertificateDeployed: a version was installed at one of the
+	// certificate's targets. Payload CertificateEvent with VersionID and
+	// Deployment set.
+	CertificateDeployed = "certificate.deployed"
+	// CertificateDeployFailed: an attempt to install a version at a target
+	// failed. Payload CertificateEvent with VersionID and Deployment set.
+	CertificateDeployFailed = "certificate.deploy_failed"
 )
 
 // Expiry says how close a certificate is to its end, in increasing order of
@@ -46,13 +53,14 @@ const (
 
 // CertificateEvent is the payload of the certificate events.
 type CertificateEvent struct {
-	CertificateID int64     `json:"certificateId"`
-	Domains       []string  `json:"domains"` // the primary domain first
-	VersionID     int64     `json:"versionId,omitempty"`
-	NotAfter      time.Time `json:"notAfter,omitzero"` // the end of the version
-	Expiry        Expiry    `json:"expiry,omitempty"`
-	Username      string    `json:"username,omitempty"` // who did it, where a person did
-	Issuance      *Issuance `json:"issuance,omitempty"`
+	CertificateID int64       `json:"certificateId"`
+	Domains       []string    `json:"domains"` // the primary domain first
+	VersionID     int64       `json:"versionId,omitempty"`
+	NotAfter      time.Time   `json:"notAfter,omitzero"` // the end of the version
+	Expiry        Expiry      `json:"expiry,omitempty"`
+	Username      string      `json:"username,omitempty"` // who did it, where a person did
+	Issuance      *Issuance   `json:"issuance,omitempty"`
+	Deployment    *Deployment `json:"deployment,omitempty"`
 }
 
 // Issuance tells how an attempt to issue a certificate went.
@@ -63,6 +71,19 @@ type Issuance struct {
 	Error Message `json:"error"`
 	// Retry is when the next attempt starts; zero when no attempt follows
 	// without a person starting it.
+	Retry time.Time `json:"retry,omitzero"`
+}
+
+// Deployment tells how an attempt to install a version at a target went.
+type Deployment struct {
+	ID int64 `json:"id"`
+	// Target is the provider instance of the target.
+	Target  int64 `json:"target"`
+	Attempt int   `json:"attempt"` // counting from 1
+	// Error says why the attempt failed; empty when it did not.
+	Error Message `json:"error,omitzero"`
+	// Retry is when the next attempt starts, after a failure; zero when no
+	// attempt follows without a person starting it.
 	Retry time.Time `json:"retry,omitzero"`
 }
 

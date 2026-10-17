@@ -44,16 +44,20 @@ const (
 
 // States of a certificate.
 const (
-	stateOK       = "ok"
-	stateExpiring = "expiring"
-	stateExpired  = "expired"
-	stateIssuing  = "issuing"
-	stateFailed   = "failed"
+	stateOK           = "ok"
+	stateExpiring     = "expiring"
+	stateExpired      = "expired"
+	stateIssuing      = "issuing"
+	stateDeploying    = "deploying"
+	stateFailed       = "failed"
+	stateDeployFailed = "deploy_failed"
 )
 
 // Errors of the service, which the API turns into responses.
 var (
 	errNotFound = errors.New("no such certificate")
+	// errNoVersion: there is no version to deploy yet.
+	errNoVersion = errors.New("the certificate has no version yet")
 	// errNotNewer: the version to add ends before the current one.
 	errNotNewer = errors.New("the certificate expires before the current version")
 )
@@ -79,19 +83,28 @@ type service struct {
 	providers *providers.Scope
 	log       *slog.Logger
 	now       func() time.Time
-	// trigger starts the issuance runner when it is idle.
-	trigger func()
 
-	wake    chan struct{}                // new work for the issuance runner while it runs
-	mu      sync.Mutex                   // guards running
-	running map[int64]context.CancelFunc // the attempts under way, by certificate
+	issuing   *queue[claimed]
+	deploying *queue[deployClaim]
+	mu        sync.Mutex                    // guards running
+	running   map[runKey]context.CancelFunc // the attempts under way
 }
 
 func newService(db *sql.DB, ev *events.Scope, box *secrets.Scope, prov *providers.Scope, log *slog.Logger, now func() time.Time) *service {
-	return &service{
-		db: db, events: ev, secrets: box, providers: prov, log: log, now: now, trigger: func() {},
-		wake: make(chan struct{}, 1), running: map[int64]context.CancelFunc{},
+	s := &service{
+		db: db, events: ev, secrets: box, providers: prov, log: log, now: now,
+		issuing: newQueue[claimed](maxRunning, attemptTimeout), deploying: newQueue[deployClaim](maxDeploying, deployTimeout),
+		running: map[runKey]context.CancelFunc{},
 	}
+	q := s.issuing
+	q.resume, q.claim, q.attempt = s.resume, s.claim, s.attempt
+	q.key = func(c *claimed) runKey { return runKey{certificate: c.certificateID, part: "issue"} }
+	d := s.deploying
+	d.resume, d.claim, d.attempt = s.resumeDeployments, s.claimDeployment, s.attemptDeployment
+	d.key = func(c *deployClaim) runKey {
+		return runKey{certificate: c.certificateID, part: fmt.Sprintf("deploy/%d", c.target)}
+	}
+	return s
 }
 
 // Certificate is a certificate with its current version.
@@ -105,8 +118,12 @@ type Certificate struct {
 	RenewBeforeDays int
 	Current         *Version
 	// Issuance is the latest issuance, if any.
-	Issuance  *Issuance
-	CreatedAt time.Time
+	Issuance *Issuance
+	// Targets are the provider instances the certificate is installed at,
+	// in order; Deployments holds the latest deployment to each that had one.
+	Targets     []int64
+	Deployments []*Deployment
+	CreatedAt   time.Time
 }
 
 // Version is a certificate issued or uploaded for a Certificate.
@@ -124,9 +141,10 @@ type Version struct {
 	CreatedAt   time.Time
 }
 
-// state tells how a certificate stands at now: being issued, failing to
-// be issued since its current version came, or else by the life left in
-// its current version.
+// state tells how a certificate stands at now: being issued or failing to
+// be issued since its current version came, failing to be deployed to a
+// target or being deployed, or else by the life left in its current
+// version.
 func (c *Certificate) state(now time.Time) string {
 	if is := c.Issuance; is != nil {
 		switch {
@@ -135,6 +153,18 @@ func (c *Certificate) state(now time.Time) string {
 		case is.State == issuancePending, is.State == issuanceFailed && (c.Current == nil || is.CreatedAt.After(c.Current.CreatedAt)):
 			return stateFailed
 		}
+	}
+	deploying := false
+	for _, d := range c.Deployments {
+		switch {
+		case d.State == issuanceFailed, d.State == issuancePending && d.Error.Key != "":
+			return stateDeployFailed
+		case d.State == issuanceRunning, d.State == issuancePending:
+			deploying = true
+		}
+	}
+	if deploying {
+		return stateDeploying
 	}
 	if c.Current == nil {
 		return stateExpired
@@ -148,8 +178,8 @@ func (c *Certificate) state(now time.Time) string {
 	return stateOK
 }
 
-// add stores b as a new certificate.
-func (s *service) add(ctx context.Context, b *cryptox.Bundle, renewBeforeDays int) (int64, error) {
+// add stores b as a new certificate, deployed to targets.
+func (s *service) add(ctx context.Context, b *cryptox.Bundle, renewBeforeDays int, targets []int64) (int64, error) {
 	if renewBeforeDays == 0 {
 		renewBeforeDays = defaultRenewBeforeDays
 	}
@@ -168,10 +198,17 @@ func (s *service) add(ctx context.Context, b *cryptox.Bundle, renewBeforeDays in
 	if err != nil {
 		return 0, err
 	}
+	if err := s.setTargets(ctx, tx, &Certificate{ID: id}, targets); err != nil {
+		return 0, err
+	}
 	if _, err := s.addVersion(ctx, tx, id, b, originUpload); err != nil {
 		return 0, err
 	}
-	return id, tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	s.deploying.kick()
+	return id, nil
 }
 
 // upload adds b as the new current version of certificate id.
@@ -201,7 +238,11 @@ func (s *service) upload(ctx context.Context, id int64, b *cryptox.Bundle) error
 	if _, err := s.addVersion(ctx, tx, id, b, originUpload); err != nil {
 		return err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.deploying.kick()
+	return nil
 }
 
 // addVersion stores b as the current version of certificate id and
@@ -237,6 +278,9 @@ func (s *service) addVersion(ctx context.Context, tx *sql.Tx, id int64, b *crypt
 		return 0, err
 	}
 	if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET current_version_id = ? WHERE id = ?", version, id); err != nil {
+		return 0, err
+	}
+	if err := s.queueDeployments(ctx, tx, id, version); err != nil {
 		return 0, err
 	}
 	err = s.events.PublishTx(ctx, tx, contracts.CertificateIssued, strconv.FormatInt(id, 10), contracts.CertificateEvent{
@@ -348,7 +392,13 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 		}
 		certs = append(certs, c)
 	}
-	return certs, rows.Err()
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		return nil, err
+	}
+	if err := s.attachTargets(ctx, q, certs); err != nil {
+		return nil, err
+	}
+	return certs, nil
 }
 
 // versions returns every version of certificate id, the newest first.
@@ -378,16 +428,33 @@ func (s *service) versions(ctx context.Context, id int64) ([]*Version, error) {
 	return out, rows.Err()
 }
 
-// setRenewBefore changes the renewal window of certificate id.
-func (s *service) setRenewBefore(ctx context.Context, id int64, days int) error {
-	res, err := s.db.ExecContext(ctx, "UPDATE certs_certificates SET renew_before_days = ?, updated_at = ? WHERE id = ?",
-		days, s.now().UnixMilli(), id)
+// update changes the renewal window of certificate id, unless days is 0,
+// and its targets, unless targets is nil.
+func (s *service) update(ctx context.Context, id int64, days int, targets []int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return errNotFound
+	defer func() { _ = tx.Rollback() }()
+	c, err := s.load(ctx, tx, id)
+	if err != nil {
+		return err
 	}
+	if days != 0 {
+		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET renew_before_days = ?, updated_at = ? WHERE id = ?",
+			days, s.now().UnixMilli(), id); err != nil {
+			return err
+		}
+	}
+	if targets != nil {
+		if err := s.setTargets(ctx, tx, c, targets); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.deploying.kick()
 	return nil
 }
 
@@ -414,6 +481,6 @@ func (s *service) remove(ctx context.Context, id int64) error {
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	s.stopAttempt(id)
+	s.stopAttempts(id)
 	return nil
 }

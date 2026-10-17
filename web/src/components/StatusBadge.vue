@@ -16,7 +16,9 @@ const looks = {
   expiring: { icon: TriangleAlert, cls: 'bg-warn-soft text-warn-ink' },
   expired: { icon: CircleX, cls: 'bg-danger-soft text-danger-ink' },
   failed: { icon: OctagonX, cls: 'bg-danger-soft text-danger-ink' },
+  deploy_failed: { icon: OctagonX, cls: 'bg-danger-soft text-danger-ink' },
   issuing: { icon: LoaderCircle, cls: 'bg-info-soft text-info-ink', spin: true },
+  deploying: { icon: LoaderCircle, cls: 'bg-info-soft text-info-ink', spin: true },
 } as const
 </script>
 

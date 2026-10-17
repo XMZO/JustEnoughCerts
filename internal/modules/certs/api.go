@@ -16,17 +16,19 @@ import (
 
 // CertificateBody is a certificate as the API returns it.
 type CertificateBody struct {
-	ID              int64         `json:"id"`
-	Domains         []string      `json:"domains" doc:"The domains, the primary first"`
-	Source          string        `json:"source" enum:"upload,provider" doc:"Where new versions come from: uploads only, or the source provider"`
-	SourceProvider  int64         `json:"sourceProvider,omitempty" doc:"The source provider instance that issues the certificate"`
-	SolverProvider  int64         `json:"solverProvider,omitempty" doc:"The solver provider instance that proves control of the domains"`
-	KeyType         string        `json:"keyType" doc:"Type and size of the key, such as rsa-2048 or ecdsa-p256"`
-	RenewBeforeDays int           `json:"renewBeforeDays" doc:"How many days before the end the certificate is renewed, or a reminder sent"`
-	State           string        `json:"state" enum:"ok,expiring,expired,issuing,failed" doc:"issuing: an issuance is under way; failed: the latest issuance failed, or is waiting to retry; otherwise by the current version: ok, expiring (within renewBeforeDays of the end) or expired"`
-	Current         *VersionBody  `json:"current,omitempty" doc:"The version in use"`
-	Issuance        *IssuanceBody `json:"issuance,omitempty" doc:"The latest issuance"`
-	CreatedAt       time.Time     `json:"createdAt"`
+	ID              int64            `json:"id"`
+	Domains         []string         `json:"domains" doc:"The domains, the primary first"`
+	Source          string           `json:"source" enum:"upload,provider" doc:"Where new versions come from: uploads only, or the source provider"`
+	SourceProvider  int64            `json:"sourceProvider,omitempty" doc:"The source provider instance that issues the certificate"`
+	SolverProvider  int64            `json:"solverProvider,omitempty" doc:"The solver provider instance that proves control of the domains"`
+	KeyType         string           `json:"keyType" doc:"Type and size of the key, such as rsa-2048 or ecdsa-p256"`
+	RenewBeforeDays int              `json:"renewBeforeDays" doc:"How many days before the end the certificate is renewed, or a reminder sent"`
+	State           string           `json:"state" enum:"ok,expiring,expired,issuing,deploying,failed,deploy_failed" doc:"issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end) or expired"`
+	Current         *VersionBody     `json:"current,omitempty" doc:"The version in use"`
+	Issuance        *IssuanceBody    `json:"issuance,omitempty" doc:"The latest issuance"`
+	Targets         []int64          `json:"targets" doc:"The target provider instances each version is deployed to, in order"`
+	Deployments     []DeploymentBody `json:"deployments" doc:"The latest deployment to each target that had one, in the order of targets"`
+	CreatedAt       time.Time        `json:"createdAt"`
 }
 
 // VersionBody is a version as the API returns it.
@@ -62,6 +64,11 @@ func certificateBody(c *Certificate, now time.Time) CertificateBody {
 	if c.Issuance != nil {
 		is := issuanceBody(c.Issuance)
 		b.Issuance = &is
+	}
+	b.Targets = append([]int64{}, c.Targets...)
+	b.Deployments = make([]DeploymentBody, 0, len(c.Deployments))
+	for _, d := range c.Deployments {
+		b.Deployments = append(b.Deployments, deploymentBody(d))
 	}
 	return b
 }
@@ -104,7 +111,8 @@ type PEMFields struct {
 type addInput struct {
 	Body struct {
 		PEMFields
-		RenewBeforeDays int `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Days before the end to send a reminder; 30 if left out"`
+		RenewBeforeDays int     `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Days before the end to send a reminder; 30 if left out"`
+		Targets         []int64 `json:"targets,omitempty" maxItems:"50" doc:"The target provider instances to deploy each version to, in order"`
 	}
 }
 
@@ -131,12 +139,14 @@ type downloadOutput struct {
 type updateInput struct {
 	ID   int64 `path:"id"`
 	Body struct {
-		RenewBeforeDays int `json:"renewBeforeDays" minimum:"1" maximum:"365"`
+		RenewBeforeDays int     `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Unchanged if left out"`
+		Targets         []int64 `json:"targets,omitempty" maxItems:"50" doc:"Replaces the targets when given; an empty list removes them all"`
 	}
 }
 
 func registerAPI(a huma.API, s *service, confirm func(context.Context, string) error) {
 	registerIssueAPI(a, s)
+	registerDeployAPI(a, s)
 
 	huma.Register(a, huma.Operation{
 		OperationID: "certs-list", Method: http.MethodGet, Path: "/certificates",
@@ -163,7 +173,11 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 		if err != nil {
 			return nil, bundleError(err)
 		}
-		id, err := s.add(ctx, b, in.Body.RenewBeforeDays)
+		targets, err := s.validTargets(ctx, in.Body.Targets)
+		if err != nil {
+			return nil, err
+		}
+		id, err := s.add(ctx, b, in.Body.RenewBeforeDays, targets)
 		if err != nil {
 			return nil, serviceError(err)
 		}
@@ -205,9 +219,17 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 
 	huma.Register(a, huma.Operation{
 		OperationID: "certs-update", Method: http.MethodPatch, Path: "/certificates/{id}",
-		Summary: "Change the renewal policy of a certificate",
+		Summary: "Change the renewal policy or the targets of a certificate",
 	}, func(ctx context.Context, in *updateInput) (*certificateOutput, error) {
-		if err := s.setRenewBefore(ctx, in.ID, in.Body.RenewBeforeDays); err != nil {
+		var targets []int64
+		if in.Body.Targets != nil {
+			var err error
+			if targets, err = s.validTargets(ctx, in.Body.Targets); err != nil {
+				return nil, err
+			}
+			targets = append([]int64{}, targets...) // not nil: an empty list removes them all
+		}
+		if err := s.update(ctx, in.ID, in.Body.RenewBeforeDays, targets); err != nil {
 			return nil, serviceError(err)
 		}
 		return s.output(ctx, in.ID)
@@ -313,6 +335,8 @@ func serviceError(err error) error {
 			WithField("body.certificate", i18n.CertsErrorNotNewer)
 	case errors.Is(err, errNoSource):
 		return api.NewError(http.StatusConflict, i18n.CertsErrorNoSource, nil)
+	case errors.Is(err, errNoVersion):
+		return api.NewError(http.StatusConflict, i18n.CertsErrorNoVersion, nil)
 	}
 	return err
 }

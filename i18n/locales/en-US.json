@@ -73,9 +73,11 @@
   "certs": {
     "action": {
       "add": "Add certificate",
+      "choose_targets": "Choose targets",
       "copy_fingerprint": "Copy the SHA-256 fingerprint",
       "copy_serial": "Copy the serial number",
       "delete": "Delete certificate",
+      "deploy_now": "Deploy now",
       "details": "View details",
       "download": "Download",
       "download_version": "Download the version {range}",
@@ -99,18 +101,22 @@
       "key_type": "Key type",
       "key_type_help": "Each renewal makes a new private key. Choose RSA where old clients are common.",
       "manage_dns": "Manage DNS providers",
+      "manage_targets": "Manage targets",
       "new_source": "Add a source",
       "new_source_desc": "An ACME account, such as Let's Encrypt.",
       "no_dns": "No DNS providers yet. First add the one that serves these domains.",
+      "no_targets": "No targets yet. The certificate stays in JEC; you can choose targets later.",
       "plan": "What happens next",
       "reminder": "Reminder",
       "renew_days": "Renew ahead",
       "renew_days_help": "The certificate renews when this many days are left: 1 to 365.",
       "renewal": "Renewal",
       "source": "Source",
+      "targets": "Deploy to",
       "validation": "Domain validation"
     },
     "attention": {
+      "deploy_failed": "{domain} could not be deployed",
       "expired": "{domain} has expired",
       "expired_detail": "{life}. Upload a new certificate to replace it.",
       "failed": "{domain} could not be issued",
@@ -140,12 +146,34 @@
       "body": "JEC deletes this certificate with every version and private key. Copies already deployed elsewhere stay where they are.",
       "title": "Delete {domain}?"
     },
+    "deployment": {
+      "canceled": "This deployment was called off: the target was taken off, or a newer version came.",
+      "done": "Deployed",
+      "failed": "The deployment failed after {attempts, plural, one {# attempt} other {# attempts}}",
+      "heading": "Deploying to {target}",
+      "ref": "Name at the target",
+      "running": "Deploying now",
+      "state": {
+        "canceled": "Called off",
+        "done": "Deployed",
+        "failed": "Failed",
+        "none": "Not deployed yet",
+        "pending": "Waiting",
+        "retrying": "Failed; retrying later",
+        "running": "Deploying"
+      },
+      "title": "Deployment"
+    },
     "detail": {
       "also": "Also covers {names}",
+      "deploy_failed": "Deploying to {target} failed; no more automatic attempts",
+      "deploy_retrying": "Deploying to {target} failed; trying again later",
+      "deploys": "Deployments",
       "failed": "The issuance failed; no more automatic attempts",
       "issuances": "Issuances",
       "issuing": "A new certificate is being issued.",
       "no_issuances": "No issuances yet.",
+      "no_targets": "No targets chosen yet.",
       "retrying": "The issuance failed; trying again later",
       "show_log": "See the log",
       "show_progress": "See the progress",
@@ -165,6 +193,7 @@
       "bad_certificate": "A certificate cannot be read. Paste it again in full, from -----BEGIN CERTIFICATE----- to -----END CERTIFICATE-----.",
       "bad_domain": "This is not a valid domain name. Write a wildcard as *.example.com.",
       "bad_key": "The private key cannot be read. Paste it again in full.",
+      "deploy_failed": "The deployment failed. The full log says why.",
       "duplicate": "This certificate has been added already.",
       "encrypted_key": "The private key is protected by a passphrase. Remove it first, for example with openssl pkey -in key.pem -out plain.pem, then paste the key again.",
       "issue_failed": "The issuance failed. The full log says why.",
@@ -173,6 +202,7 @@
       "no_certificate": "No certificate found. Paste the certificate in PEM format, starting with -----BEGIN CERTIFICATE-----.",
       "no_key": "No private key found. Paste the private key in PEM format.",
       "no_source": "This certificate has no source to issue it. Upload new versions instead.",
+      "no_version": "This certificate has no version to deploy yet.",
       "not_newer": "This certificate expires before the one in use. Upload a newer certificate.",
       "other_domains": "This certificate is not for {domain}. Upload one that covers {domain}, or add it as a new certificate.",
       "provider_missing": "A provider this certificate uses was deleted.",
@@ -258,6 +288,8 @@
     },
     "log": {
       "attempt": "Attempt {attempt}",
+      "deploy": "Deploying to {target}",
+      "deployed": "Deployed in {seconds, plural, one {# second} other {# seconds}}",
       "done": "Done in {seconds, plural, one {# second} other {# seconds}}",
       "gave_up": "No more automatic retries. Once the cause is fixed, issue the certificate again.",
       "interrupted": "JEC stopped during the issuance; starting over",
@@ -271,12 +303,12 @@
     },
     "next": {
       "auto": "Renews on {date}",
-      "failed": "Issuance failed",
       "first": "Waiting for the first issuance",
       "issuing": "Issuing now",
       "manual": "Replace by hand"
     },
     "note": {
+      "deploy_failed": "{target}: {error}",
       "expired": "Upload a new certificate",
       "manual": "Not renewed automatically, upload a new one",
       "renewing": "Renewing soon"
@@ -290,6 +322,7 @@
     },
     "plan": {
       "check": "Check that the certificate and the private key match",
+      "deploy": "Deploy to {target}",
       "dns": "Add the validation records at {dns}, and remove them afterwards",
       "download": "Download the certificate once the CA has validated the domains",
       "expired": "This certificate has expired. Upload a new one to replace it.",
@@ -321,9 +354,11 @@
       "upload_desc": "Paste the certificate and its key. Not renewed automatically."
     },
     "state": {
+      "deploy_failed": "Deployment failed",
+      "deploying": "Deploying",
       "expired": "Expired",
       "expiring": "Expiring soon",
-      "failed": "Failed",
+      "failed": "Issuance failed",
       "issuing": "Issuing",
       "ok": "Healthy"
     },
@@ -340,6 +375,9 @@
       "failed": "failed",
       "pending": "not started",
       "running": "in progress"
+    },
+    "targets": {
+      "intro": "Every new version goes to the targets chosen. A target added gets the current version at once."
     },
     "timeline": {
       "marker": "{domain}, expires {date}",
@@ -507,6 +545,12 @@
         "china": "China",
         "popular": "Popular",
         "self_hosted": "Self-hosted"
+      },
+      "target": {
+        "add": "Add a target",
+        "empty": "No targets yet. Add one, and new versions of certificates go there by themselves.",
+        "intro": "Where certificates go once issued or renewed.",
+        "title": "Deploy targets"
       },
       "type_gone": "Type not available; its module may be off",
       "uses": "{count, plural, =0 {Used by no certificate} one {Used by # certificate} other {Used by # certificates}}"

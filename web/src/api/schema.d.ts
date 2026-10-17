@@ -57,8 +57,28 @@ export interface paths {
         delete: operations["certs-delete"];
         options?: never;
         head?: never;
-        /** Change the renewal policy of a certificate */
+        /** Change the renewal policy or the targets of a certificate */
         patch: operations["certs-update"];
+        trace?: never;
+    };
+    "/certs/certificates/{id}/deploy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deploy the current version of a certificate now
+         * @description Queues the current version for a target, or for every target of the certificate; a deployment waiting to retry starts over.
+         */
+        post: operations["certs-deploy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/certs/certificates/{id}/issuances": {
@@ -126,6 +146,23 @@ export interface paths {
         put?: never;
         /** Download a version with its private key, as a ZIP of PEM files */
         post: operations["certs-download"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/certs/deployments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a deployment with its log */
+        get: operations["certs-deployment"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -293,12 +330,16 @@ export interface components {
              * @description Days before the end to send a reminder; 30 if left out
              */
             renewBeforeDays?: number;
+            /** @description The target provider instances to deploy each version to, in order */
+            targets?: number[];
         };
         CertificateBody: {
             /** Format: date-time */
             createdAt: string;
             /** @description The version in use */
             current?: components["schemas"]["VersionBody"];
+            /** @description The latest deployment to each target that had one, in the order of targets */
+            deployments: components["schemas"]["DeploymentBody"][];
             /** @description The domains, the primary first */
             domains: string[];
             /** Format: int64 */
@@ -328,10 +369,12 @@ export interface components {
              */
             sourceProvider?: number;
             /**
-             * @description issuing: an issuance is under way; failed: the latest issuance failed, or is waiting to retry; otherwise by the current version: ok, expiring (within renewBeforeDays of the end) or expired
+             * @description issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end) or expired
              * @enum {string}
              */
-            state: "ok" | "expiring" | "expired" | "issuing" | "failed";
+            state: "ok" | "expiring" | "expired" | "issuing" | "deploying" | "failed" | "deploy_failed";
+            /** @description The target provider instances each version is deployed to, in order */
+            targets: number[];
         };
         ChainEntry: {
             issuer: string;
@@ -348,6 +391,54 @@ export interface components {
                 [key: string]: string;
             };
             type: string;
+        };
+        DeployInputBody: {
+            /**
+             * Format: int64
+             * @description The target to deploy to; every target of the certificate if left out
+             */
+            target?: number;
+        };
+        DeploymentBody: {
+            /** Format: int64 */
+            attempts: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Why the last attempt failed */
+            error?: components["schemas"]["MessageBody"];
+            /** Format: date-time */
+            finishedAt?: string;
+            /** Format: int64 */
+            id: number;
+            /** Format: date-time */
+            nextAt?: string;
+            /** @description What the target holds, such as a certificate ID at a CDN */
+            ref?: string;
+            /** @description A later deployment removed it from the target */
+            removed?: boolean;
+            /** Format: date-time */
+            startedAt?: string;
+            /**
+             * @description pending: the next attempt starts at nextAt, a retry when error is set; failed: no attempt follows unless someone starts one; canceled: the target was taken off, or a newer version came
+             * @enum {string}
+             */
+            state: "pending" | "running" | "done" | "failed" | "canceled";
+            /**
+             * Format: int64
+             * @description The target provider instance
+             */
+            target: number;
+            /**
+             * Format: int64
+             * @description The version deployed
+             */
+            versionId: number;
+        };
+        DeploymentDetailOutputBody: {
+            certificate: components["schemas"]["CertificateBody"];
+            deployment: components["schemas"]["DeploymentBody"];
+            /** @description Every line, of every attempt, in order */
+            log: components["schemas"]["LogLineBody"][];
         };
         DetailOutputBody: {
             certificate: components["schemas"]["CertificateBody"];
@@ -484,6 +575,8 @@ export interface components {
              * @description The source provider instance that issues the certificate
              */
             sourceProvider: number;
+            /** @description The target provider instances to deploy each version to, in order */
+            targets?: number[];
         };
         ListOutputBody: {
             providers: components["schemas"]["InstanceBody"][];
@@ -628,8 +721,13 @@ export interface components {
             };
         };
         UpdateInputBody1: {
-            /** Format: int64 */
-            renewBeforeDays: number;
+            /**
+             * Format: int64
+             * @description Unchanged if left out
+             */
+            renewBeforeDays?: number;
+            /** @description Replaces the targets when given; an empty list removes them all */
+            targets?: number[];
         };
         VersionBody: {
             /** Format: date-time */
@@ -857,6 +955,41 @@ export interface operations {
             };
         };
     };
+    "certs-deploy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeployInputBody"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     "certs-issuances": {
         parameters: {
             query?: {
@@ -983,6 +1116,37 @@ export interface operations {
                 };
                 content: {
                     "application/zip": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-deployment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeploymentDetailOutputBody"];
                 };
             };
             /** @description Error */

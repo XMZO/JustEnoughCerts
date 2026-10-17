@@ -6,6 +6,7 @@ import { RouterLink } from 'vue-router'
 import { ApiError, networkError } from '../api/client'
 import { useCertificates, type Certificate, type CertificateState } from '../api/certs'
 import { useProviders } from '../api/providers'
+import { failingDeployment, useDeployNote } from '../certs/deployment'
 import { certLife, lifeText, needsAttention, type Life } from '../certs/life'
 import CertSlot from '../components/CertSlot.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -34,6 +35,7 @@ const error = computed(() => {
 const all = computed(() => certificates.data.value ?? [])
 const sources = useProviders('source')
 const sourceName = (c: Certificate) => sources.data.value?.find((p) => p.id === c.sourceProvider)?.name ?? ''
+const deployNote = useDeployNote()
 const shown = computed(() => {
   const q = query.value.trim().toLowerCase()
   return q ? all.value.filter((c) => c.domains.some((d) => d.includes(q))) : all.value
@@ -50,7 +52,7 @@ const selectedExtra = computed(() => {
 
 const subtitle = computed(() => t('certs.overview.summary', { count: all.value.length, attention: attention.value.length }))
 
-const order: CertificateState[] = ['failed', 'expired', 'expiring', 'issuing', 'ok']
+const order: CertificateState[] = ['failed', 'deploy_failed', 'expired', 'expiring', 'issuing', 'deploying', 'ok']
 const counts = computed(() =>
   order.map((state) => ({ state, count: all.value.filter((c) => c.state === state).length })).filter((s) => s.count > 0),
 )
@@ -66,8 +68,9 @@ const day = 86_400_000
 const errorText = (c: Certificate) =>
   c.issuance?.error ? t(c.issuance.error.key as MessageKey, (c.issuance.error.params ?? {}) as Params) : ''
 
-/** plan says what happens next to c. */
+/** plan says what happens next to c, or what stops it. */
 function plan(c: Certificate, l: Life | null): string {
+  if (c.state === 'deploy_failed') return deployNote(c)
   if (c.source === 'provider') {
     if (c.state === 'issuing') return t('certs.next.issuing')
     if (c.state === 'failed') return errorText(c)
@@ -79,13 +82,25 @@ function plan(c: Certificate, l: Life | null): string {
   return t('certs.plan.upload', { days: c.renewBeforeDays })
 }
 
-// What needs someone: a failed issuance shows its reason and leads to its
-// log; an uploaded certificate near its end asks for a new upload.
+// What needs someone: a failed issuance or deployment shows its reason and
+// leads to its log; an uploaded certificate near its end asks for a new
+// upload.
 const todo = computed(() =>
   attention.value.map((c) => {
     const l = certLife(c)
     const domain = c.domains[0] ?? ''
-    const expired = c.state === 'expired' || c.state === 'failed'
+    const expired = c.state === 'expired' || c.state === 'failed' || c.state === 'deploy_failed'
+    const deployment = c.state === 'deploy_failed' ? failingDeployment(c) : undefined
+    if (deployment) {
+      return {
+        cert: c,
+        expired,
+        title: t('certs.attention.deploy_failed', { domain }),
+        detail: deployNote(c),
+        to: `/certificates/${c.id}/deployments/${deployment.id}`,
+        action: 'certs.detail.show_log' as MessageKey,
+      }
+    }
     if (c.source === 'provider') {
       const failed = c.state === 'failed' && c.issuance
       return {

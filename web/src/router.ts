@@ -43,11 +43,25 @@ export const router = createRouter({
           meta: { title: 'certs.issuance.title', for: 'app' },
         },
         {
+          path: String.raw`certificates/:id(\d+)/deployments/:deployment(\d+)`,
+          name: 'deployment',
+          component: () => import('./pages/DeploymentPage.vue'),
+          props: (route) => ({ id: Number(route.params.id), deployment: Number(route.params.deployment) }),
+          meta: { title: 'certs.deployment.title', for: 'app' },
+        },
+        {
           path: 'sources',
           name: 'sources',
           component: () => import('./pages/ProvidersPage.vue'),
           props: { kind: 'source' },
           meta: { title: 'kernel.providers.source.title', for: 'app' },
+        },
+        {
+          path: 'targets',
+          name: 'targets',
+          component: () => import('./pages/ProvidersPage.vue'),
+          props: { kind: 'target' },
+          meta: { title: 'kernel.providers.target.title', for: 'app' },
         },
         {
           path: 'dns',

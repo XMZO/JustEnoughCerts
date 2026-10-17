@@ -24,7 +24,11 @@ type fakes struct {
 	mu     sync.Mutex
 	issue  func(ctx context.Context, req contracts.IssueRequest) ([]*x509.Certificate, error)
 	calls  []string // of the solver
-	opened int      // sources and solvers open
+	opened int      // sources, solvers and targets open
+	// deploy replaces the fake target's own work: a ref per deployment,
+	// removing the previous ones.
+	deploy   func(ctx context.Context, req contracts.DeployRequest) (contracts.DeployResult, error)
+	deployed []contracts.DeployRequest
 }
 
 func (f *fixture) addFakes() {
@@ -45,6 +49,8 @@ func (f *fixture) addFakes() {
 				return &fakeSource{f}, nil
 			case providers.Solver:
 				return &fakeSolver{f}, nil
+			case providers.Target:
+				return &fakeTarget{f}, nil
 			}
 			return struct{}{}, nil
 		})

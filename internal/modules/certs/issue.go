@@ -10,7 +10,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
@@ -204,27 +203,8 @@ func (s *service) issue(ctx context.Context, id int64) (int64, error) {
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
-	s.kick()
+	s.issuing.kick()
 	return issuance, nil
-}
-
-// kick tells the issuance runner that there is work: it picks the work up
-// at once if it runs, and starts otherwise.
-func (s *service) kick() {
-	select {
-	case s.wake <- struct{}{}:
-	default:
-	}
-	s.trigger()
-}
-
-// stopAttempt cancels the attempt under way for certificate id, if any.
-func (s *service) stopAttempt(id int64) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if cancel := s.running[id]; cancel != nil {
-		cancel()
-	}
 }
 
 // claimed is an issuance an attempt was started for.
@@ -233,56 +213,9 @@ type claimed struct {
 	attempt           int
 }
 
-// runIssuances is the job certs.issue. It runs the due issuances, at most
-// maxRunning at once, starts those that become due while others run, and
-// returns once none is due or under way. As the job never overlaps itself,
-// an issuance still marked running when it starts was cut short by a stop
-// of JEC, and starts over.
-func (s *service) runIssuances(ctx context.Context) error {
-	if err := s.resume(ctx); err != nil {
-		return err
-	}
-	ended := make(chan struct{}, maxRunning)
-	var wg sync.WaitGroup
-	defer wg.Wait()
-	running := 0
-	for {
-		for running < maxRunning {
-			c, err := s.claim(ctx)
-			if err != nil {
-				return err
-			}
-			if c == nil {
-				break
-			}
-			running++
-			attemptCtx, cancel := context.WithTimeout(ctx, attemptTimeout)
-			s.mu.Lock()
-			s.running[c.certificateID] = cancel
-			s.mu.Unlock()
-			wg.Go(func() {
-				defer func() {
-					s.mu.Lock()
-					delete(s.running, c.certificateID)
-					s.mu.Unlock()
-					cancel()
-					ended <- struct{}{}
-				}()
-				s.attempt(ctx, attemptCtx, c)
-			})
-		}
-		if running == 0 {
-			return nil
-		}
-		select {
-		case <-ended:
-			running--
-		case <-s.wake:
-		case <-ctx.Done():
-			return nil
-		}
-	}
-}
+// runIssuances is the job certs.issue: it runs the due issuances (see
+// queue).
+func (s *service) runIssuances(ctx context.Context) error { return s.issuing.run(ctx, s) }
 
 // resume makes the issuances that a stop of JEC cut short due again.
 func (s *service) resume(ctx context.Context) error {
@@ -309,7 +242,7 @@ func (s *service) resume(ctx context.Context) error {
 		return err
 	}
 	for _, c := range list {
-		s.logger(c.id, c.attempt).add(contracts.LogLine{Level: contracts.Warn, Key: i18n.CertsLogInterrupted})
+		s.taskLogger(issuanceLogTable, c.id, c.attempt).add(contracts.LogLine{Level: contracts.Warn, Key: i18n.CertsLogInterrupted})
 	}
 	return nil
 }
@@ -333,7 +266,7 @@ func (s *service) claim(ctx context.Context) (*claimed, error) {
 // job's ctx ending means that JEC stops: the issuance then stays running,
 // to start over after the restart.
 func (s *service) attempt(ctx, attemptCtx context.Context, c *claimed) {
-	log := s.logger(c.id, c.attempt)
+	log := s.taskLogger(issuanceLogTable, c.id, c.attempt)
 	if c.attempt > 1 {
 		log.add(contracts.LogLine{Level: contracts.Info, Key: i18n.CertsLogAttempt, Params: map[string]any{"attempt": c.attempt}})
 	}
@@ -438,7 +371,7 @@ func closeProvider(p io.Closer, s *service) {
 }
 
 // complete stores b as the new version and marks the issuance done.
-func (s *service) complete(ctx context.Context, c *claimed, b *cryptox.Bundle, log *issuanceLog) error {
+func (s *service) complete(ctx context.Context, c *claimed, b *cryptox.Bundle, log *taskLog) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -464,6 +397,7 @@ func (s *service) complete(ctx context.Context, c *claimed, b *cryptox.Bundle, l
 	if err := tx.Commit(); err != nil {
 		return err
 	}
+	s.deploying.kick()
 	days := int(b.Leaf.NotAfter.Sub(s.now()) / day)
 	log.add(contracts.LogLine{Level: contracts.Info, Step: contracts.StepDownload, Key: i18n.CertsLogStored, Params: map[string]any{"days": days}})
 	return nil
@@ -471,20 +405,12 @@ func (s *service) complete(ctx context.Context, c *claimed, b *cryptox.Bundle, l
 
 // fail records a failed attempt: the issuance retries after a backoff, or
 // fails for good when retrying cannot help or the attempts ran out.
-func (s *service) fail(ctx context.Context, c *claimed, cause error, log *issuanceLog) {
-	msg, detail := explain(cause)
+func (s *service) fail(ctx context.Context, c *claimed, cause error, log *taskLog) {
+	msg, detail := explain(cause, i18n.CertsErrorIssueFailed)
 	log.add(contracts.LogLine{Level: contracts.Error, Step: log.current(), Key: msg.Key, Params: msg.Params, Detail: detail})
 
-	final := retry.IsPermanent(cause) || c.attempt >= maxAttempts
 	now := s.now()
-	var next time.Time
-	if !final {
-		wait := retry.Backoff(c.attempt, retryBase, retryLimit)
-		if d, ok := retry.Delay(cause); ok {
-			wait = max(wait, min(d, retryAfterMax))
-		}
-		next = now.Add(wait).Truncate(time.Millisecond) // as stored
-	}
+	final, next := nextAttempt(c.attempt, cause, now)
 	recorded, err := s.recordFailure(ctx, c, msg, now, next)
 	if err != nil {
 		s.log.Error("record failed issuance", "issuance", c.id, "err", err)
@@ -545,8 +471,8 @@ func (s *service) recordFailure(ctx context.Context, c *claimed, msg contracts.M
 }
 
 // explain returns the message for why an attempt failed, and the raw text
-// behind it.
-func explain(err error) (contracts.Message, string) {
+// behind it; fallback is the message for an error that explains nothing.
+func explain(err error, fallback i18n.Key) (contracts.Message, string) {
 	var p *contracts.Problem
 	if errors.As(err, &p) {
 		detail := ""
@@ -558,16 +484,17 @@ func explain(err error) (contracts.Message, string) {
 	if errors.Is(err, errNoSource) {
 		return contracts.Message{Key: i18n.CertsErrorNoSource}, ""
 	}
-	return contracts.Message{Key: i18n.CertsErrorIssueFailed}, err.Error()
+	return contracts.Message{Key: fallback}, err.Error()
 }
 
 // usesProvider reports whether a certificate uses provider instance id,
-// which may then not be deleted.
+// as its source, solver or a target, which may then not be deleted.
 func (s *service) usesProvider(ctx context.Context, id int64) (bool, error) {
-	var n int
+	var used bool
 	err := s.db.QueryRowContext(ctx,
-		"SELECT count(*) FROM certs_certificates WHERE source_provider = ? OR solver_provider = ?", id, id).Scan(&n)
-	return n > 0, err
+		`SELECT EXISTS (SELECT 1 FROM certs_certificates WHERE source_provider = ? OR solver_provider = ?)
+		 OR EXISTS (SELECT 1 FROM certs_targets WHERE provider_id = ?)`, id, id, id).Scan(&used)
+	return used, err
 }
 
 // renew is the job certs.renew. For each certificate with a source whose
@@ -606,7 +533,7 @@ func (s *service) renew(ctx context.Context) error {
 		started = true
 	}
 	if started {
-		s.kick()
+		s.issuing.kick()
 	}
 	return nil
 }
@@ -621,97 +548,6 @@ func (s *service) startRenewal(ctx context.Context, id int64, reason string) err
 		return err
 	}
 	return tx.Commit()
-}
-
-// issuanceLog appends the lines of an attempt to an issuance's log. It
-// is safe for concurrent use.
-type issuanceLog struct {
-	s       *service
-	id      int64
-	attempt int
-
-	mu   sync.Mutex
-	step contracts.Step // of the last line that had one
-}
-
-func (s *service) logger(id int64, attempt int) *issuanceLog {
-	return &issuanceLog{s: s, id: id, attempt: attempt}
-}
-
-// current returns the step of the last line that had one.
-func (l *issuanceLog) current() contracts.Step {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.step
-}
-
-// add stores line. A line that cannot be stored is logged instead: the log
-// is for people, and the issuance goes on without it.
-func (l *issuanceLog) add(line contracts.LogLine) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if line.Step != "" {
-		l.step = line.Step
-	}
-	params := ""
-	if len(line.Params) > 0 {
-		b, err := json.Marshal(line.Params)
-		if err != nil {
-			l.s.log.Warn("issuance log params", "key", line.Key, "err", err)
-		} else {
-			params = string(b)
-		}
-	}
-	detail := line.Detail
-	if len(detail) > maxDetailLen {
-		detail = detail[:maxDetailLen]
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	_, err := l.s.db.ExecContext(ctx,
-		`INSERT INTO certs_issuance_log (issuance_id, seq, at, attempt, level, step, key, params, detail)
-		 VALUES (?, (SELECT coalesce(max(seq), 0) + 1 FROM certs_issuance_log WHERE issuance_id = ?), ?, ?, ?, ?, ?, ?, ?)`,
-		l.id, l.id, l.s.now().UnixMilli(), l.attempt, string(line.Level), string(line.Step), string(line.Key), params, detail)
-	if err != nil {
-		l.s.log.Warn("issuance log", "issuance", l.id, "key", line.Key, "err", err)
-	}
-}
-
-// LogEntry is a stored line of an issuance's log.
-type LogEntry struct {
-	Seq     int
-	At      time.Time
-	Attempt int
-	contracts.LogLine
-}
-
-// issuanceLines returns the log of issuance id, in order.
-func (s *service) issuanceLines(ctx context.Context, id int64) ([]LogEntry, error) {
-	rows, err := s.db.QueryContext(ctx,
-		"SELECT seq, at, attempt, level, step, key, params, detail FROM certs_issuance_log WHERE issuance_id = ? ORDER BY seq", id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []LogEntry
-	for rows.Next() {
-		var e LogEntry
-		var at int64
-		var level, step, params string
-		// The key is scanned as it is: it was stored from a constant.
-		if err := rows.Scan(&e.Seq, &at, &e.Attempt, &level, &step, &e.Key, &params, &e.Detail); err != nil {
-			return nil, err
-		}
-		e.At = time.UnixMilli(at).UTC()
-		e.Level, e.Step = contracts.Level(level), contracts.Step(step)
-		if params != "" {
-			if err := json.Unmarshal([]byte(params), &e.Params); err != nil {
-				return nil, err
-			}
-		}
-		out = append(out, e)
-	}
-	return out, rows.Err()
 }
 
 // StepState is how far a step of an issuance got.

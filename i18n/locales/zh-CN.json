@@ -73,9 +73,11 @@
   "certs": {
     "action": {
       "add": "添加证书",
+      "choose_targets": "选择部署目标",
       "copy_fingerprint": "复制 SHA-256 指纹",
       "copy_serial": "复制序列号",
       "delete": "删除证书",
+      "deploy_now": "立即部署",
       "details": "查看详情",
       "download": "下载",
       "download_version": "下载 {range} 这一版",
@@ -99,18 +101,22 @@
       "key_type": "密钥类型",
       "key_type_help": "每次续期都会生成新私钥。老旧客户端多就选 RSA。",
       "manage_dns": "管理 DNS 服务商",
+      "manage_targets": "管理部署目标",
       "new_source": "添加证书来源",
       "new_source_desc": "ACME 账号，例如 Let's Encrypt。",
       "no_dns": "还没有 DNS 服务商。先添加管理这些域名的那一家。",
+      "no_targets": "还没有部署目标。证书只保存在 JEC 里，也可以以后再选。",
       "plan": "接下来的步骤",
       "reminder": "到期提醒",
       "renew_days": "提前续期",
       "renew_days_help": "证书只剩这么多天时自动续期，可以填 1 到 365。",
       "renewal": "续期",
       "source": "证书来源",
+      "targets": "部署到",
       "validation": "域名验证"
     },
     "attention": {
+      "deploy_failed": "{domain} 部署失败",
       "expired": "{domain} 已过期",
       "expired_detail": "{life}，请上传新证书替换它。",
       "failed": "{domain} 签发失败",
@@ -140,12 +146,34 @@
       "body": "JEC 会删除这张证书的全部版本和私钥。已经部署到别处的证书不受影响。",
       "title": "删除 {domain}？"
     },
+    "deployment": {
+      "canceled": "这次部署已取消：部署目标被移除，或者有了更新的版本。",
+      "done": "已部署",
+      "failed": "部署失败，共试了 {attempts, plural, other {# 次}}",
+      "heading": "部署到 {target}",
+      "ref": "部署目标里的标识",
+      "running": "正在部署",
+      "state": {
+        "canceled": "已取消",
+        "done": "已部署",
+        "failed": "失败",
+        "none": "还没有部署",
+        "pending": "等待部署",
+        "retrying": "失败，稍后重试",
+        "running": "部署中"
+      },
+      "title": "部署"
+    },
     "detail": {
       "also": "另含 {names}",
+      "deploy_failed": "部署到 {target} 失败，不再自动重试",
+      "deploy_retrying": "部署到 {target} 失败，稍后自动重试",
+      "deploys": "部署",
       "failed": "签发失败，不再自动重试",
       "issuances": "签发记录",
       "issuing": "正在签发新证书。",
       "no_issuances": "还没有签发记录。",
+      "no_targets": "还没有选部署目标。",
       "retrying": "签发失败，稍后自动重试",
       "show_log": "查看日志",
       "show_progress": "查看进度",
@@ -165,6 +193,7 @@
       "bad_certificate": "有一张证书读不出来。请完整地重新粘贴，从 -----BEGIN CERTIFICATE----- 到 -----END CERTIFICATE-----。",
       "bad_domain": "这不是有效的域名。通配符写成 *.example.com。",
       "bad_key": "私钥读不出来。请完整地重新粘贴。",
+      "deploy_failed": "部署失败。完整日志里有原因。",
       "duplicate": "这张证书已经添加过了。",
       "encrypted_key": "私钥设置了密码。请先去掉密码，例如运行 openssl pkey -in key.pem -out plain.pem，再重新粘贴。",
       "issue_failed": "签发失败。完整日志里有原因。",
@@ -173,6 +202,7 @@
       "no_certificate": "没有找到证书。请粘贴 PEM 格式的证书，开头是 -----BEGIN CERTIFICATE-----。",
       "no_key": "没有找到私钥。请粘贴 PEM 格式的私钥。",
       "no_source": "这张证书没有可以签发它的来源，只能手动上传新版本。",
+      "no_version": "这张证书还没有可以部署的版本。",
       "not_newer": "这张证书比正在使用的那张更早到期。请上传更新的证书。",
       "other_domains": "这张证书不包含 {domain}。请上传包含 {domain} 的证书，或者把它添加为新证书。",
       "provider_missing": "证书用到的服务已被删除。",
@@ -258,6 +288,8 @@
     },
     "log": {
       "attempt": "第 {attempt} 次尝试",
+      "deploy": "部署到 {target}",
+      "deployed": "部署完成，用时 {seconds, plural, other {# 秒}}",
       "done": "全部完成，用时 {seconds, plural, other {# 秒}}",
       "gave_up": "不再自动重试。解决问题后，请手动重新签发。",
       "interrupted": "JEC 停止时签发被打断，重新开始",
@@ -271,12 +303,12 @@
     },
     "next": {
       "auto": "{date} 自动续期",
-      "failed": "签发失败",
       "first": "等待首次签发",
       "issuing": "正在签发",
       "manual": "需手动更换"
     },
     "note": {
+      "deploy_failed": "{target}：{error}",
       "expired": "请上传新证书",
       "manual": "无法自动续期，请上传新证书",
       "renewing": "即将自动续期"
@@ -290,6 +322,7 @@
     },
     "plan": {
       "check": "检查证书和私钥是否匹配",
+      "deploy": "部署到 {target}",
       "dns": "在 {dns} 添加验证记录，验证后删除",
       "download": "证书颁发机构验证域名后，下载证书",
       "expired": "这张证书已经过期，请上传新证书替换它。",
@@ -321,9 +354,11 @@
       "upload_desc": "粘贴证书和私钥，不能自动续期。"
     },
     "state": {
+      "deploy_failed": "部署失败",
+      "deploying": "部署中",
       "expired": "已过期",
       "expiring": "即将到期",
-      "failed": "失败",
+      "failed": "签发失败",
       "issuing": "签发中",
       "ok": "正常"
     },
@@ -340,6 +375,9 @@
       "failed": "失败",
       "pending": "未开始",
       "running": "进行中"
+    },
+    "targets": {
+      "intro": "每个新版本都会自动部署到选中的目标。新加的目标会马上部署当前版本。"
     },
     "timeline": {
       "marker": "{domain}，{date} 到期",
@@ -507,6 +545,12 @@
         "china": "国内",
         "popular": "常用",
         "self_hosted": "自建"
+      },
+      "target": {
+        "add": "添加部署目标",
+        "empty": "还没有部署目标。添加一个后，证书的新版本会自动部署过去。",
+        "intro": "证书签发或续期后，自动部署到这些地方。",
+        "title": "部署目标"
       },
       "type_gone": "类型不可用，所属模块可能已停用",
       "uses": "{count, plural, =0 {没有证书在用} other {# 张证书在用}}"

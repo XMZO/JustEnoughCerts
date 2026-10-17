@@ -73,7 +73,7 @@ func newFixture(t *testing.T) *fixture {
 	f.addFakes()
 	f.reg.Seal()
 	f.svc = newService(st.DB(), bus.Scope("certs"), f.box, f.reg.Scope("certs"), slog.New(slog.DiscardHandler), func() time.Time { return f.now })
-	f.svc.trigger = func() { f.triggered.Add(1) }
+	f.svc.issuing.trigger = func() { f.triggered.Add(1) }
 	f.reg.Scope("certs").UsedBy(f.svc.usesProvider)
 	_, f.api = humatest.New(t)
 	registerAPI(f.api, f.svc, func(_ context.Context, password string) error {

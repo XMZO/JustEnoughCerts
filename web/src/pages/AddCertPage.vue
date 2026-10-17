@@ -28,6 +28,9 @@ const sources = useProviders('source')
 const sourceTypes = useProviderTypes('source')
 const solvers = useProviders('solver')
 const solverTypes = useProviderTypes('solver')
+const targets = useProviders('target')
+const targetTypes = useProviderTypes('target')
+const chosenTargets = ref<number[]>([])
 
 // The choice of source: the first configured one until someone picks.
 const picked = ref<'upload' | number>()
@@ -67,6 +70,7 @@ const renewDays = computed(() => Number(days.value) || 30)
 const uploading = computed(() => source.value === 'upload')
 const mutation = computed(() => (uploading.value ? add : issue))
 const errors = useApiError(computed(() => mutation.value.error.value))
+const badTargets = computed(() => Object.entries(errors.fields.value).find(([f]) => f.startsWith('targets'))?.[1])
 const badDomains = computed(() =>
   Object.keys(errors.fields.value)
     .map((f) => /^domains\[(\d+)\]$/.exec(f)?.[1])
@@ -74,13 +78,17 @@ const badDomains = computed(() =>
     .map(Number),
 )
 
+const deploySteps = computed(() =>
+  chosenTargets.value.map((id) => t('certs.plan.deploy', { target: targets.data.value?.find((p) => p.id === id)?.name ?? '' })),
+)
 const plan = computed(() => {
   if (uploading.value) {
-    return [t('certs.plan.check'), t('certs.plan.store'), t('certs.plan.remind', { days: renewDays.value })]
+    return [t('certs.plan.check'), t('certs.plan.store'), ...deploySteps.value, t('certs.plan.remind', { days: renewDays.value })]
   }
   const steps = [t('certs.plan.key', { key: keyLabel(keyType.value) }), t('certs.plan.order', { source: provider.value?.name ?? '' })]
   if (needsSolver.value) steps.push(t('certs.plan.dns', { dns: solverName.value }))
-  steps.push(t('certs.plan.download'), t('certs.plan.renew', { days: renewDays.value }))
+  steps.push(t('certs.plan.download'))
+  steps.push(...deploySteps.value, t('certs.plan.renew', { days: renewDays.value }))
   return steps
 })
 
@@ -94,6 +102,7 @@ async function submit() {
         certificate: pem.value.certificate,
         privateKey: pem.value.privateKey || undefined,
         renewBeforeDays: Number(days.value) || undefined,
+        targets: chosenTargets.value,
       })
     } catch {
       await revealError(form.value) // shown by the fields and the alert
@@ -111,6 +120,7 @@ async function submit() {
       solverProvider: needsSolver.value ? solver.value : undefined,
       keyType: keyType.value,
       renewBeforeDays: Number(days.value) || undefined,
+      targets: chosenTargets.value,
     })
   } catch {
     await revealError(form.value)
@@ -218,6 +228,24 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
           </div>
         </section>
       </template>
+
+      <section aria-labelledby="targets" class="flex flex-col gap-2 rounded-lg border border-line bg-surface-raised p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="targets" class="m-0 text-section-title font-semibold">{{ t('certs.add.targets') }}</h2>
+          <RouterLink to="/targets" class="text-small">{{ t('certs.add.manage_targets') }}</RouterLink>
+        </div>
+        <p v-if="targets.isSuccess.value && !targets.data.value?.length" class="m-0 text-ink-muted">{{ t('certs.add.no_targets') }}</p>
+        <label v-for="p in targets.data.value ?? []" :key="p.id" class="flex min-h-11 items-center gap-2.5">
+          <input v-model="chosenTargets" type="checkbox" :value="p.id" class="size-4 flex-none accent-brand" />
+          <span class="min-w-0 [overflow-wrap:anywhere]">
+            <span class="font-semibold" translate="no">{{ p.name }}</span>
+            <span class="ml-1.5 text-small text-ink-muted" :translate="typeLabel(p, targetTypes).brand ? 'no' : undefined">
+              {{ typeLabel(p, targetTypes).text }}
+            </span>
+          </span>
+        </label>
+        <p v-if="badTargets" class="m-0 text-small text-danger-ink">{{ t(badTargets) }}</p>
+      </section>
 
       <section aria-labelledby="renewal" class="flex flex-col gap-3 rounded-lg border border-line bg-surface-raised p-4">
         <h2 id="renewal" class="m-0 text-section-title font-semibold">{{ t(uploading ? 'certs.add.reminder' : 'certs.add.renewal') }}</h2>

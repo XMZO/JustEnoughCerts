@@ -14,6 +14,8 @@ export type IssueRequest = components['schemas']['IssueRequest']
 export type LogLine = components['schemas']['LogLineBody']
 export type Step = components['schemas']['StepBody']
 export type KeyType = NonNullable<IssueRequest['keyType']>
+export type Deployment = components['schemas']['DeploymentBody']
+export type DeploymentDetail = components['schemas']['DeploymentDetailOutputBody']
 
 /** A certificate with its PEM private key, as pasted. */
 export interface PEMUpload {
@@ -82,6 +84,34 @@ export function useIssuances(id: MaybeRefOrGetter<number>, enabled: MaybeRefOrGe
   })
 }
 
+/** A deployment with its log, polled while it is under way. */
+export function useDeployment(id: MaybeRefOrGetter<number>) {
+  const client = useQueryClient()
+  return useQuery({
+    queryKey: computed(() => [...all, 'deployment', toValue(id)] as const),
+    queryFn: async () => {
+      const detail = await unwrap(api.GET('/certs/deployments/{id}', { params: { path: { id: toValue(id) } } }))
+      if (detail.deployment.state !== 'running' && detail.deployment.state !== 'pending') {
+        void client.invalidateQueries({ queryKey: listKey })
+        void client.invalidateQueries({ queryKey: [...all, 'detail', detail.certificate.id] })
+      }
+      return detail
+    },
+    refetchInterval: (query) => {
+      const d = query.state.data?.deployment
+      if (d?.state === 'running' || (d?.state === 'pending' && !d.error)) return 2000
+      return d?.state === 'pending' ? 30_000 : false
+    },
+  })
+}
+
+/** Deploys the current version of certificate id now, to one target or to all of them. */
+export function useDeployNow(id: MaybeRefOrGetter<number>) {
+  return useCertsMutation((target?: number) =>
+    unwrap(api.POST('/certs/certificates/{id}/deploy', { params: { path: { id: toValue(id) } }, body: { target } })),
+  )
+}
+
 /** Adds a certificate that a source provider issues. */
 export function useIssueCertificate() {
   return useCertsMutation((body: IssueRequest) => unwrap(api.POST('/certs/certificates/issue', { body })))
@@ -93,7 +123,7 @@ export function useIssueNow(id: MaybeRefOrGetter<number>) {
 }
 
 export function useAddCertificate() {
-  return useCertsMutation((body: PEMUpload & { renewBeforeDays?: number }) =>
+  return useCertsMutation((body: PEMUpload & { renewBeforeDays?: number; targets?: number[] }) =>
     unwrap(api.POST('/certs/certificates', { body })),
   )
 }
@@ -105,7 +135,7 @@ export function useUploadVersion(id: MaybeRefOrGetter<number>) {
 }
 
 export function useUpdateCertificate(id: MaybeRefOrGetter<number>) {
-  return useCertsMutation((body: { renewBeforeDays: number }) =>
+  return useCertsMutation((body: { renewBeforeDays?: number; targets?: number[] }) =>
     unwrap(api.PATCH('/certs/certificates/{id}', { params: { path: { id: toValue(id) } }, body })),
   )
 }

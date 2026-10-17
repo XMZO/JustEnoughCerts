@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleX, Download, LoaderCircle, Pencil, ShieldCheck, Trash2, Upload } from '@lucide/vue'
+import { CircleX, Download, LoaderCircle, Pencil, Plus, Send, ShieldCheck, Trash2, Upload } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
@@ -7,6 +7,7 @@ import {
   saveFile,
   useCertificate,
   useDeleteCertificate,
+  useDeployNow,
   useDownload,
   useIssuances,
   useIssueNow,
@@ -14,7 +15,8 @@ import {
   useUploadVersion,
 } from '../api/certs'
 import { useApiError } from '../api/errors'
-import { useProviders } from '../api/providers'
+import { useProviders, useProviderTypes } from '../api/providers'
+import { deploymentState, failingDeployment } from '../certs/deployment'
 import { issuanceState, reasonText } from '../certs/issuance'
 import { certLife, colonHex, keyText } from '../certs/life'
 import CertSlot from '../components/CertSlot.vue'
@@ -30,6 +32,7 @@ import PemFields from '../components/PemFields.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
+import { typeName } from '../providers/fields'
 
 // A certificate (docs/design/boards/CertDetail and CertDetailMobile): its
 // validity, details, renewal settings, versions and chain, with the upload
@@ -82,6 +85,50 @@ async function startIssue() {
   await router.push(`/certificates/${props.id}/issuances/${next.id}`)
 }
 const errorText = (e?: { key: string; params?: Record<string, unknown> }) => (e ? t(e.key as MessageKey, (e.params ?? {}) as Params) : '')
+
+// Deploying, to the certificate's targets.
+const targets = useProviders('target')
+const targetTypes = useProviderTypes('target')
+const targetLabel = (id: number) => {
+  const p = targets.data.value?.find((x) => x.id === id)
+  const n = typeName(targetTypes.data.value?.find((x) => x.id === p?.type))
+  return { name: p?.name ?? '', type: n.key ? t(n.key) : (n.brand ?? '') }
+}
+const deployRows = computed(() =>
+  (cert.value?.targets ?? []).map((target) => ({
+    target,
+    label: targetLabel(target),
+    d: cert.value?.deployments.find((x) => x.target === target),
+  })),
+)
+const deployInk = { pending: 'text-ink-muted', running: 'text-info-ink', done: 'text-ok-ink', failed: 'text-danger-ink', canceled: 'text-ink-muted' } as const
+const failing = computed(() => (cert.value?.state === 'deploy_failed' ? failingDeployment(cert.value) : undefined))
+const deployNow = useDeployNow(() => props.id)
+const deployError = useApiError(deployNow.error)
+async function deployAll() {
+  try {
+    await deployNow.mutateAsync(undefined)
+  } catch {
+    // shown in the section
+  }
+}
+
+// Choosing the targets, in a dialog.
+const choosing = ref(false)
+const chosen = ref<number[]>([])
+function chooseTargets() {
+  chosen.value = [...(cert.value?.targets ?? [])]
+  update.reset()
+  choosing.value = true
+}
+async function saveTargets() {
+  try {
+    await update.mutateAsync({ targets: chosen.value })
+  } catch {
+    return // shown in the dialog
+  }
+  choosing.value = false
+}
 
 // A version was replaced when the next newer one came.
 const history = computed(() =>
@@ -236,6 +283,19 @@ async function confirmDelete() {
         </div>
         <RouterLink :to="latestLink" class="self-center font-semibold">{{ t('certs.detail.show_log') }}</RouterLink>
       </section>
+      <section v-else-if="failing" role="status" class="flex flex-wrap gap-x-3 gap-y-2 rounded-lg border border-line bg-danger-soft px-4 py-3">
+        <CircleX class="mt-0.5 size-5 flex-none text-danger-ink" aria-hidden="true" />
+        <div class="flex min-w-0 flex-[1_1_240px] flex-col gap-0.5">
+          <strong class="text-danger-ink [overflow-wrap:anywhere]">
+            {{ t(failing.state === 'failed' ? 'certs.detail.deploy_failed' : 'certs.detail.deploy_retrying', { target: targetLabel(failing.target).name }) }}
+          </strong>
+          <span class="text-small">{{ errorText(failing.error) }}</span>
+          <span v-if="failing.state === 'pending' && failing.nextAt" class="text-small text-ink-muted">
+            {{ t('certs.issuance.next_try') }} <time :datetime="failing.nextAt">{{ intl.dateTime(failing.nextAt) }}</time>
+          </span>
+        </div>
+        <RouterLink :to="`/certificates/${id}/deployments/${failing.id}`" class="self-center font-semibold">{{ t('certs.detail.show_log') }}</RouterLink>
+      </section>
       <div class="flex items-center gap-3 sm:hidden">
         <StatusBadge :state="cert.state" />
         <p v-if="also" class="m-0 min-w-0 truncate text-small text-ink-muted" :title="t('certs.detail.also', { names: also })">
@@ -272,6 +332,45 @@ async function confirmDelete() {
 
       <div class="flex flex-wrap items-start gap-3 sm:gap-4">
         <div class="flex min-w-0 flex-[999_1_480px] flex-col gap-3 sm:gap-4">
+          <section aria-labelledby="deploys" class="flex flex-col gap-2 rounded-lg border border-line bg-surface-raised p-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h2 id="deploys" class="m-0 text-section-title font-semibold">{{ t('certs.detail.deploys') }}</h2>
+              <div class="flex flex-wrap gap-2">
+                <JecButton v-if="cert.targets.length && current" size="sm" :busy="deployNow.isPending.value" @click="deployAll">
+                  <Send class="size-4" aria-hidden="true" />{{ t('certs.action.deploy_now') }}
+                </JecButton>
+                <JecButton size="sm" variant="ghost" @click="chooseTargets">
+                  <Pencil class="size-4" aria-hidden="true" />{{ t('certs.action.choose_targets') }}
+                </JecButton>
+              </div>
+            </div>
+            <JecAlert v-if="deployError.error.value" :code="deployError.error.value.code" :params="deployError.error.value.params" />
+            <p v-if="!cert.targets.length" class="m-0 text-small text-ink-muted">{{ t('certs.detail.no_targets') }}</p>
+            <ol v-else class="m-0 list-none p-0 text-small">
+              <li v-for="r in deployRows" :key="r.target" class="border-b border-line last:border-b-0">
+                <RouterLink
+                  v-if="r.d"
+                  :to="`/certificates/${id}/deployments/${r.d.id}`"
+                  class="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-0.5 py-2 text-ink no-underline hover:text-ink"
+                >
+                  <span class="min-w-[8rem] flex-1 [overflow-wrap:anywhere]">
+                    <span class="font-semibold" translate="no">{{ r.label.name }}</span>
+                    <span class="ml-1.5 text-ink-muted" translate="no">{{ r.label.type }}</span>
+                  </span>
+                  <time v-if="r.d.finishedAt" :datetime="r.d.finishedAt" class="flex-none text-ink-muted tabular-nums">{{ intl.dateTime(r.d.finishedAt) }}</time>
+                  <span :class="['flex-none font-semibold', deployInk[r.d.state]]">{{ t(deploymentState(r.d)) }}</span>
+                </RouterLink>
+                <div v-else class="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-0.5 py-2">
+                  <span class="min-w-[8rem] flex-1 [overflow-wrap:anywhere]">
+                    <span class="font-semibold" translate="no">{{ r.label.name }}</span>
+                    <span class="ml-1.5 text-ink-muted" translate="no">{{ r.label.type }}</span>
+                  </span>
+                  <span class="flex-none text-ink-muted">{{ t('certs.deployment.state.none') }}</span>
+                </div>
+              </li>
+            </ol>
+          </section>
+
           <section v-if="issued" aria-labelledby="issuances" class="rounded-lg border border-line bg-surface-raised p-4">
             <h2 id="issuances" class="m-0 mb-1 text-section-title font-semibold">{{ t('certs.detail.issuances') }}</h2>
             <p v-if="issuances.isSuccess.value && !issuances.data.value?.length" class="m-0 text-small text-ink-muted">{{ t('certs.detail.no_issuances') }}</p>
@@ -454,6 +553,26 @@ async function confirmDelete() {
       <JecButton type="submit" form="download-form" variant="primary" :busy="download.isPending.value" :disabled="!password">
         <Download class="size-4" aria-hidden="true" />{{ t('certs.action.download') }}
       </JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-if="cert" v-model:open="choosing" :title="t('certs.action.choose_targets')" small>
+    <form id="targets-form" class="flex flex-col gap-3" novalidate @submit.prevent="saveTargets">
+      <p class="m-0 text-ink-muted">{{ t('certs.targets.intro') }}</p>
+      <JecAlert v-if="updateError.error.value" :code="updateError.error.value.code" :params="updateError.error.value.params" />
+      <p v-if="targets.isSuccess.value && !targets.data.value?.length" class="m-0">{{ t('certs.add.no_targets') }}</p>
+      <label v-for="p in targets.data.value ?? []" :key="p.id" class="flex min-h-11 items-center gap-2.5">
+        <input v-model="chosen" type="checkbox" :value="p.id" class="size-4 flex-none accent-brand" />
+        <span class="min-w-0 [overflow-wrap:anywhere]">
+          <span class="font-semibold" translate="no">{{ p.name }}</span>
+          <span class="ml-1.5 text-small text-ink-muted" translate="no">{{ targetLabel(p.id).type }}</span>
+        </span>
+      </label>
+      <RouterLink to="/targets" class="flex items-center gap-1.5 self-start text-small"><Plus class="size-4" aria-hidden="true" />{{ t('certs.add.manage_targets') }}</RouterLink>
+    </form>
+    <template #footer>
+      <JecButton @click="choosing = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton type="submit" form="targets-form" variant="primary" :busy="update.isPending.value">{{ t('kernel.action.save') }}</JecButton>
     </template>
   </JecDialog>
 

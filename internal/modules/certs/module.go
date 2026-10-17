@@ -50,17 +50,19 @@ func (*Module) Migrations() fs.FS {
 	return sub
 }
 
-// Register adds the API under /api/v1/certs, the jobs that issue, renew
-// and check expiry, and the veto on deleting the providers certificates
-// use.
+// Register adds the API under /api/v1/certs, the jobs that issue, deploy,
+// renew and check expiry, and the veto on deleting the providers
+// certificates use.
 func (m *Module) Register(r *module.Registry) error {
 	s := newService(r.DB, r.Events, r.Secrets, r.Providers, r.Log, m.now)
-	s.trigger = func() { r.Jobs.Trigger("issue") }
+	s.issuing.trigger = func() { r.Jobs.Trigger("issue") }
+	s.deploying.trigger = func() { r.Jobs.Trigger("deploy") }
 	registerAPI(r.API, s, r.ConfirmPassword)
 	r.Providers.UsedBy(s.usesProvider)
 	for _, j := range []jobs.Job{
-		// Runs until no issuance is due; started at once when one is added.
+		// Run until nothing is due; started at once when work is added.
 		{Name: "issue", Every: time.Minute, Timeout: 24 * time.Hour, Run: s.runIssuances},
+		{Name: "deploy", Every: time.Minute, Timeout: 24 * time.Hour, Run: s.runDeployments},
 		{Name: "renew", Every: time.Hour, Timeout: 5 * time.Minute, Run: s.renew},
 		{Name: "check_expiry", Every: time.Hour, Timeout: 5 * time.Minute, Run: s.checkExpiry},
 	} {

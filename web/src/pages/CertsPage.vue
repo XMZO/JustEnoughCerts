@@ -6,6 +6,7 @@ import { RouterLink } from 'vue-router'
 import { ApiError, networkError } from '../api/client'
 import { useCertificates, type Certificate } from '../api/certs'
 import { useProviders } from '../api/providers'
+import { useDeployNote } from '../certs/deployment'
 import { barPercent, certLife, lifeText, needsAttention, stateText } from '../certs/life'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
@@ -23,6 +24,7 @@ const { t } = useT()
 const intl = useIntl()
 const certificates = useCertificates()
 const sources = useProviders('source')
+const deployNote = useDeployNote()
 
 const error = computed(() => {
   const err = certificates.error.value
@@ -66,17 +68,25 @@ const day = 86_400_000
 
 /** note says why a certificate needs attention. */
 function note(c: Certificate): string {
-  if (c.state === 'failed' && c.issuance?.error) return t(c.issuance.error.key as MessageKey, (c.issuance.error.params ?? {}) as Params)
-  if (c.state === 'ok' || c.state === 'issuing') return ''
+  if (c.state === 'failed') return issueNote(c)
+  if (c.state === 'deploy_failed') return deployNote(c)
+  if (c.state === 'ok' || c.state === 'issuing' || c.state === 'deploying') return ''
   if (c.source === 'provider') return t('certs.note.renewing')
   return t(c.state === 'expired' ? 'certs.note.expired' : 'certs.note.manual')
 }
 
-/** next says what happens to a certificate next. */
+/** issueNote says why the latest issuance of a certificate failed. */
+function issueNote(c: Certificate): string {
+  const e = c.issuance?.error
+  return e ? t(e.key as MessageKey, (e.params ?? {}) as Params) : ''
+}
+
+/** next says what happens to a certificate next, or what stops it. */
 function next(c: Certificate): string {
+  if (c.state === 'deploy_failed') return deployNote(c)
   if (c.source !== 'provider') return t('certs.next.manual')
   if (c.state === 'issuing') return t('certs.next.issuing')
-  if (c.state === 'failed') return t('certs.next.failed')
+  if (c.state === 'failed') return issueNote(c)
   if (!c.current) return t('certs.next.first')
   return t('certs.next.auto', { date: intl.date(Date.parse(c.current.notAfter) - c.renewBeforeDays * day) })
 }
@@ -107,7 +117,9 @@ const itemLooks = {
   expiring: { icon: TriangleAlert, ink: 'text-warn-ink', fill: 'bg-warn-fill' },
   expired: { icon: CircleX, ink: 'text-danger-ink', fill: 'bg-danger-fill' },
   failed: { icon: OctagonX, ink: 'text-danger-ink', fill: 'bg-danger-fill' },
+  deploy_failed: { icon: OctagonX, ink: 'text-danger-ink', fill: 'bg-danger-fill' },
   issuing: { icon: LoaderCircle, ink: 'text-info-ink', fill: 'bg-info-fill' },
+  deploying: { icon: LoaderCircle, ink: 'text-info-ink', fill: 'bg-info-fill' },
   ok: { icon: CircleCheck, ink: 'text-ok-ink', fill: 'bg-ok-fill' },
 } as const
 const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill' }

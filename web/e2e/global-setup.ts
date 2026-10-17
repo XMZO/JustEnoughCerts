@@ -1,5 +1,6 @@
 // Starts one fresh jec server per Playwright project and hands each test
-// its setup token through the environment. JEC_E2E_BIN names the binary,
+// its setup token through the environment, with a directory the servers
+// may deploy files to (JEC_E2E_FILES). JEC_E2E_BIN names the binary,
 // which must embed the current build of the UI:
 //
 //	pnpm build && go build -o ../build/jec ../cmd/jec
@@ -38,6 +39,8 @@ export default async function globalSetup(): Promise<() => void> {
   const bin = process.env.JEC_E2E_BIN
   if (!bin) throw new Error('set JEC_E2E_BIN to a jec binary built with the current UI')
   const running: { proc: ChildProcess; dir: string }[] = []
+  const files = mkdtempSync(join(tmpdir(), 'jec-e2e-files-'))
+  process.env.JEC_E2E_FILES = files
   for (const { project, port } of servers) {
     const dir = mkdtempSync(join(tmpdir(), 'jec-e2e-'))
     const { proc, token } = await start(bin, port, dir)
@@ -49,5 +52,6 @@ export default async function globalSetup(): Promise<() => void> {
       proc.kill()
       rmSync(dir, { recursive: true, force: true })
     }
+    rmSync(files, { recursive: true, force: true })
   }
 }

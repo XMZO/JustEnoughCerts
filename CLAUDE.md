@@ -51,7 +51,8 @@
 - M1 还完成了：provider 注册表 `internal/kernel/providers`（模块用 `r.Providers` 登记类型、打开实例；接口在 `/api/v1/providers`）；子进程机制 `internal/kernel/children`；lego 模块 `internal/modules/lego`（221 家 DNS 服务商，每家在子进程里跑，目录 `catalog.json` 由 `go run ./tools/legocatalog` 生成）；ACME 模块 `internal/modules/acme`（账号就是 provider 实例，用 lego 签发，CI 里对着 Pebble 测）。体积预算已按 lego 实测提高到程序 80 MiB、压缩包和镜像 27 MiB。
 - M1 还完成了：证书模块的签发和续期（`PLAN.md` 4.3 的“实现”、4.6）：证书来源选 ACME 账号等来源实例、验证选 DNS 服务商实例，签发记录和逐行日志存在数据库里，失败按退避重试，进入续期窗口自动续期，签发中、失败两种状态；接口 `POST /api/v1/certs/certificates/issue` 等。
 - M1 还完成了：前端的配置页 `/sources`、`/dns`（provider 表单由类型的字段生成，字段可标 `advanced`、`when`，`PLAN.md` 5.5），添加证书可选证书来源和 DNS 服务商，签发进度页 `/certificates/:id/issuances/:issuance`（步骤和日志，进行中自动刷新），证书详情的签发记录和“立即签发”。
-- 下一步：部署目标（先做阿里云 ESA，再做本地文件、SSH、Webhook），签发成功后自动部署；然后是通知（Telegram、邮件、Webhook）。
+- M1 还完成了：部署（`PLAN.md` 4.6 的“部署”）：证书选一组部署目标（类型为 target 的 provider 实例），每个新版本自动部署到每个目标，失败按退避重试，目标负责删掉 JEC 以前部署的版本；目标模块 `internal/modules/esa`（阿里云 ESA，`PLAN.md` 5.4，只用替身 API 测过，还没对真实账号验证）和 `internal/modules/files`（写到本地目录，`PLAN.md` 5.3.3）。前端：部署目标页 `/targets`，添加证书和证书详情里选目标，部署记录和日志页 `/certificates/:id/deployments/:deployment`；日志组件 `web/src/components/LogView.vue` 签发和部署共用。
+- 下一步：用真实的阿里云 ESA 账号验证部署和删除旧证书（M1 验收要用户提供账号）；SSH、Webhook 部署目标；然后是通知（Telegram、邮件、Webhook）。
 
 ## 工程约定
 

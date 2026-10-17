@@ -63,6 +63,13 @@ type StepBody struct {
 	At    *time.Time `json:"at,omitempty" doc:"The time of the step's last line"`
 }
 
+func logLineBody(l LogEntry) LogLineBody {
+	return LogLineBody{
+		Seq: l.Seq, At: l.At, Attempt: l.Attempt, Level: string(l.Level), Step: string(l.Step),
+		Key: l.Key, Params: l.Params, Detail: l.Detail,
+	}
+}
+
 func issuanceBody(is *Issuance) IssuanceBody {
 	b := IssuanceBody{
 		ID: is.ID, CertificateID: is.CertificateID, Reason: is.Reason, State: is.State, Attempts: is.Attempts,
@@ -92,6 +99,7 @@ type IssueRequest struct {
 	SolverProvider  int64    `json:"solverProvider,omitempty" doc:"The solver provider instance that proves control of the domains, for a source that needs one"`
 	KeyType         string   `json:"keyType,omitempty" enum:"ecdsa-p256,ecdsa-p384,rsa-2048,rsa-3072,rsa-4096" doc:"The type of the private key, new for each version; rsa-2048 if left out"`
 	RenewBeforeDays int      `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Days before the end to renew; 30 if left out"`
+	Targets         []int64  `json:"targets,omitempty" maxItems:"50" doc:"The target provider instances to deploy each version to, in order"`
 }
 
 type issueInput struct {
@@ -182,7 +190,7 @@ func registerIssueAPI(a huma.API, s *service) {
 		if err != nil {
 			return nil, serviceError(err)
 		}
-		lines, err := s.issuanceLines(ctx, is.ID)
+		lines, err := s.logLines(ctx, issuanceLogTable, is.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -199,10 +207,7 @@ func registerIssueAPI(a huma.API, s *service) {
 		}
 		out.Body.Log = make([]LogLineBody, 0, len(lines))
 		for _, l := range lines {
-			out.Body.Log = append(out.Body.Log, LogLineBody{
-				Seq: l.Seq, At: l.At, Attempt: l.Attempt, Level: string(l.Level), Step: string(l.Step),
-				Key: l.Key, Params: l.Params, Detail: l.Detail,
-			})
+			out.Body.Log = append(out.Body.Log, logLineBody(l))
 		}
 		return out, nil
 	})
@@ -225,6 +230,10 @@ func (s *service) addIssued(ctx context.Context, in *IssueRequest) (int64, error
 		if code := s.checkProvider(ctx, in.SolverProvider, providers.Solver); code != "" {
 			invalid = invalid.WithField("body.solverProvider", code)
 		}
+	}
+	targets, badTargets := s.checkTargets(ctx, in.Targets)
+	for _, f := range badTargets {
+		invalid = invalid.WithField(f.Location, f.Code)
 	}
 	if len(invalid.Fields) > 0 {
 		return 0, invalid
@@ -257,13 +266,16 @@ func (s *service) addIssued(ctx context.Context, in *IssueRequest) (int64, error
 	if err != nil {
 		return 0, err
 	}
+	if err := s.setTargets(ctx, tx, &Certificate{ID: id}, targets); err != nil {
+		return 0, err
+	}
 	if _, err := s.startIssuance(ctx, tx, id, reasonFirst); err != nil {
 		return 0, err
 	}
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
-	s.kick()
+	s.issuing.kick()
 	return id, nil
 }
 

@@ -60,12 +60,14 @@ export const stateText: Record<CertificateState, MessageKey> = {
   expiring: 'certs.state.expiring',
   expired: 'certs.state.expired',
   issuing: 'certs.state.issuing',
+  deploying: 'certs.state.deploying',
   failed: 'certs.state.failed',
+  deploy_failed: 'certs.state.deploy_failed',
 }
 
-/** needsAttention tells the certificates that need someone: one being issued does not, yet. */
+/** needsAttention tells the certificates that need someone: one being issued or deployed does not, yet. */
 export function needsAttention(c: Certificate): boolean {
-  return c.state !== 'ok' && c.state !== 'issuing'
+  return c.state !== 'ok' && c.state !== 'issuing' && c.state !== 'deploying'
 }
 
 /** mono is what a slot shows of a domain: two letters of its first label, or "*." for a wildcard. */
