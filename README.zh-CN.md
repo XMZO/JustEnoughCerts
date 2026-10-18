@@ -54,7 +54,7 @@ docker exec -it jec /jec reset-password
 
 ### 放在反向代理后面
 
-把 `JEC_BASE_URL` 设为用户实际打开的地址，例如 `https://certs.example.com`，或者子路径 `https://example.com/certs/`。地址是 `https` 时，会话 Cookie 只通过 HTTPS 发送。设置了它，通知里才会带上对应页面的链接。
+把 `JEC_BASE_URL` 设为用户实际打开的地址，例如 `https://certs.example.com`，或者子路径 `https://example.com/certs/`。地址是 `https` 时，会话 Cookie 只通过 HTTPS 发送。设置了它，通知里才会带上对应页面的链接。同时把 `JEC_TRUSTED_PROXIES` 设为代理的地址，比如 `127.0.0.1`，或者代理容器所在的网段 `172.16.0.0/12`：JEC 就会从 `X-Forwarded-For` 取客户端地址，登录失败锁定的是那个客户端，而不是代理后面的所有人。
 
 ### 不用 Docker
 
@@ -75,6 +75,7 @@ tar -xzf jec_<版本>_linux_amd64.tar.gz
 | `-listen` | `JEC_LISTEN` | `listen` | `:8080` |
 | `-base-url` | `JEC_BASE_URL` | `base_url` | 服务端看到的地址 |
 | `-hsts` | `JEC_HSTS` | `hsts` | `false` |
+| `-trusted-proxies` | `JEC_TRUSTED_PROXIES` | `trusted_proxies` | 无 |
 | `-log-level` | `JEC_LOG_LEVEL` | `log.level` | `info` |
 | `-log-format` | `JEC_LOG_FORMAT` | `log.format` | `text`（或 `json`） |
 | `-config` | `JEC_CONFIG` | | `<data-dir>/config.yaml`（存在时） |

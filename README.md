@@ -108,6 +108,10 @@ Set `JEC_BASE_URL` to the URL people open, such as
 `https://certs.example.com` or `https://example.com/certs/` for a sub-path.
 With an `https` URL the session cookie is only sent over HTTPS.
 Notifications link to the pages they are about only when it is set.
+Set `JEC_TRUSTED_PROXIES` to the address of the proxy too, such as
+`127.0.0.1` or the network of its containers, `172.16.0.0/12`: JEC then
+takes the client from `X-Forwarded-For`, and locks out after failed
+sign-ins the client rather than everyone behind the proxy.
 
 ### Without Docker
 
@@ -130,6 +134,7 @@ the config file, an environment variable and a command-line flag.
 | `-listen` | `JEC_LISTEN` | `listen` | `:8080` |
 | `-base-url` | `JEC_BASE_URL` | `base_url` | the address the server sees |
 | `-hsts` | `JEC_HSTS` | `hsts` | `false` |
+| `-trusted-proxies` | `JEC_TRUSTED_PROXIES` | `trusted_proxies` | none |
 | `-log-level` | `JEC_LOG_LEVEL` | `log.level` | `info` |
 | `-log-format` | `JEC_LOG_FORMAT` | `log.format` | `text` (or `json`) |
 | `-config` | `JEC_CONFIG` | | `<data-dir>/config.yaml`, if it exists |

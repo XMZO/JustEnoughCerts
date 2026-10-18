@@ -22,6 +22,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/buildinfo"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/clientip"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/config"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
@@ -93,10 +94,15 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	if cookiePath == "" {
 		cookiePath = "/"
 	}
+	clients, err := clientip.New(cfg.TrustedProxies)
+	if err != nil {
+		return nil, err
+	}
 	accounts, err := auth.New(ctx, st.DB(), log, auth.Options{
 		CookiePath: cookiePath,
 		Secure:     strings.HasPrefix(cfg.BaseURL, "https://"),
 		Secrets:    box.Scope(owner),
+		Clients:    clients,
 	})
 	if err != nil {
 		return nil, err

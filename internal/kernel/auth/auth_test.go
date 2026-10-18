@@ -18,6 +18,7 @@ import (
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/clientip"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
@@ -313,6 +314,43 @@ func TestThrottle(t *testing.T) {
 	f.clock = f.clock.Add(lockout)
 	if r := f.call(http.MethodPost, "/session", "", right); r.status != http.StatusOK {
 		t.Errorf("after the lockout = %d %s", r.status, r.body)
+	}
+}
+
+// TestThrottleBehindProxy locks out the client a trusted proxy forwards
+// for, not the proxy: another client signs in still.
+func TestThrottleBehindProxy(t *testing.T) {
+	clients, err := clientip.New("127.0.0.1, ::1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := newFixture(t, Options{CookiePath: "/", Clients: clients})
+	if r := f.call(http.MethodPost, "/setup", "", f.setupBody(f.token)); r.status != http.StatusCreated {
+		t.Fatalf("setup = %d %s", r.status, r.body)
+	}
+	signIn := func(client, password string) int {
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, f.srv.URL+"/session",
+			strings.NewReader(`{"username": "admin", "password": "`+password+`"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Forwarded-For", client)
+		resp, err := f.srv.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = resp.Body.Close()
+		return resp.StatusCode
+	}
+	for range maxFailures {
+		signIn("198.51.100.1", "wrong horse")
+	}
+	if got := signIn("198.51.100.1", "correct horse"); got != http.StatusTooManyRequests {
+		t.Errorf("the client that failed: %d", got)
+	}
+	if got := signIn("198.51.100.2", "correct horse"); got != http.StatusOK {
+		t.Errorf("another client: %d", got)
 	}
 }
 

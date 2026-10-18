@@ -21,6 +21,8 @@ import (
 	"strings"
 
 	"go.yaml.in/yaml/v3"
+
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/clientip"
 )
 
 // Config is the resolved process configuration.
@@ -38,6 +40,10 @@ type Config struct {
 	// then reach the panel over HTTPS alone for a year, so it is only for a
 	// panel never served over plain HTTP. "false" by default.
 	HSTS string `yaml:"hsts"`
+	// TrustedProxies are the reverse proxies whose X-Forwarded-For tells
+	// the client of a request: addresses and CIDR ranges, separated by
+	// commas. Empty trusts none, and the client is the peer.
+	TrustedProxies string `yaml:"trusted_proxies"`
 	// Log configures the process log.
 	Log Log `yaml:"log"`
 	// SecretKey is the master key sealing the stored secrets, base64 of 32
@@ -96,6 +102,7 @@ var settings = []setting{
 	{"listen", "JEC_LISTEN", "TCP address to serve HTTP on", func(c *Config) *string { return &c.Listen }},
 	{"base-url", "JEC_BASE_URL", "URL users open in the browser, if it differs from what the server sees", func(c *Config) *string { return &c.BaseURL }},
 	{"hsts", "JEC_HSTS", "true to send Strict-Transport-Security, when the panel is reached over HTTPS alone", func(c *Config) *string { return &c.HSTS }},
+	{"trusted-proxies", "JEC_TRUSTED_PROXIES", "addresses or CIDR ranges of the reverse proxies whose X-Forwarded-For to trust", func(c *Config) *string { return &c.TrustedProxies }},
 	{"log-level", "JEC_LOG_LEVEL", "log level: debug, info, warn or error", func(c *Config) *string { return &c.Log.Level }},
 	{"log-format", "JEC_LOG_FORMAT", "log format: text or json", func(c *Config) *string { return &c.Log.Format }},
 }
@@ -214,6 +221,10 @@ func (c *Config) normalize() error {
 		if c.BaseURL, err = normalizeBaseURL(c.BaseURL); err != nil {
 			return err
 		}
+	}
+
+	if _, err := clientip.New(c.TrustedProxies); err != nil {
+		return err
 	}
 
 	c.HSTS = strings.ToLower(c.HSTS)

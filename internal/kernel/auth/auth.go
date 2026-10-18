@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -31,6 +30,7 @@ import (
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/clientip"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 )
 
@@ -61,6 +61,9 @@ type Options struct {
 	Secure bool
 	// Secrets seals the secrets of two-factor authentication.
 	Secrets *secrets.Scope
+	// Clients finds the client of a request, behind trusted proxies too,
+	// which sign-in lockouts go by. Nil means the peer.
+	Clients *clientip.Resolver
 }
 
 // Service is the account system.
@@ -126,11 +129,7 @@ func clientFrom(ctx context.Context) string {
 // Middleware loads the session of every request and turns away a request
 // without one unless its operation is api.Public.
 func (s *Service) Middleware(ctx huma.Context, next func(huma.Context)) {
-	client := ctx.RemoteAddr()
-	if host, _, err := net.SplitHostPort(client); err == nil {
-		client = host
-	}
-	ctx = huma.WithValue(ctx, clientKey{}, client)
+	ctx = huma.WithValue(ctx, clientKey{}, s.client(ctx))
 	if sess, ok := s.lookup(ctx.Context(), cookie(ctx)); ok {
 		ctx = huma.WithValue(ctx, sessionKey{}, sess)
 	} else if op := ctx.Operation(); op == nil || op.Security == nil || len(op.Security) > 0 {
@@ -138,6 +137,22 @@ func (s *Service) Middleware(ctx huma.Context, next func(huma.Context)) {
 		return
 	}
 	next(ctx)
+}
+
+// client is the address of the client of ctx: the peer, or behind trusted
+// proxies the one they forwarded for.
+func (s *Service) client(ctx huma.Context) string {
+	var forwarded []string
+	ctx.EachHeader(func(name, value string) {
+		if strings.EqualFold(name, "X-Forwarded-For") {
+			forwarded = append(forwarded, value)
+		}
+	})
+	clients := s.opts.Clients
+	if clients == nil {
+		clients, _ = clientip.New("")
+	}
+	return clients.Client(ctx.RemoteAddr(), forwarded)
 }
 
 func cookie(ctx huma.Context) string {

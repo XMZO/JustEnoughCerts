@@ -20,6 +20,9 @@ services:
       # reverse proxy or under a sub-path. With https the session cookie is
       # sent over HTTPS only.
       # JEC_BASE_URL: "https://certs.example.com"
+      # The reverse proxy, whose X-Forwarded-For tells who signs in: an
+      # address or a range, such as that of the networks of containers.
+      # JEC_TRUSTED_PROXIES: "172.16.0.0/12"
       # Only when the panel is reached over HTTPS alone: browsers then refuse
       # plain HTTP to it for a year.
       # JEC_HSTS: "true"
