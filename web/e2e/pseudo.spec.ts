@@ -547,6 +547,12 @@ test('every page is translated and fits', async ({ page }, info) => {
   const days = page.locator('#renewBeforeDays')
   await expect(days).toBeVisible()
   expect.soft(await problems(page), 'settings').toEqual([])
+  // The dark theme, chosen in this browser, then the system's again.
+  await page.getByRole('button', { name: label('kernel.settings.theme_dark') }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  expect.soft(await problems(page), 'settings in the dark theme').toEqual([])
+  await page.getByRole('button', { name: label('kernel.settings.theme_system') }).click()
+  await expect(page.getByRole('button', { name: label('kernel.settings.theme_system') })).toHaveAttribute('aria-pressed', 'true')
   await days.fill('45')
   await days.blur()
   await expect(page.getByRole('status').filter({ hasText: label('kernel.settings.saved') })).toBeVisible()

@@ -10,6 +10,7 @@ import {
   OctagonX,
   Pencil,
   Plus,
+  RefreshCw,
   RotateCcw,
   ShieldCheck,
   ShieldOff,
@@ -34,7 +35,7 @@ import { saveFile, useCertSettings, useSaveCertSettings, type CertSettingsInput,
 import { useExportConfig, useImportConfig, type ConfigItem, type ConfigReport } from '../api/config'
 import { useApiError } from '../api/errors'
 import { useManifest } from '../api/manifest'
-import { useBackup, useRestore, useSystem, waitForRestart } from '../api/system'
+import { useBackup, useReleaseCheck, useRestore, useSystem, waitForRestart } from '../api/system'
 import { keyText } from '../certs/life'
 import CopyButton from '../components/CopyButton.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -46,6 +47,7 @@ import OidcSettings from '../components/OidcSettings.vue'
 import PageHeader from '../components/PageHeader.vue'
 import { locales, setLocale, useT, type Locale, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
+import { setTheme, theme, themes, type Theme } from '../theme'
 
 // The settings (docs/design/boards/Settings and SettingsMobile), each saved
 // as soon as it changes. Those of the account, the panel's address and the
@@ -53,6 +55,19 @@ import { useIntl } from '../i18n/intl'
 const { t, locale } = useT()
 const intl = useIntl()
 const manifest = useManifest()
+
+// The theme of this browser.
+const themeLabels: Record<Theme, MessageKey> = {
+  system: 'kernel.settings.theme_system',
+  light: 'kernel.settings.theme_light',
+  dark: 'kernel.settings.theme_dark',
+}
+
+// Whether a newer release is out, when someone asks.
+const release = useReleaseCheck()
+const releaseError = useApiError(computed(() => release.error.value))
+// A build of its own, as dev, has no version to compare.
+const versioned = computed(() => /^\d/.test(release.data.value?.current ?? ''))
 // Single sign-on, while its module is on.
 const oidcOn = computed(() => manifest.data.value?.modules.some((m) => m.id === 'oidc' && m.enabled) ?? false)
 
@@ -401,6 +416,24 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           <option v-for="l in locales" :key="l.tag" :value="l.tag" :lang="l.tag" translate="no">{{ l.name }}</option>
         </select>
       </div>
+      <div :class="[row, 'flex-wrap']">
+        <div class="min-w-0 flex-[1_1_10rem]">
+          <span id="theme-label" class="block font-semibold">{{ t('kernel.settings.theme') }}</span>
+          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.theme_help') }}</span>
+        </div>
+        <div role="group" aria-labelledby="theme-label" class="inline-flex flex-none gap-0.5 rounded-md border border-line bg-surface-sunken p-0.5">
+          <button
+            v-for="th in themes"
+            :key="th"
+            type="button"
+            :aria-pressed="theme === th ? 'true' : 'false'"
+            class="h-[30px] cursor-pointer rounded-sm border-0 bg-transparent px-3 text-[13px] font-semibold whitespace-nowrap text-ink-muted hover:text-ink aria-pressed:bg-surface-raised aria-pressed:text-ink aria-pressed:shadow-[0_0_0_1px_var(--line-strong)] max-sm:h-9"
+            @click="setTheme(th)"
+          >
+            {{ t(themeLabels[th]) }}
+          </button>
+        </div>
+      </div>
     </section>
 
     <section aria-labelledby="renewal" :class="panel">
@@ -674,6 +707,27 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           </dd>
         </div>
       </dl>
+      <div :class="[row, 'flex-wrap']">
+        <div class="min-w-0 flex-[1_1_12rem]">
+          <span class="block font-semibold">{{ t('kernel.settings.check_update') }}</span>
+          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.update_help') }}</span>
+        </div>
+        <JecButton size="sm" class="flex-none" :busy="release.isPending.value" @click="release.mutate()">
+          <RefreshCw class="size-4" aria-hidden="true" />{{ t('kernel.settings.check_update') }}
+        </JecButton>
+      </div>
+      <JecAlert v-if="releaseError.alert.value" :code="releaseError.alert.value.code" :params="releaseError.alert.value.params" />
+      <p v-else-if="release.data.value" role="status" class="m-0 py-2 text-small [overflow-wrap:anywhere]">
+        <template v-if="!release.data.value.latest">{{ t('kernel.settings.no_release') }}</template>
+        <span v-else-if="release.data.value.newer" class="font-semibold text-ok-ink">
+          {{ t('kernel.settings.update_available', { version: release.data.value.latest }) }}
+        </span>
+        <template v-else-if="versioned">{{ t('kernel.settings.up_to_date') }}</template>
+        <template v-else>{{ t('kernel.settings.latest_release', { version: release.data.value.latest }) }}</template>
+        <template v-if="release.data.value.url && release.data.value.latest">
+          {{ ' ' }}<a :href="release.data.value.url" target="_blank" rel="noopener">{{ t('kernel.settings.release_notes') }}</a>
+        </template>
+      </p>
     </section>
   </div>
 

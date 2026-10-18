@@ -10,6 +10,13 @@ export function useSystem() {
   return useQuery({ queryKey: ['system'], queryFn: () => unwrap(api.GET('/system')), staleTime: Infinity })
 }
 
+export type ReleaseInfo = components['schemas']['ReleaseBody']
+
+/** Asks whether a newer release of JEC is out: only when someone asks, as JEC never calls home on its own. */
+export function useReleaseCheck() {
+  return useMutation({ mutationFn: () => unwrap(api.GET('/system/release')) })
+}
+
 /** Fetches a copy of the database once the password is confirmed, as the file the server names. */
 export function useBackup() {
   return useMutation({

@@ -1841,6 +1841,36 @@
         ],
         "type": "object"
       },
+      "ReleaseBody": {
+        "additionalProperties": false,
+        "properties": {
+          "current": {
+            "description": "The running version",
+            "type": "string"
+          },
+          "latest": {
+            "description": "The newest release this version may move to: stable ones only, unless this one is a test release or a build of its own",
+            "type": "string"
+          },
+          "newer": {
+            "description": "Latest is newer than the running version",
+            "type": "boolean"
+          },
+          "publishedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "url": {
+            "description": "The page of the latest release",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current",
+          "newer"
+        ],
+        "type": "object"
+      },
       "RenewalBody": {
         "additionalProperties": false,
         "properties": {
@@ -5377,6 +5407,38 @@
           }
         },
         "summary": "Download a copy of the database, once the password is confirmed",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/system/release": {
+      "get": {
+        "description": "Asks GitHub for the releases of JEC, only when called.",
+        "operationId": "system-release",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Tell whether a newer release of JEC is out",
         "tags": [
           "system"
         ]

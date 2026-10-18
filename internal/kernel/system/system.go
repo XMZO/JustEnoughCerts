@@ -45,6 +45,10 @@ type Options struct {
 	Confirm func(ctx context.Context, password string) error
 	Now     func() time.Time
 	Log     *slog.Logger
+	// Version is the running one, which a check for releases compares;
+	// Client asks GitHub for them.
+	Version string
+	Client  *http.Client
 }
 
 // RuntimeBody is how this JEC runs: where its data is and how it is reached.
@@ -71,10 +75,15 @@ type backupOutput struct {
 	Body               []byte
 }
 
-// Register adds GET /system, POST /system/backup and POST /system/restore
-// to a.
+// Register adds GET /system, POST /system/backup, POST /system/restore and
+// GET /system/release to a.
 func Register(a huma.API, o Options) {
 	tags := []string{"system"}
+	client := o.Client
+	if client == nil {
+		client = &http.Client{Timeout: 30 * time.Second}
+	}
+	registerRelease(a, client, o.Version, tags)
 	huma.Register(a, huma.Operation{
 		OperationID: "get-system", Method: http.MethodGet, Path: "/system", Tags: tags,
 		Summary: "Tell where JEC keeps its data and how it is reached",

@@ -89,6 +89,7 @@
 - M4 还完成了：OIDC 单点登录（模块 `oidc`，授权码 + PKCE，go-jose 校验 ID token，名单里的人以唯一的账号登录；对着真实的 Dex v2.44.0 验证过，`live_test.go` 靠 `JEC_TEST_OIDC` 等环境变量运行）；内核给模块开了 `module.Registry.StartSession`（为账号建会话），GET 操作在 `Metadata` 里标 `api.Audited` 也会进审计日志。
 - 测试里不要访问界面（`/`）：本机的 `web/dist` 是构建过的，CI 里只有 `.gitkeep`，本机过了 CI 也会失败。
 - 凭据（`PLAN.md` 6.1，设计稿 `Credentials`）：前后端都已完成（界面：`/credentials`、`CredentialDialog.vue`，服务商表单里的“凭据”选择在 `ProviderForm.vue`，`providers/fields.ts` 的 `credentialChoice`）。凭据是一种“凭据种类”（`providers.CredentialKind`）的一组值，多个实例共用，存在 `kernel_credentials`；类型用 `Type.Credential` 说明哪些字段可以由凭据填，打开实例时由注册表填好。几个模块共用的种类放在 `internal/lib/credentials`（各家云的访问密钥、SSH 私钥），新加的云服务类型要声明它用的种类（`credentials.Use`），lego 的映射在 `lego/catalog.go` 的 `credentialOf`。接口在 `/api/v1/credentials`，添加和修改实例可以带 `credentialId` 或 `newCredential`；配置文件有 `credentials` 一节。
+- 设置页按设计稿补上了主题（`web/src/theme.ts`，跟随系统、浅色、深色，存在浏览器里）和“检查更新”（`GET /api/v1/system/release`，点了才问 GitHub）。
 - 下一步：用真实账号验证阿里云 ESA 部署、ESA 边缘应答和 Namecheap 模块（M1/M2 验收，`PLAN.md` 5.4、5.6 列了要确认的点，包括 Namecheap 给不给 DNS 验证）；M4（`PLAN.md` 11）。
 
 ## 工程约定

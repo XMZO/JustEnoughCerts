@@ -153,6 +153,8 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		TrustedProxies: cfg.TrustedProxies, HSTS: cfg.HSTS == "true",
 		VerifyKey: box.Verify, Versions: versions, Restart: func() { restartOnce.Do(func() { close(restart) }) },
 		DB: st.DB(), Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log,
+		// The releases are asked for through the proxy of the environment, if any.
+		Version: build.Version, Client: &http.Client{Timeout: 30 * time.Second},
 	})
 	cfgFile := configfile.New(st.DB(), registry, enabled)
 	configfileapi.Register(a.Kernel(), cfgFile, configfileapi.Options{Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log})

@@ -883,6 +883,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tell whether a newer release of JEC is out
+         * @description Asks GitHub for the releases of JEC, only when called.
+         */
+        get: operations["system-release"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/restore": {
         parameters: {
             query?: never;
@@ -1567,6 +1587,18 @@ export interface components {
             };
             /** @description Warnings tell of what the import leaves as it is; other problems stop it */
             warning?: boolean;
+        };
+        ReleaseBody: {
+            /** @description The running version */
+            current: string;
+            /** @description The newest release this version may move to: stable ones only, unless this one is a test release or a build of its own */
+            latest?: string;
+            /** @description Latest is newer than the running version */
+            newer: boolean;
+            /** Format: date-time */
+            publishedAt?: string;
+            /** @description The page of the latest release */
+            url?: string;
         };
         RenewalBody: {
             /** Format: date-time */
@@ -3890,6 +3922,35 @@ export interface operations {
                 };
                 content: {
                     "application/vnd.sqlite3": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "system-release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseBody"];
                 };
             };
             /** @description Error */
