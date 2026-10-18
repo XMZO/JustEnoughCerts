@@ -77,6 +77,42 @@
       "ok": "已连上 {directory}，账号可以用。"
     }
   },
+  "aliyun": {
+    "cdn": {
+      "description": "把每张新证书设置到 CDN 的加速域名上，并打开 HTTPS。",
+      "name": "阿里云 CDN"
+    },
+    "dcdn": {
+      "description": "把每张新证书设置到全站加速（DCDN）的加速域名上，并打开 HTTPS。",
+      "name": "阿里云全站加速（DCDN）"
+    },
+    "error": {
+      "api": "阿里云返回了错误 {code}，完整日志里有原因。",
+      "auth": "阿里云不认这个 AccessKey，或者它缺少需要的权限。",
+      "domain": "这个账号没有加速域名 {domain}，或者它不支持 HTTPS。请核对域名和产品：CDN 和全站加速（DCDN）是分开的。",
+      "network": "连不上 {endpoint}。",
+      "no_domains": "填上加速域名才能测试；不填时部署会用证书里的域名。",
+      "throttled": "阿里云暂时拒绝了：请求太多。JEC 稍后再试。"
+    },
+    "field": {
+      "access_key_id": "AccessKey ID",
+      "access_key_secret": "AccessKey Secret",
+      "cdn_secret_help": "最好用只授予 cdn:SetCdnDomainSSLCertificate 和 cdn:DescribeDomainCertificateInfo 权限的 RAM 用户。上传的证书会存进阿里云的数字证书管理服务：如果被拒绝，再授予这个服务的权限。",
+      "dcdn_secret_help": "最好用只授予 dcdn:SetDcdnDomainSSLCertificate 和 dcdn:DescribeDcdnDomainCertificateInfo 权限的 RAM 用户。上传的证书会存进阿里云的数字证书管理服务：如果被拒绝，再授予这个服务的权限。",
+      "domains": "加速域名",
+      "domains_help": "多个用逗号分隔。留空时用证书里的域名（通配符除外）。旧证书留在数字证书管理服务里，可以在那里删除。"
+    },
+    "log": {
+      "set": "给 {domain} 设置证书"
+    },
+    "module": {
+      "description": "把证书部署到阿里云 CDN 和全站加速（DCDN）的加速域名。",
+      "name": "阿里云 CDN"
+    },
+    "test": {
+      "ok": "找到了加速域名 {domains}。"
+    }
+  },
   "bark": {
     "device": {
       "description": "用 Bark App 的设备 Key 把通知推送到 iPhone。",

@@ -77,6 +77,42 @@
       "ok": "Reached {directory}; the account works."
     }
   },
+  "aliyun": {
+    "cdn": {
+      "description": "Sets each new certificate on accelerated domains of CDN, with HTTPS on.",
+      "name": "Alibaba Cloud CDN"
+    },
+    "dcdn": {
+      "description": "Sets each new certificate on accelerated domains of DCDN (Dynamic Route for CDN), with HTTPS on.",
+      "name": "Alibaba Cloud DCDN"
+    },
+    "error": {
+      "api": "Alibaba Cloud returned the error {code}. The full log says why.",
+      "auth": "Alibaba Cloud refused the AccessKey, or it lacks the permissions needed.",
+      "domain": "This account has no accelerated domain {domain}, or it does not have HTTPS. Check the domain, and the product: CDN and DCDN are apart.",
+      "network": "Could not reach {endpoint}.",
+      "no_domains": "Enter the accelerated domains to test them; deployments use the certificate's own when there are none.",
+      "throttled": "Alibaba Cloud refused for now: too many requests. JEC tries again later."
+    },
+    "field": {
+      "access_key_id": "AccessKey ID",
+      "access_key_secret": "AccessKey secret",
+      "cdn_secret_help": "Best from a RAM user granted cdn:SetCdnDomainSSLCertificate and cdn:DescribeDomainCertificateInfo only. Alibaba Cloud keeps the uploaded certificates in its Certificate Management Service: should it refuse, grant that service's permissions too.",
+      "dcdn_secret_help": "Best from a RAM user granted dcdn:SetDcdnDomainSSLCertificate and dcdn:DescribeDcdnDomainCertificateInfo only. Alibaba Cloud keeps the uploaded certificates in its Certificate Management Service: should it refuse, grant that service's permissions too.",
+      "domains": "Accelerated domains",
+      "domains_help": "Separated by commas. Left empty, the certificate's own domains, but for wildcards. Old certificates stay in the Certificate Management Service, where you may delete them."
+    },
+    "log": {
+      "set": "Setting the certificate on {domain}"
+    },
+    "module": {
+      "description": "Deploys certificates to the accelerated domains of Alibaba Cloud CDN and DCDN.",
+      "name": "Alibaba Cloud CDN"
+    },
+    "test": {
+      "ok": "Found the accelerated domains {domains}."
+    }
+  },
   "bark": {
     "device": {
       "description": "Pushes notes to an iPhone with the Bark app, by its device key.",
