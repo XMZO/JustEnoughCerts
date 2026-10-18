@@ -28,6 +28,11 @@ const SessionScheme = "session"
 // Public is the Security of an operation that needs no session.
 var Public = []map[string][]string{}
 
+// Audited is the key, in the Metadata of a GET operation, that has the
+// audit log record it all the same, as it does every operation that may
+// change something: a sign-in through another site, which lands on a GET.
+const Audited = "audited"
+
 // Options configure the API.
 type Options struct {
 	// BasePath is the path the UI is served under, "" at the root.

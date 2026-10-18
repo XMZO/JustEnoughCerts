@@ -42,6 +42,7 @@ import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
 import JecField from '../components/JecField.vue'
 import JecInput from '../components/JecInput.vue'
+import OidcSettings from '../components/OidcSettings.vue'
 import PageHeader from '../components/PageHeader.vue'
 import { locales, setLocale, useT, type Locale, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
@@ -52,6 +53,8 @@ import { useIntl } from '../i18n/intl'
 const { t, locale } = useT()
 const intl = useIntl()
 const manifest = useManifest()
+// Single sign-on, while its module is on.
+const oidcOn = computed(() => manifest.data.value?.modules.some((m) => m.id === 'oidc' && m.enabled) ?? false)
 
 // The defaults of new certificates and the time renewals start, of the
 // certs module.
@@ -511,6 +514,7 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           {{ t('kernel.settings.two_factor_turn_on') }}
         </JecButton>
       </div>
+      <OidcSettings v-if="oidcOn" :row-class="row" />
       <div :class="row">
         <div class="min-w-0 flex-1">
           <label for="session-days" class="block font-semibold">{{ t('kernel.settings.session_days') }}</label>

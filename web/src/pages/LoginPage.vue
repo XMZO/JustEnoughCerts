@@ -1,17 +1,19 @@
 <script setup lang="ts">
+import { LogIn } from '@lucide/vue'
 import { computed, nextTick, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useSignIn } from '../api/account'
 import { ApiError } from '../api/client'
 import { useApiError } from '../api/errors'
+import { loginURL, useOidcStatus } from '../api/oidc'
 import AuthLayout from '../components/AuthLayout.vue'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
 import JecField from '../components/JecField.vue'
 import JecInput from '../components/JecInput.vue'
 import LanguageSwitch from '../components/LanguageSwitch.vue'
-import { useT } from '../i18n'
+import { useT, type MessageKey } from '../i18n'
 
 const { t } = useT()
 const route = useRoute()
@@ -31,6 +33,22 @@ const error = computed(() => {
   const err = failure.error.value
   return err && err.code !== 'kernel.error.two_factor_required' && !failure.fields.value.code ? err : null
 })
+
+// Single sign-on, when the oidc module offers it, and why one came back
+// without a session.
+const sso = useOidcStatus()
+const ssoReasons: Record<string, MessageKey> = {
+  expired: 'oidc.login.expired',
+  denied: 'oidc.login.denied',
+  invalid: 'oidc.login.invalid',
+  not_allowed: 'oidc.login.not_allowed',
+  no_account: 'oidc.login.no_account',
+  off: 'oidc.login.off',
+}
+const ssoError = computed(() => (typeof route.query.sso === 'string' ? ssoReasons[route.query.sso] : undefined))
+function signInElsewhere() {
+  window.location.assign(loginURL())
+}
 
 // Only paths of this app, never another site ("//host" included).
 function nextPath(): string {
@@ -57,6 +75,7 @@ async function submit() {
   <AuthLayout>
     <form class="flex flex-col gap-3.5 rounded-lg border border-line bg-surface-raised p-5" novalidate @submit.prevent="submit">
       <JecAlert v-if="error" :code="error.code" :params="error.params" />
+      <JecAlert v-else-if="ssoError" :code="ssoError" />
       <JecField id="username" label="kernel.account.username">
         <JecInput id="username" v-model="username" autocomplete="username" autocapitalize="none" spellcheck="false" required />
       </JecField>
@@ -76,6 +95,14 @@ async function submit() {
         />
       </JecField>
       <JecButton type="submit" variant="primary" :busy="signIn.isPending.value">{{ t('kernel.login.submit') }}</JecButton>
+      <template v-if="sso.data.value?.enabled">
+        <div class="flex items-center gap-2 text-small text-ink-muted" aria-hidden="true">
+          <span class="h-px flex-1 bg-line" />{{ t('oidc.login.or') }}<span class="h-px flex-1 bg-line" />
+        </div>
+        <JecButton @click="signInElsewhere">
+          <LogIn class="size-4" aria-hidden="true" />{{ t('oidc.login.button', { provider: sso.data.value.label }) }}
+        </JecButton>
+      </template>
     </form>
     <template #footer>
       <LanguageSwitch />

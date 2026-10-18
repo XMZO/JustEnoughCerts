@@ -391,6 +391,76 @@
         ],
         "type": "object"
       },
+      "Cookie": {
+        "additionalProperties": false,
+        "properties": {
+          "Domain": {
+            "type": "string"
+          },
+          "Expires": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "HttpOnly": {
+            "type": "boolean"
+          },
+          "MaxAge": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Partitioned": {
+            "type": "boolean"
+          },
+          "Path": {
+            "type": "string"
+          },
+          "Quoted": {
+            "type": "boolean"
+          },
+          "Raw": {
+            "type": "string"
+          },
+          "RawExpires": {
+            "type": "string"
+          },
+          "SameSite": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "Secure": {
+            "type": "boolean"
+          },
+          "Unparsed": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "Value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "Name",
+          "Value",
+          "Quoted",
+          "Path",
+          "Domain",
+          "Expires",
+          "RawExpires",
+          "MaxAge",
+          "Secure",
+          "HttpOnly",
+          "SameSite",
+          "Partitioned",
+          "Raw",
+          "Unparsed"
+        ],
+        "type": "object"
+      },
       "CreateInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -1339,6 +1409,117 @@
           "description",
           "switched",
           "enabled"
+        ],
+        "type": "object"
+      },
+      "OIDCSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed": {
+            "description": "Who may sign in: email addresses, or the provider's subject identifiers",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "clientId": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "hasSecret": {
+            "description": "A client secret is set; it is never shown",
+            "type": "boolean"
+          },
+          "issuer": {
+            "description": "The provider's issuer URL, as its discovery document names it",
+            "maxLength": 512,
+            "type": "string"
+          },
+          "label": {
+            "description": "The provider's name on the sign-in page",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "redirectUri": {
+            "description": "Where the provider sends people back, as the provider has it",
+            "maxLength": 1024,
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "label",
+          "issuer",
+          "clientId",
+          "hasSecret",
+          "allowed",
+          "redirectUri"
+        ],
+        "type": "object"
+      },
+      "OIDCStatusBody": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "label": {
+            "description": "The provider's name, for the sign-in button",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "label"
+        ],
+        "type": "object"
+      },
+      "OidcSettingsInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "clientId": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "clientSecret": {
+            "description": "Replaces the client secret when given; empty removes it",
+            "maxLength": 1024,
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "issuer": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "redirectUri": {
+            "maxLength": 1024,
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "label",
+          "issuer",
+          "clientId",
+          "allowed",
+          "redirectUri"
         ],
         "type": "object"
       },
@@ -3863,6 +4044,243 @@
         "summary": "The last note sent through each notifier",
         "tags": [
           "notify"
+        ]
+      }
+    },
+    "/oidc/callback": {
+      "get": {
+        "operationId": "oidc-callback",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "code",
+            "schema": {
+              "maxLength": 4096,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "state",
+            "schema": {
+              "maxLength": 256,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "error",
+            "schema": {
+              "maxLength": 256,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "error_description",
+            "schema": {
+              "maxLength": 1024,
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "jec_oidc",
+            "schema": {
+              "$ref": "#/components/schemas/Cookie"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Found",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [],
+        "summary": "Come back from the provider, signed in",
+        "tags": [
+          "oidc",
+          "oidc"
+        ]
+      }
+    },
+    "/oidc/login": {
+      "get": {
+        "operationId": "oidc-login",
+        "responses": {
+          "302": {
+            "description": "Found",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [],
+        "summary": "Go to the provider to sign in",
+        "tags": [
+          "oidc",
+          "oidc"
+        ]
+      }
+    },
+    "/oidc/settings": {
+      "get": {
+        "operationId": "oidc-settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OIDCSettingsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get the settings of single sign-on",
+        "tags": [
+          "oidc",
+          "oidc"
+        ]
+      },
+      "put": {
+        "description": "Switched on, the settings are checked against the provider's discovery document first.",
+        "operationId": "oidc-save",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OidcSettingsInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OIDCSettingsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Save the settings of single sign-on",
+        "tags": [
+          "oidc",
+          "oidc"
+        ]
+      }
+    },
+    "/oidc/status": {
+      "get": {
+        "operationId": "oidc-status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OIDCStatusBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [],
+        "summary": "Tell whether the sign-in page offers single sign-on",
+        "tags": [
+          "oidc",
+          "oidc"
         ]
       }
     },

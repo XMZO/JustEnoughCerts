@@ -569,6 +569,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/oidc/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Come back from the provider, signed in */
+        get: operations["oidc-callback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oidc/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Go to the provider to sign in */
+        get: operations["oidc-login"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oidc/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the settings of single sign-on */
+        get: operations["oidc-settings"];
+        /**
+         * Save the settings of single sign-on
+         * @description Switched on, the settings are checked against the provider's discovery document first.
+         */
+        put: operations["oidc-save"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/oidc/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tell whether the sign-in page offers single sign-on */
+        get: operations["oidc-status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/plugins/files": {
         parameters: {
             query?: never;
@@ -935,6 +1007,25 @@ export interface components {
             /** @description The current password */
             password: string;
         };
+        Cookie: {
+            Domain: string;
+            /** Format: date-time */
+            Expires: string;
+            HttpOnly: boolean;
+            /** Format: int64 */
+            MaxAge: number;
+            Name: string;
+            Partitioned: boolean;
+            Path: string;
+            Quoted: boolean;
+            Raw: string;
+            RawExpires: string;
+            /** Format: int64 */
+            SameSite: number;
+            Secure: boolean;
+            Unparsed: string[];
+            Value: string;
+        };
         CreateInputBody: {
             config?: {
                 [key: string]: string;
@@ -1283,6 +1374,35 @@ export interface components {
             requires?: string[];
             /** @description Switched on by itself */
             switched: boolean;
+        };
+        OIDCSettingsBody: {
+            /** @description Who may sign in: email addresses, or the provider's subject identifiers */
+            allowed: string[];
+            clientId: string;
+            enabled: boolean;
+            /** @description A client secret is set; it is never shown */
+            hasSecret: boolean;
+            /** @description The provider's issuer URL, as its discovery document names it */
+            issuer: string;
+            /** @description The provider's name on the sign-in page */
+            label: string;
+            /** @description Where the provider sends people back, as the provider has it */
+            redirectUri: string;
+        };
+        OIDCStatusBody: {
+            enabled: boolean;
+            /** @description The provider's name, for the sign-in button */
+            label: string;
+        };
+        OidcSettingsInputBody: {
+            allowed: string[];
+            clientId: string;
+            /** @description Replaces the client secret when given; empty removes it */
+            clientSecret?: string;
+            enabled: boolean;
+            issuer: string;
+            label: string;
+            redirectUri: string;
         };
         Option: {
             label: string;
@@ -2780,6 +2900,164 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SendsOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "oidc-callback": {
+        parameters: {
+            query?: {
+                code?: string;
+                state?: string;
+                error?: string;
+                error_description?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: {
+                jec_oidc?: components["schemas"]["Cookie"];
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Found */
+            302: {
+                headers: {
+                    "Cache-Control"?: string;
+                    Location?: string;
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "oidc-login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Found */
+            302: {
+                headers: {
+                    "Cache-Control"?: string;
+                    Location?: string;
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "oidc-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OIDCSettingsBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "oidc-save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OidcSettingsInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OIDCSettingsBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "oidc-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OIDCStatusBody"];
                 };
             };
             /** @description Error */

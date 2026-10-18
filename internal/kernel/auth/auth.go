@@ -573,6 +573,28 @@ func (s *Service) throttle(client string) error {
 	return huma.ErrorWithHeaders(e, http.Header{"Retry-After": {strconv.Itoa(int(math.Ceil(wait.Seconds())))}})
 }
 
+// StartSession signs the account in for a module that made sure who asks,
+// as single sign-on does, and returns the session cookie for its answer.
+// JEC has one account: ErrNoAccount before the setup made it.
+func (s *Service) StartSession(ctx context.Context) (http.Cookie, error) {
+	var id int64
+	var username string
+	var days int
+	err := s.db.QueryRowContext(ctx, "SELECT id, username, session_days FROM kernel_users ORDER BY id LIMIT 1").Scan(&id, &username, &days)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return http.Cookie{}, ErrNoAccount
+	case err != nil:
+		return http.Cookie{}, err
+	}
+	token, expires, err := s.newSession(ctx, s.db, id, days)
+	if err != nil {
+		return http.Cookie{}, err
+	}
+	signedIn(ctx, username)
+	return s.cookie(token, expires), nil
+}
+
 type execer interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }

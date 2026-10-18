@@ -266,6 +266,8 @@
       "config_import": "Import a configuration file",
       "monitor_check": "Check a certificate online",
       "notify_test": "Send a test notification",
+      "oidc_callback": "Signed in through single sign-on",
+      "oidc_save": "Saved the single sign-on settings",
       "providers_create": "Add a provider",
       "providers_delete": "Delete a provider",
       "providers_test": "Test a provider's connection",
@@ -1953,6 +1955,51 @@
     "topic": {
       "description": "Every phone and browser subscribed to the topic gets the notes.",
       "name": "ntfy"
+    }
+  },
+  "oidc": {
+    "error": {
+      "discovery": "The issuer's discovery document (/.well-known/openid-configuration) cannot be read, or names another issuer.",
+      "issuer": "The issuer must be an https:// address, or http:// on this machine or an IP address of the local network.",
+      "redirect": "The callback address must end in /api/v1/oidc/callback."
+    },
+    "login": {
+      "button": "Sign in with {provider}",
+      "denied": "The provider did not let this sign-in through.",
+      "expired": "This single sign-on took too long, or started in another browser. Sign in again.",
+      "invalid": "The provider's answer did not check out; JEC's log has the details.",
+      "no_account": "JEC is not set up yet.",
+      "not_allowed": "This account is not among those who may sign in.",
+      "off": "Single sign-on is off.",
+      "or": "or"
+    },
+    "module": {
+      "description": "Sign in to JEC through an OpenID Connect provider, such as Authelia, Authentik, Keycloak or Google.",
+      "name": "Single sign-on (OIDC)"
+    },
+    "settings": {
+      "allowed": "Who may sign in",
+      "allowed_hint": "One a line: an email address the provider verified, or the subject (sub) it gives.",
+      "callback": "Callback address",
+      "callback_copy": "Copy the callback address",
+      "callback_hint": "Register this address at the provider, as the redirect URI.",
+      "client_id": "Client ID",
+      "client_secret": "Client secret",
+      "client_secret_hint": "A public client needs none: PKCE guards the sign-in. Once saved, it is never shown.",
+      "client_secret_kept": "Saved; leave it empty to keep it.",
+      "client_secret_remove": "No client secret (a public client)",
+      "edit": "Set up",
+      "enabled": "Switch single sign-on on",
+      "hint": "Sign in through an OpenID Connect provider; the password works as before.",
+      "intro": "Make a client for JEC at the provider, such as Authelia, Authentik, Keycloak or Google, with the callback address below, and enter its details here. Everyone listed signs in as JEC's one account.",
+      "issuer": "Issuer",
+      "issuer_hint": "The provider's address; JEC reads the rest from its /.well-known/openid-configuration.",
+      "label": "Name on the sign-in button",
+      "label_hint": "Left empty, the issuer's host.",
+      "saved": "Saved",
+      "state_off": "Off",
+      "state_on": "On",
+      "title": "Single sign-on (OIDC)"
     }
   },
   "onepanel": {

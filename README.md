@@ -81,7 +81,8 @@ Working on the main branch:
   import shows what it would add and change before it does, and deletes
   nothing.
 - Sign-in with a password and, if you like, the codes of an authenticator
-  app (two-factor authentication); API tokens for scripts; an audit log of
+  app (two-factor authentication), or through an OpenID Connect provider
+  such as Authelia, Authentik, Keycloak or Google (single sign-on); API tokens for scripts; an audit log of
   what was done through the panel, by whom and from where; strict security
   headers.
 - A web app that installs to a phone's home screen (PWA).

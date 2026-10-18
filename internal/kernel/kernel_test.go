@@ -22,6 +22,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/config"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/configfile"
@@ -403,6 +404,15 @@ func (a auditor) Register(r *module.Registry) error {
 	})
 	huma.Register(r.API, huma.Operation{OperationID: "auditor-poke", Method: http.MethodPost, Path: "/poke", DefaultStatus: http.StatusNoContent},
 		func(context.Context, *struct{}) (*struct{}, error) { return nil, nil })
+	// A sign-in through another site, which lands on a GET.
+	type signedIn struct {
+		SetCookie http.Cookie `header:"Set-Cookie"`
+	}
+	huma.Register(r.API, huma.Operation{OperationID: "auditor-sso", Method: http.MethodGet, Path: "/sso", Security: api.Public, Metadata: map[string]any{api.Audited: true}},
+		func(ctx context.Context, _ *struct{}) (*signedIn, error) {
+			c, err := r.StartSession(ctx)
+			return &signedIn{SetCookie: c}, err
+		})
 	return nil
 }
 
@@ -464,6 +474,20 @@ func TestAudit(t *testing.T) {
 	if len(got) != 3 || got[1].Operation != "sign-in" || got[1].Status != http.StatusUnauthorized || got[1].User != "" ||
 		got[2].Status != http.StatusOK || got[2].User != "admin" {
 		t.Errorf("sign-out and sign-ins recorded as %+v", got)
+	}
+
+	// A sign-in another way, on a GET the module marks audited: a session,
+	// by whom it signed in.
+	c.call(http.MethodDelete, "/jec/api/v1/session", "")
+	if status, _ := c.call(http.MethodGet, "/jec/api/v1/auditor/sso", ""); status != http.StatusNoContent || c.cookie == "" {
+		t.Fatalf("sign-in another way = %d", status)
+	}
+	if status, body := c.call(http.MethodGet, "/jec/api/v1/session", ""); status != http.StatusOK || !strings.Contains(body, `"admin"`) {
+		t.Errorf("session after it = %d %s", status, body)
+	}
+	got = took()
+	if len(got) != 2 || got[1].Operation != "auditor-sso" || got[1].Method != http.MethodGet || got[1].User != "admin" {
+		t.Errorf("sign-in another way recorded as %+v", got)
 	}
 
 	// Switched off, the module records nothing.

@@ -835,7 +835,8 @@ services:
   - 每段密文都绑定存放的位置（AES-GCM 的附加数据），模块之间互相隔开，所以密文复制到别处也解不开。
   - 库里存一段用主密钥加密的校验值，启动时主密钥对不上就直接拒绝启动，不会等到用私钥时才发现解不开。
   - 下载私钥：`POST /api/v1/certs/certificates/{id}/versions/{version}/download` 带上当前账号的密码，内核的 `ConfirmPassword`（模块通过 `r.ConfirmPassword` 使用）先核对密码，输错和登录失败共用同一个锁定计数。返回 certbot 那样的 ZIP（cert.pem、chain.pem、fullchain.pem、privkey.pem），响应不缓存，并发出 `certificate.key_downloaded` 事件，留给审计日志模块记录。
-- **登录**：本地账号，密码用 argon2id 哈希（RFC 9106 第二组推荐参数：64 MiB、3 轮、4 线程，同时最多算 2 个），支持 TOTP 两步验证；以后支持 OIDC 单点登录。
+- **登录**：本地账号，密码用 argon2id 哈希（RFC 9106 第二组推荐参数：64 MiB、3 轮、4 线程，同时最多算 2 个），支持 TOTP 两步验证；OIDC 单点登录（M4，已实现，见下）。
+- **单点登录**（模块 `oidc`，`internal/modules/oidc`）：经 OpenID Connect 身份提供方（Authelia、Authentik、Keycloak、Google 等）登录，用授权码流程加 PKCE（S256）。设置（设置页“账号和安全”里，模块打开时才有）：发行者地址（https，或者本机、内网 IP 上的 http）、客户端 ID、客户端密钥（可不填，加密保存，从不显示）、允许登录的人（每行一个：身份提供方验证过的邮箱，或者它给的 `sub`）、登录按钮上的名字；回调地址由页面按自己的地址算出（`<基础路径>api/v1/oidc/callback`），在身份提供方那里登记。打开时先读一次发现文档核对。登录：`GET /api/v1/oidc/login` 生成 state、nonce 和 PKCE verifier（加密存在 `oidc_logins`，10 分钟，用一次就删），state 同时放进只给 `api/v1/oidc/` 的 HttpOnly、SameSite=Lax cookie，再跳到身份提供方；`GET /api/v1/oidc/callback` 要求 cookie 和 state 一致，用 code 和 verifier 换 ID token（有密钥时优先 `client_secret_basic`），用发现文档里 `jwks_uri` 的公钥校验签名（只认非对称算法；找不到 `kid` 时重新取一次 JWKS，应对轮换）、`iss`、`aud`（多个时 `azp` 要是 JEC）、`exp`、`iat`、`nonce`，名单里有这个人才通过。通过后内核的 `module.Registry.StartSession` 给 JEC 唯一的账号建会话（两步验证由身份提供方负责）；失败就回到登录页 `login?sso=<原因>`（超时或换了浏览器、被拒、校验没过、不在名单、还没初始化、没打开），细节写进日志。回调是 GET，所以操作标了 `api.Audited`，审计日志照样记下是谁登录的。密码登录照常可用。测试用一个用 go-jose 签发令牌的假身份提供方，走完登录和各种失败情形。
   - 会话是随机令牌，库里只存 SHA-256，有效期按账号设置：1、7（默认）或 30 天，对之后的登录生效（`PATCH /api/v1/account`）。Cookie 设 `HttpOnly`、`SameSite=Lax`；base URL 是 https 时再加 `Secure`（纯 HTTP 访问时浏览器不收 Secure Cookie，局域网直连会登不上）。
   - CSRF 防护用 Go 标准库的 `http.CrossOriginProtection`，按 `Sec-Fetch-Site` 和 `Origin` 拒绝跨站的写请求；base URL 的 origin 被信任，反向代理改写 Host 时也能通过。
   - 登录和初始化按客户端 IP 限速：连续失败 5 次锁定 15 分钟（与设计稿的提示一致，次数和时长作为参数传给文案）；成功一次或停 15 分钟不再失败，就重新计数。
@@ -942,7 +943,7 @@ JustEnoughCerts/
 | **M1 最小可用** | 证书模块、状态机、调度器；手动上传和导入；ACME（任意 CA + EAB）+ lego 的 221 家 DNS；阿里云 ESA、本地文件、SSH、Webhook 部署；Telegram、邮件、Webhook 通知；总览和证书页 | 用免费证书完整跑通“签发 → 部署到 ESA → 删除旧证书 → 到期自动续” |
 | **M2 厂商来源与付费证书** | 厂商来源的通用框架（提交后等 CA 审核，跨多次检查才取回证书，等待期间加密保存私钥）；第一个实现是 Namecheap SSL Manager（实验性，JEC 扮演它的客户端，见 5.6）；HTTP 文件验证（写到源站的网站目录、经 SSH 写到远程服务器，或由 JEC 自己应答）；导入已有的付费证书；逐家验证商业 CA 的 ACME + EAB（含 Namecheap ACME 上线后） | 第 1 节的验收场景全自动跑通一个周期 |
 | **M3 扩展** | 国内云平台证书来源（取回签发的证书、向阿里云申请证书、腾讯云免费证书都已完成）；DNS 记录管理层（任意记录增删，5.3.2 ②）和手动验证（都已完成）；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子、YAML 导入导出（都已完成）；线上巡检（已完成） | 不改核心代码，写一个外部插件接入新平台（e2e 里的 shell 脚本插件）；停用任意模块后其余功能正常（`cmd/jec` 的 `TestEverySwitchOff` 在运行中逐个停用全部可停用的模块，检查清单、各类服务商类型、证书列表和系统信息照常，再打开回来） |
-| **M4 打磨** | 两步验证、审计日志、PWA、翻译指南（`docs/translating.md`）（都已完成）、OIDC、文档站、服务商兼容表（已有 `docs/providers.md`：每个服务商测到了哪一步） | 发布 `v1.0.0` |
+| **M4 打磨** | 两步验证、审计日志、PWA、翻译指南（`docs/translating.md`）、OIDC（都已完成）、文档站、服务商兼容表（已有 `docs/providers.md`：每个服务商测到了哪一步） | 发布 `v1.0.0` |
 | **以后** | Namecheap 官方 API、Spaceship 的 SSL Manager、其他厂商证书 API、更多语言（社区贡献）、多用户和角色、PostgreSQL、私有 CA | 按需求排期 |
 
 先做 M0，是为了尽早把“打标签 → 自动发布”这条链路跑通，同时让模块化和 i18n 门禁从第一天就生效，之后每个功能都能随时发版试用。

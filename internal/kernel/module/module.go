@@ -112,6 +112,11 @@ type Registry struct {
 	// Those turned away for want of a session are not recorded. It runs
 	// while the module is enabled, before the answer goes out.
 	Audit func(record func(context.Context, Request))
+	// StartSession signs the account in, for a module that made sure who
+	// asks another way than by password, as single sign-on does, and
+	// returns the session cookie its answer sets. It fails before the
+	// setup made the account.
+	StartSession func(ctx context.Context) (http.Cookie, error)
 	// Config takes a section the module keeps in the configuration file
 	// that people export and import as YAML (PLAN.md 11), such as the
 	// certificates. It fails when the section's key is taken.

@@ -172,6 +172,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 			BaseURL:         cfg.BaseURL,
 			DataDir:         cfg.DataDir,
 			ConfirmPassword: accounts.ConfirmPassword,
+			StartSession:    accounts.StartSession,
 			WellKnown:       func(h http.Handler) { wellKnown = append(wellKnown, wellKnownHandler{module: id, h: h}) },
 			Audit: func(record func(context.Context, module.Request)) {
 				recorders = append(recorders, recorder{module: id, record: record})
@@ -220,7 +221,8 @@ func audit(set *module.Set, prefix string, recorders *[]recorder) func(huma.Cont
 	return func(ctx huma.Context, next func(huma.Context)) {
 		next(ctx)
 		method := ctx.Method()
-		if method == http.MethodGet || method == http.MethodHead || len(*recorders) == 0 {
+		audited := ctx.Operation() != nil && ctx.Operation().Metadata[api.Audited] == true
+		if (method == http.MethodGet || method == http.MethodHead) && !audited || len(*recorders) == 0 {
 			return
 		}
 		req := module.Request{

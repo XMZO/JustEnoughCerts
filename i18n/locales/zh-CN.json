@@ -266,6 +266,8 @@
       "config_import": "导入配置文件",
       "monitor_check": "立即线上检查",
       "notify_test": "发送测试通知",
+      "oidc_callback": "单点登录",
+      "oidc_save": "保存单点登录设置",
       "providers_create": "添加服务商",
       "providers_delete": "删除服务商",
       "providers_test": "测试服务商连接",
@@ -1953,6 +1955,51 @@
     "topic": {
       "description": "订阅了这个主题的手机和浏览器都能收到通知。",
       "name": "ntfy"
+    }
+  },
+  "oidc": {
+    "error": {
+      "discovery": "读不到这个发行者的发现文档（/.well-known/openid-configuration），或者文档里的发行者和填的不一样。",
+      "issuer": "发行者地址要用 https://，或者本机、内网 IP 上的 http://。",
+      "redirect": "回调地址要以 /api/v1/oidc/callback 结尾。"
+    },
+    "login": {
+      "button": "用 {provider} 登录",
+      "denied": "身份提供方没有同意这次登录。",
+      "expired": "这次单点登录超时了，或者不是在这个浏览器里开始的。请重新登录。",
+      "invalid": "身份提供方的回答没有通过校验，详情见 JEC 的日志。",
+      "no_account": "JEC 还没有完成初始化。",
+      "not_allowed": "这个账号不在允许登录的名单里。",
+      "off": "单点登录没有打开。",
+      "or": "或"
+    },
+    "module": {
+      "description": "通过 OpenID Connect 身份提供方（如 Authelia、Authentik、Keycloak、Google）登录 JEC。",
+      "name": "单点登录（OIDC）"
+    },
+    "settings": {
+      "allowed": "允许登录的人",
+      "allowed_hint": "每行一个：身份提供方验证过的邮箱，或者它给的用户标识（sub）。",
+      "callback": "回调地址",
+      "callback_copy": "复制回调地址",
+      "callback_hint": "在身份提供方那里登记这个地址（Redirect URI）。",
+      "client_id": "客户端 ID",
+      "client_secret": "客户端密钥",
+      "client_secret_hint": "公开客户端可以不填：登录有 PKCE 保护。保存后不再显示。",
+      "client_secret_kept": "已保存，留空保持不变。",
+      "client_secret_remove": "不用客户端密钥（公开客户端）",
+      "edit": "设置",
+      "enabled": "打开单点登录",
+      "hint": "通过 OpenID Connect 身份提供方登录，密码登录照常可用。",
+      "intro": "在身份提供方（如 Authelia、Authentik、Keycloak、Google）那里为 JEC 建一个客户端，登记下面的回调地址，再把它的信息填在这里。名单里的人都以 JEC 唯一的账号登录。",
+      "issuer": "发行者地址（Issuer）",
+      "issuer_hint": "身份提供方的地址，JEC 从它的 /.well-known/openid-configuration 读取其余设置。",
+      "label": "登录按钮上的名字",
+      "label_hint": "留空时用发行者的域名。",
+      "saved": "已保存",
+      "state_off": "未打开",
+      "state_on": "已打开",
+      "title": "单点登录（OIDC）"
     }
   },
   "onepanel": {

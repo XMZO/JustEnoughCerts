@@ -631,11 +631,30 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(dialog).toBeHidden()
   await expect(page.locator('#session-days')).toHaveValue('30')
 
+  // Single sign-on: switched on with a provider that is not there, which
+  // the server refuses, field by field.
+  await page.getByRole('button', { name: label('oidc.settings.edit') }).click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'single sign-on').toEqual([])
+  await dialog.locator('#oidc-issuer').fill('http://127.0.0.1:9/nowhere')
+  await dialog.locator('#oidc-client').fill('jec')
+  await dialog.locator('#oidc-allowed').fill('admin@example.com')
+  await dialog.locator('button[type=submit]').click()
+  await expect(dialog.getByText(label('oidc.error.discovery'))).toBeVisible()
+  expect.soft(await problems(page), 'single sign-on refused').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
+  await expect(dialog).toBeHidden()
+
   await page.goto('./more')
   expect.soft(await problems(page), 'more').toEqual([])
   await page.getByRole('button', { name: label('kernel.shell.sign_out') }).filter({ visible: true }).first().click()
   await expect(page).toHaveURL(/\/login$/)
   expect.soft(await problems(page), 'sign-in page').toEqual([])
+  // Back from a single sign-on the provider refused.
+  await page.goto('./login?sso=denied')
+  await expect(page.getByText(label('oidc.login.denied'))).toBeVisible()
+  expect.soft(await problems(page), 'sign-in page, after a refused single sign-on').toEqual([])
+  await page.goto('./login')
 
   await page.locator('#username').fill('admin')
   await page.locator('#password').fill('wrong horse')

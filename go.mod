@@ -13,6 +13,7 @@ require (
 	github.com/go-acme/esa-20240910/v3 v3.13.1
 	github.com/go-acme/lego/v5 v5.5.2
 	github.com/go-chi/chi/v5 v5.5.0
+	github.com/go-jose/go-jose/v4 v4.1.5
 	github.com/huaweicloud/huaweicloud-sdk-go-v3 v0.1.215
 	github.com/miekg/dns v1.1.73
 	github.com/ncruces/go-sqlite3 v0.35.6
@@ -86,7 +87,6 @@ require (
 	github.com/go-acme/tencentclouddnspod v1.3.131 // indirect
 	github.com/go-acme/tencentedgdeone v1.3.170 // indirect
 	github.com/go-errors/errors v1.0.1 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.5 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0 // indirect
