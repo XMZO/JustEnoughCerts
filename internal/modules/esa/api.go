@@ -15,6 +15,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/aliyunapi"
 )
 
 // siteAPI is what the target needs of ESA's API (version 2024-09-10).
@@ -143,13 +144,7 @@ func normalizeFingerprint(f string) string {
 
 // apiErrorCode returns the code and HTTP status of an error of ESA's API,
 // or "" and 0 for another error.
-func apiErrorCode(err error) (string, int) {
-	var e *dara.SDKError
-	if errors.As(err, &e) {
-		return dara.StringValue(e.Code), dara.IntValue(e.StatusCode)
-	}
-	return "", 0
-}
+func apiErrorCode(err error) (string, int) { return aliyunapi.ErrorCode(err) }
 
 // apiProblem turns an error of ESA's API into a Problem the UI can show,
 // marked for retrying or not. Other errors, of the network or of the SDK
