@@ -422,6 +422,52 @@
         ],
         "type": "object"
       },
+      "CreateTokenInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "What the token is for, such as a script",
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "password": {
+            "description": "The account's password, to confirm",
+            "maxLength": 1024,
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "read",
+              "write"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "scope",
+          "password"
+        ],
+        "type": "object"
+      },
+      "CreateTokenOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/TokenBody"
+          },
+          "token": {
+            "description": "The token, which no later answer shows again",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "detail"
+        ],
+        "type": "object"
+      },
       "DeployInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -677,6 +723,10 @@
             "description": "The status of the answer",
             "format": "int64",
             "type": "integer"
+          },
+          "token": {
+            "description": "The name of the API token it came with; none for a session",
+            "type": "string"
           },
           "user": {
             "description": "The account signed in; none for a sign-in",
@@ -1712,6 +1762,58 @@
         ],
         "type": "object"
       },
+      "TokenBody": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "lastUsedAt": {
+            "description": "When it was last used, to the minute",
+            "format": "date-time",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scope": {
+            "description": "read: GET and HEAD alone; write: any operation but those managing the account",
+            "enum": [
+              "read",
+              "write"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "scope",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "TokensOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "tokens": {
+            "description": "The newest first",
+            "items": {
+              "$ref": "#/components/schemas/TokenBody"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "tokens"
+        ],
+        "type": "object"
+      },
       "TwoFactorSetup": {
         "additionalProperties": false,
         "properties": {
@@ -2170,6 +2272,111 @@
           }
         },
         "summary": "Change the password, which signs the account out everywhere else",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/account/tokens": {
+      "get": {
+        "operationId": "tokens-list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokensOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the API tokens of the account",
+        "tags": [
+          "auth"
+        ]
+      },
+      "post": {
+        "operationId": "tokens-create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTokenInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTokenOutputBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Make an API token, once the password is confirmed",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/account/tokens/{id}": {
+      "delete": {
+        "operationId": "tokens-delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Delete an API token, which stops working at once",
         "tags": [
           "auth"
         ]

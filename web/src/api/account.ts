@@ -1,12 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
+import type { MaybeRefOrGetter } from 'vue'
 
 import { api, ApiError, unwrap } from './client'
 import { queryClient } from './query'
+import type { components } from './schema'
 
 export const sessionKey = ['session'] as const
 export const setupKey = ['setup'] as const
 
 export type Account = Awaited<ReturnType<typeof fetchSession>>
+export type ApiToken = components['schemas']['TokenBody']
 
 /** The signed-in account, or null when nobody is signed in. */
 async function fetchSession() {
@@ -104,5 +107,30 @@ export function useDisableTwoFactor() {
   return useMutation({
     mutationFn: (body: { password: string }) => unwrap(api.POST('/account/two-factor/disable', { body })),
     onSuccess: () => client.invalidateQueries({ queryKey: sessionKey }),
+  })
+}
+
+const tokensKey = ['account', 'tokens'] as const
+
+/** The account's API tokens, never their values. */
+export function useTokens(enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({ queryKey: tokensKey, queryFn: () => unwrap(api.GET('/account/tokens')), enabled })
+}
+
+/** Makes an API token once the password is confirmed; the answer holds its value, this once. */
+export function useCreateToken() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { name: string; scope: 'read' | 'write'; password: string }) => unwrap(api.POST('/account/tokens', { body })),
+    onSuccess: () => client.invalidateQueries({ queryKey: tokensKey }),
+  })
+}
+
+/** Deletes an API token, which stops working at once. */
+export function useDeleteToken() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => unwrap(api.DELETE('/account/tokens/{id}', { params: { path: { id } } })),
+    onSuccess: () => client.invalidateQueries({ queryKey: tokensKey }),
   })
 }

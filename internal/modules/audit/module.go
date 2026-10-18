@@ -68,8 +68,8 @@ func (m *Module) record(ctx context.Context, req module.Request) {
 		agent = agent[:maxUserAgent]
 	}
 	_, err := m.db.ExecContext(context.WithoutCancel(ctx),
-		`INSERT INTO audit_log (at, operation, method, path, status, user, client, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		req.At.UnixMilli(), req.Operation, req.Method, req.Path, req.Status, req.User, req.Client, agent)
+		`INSERT INTO audit_log (at, operation, method, path, status, user, client, user_agent, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		req.At.UnixMilli(), req.Operation, req.Method, req.Path, req.Status, req.User, req.Client, agent, req.Token)
 	if err != nil {
 		m.log.Error("record an operation", "operation", req.Operation, "err", err)
 	}
@@ -83,17 +83,17 @@ func (m *Module) prune(ctx context.Context) error {
 
 // entry is an operation of the log.
 type entry struct {
-	id                                           int64
-	at                                           time.Time
-	operation, method, path, user, client, agent string
-	status                                       int
+	id                                                  int64
+	at                                                  time.Time
+	operation, method, path, user, client, agent, token string
+	status                                              int
 }
 
 // entries lists the entries since since, the newest first, at most limit,
 // and tells whether there are more.
 func (m *Module) entries(ctx context.Context, since time.Time, limit int) ([]entry, bool, error) {
 	rows, err := m.db.QueryContext(ctx,
-		`SELECT id, at, operation, method, path, status, user, client, user_agent FROM audit_log
+		`SELECT id, at, operation, method, path, status, user, client, user_agent, token FROM audit_log
 		 WHERE at >= ? ORDER BY at DESC, id DESC LIMIT ?`, since.UnixMilli(), limit+1)
 	if err != nil {
 		return nil, false, err
@@ -103,7 +103,7 @@ func (m *Module) entries(ctx context.Context, since time.Time, limit int) ([]ent
 	for rows.Next() {
 		var e entry
 		var at int64
-		if err := rows.Scan(&e.id, &at, &e.operation, &e.method, &e.path, &e.status, &e.user, &e.client, &e.agent); err != nil {
+		if err := rows.Scan(&e.id, &at, &e.operation, &e.method, &e.path, &e.status, &e.user, &e.client, &e.agent, &e.token); err != nil {
 			return nil, false, err
 		}
 		e.at = time.UnixMilli(at).UTC()

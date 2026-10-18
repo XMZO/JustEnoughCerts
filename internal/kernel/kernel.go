@@ -196,7 +196,7 @@ func audit(set *module.Set, prefix string, recorders *[]recorder) func(huma.Cont
 		}
 		req := module.Request{
 			At: time.Now().UTC(), Method: method, Path: strings.TrimPrefix(ctx.URL().Path, prefix), Status: ctx.Status(),
-			Client: auth.ClientFrom(ctx.Context()), UserAgent: ctx.Header("User-Agent"),
+			Client: auth.ClientFrom(ctx.Context()), UserAgent: ctx.Header("User-Agent"), Token: auth.TokenFrom(ctx.Context()),
 		}
 		if op := ctx.Operation(); op != nil {
 			req.Operation = op.OperationID

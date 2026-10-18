@@ -122,6 +122,7 @@ type Request struct {
 	Path      string // below /api/v1, such as /certs/certificates/12
 	Status    int    // of the answer
 	User      string // the account signed in; "" for none, as for a sign-in
+	Token     string // the name of the API token it came with; "" for a session
 	Client    string // the client's address
 	UserAgent string
 }

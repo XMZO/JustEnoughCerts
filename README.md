@@ -61,8 +61,9 @@ Working on the main branch:
   channels and ways to validate domains without rebuilding JEC
   ([docs/plugins.md](docs/plugins.md)).
 - Sign-in with a password and, if you like, the codes of an authenticator
-  app (two-factor authentication); an audit log of what was done through
-  the panel, by whom and from where; strict security headers.
+  app (two-factor authentication); API tokens for scripts; an audit log of
+  what was done through the panel, by whom and from where; strict security
+  headers.
 - One small container image or one static binary, with SQLite.
 
 Planned: records of any type for the DNS validations of vendors, hooks, and more CDNs and panels.
@@ -123,6 +124,19 @@ There are no Windows builds; use Docker or WSL there.
 tar -xzf jec_<version>_linux_amd64.tar.gz
 ./jec serve -data-dir /var/lib/jec
 ```
+
+### The API
+
+Everything the panel does goes through its API, described at
+`/api/v1/openapi.json`. For scripts and other programs, make an API token
+in Settings → API tokens, read-only or read and write, and send it as a
+bearer token:
+
+```sh
+curl -H "Authorization: Bearer jec_..." https://certs.example.com/api/v1/certs/certificates
+```
+
+No token changes the password, two-factor authentication or the tokens.
 
 ## Configuration
 

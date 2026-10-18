@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { Check, Download, KeyRound, ShieldCheck, ShieldOff } from '@lucide/vue'
+import { Check, Download, KeyRound, KeySquare, ShieldCheck, ShieldOff, Trash2 } from '@lucide/vue'
 import { computed, ref, watch, watchEffect } from 'vue'
 
 import {
   useChangePassword,
+  useCreateToken,
+  useDeleteToken,
   useDisableTwoFactor,
   useEnableTwoFactor,
   useSession,
+  useTokens,
   useTwoFactorSecret,
   useUpdateAccount,
 } from '../api/account'
@@ -15,6 +18,7 @@ import { useApiError } from '../api/errors'
 import { useManifest } from '../api/manifest'
 import { useBackup, useSystem } from '../api/system'
 import { keyText } from '../certs/life'
+import CopyButton from '../components/CopyButton.vue'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
@@ -152,6 +156,52 @@ async function pickSessionDays(e: Event) {
   } catch {
     // shown above the settings of the account
   }
+}
+
+// API tokens: listed and made in a dialog, a new one's value shown once,
+// and deleted at a second click.
+const tokensOpen = ref(false)
+const tokens = useTokens(computed(() => !!session.data.value))
+const createToken = useCreateToken()
+const deleteToken = useDeleteToken()
+const tokenError = useApiError(computed(() => createToken.error.value))
+const deleteTokenError = useApiError(computed(() => deleteToken.error.value))
+const emptyToken = () => ({ name: '', scope: 'read' as 'read' | 'write', password: '' })
+const tokenForm = ref(emptyToken())
+const madeToken = ref<{ name: string; token: string }>()
+const confirmDelete = ref<number>()
+const scopeText = { read: 'kernel.tokens.scope_read', write: 'kernel.tokens.scope_write' } as const
+watch(tokensOpen, (open) => {
+  if (!open) return
+  tokenForm.value = emptyToken()
+  madeToken.value = undefined
+  confirmDelete.value = undefined
+  createToken.reset()
+  deleteToken.reset()
+})
+
+async function submitToken() {
+  let made
+  try {
+    made = await createToken.mutateAsync({ ...tokenForm.value, name: tokenForm.value.name.trim() })
+  } catch {
+    return // shown by the fields
+  }
+  madeToken.value = { name: made.detail.name, token: made.token }
+  tokenForm.value = emptyToken()
+}
+
+async function removeToken(id: number) {
+  if (confirmDelete.value !== id) {
+    confirmDelete.value = id
+    return
+  }
+  try {
+    await deleteToken.mutateAsync(id)
+  } catch {
+    return // shown above the list
+  }
+  confirmDelete.value = undefined
 }
 
 // How JEC is reached and where its data is, set outside the panel; and a
@@ -336,6 +386,18 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           <option v-for="d in sessionDays" :key="d" :value="d">{{ t('kernel.settings.days', { days: d }) }}</option>
         </select>
       </div>
+      <div :class="[row, 'flex-wrap']">
+        <div class="min-w-0 flex-[1_1_12rem]">
+          <span class="block font-semibold">{{ t('kernel.settings.tokens') }}</span>
+          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.tokens_hint') }}</span>
+        </div>
+        <data v-if="tokens.data.value" :value="tokens.data.value.tokens.length" class="flex-none text-small text-ink-muted tabular-nums">
+          {{ tokens.data.value.tokens.length }}
+        </data>
+        <JecButton size="sm" class="ml-auto flex-none" @click="tokensOpen = true">
+          <KeySquare class="size-4" aria-hidden="true" />{{ t('kernel.settings.tokens_manage') }}
+        </JecButton>
+      </div>
     </section>
 
     <section v-if="system.data.value" aria-labelledby="access" :class="panel">
@@ -437,6 +499,79 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
       <JecButton @click="backingUp = false">{{ t('kernel.action.cancel') }}</JecButton>
       <JecButton type="submit" form="backup-form" variant="primary" :busy="backup.isPending.value" :disabled="!backupPassword">
         <Download class="size-4" aria-hidden="true" />{{ t('kernel.settings.backup_download') }}
+      </JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-model:open="tokensOpen" :title="t('kernel.tokens.title')">
+    <div class="flex flex-col gap-3">
+      <p class="m-0">{{ t('kernel.tokens.intro') }}</p>
+      <div v-if="madeToken" role="status" class="flex flex-col gap-2 rounded-md bg-ok-soft p-3">
+        <p class="m-0 text-small font-semibold text-ok-ink">{{ t('kernel.tokens.made_new', { name: madeToken.name }) }}</p>
+        <div class="flex items-center gap-2">
+          <code class="min-w-0 flex-1 rounded-sm bg-surface-raised px-2 py-1 text-small [overflow-wrap:anywhere]">{{ madeToken.token }}</code>
+          <CopyButton :value="madeToken.token" label="kernel.tokens.copy" />
+        </div>
+      </div>
+      <JecAlert v-if="deleteTokenError.error.value" :code="deleteTokenError.error.value.code" :params="deleteTokenError.error.value.params" />
+      <p v-if="tokens.data.value && !tokens.data.value.tokens.length" class="m-0 text-ink-muted">{{ t('kernel.tokens.empty') }}</p>
+      <ul v-else class="m-0 list-none p-0">
+        <li v-for="tk in tokens.data.value?.tokens" :key="tk.id" class="flex flex-wrap items-center gap-2 border-b border-line py-2 last:border-b-0">
+          <div class="min-w-0 flex-[1_1_12rem]">
+            <span class="block font-semibold [overflow-wrap:anywhere]" translate="no">{{ tk.name }}</span>
+            <span class="flex flex-wrap gap-x-2 text-caption text-ink-muted">
+              <span class="font-semibold">{{ t(scopeText[tk.scope]) }}</span>
+              <span>{{ t('kernel.tokens.made', { date: intl.date(tk.createdAt) }) }}</span>
+              <span>{{ tk.lastUsedAt ? t('kernel.tokens.used', { date: intl.dateTime(tk.lastUsedAt) }) : t('kernel.tokens.never_used') }}</span>
+            </span>
+          </div>
+          <JecButton
+            size="sm"
+            class="ml-auto flex-none"
+            :variant="confirmDelete === tk.id ? 'danger' : 'ghost'"
+            :busy="deleteToken.isPending.value && confirmDelete === tk.id"
+            :aria-label="t('kernel.tokens.delete', { name: tk.name })"
+            :title="t('kernel.tokens.delete', { name: tk.name })"
+            @click="removeToken(tk.id)"
+          >
+            <Trash2 class="size-4" aria-hidden="true" /><template v-if="confirmDelete === tk.id">{{ t('kernel.tokens.delete_confirm') }}</template>
+          </JecButton>
+        </li>
+      </ul>
+      <form id="token-form" class="flex flex-col gap-3 border-t border-line pt-3" novalidate @submit.prevent="submitToken">
+        <h3 class="m-0 text-heading font-semibold">{{ t('kernel.tokens.new') }}</h3>
+        <JecAlert v-if="tokenError.alert.value" :code="tokenError.alert.value.code" :params="tokenError.alert.value.params" />
+        <JecField id="token-name" label="kernel.tokens.name" hint="kernel.tokens.name_help" :error="tokenError.fields.value.name">
+          <JecInput id="token-name" v-model="tokenForm.name" maxlength="64" required :invalid="!!tokenError.fields.value.name" />
+        </JecField>
+        <JecField id="token-scope" label="kernel.tokens.scope">
+          <select id="token-scope" v-model="tokenForm.scope" :class="control">
+            <option value="read">{{ t('kernel.tokens.scope_read') }}</option>
+            <option value="write">{{ t('kernel.tokens.scope_write') }}</option>
+          </select>
+        </JecField>
+        <JecField id="token-password" label="kernel.account.confirm_password" :error="tokenError.fields.value.password">
+          <JecInput
+            id="token-password"
+            v-model="tokenForm.password"
+            type="password"
+            autocomplete="current-password"
+            required
+            :invalid="!!tokenError.fields.value.password"
+          />
+        </JecField>
+      </form>
+    </div>
+    <template #footer>
+      <JecButton @click="tokensOpen = false">{{ t('kernel.action.close') }}</JecButton>
+      <JecButton
+        type="submit"
+        form="token-form"
+        variant="primary"
+        :busy="createToken.isPending.value"
+        :disabled="!tokenForm.name.trim() || !tokenForm.password"
+      >
+        {{ t('kernel.tokens.create') }}
       </JecButton>
     </template>
   </JecDialog>

@@ -56,6 +56,8 @@ const operations: Partial<Record<string, MessageKey>> = {
   'certs-save-settings': 'audit.op.certs_save_settings',
   'monitor-check': 'audit.op.monitor_check',
   'notify-test': 'audit.op.notify_test',
+  'tokens-create': 'audit.op.tokens_create',
+  'tokens-delete': 'audit.op.tokens_delete',
 }
 // The operations that hand out secrets: private keys and backups.
 const secret = new Set(['certs-download', 'backup'])
@@ -220,6 +222,7 @@ const selectClass =
             <td class="border-b border-line px-3 py-1.5 align-top whitespace-nowrap">
               <span v-if="e.user" translate="no">{{ e.user }}</span>
               <span v-else class="text-ink-muted">{{ t('audit.page.no_account') }}</span>
+              <span v-if="e.token" class="block text-caption text-ink-muted">{{ t('audit.page.via_token', { name: e.token }) }}</span>
             </td>
             <td class="border-b border-line px-3 py-1.5 align-top">
               <span
@@ -260,6 +263,7 @@ const selectClass =
             <span class="flex flex-wrap gap-x-2 text-small">
               <span v-if="e.user" translate="no">{{ e.user }}</span>
               <span v-else class="text-ink-muted">{{ t('audit.page.no_account') }}</span>
+              <span v-if="e.token" class="text-ink-muted">{{ t('audit.page.via_token', { name: e.token }) }}</span>
               <span translate="no" class="text-ink-muted">{{ e.client }}</span>
               <span :class="['font-semibold', looks[resultOf(e)].ink]">{{ t(resultText[resultOf(e)]) }}</span>
             </span>

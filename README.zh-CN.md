@@ -23,7 +23,7 @@ main 分支上已经可用：
 - 线上巡检：像浏览器一样连到每个域名，续期后如果线上还是旧证书（比如 CDN 没换上新的），会通知你。
 - 内核之外的一切都是模块，可以在“模块”页开关，也可以在编译时去掉。
 - 用任何语言写的插件可以加上部署目标、通知渠道和域名验证方式，不用重新编译 JEC（[docs/plugins.zh-CN.md](docs/plugins.zh-CN.md)）。
-- 用密码登录，也可以开启两步验证，再输入验证器 App 里的验证码；审计日志记下通过面板做过的事，是谁、从哪里做的；严格的安全响应头。
+- 用密码登录，也可以开启两步验证，再输入验证器 App 里的验证码；给脚本用的 API 令牌；审计日志记下通过面板做过的事，是谁、从哪里做的；严格的安全响应头。
 - 一个很小的容器镜像，或者一个静态二进制文件，数据存在 SQLite 里。
 
 计划中：厂商验证需要的任意 DNS 记录、钩子，以及更多 CDN 和面板。
@@ -64,6 +64,16 @@ docker exec -it jec /jec reset-password
 tar -xzf jec_<版本>_linux_amd64.tar.gz
 ./jec serve -data-dir /var/lib/jec
 ```
+
+### 接口
+
+面板做的一切都经过它的接口，说明在 `/api/v1/openapi.json`。给脚本和其他程序用时，在 设置 → API 令牌 里创建一个令牌（只读或读写），作为 Bearer 令牌发送：
+
+```sh
+curl -H "Authorization: Bearer jec_..." https://certs.example.com/api/v1/certs/certificates
+```
+
+任何令牌都不能修改密码、两步验证和令牌。
 
 ## 配置
 

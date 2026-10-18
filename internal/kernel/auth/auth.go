@@ -77,12 +77,14 @@ type Service struct {
 	mu         sync.Mutex
 	setupToken string                  // set while no account exists
 	pending    map[int64]pendingSecret // new secrets of two-factor authentication, by account
+	touched    map[int64]time.Time     // when the last use of each API token was written
 }
 
 // New starts the account system on db, whose kernel migrations are applied.
 // Without any account it makes a setup token and logs it.
 func New(ctx context.Context, db *sql.DB, log *slog.Logger, opts Options) (*Service, error) {
-	s := &Service{db: db, log: log, opts: opts, now: time.Now, limit: newLimiter(maxFailures, lockout), pending: map[int64]pendingSecret{}}
+	s := &Service{db: db, log: log, opts: opts, now: time.Now, limit: newLimiter(maxFailures, lockout), pending: map[int64]pendingSecret{},
+		touched: map[int64]time.Time{}}
 	var n int
 	if err := db.QueryRowContext(ctx, "SELECT count(*) FROM kernel_users").Scan(&n); err != nil {
 		return nil, fmt.Errorf("count accounts: %w", err)
@@ -112,7 +114,10 @@ type (
 
 type session struct {
 	user      User
-	tokenHash []byte
+	tokenHash []byte // of the session cookie
+	// token and scope tell the API token of a request that came with one,
+	// in place of a session.
+	token, scope string
 }
 
 // UserFrom returns the account the request of ctx is signed in as.
@@ -157,6 +162,12 @@ func clientFrom(ctx context.Context) string {
 func (s *Service) Middleware(ctx huma.Context, next func(huma.Context)) {
 	ctx = huma.WithValue(ctx, clientKey{}, s.client(ctx))
 	ctx = huma.WithValue(ctx, actorKey{}, &actor{})
+	if token, ok := bearer(ctx); ok {
+		if sess, ok := s.authorizeToken(ctx, token); ok {
+			next(huma.WithValue(ctx, sessionKey{}, sess))
+		}
+		return
+	}
 	if sess, ok := s.lookup(ctx.Context(), cookie(ctx)); ok {
 		ctx = huma.WithValue(ctx, sessionKey{}, sess)
 	} else if op := ctx.Operation(); op == nil || op.Security == nil || len(op.Security) > 0 {
@@ -271,9 +282,11 @@ type passwordInput struct {
 	}
 }
 
-// Register adds the account operations to a.
+// Register adds the account operations to a. Those managing the account
+// take a session: no API token may use them.
 func (s *Service) Register(a huma.API) {
 	tags := []string{"auth"}
+	only := map[string]any{sessionOnly: true}
 	huma.Register(a, huma.Operation{
 		OperationID: "get-setup", Method: http.MethodGet, Path: "/setup", Tags: tags, Security: api.Public,
 		Summary: "Tell whether the first account still has to be created",
@@ -295,27 +308,28 @@ func (s *Service) Register(a huma.API) {
 		Summary: "Sign out", DefaultStatus: http.StatusNoContent,
 	}, s.signOut)
 	huma.Register(a, huma.Operation{
-		OperationID: "change-password", Method: http.MethodPut, Path: "/account/password", Tags: tags,
+		OperationID: "change-password", Method: http.MethodPut, Path: "/account/password", Tags: tags, Metadata: only,
 		Summary: "Change the password, which signs the account out everywhere else", DefaultStatus: http.StatusNoContent,
 	}, s.changePassword)
 	huma.Register(a, huma.Operation{
-		OperationID: "update-account", Method: http.MethodPatch, Path: "/account", Tags: tags,
+		OperationID: "update-account", Method: http.MethodPatch, Path: "/account", Tags: tags, Metadata: only,
 		Summary: "Change the settings of the account",
 	}, s.updateAccount)
 	huma.Register(a, huma.Operation{
-		OperationID: "two-factor-secret", Method: http.MethodPost, Path: "/account/two-factor/secret", Tags: tags,
+		OperationID: "two-factor-secret", Method: http.MethodPost, Path: "/account/two-factor/secret", Tags: tags, Metadata: only,
 		Summary:     "Make a new secret for two-factor authentication",
 		Description: "Once the password is confirmed. The secret waits ten minutes for a code of it, which turns two-factor authentication on.",
 	}, s.setUpTwoFactor)
 	huma.Register(a, huma.Operation{
-		OperationID: "two-factor-enable", Method: http.MethodPost, Path: "/account/two-factor/enable", Tags: tags,
+		OperationID: "two-factor-enable", Method: http.MethodPost, Path: "/account/two-factor/enable", Tags: tags, Metadata: only,
 		Summary:       "Turn two-factor authentication on with a code of the new secret, which signs the account out everywhere else",
 		DefaultStatus: http.StatusNoContent,
 	}, s.enableTwoFactor)
 	huma.Register(a, huma.Operation{
-		OperationID: "two-factor-disable", Method: http.MethodPost, Path: "/account/two-factor/disable", Tags: tags,
+		OperationID: "two-factor-disable", Method: http.MethodPost, Path: "/account/two-factor/disable", Tags: tags, Metadata: only,
 		Summary: "Turn two-factor authentication off, once the password is confirmed", DefaultStatus: http.StatusNoContent,
 	}, s.disableTwoFactor)
+	s.registerTokens(a, tags)
 }
 
 func (s *Service) getSetup(context.Context, *struct{}) (*setupStatus, error) {

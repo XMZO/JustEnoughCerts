@@ -38,8 +38,9 @@ func Usernames(ctx context.Context, db *sql.DB) ([]string, error) {
 }
 
 // SetPassword gives the account username a new password, turns its
-// two-factor authentication off and ends all of its sessions: it is how
-// someone who lost the password or the authenticator gets back in.
+// two-factor authentication off, ends all of its sessions and deletes its
+// API tokens: it is how someone who lost the password or the
+// authenticator gets back in, or takes the account back.
 func SetPassword(ctx context.Context, db *sql.DB, username, password string) error {
 	if n := utf8.RuneCountInString(password); n < MinPasswordLength || n > MaxPasswordLength {
 		return fmt.Errorf("a password has %d to %d characters", MinPasswordLength, MaxPasswordLength)
@@ -68,6 +69,9 @@ func SetPassword(ctx context.Context, db *sql.DB, username, password string) err
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM kernel_sessions WHERE user_id = ?", id); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM kernel_api_tokens WHERE user_id = ?", id); err != nil {
 		return err
 	}
 	return tx.Commit()

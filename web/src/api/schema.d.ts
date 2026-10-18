@@ -38,6 +38,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/account/tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the API tokens of the account */
+        get: operations["tokens-list"];
+        put?: never;
+        /** Make an API token, once the password is confirmed */
+        post: operations["tokens-create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/tokens/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an API token, which stops working at once */
+        delete: operations["tokens-delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/account/two-factor/disable": {
         parameters: {
             query?: never;
@@ -813,6 +848,19 @@ export interface components {
             };
             type: string;
         };
+        CreateTokenInputBody: {
+            /** @description What the token is for, such as a script */
+            name: string;
+            /** @description The account's password, to confirm */
+            password: string;
+            /** @enum {string} */
+            scope: "read" | "write";
+        };
+        CreateTokenOutputBody: {
+            detail: components["schemas"]["TokenBody"];
+            /** @description The token, which no later answer shows again */
+            token: string;
+        };
         DeployInputBody: {
             /**
              * Format: int64
@@ -921,6 +969,8 @@ export interface components {
              * @description The status of the answer
              */
             status: number;
+            /** @description The name of the API token it came with; none for a session */
+            token?: string;
             /** @description The account signed in; none for a sign-in */
             user?: string;
             userAgent?: string;
@@ -1294,6 +1344,27 @@ export interface components {
             /** @description What the test found */
             message: components["schemas"]["Message"];
         };
+        TokenBody: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int64 */
+            id: number;
+            /**
+             * Format: date-time
+             * @description When it was last used, to the minute
+             */
+            lastUsedAt?: string;
+            name: string;
+            /**
+             * @description read: GET and HEAD alone; write: any operation but those managing the account
+             * @enum {string}
+             */
+            scope: "read" | "write";
+        };
+        TokensOutputBody: {
+            /** @description The newest first */
+            tokens: components["schemas"]["TokenBody"][];
+        };
         TwoFactorSetup: {
             /** @description The QR code of the URI, as an SVG data URL */
             qr: string;
@@ -1474,6 +1545,97 @@ export interface operations {
                 "application/json": components["schemas"]["PasswordInputBody"];
             };
         };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "tokens-list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokensOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "tokens-create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTokenInputBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateTokenOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "tokens-delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description No Content */
             204: {

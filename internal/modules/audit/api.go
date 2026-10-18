@@ -23,6 +23,7 @@ type EntryBody struct {
 	User      string    `json:"user,omitempty" doc:"The account signed in; none for a sign-in"`
 	Client    string    `json:"client" doc:"The address of the client"`
 	UserAgent string    `json:"userAgent,omitempty"`
+	Token     string    `json:"token,omitempty" doc:"The name of the API token it came with; none for a session"`
 }
 
 type entriesInput struct {
@@ -55,7 +56,7 @@ func registerAPI(a huma.API, m *Module) {
 		out.Body.Entries = make([]EntryBody, 0, len(entries))
 		for _, e := range entries {
 			out.Body.Entries = append(out.Body.Entries, EntryBody{ID: e.id, At: e.at, Operation: e.operation, Method: e.method,
-				Path: e.path, Status: e.status, User: e.user, Client: e.client, UserAgent: e.agent})
+				Path: e.path, Status: e.status, User: e.user, Client: e.client, UserAgent: e.agent, Token: e.token})
 		}
 		return out, nil
 	})
