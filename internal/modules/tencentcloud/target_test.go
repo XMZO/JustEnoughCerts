@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -35,6 +36,12 @@ type fakeAPI struct {
 	// their downloads by ID.
 	listed   []issuedCert
 	archives map[string][]byte
+	// applied are the free certificates applied for, by ID, with their
+	// statuses; completed those the CA was asked to check now.
+	applied   map[string]*certStatus
+	appliedAs []string // domain and algorithm of each
+	completed []string
+	applyFail error
 }
 
 func (f *fakeAPI) upload(_ context.Context, alias, chain, key string) (string, error) {
@@ -92,6 +99,29 @@ func (f *fakeAPI) download(_ context.Context, id string) ([]byte, error) {
 		return nil, &tcerr.TencentCloudSDKError{Code: "FailedOperation.CertificateNotFound"}
 	}
 	return data, nil
+}
+
+func (f *fakeAPI) apply(_ context.Context, domain, algo string) (string, error) {
+	if f.applyFail != nil {
+		return "", f.applyFail
+	}
+	id := "free-" + strconv.Itoa(len(f.applied)+1)
+	f.applied[id] = &certStatus{Status: statusReviewing, Name: "reviewing"}
+	f.appliedAs = append(f.appliedAs, domain+" "+algo)
+	return id, nil
+}
+
+func (f *fakeAPI) status(_ context.Context, id string) (certStatus, error) {
+	st, ok := f.applied[id]
+	if !ok {
+		return certStatus{}, &tcerr.TencentCloudSDKError{Code: "FailedOperation.CertificateNotFound"}
+	}
+	return *st, nil
+}
+
+func (f *fakeAPI) complete(_ context.Context, id string) error {
+	f.completed = append(f.completed, id)
+	return nil
 }
 
 func open(t *testing.T, api *fakeAPI, config map[string]string) *target {

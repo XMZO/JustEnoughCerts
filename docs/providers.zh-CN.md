@@ -19,6 +19,7 @@ JEC 的每种证书来源、验证方式、部署目标和通知渠道，以及�
 | `aliyun.fetch` | 阿里云数字证书管理服务签发的证书 | 替身 |
 | `aliyun.apply` | 向阿里云申请证书（默认个人测试证书） | 替身 |
 | `tencentcloud.fetch` | 腾讯云 SSL 证书服务签发的证书 | 替身，HTTP 层经 SDK 的客户端 |
+| `tencentcloud.free` | 腾讯云免费证书（域名在同一账号的 DNSPod） | 替身，HTTP 层经 SDK 的客户端 |
 | 上传 | PEM、PFX/P12 | 单元测试 |
 
 ## 域名验证

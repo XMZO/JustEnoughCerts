@@ -27,7 +27,8 @@ Working on the main branch:
   keys from where certbot or acme.sh renews them on the same machine, or
   from Alibaba Cloud's and Tencent Cloud's certificate services, which
   issued them; or applied for at Alibaba Cloud with a key of JEC's own,
-  such as its free personal test certificates.
+  such as its free personal test certificates, or as Tencent Cloud's free
+  certificates, for domains in its DNSPod.
 - Namecheap's paid certificates, such as PositiveSSL, with JEC acting as
   the client of Namecheap's SSL Manager. Experimental and off until you
   switch it on; not yet tried against a real account.

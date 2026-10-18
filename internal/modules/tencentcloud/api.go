@@ -47,7 +47,33 @@ type sslAPI interface {
 	// download returns the ZIP archive of a certificate, as the console
 	// downloads it.
 	download(ctx context.Context, id string) ([]byte, error)
+	// apply applies for a free certificate of domain, with a key of algo
+	// Tencent Cloud makes, RSA or ECC, validated through DNSPod by Tencent
+	// Cloud itself, and returns its ID.
+	apply(ctx context.Context, domain, algo string) (string, error)
+	// status tells where certificate id stands.
+	status(ctx context.Context, id string) (certStatus, error)
+	// complete has the CA check the validation of certificate id now.
+	complete(ctx context.Context, id string) error
 }
+
+// certStatus is where a certificate stands: Status is one of the status*
+// codes, Name the service's own word for it.
+type certStatus struct {
+	Status  int    `json:"Status"`
+	Name    string `json:"StatusName"`
+	Message string `json:"StatusMsg"`
+}
+
+// The statuses of a certificate JEC tells apart.
+const (
+	statusReviewing = 0
+	statusRefused   = 2
+	statusExpired   = 3
+	statusCancelled = 7
+	statusRevoked   = 10
+	statusRefunded  = 14
+)
 
 // issuedCert is a certificate Tencent Cloud issued, as its list shows it.
 type issuedCert struct {
@@ -200,6 +226,35 @@ func (s *sdk) download(ctx context.Context, id string) ([]byte, error) {
 		return nil, fmt.Errorf("tencentcloud: DownloadCertificate: %w", err)
 	}
 	return data, nil
+}
+
+func (s *sdk) apply(ctx context.Context, domain, algo string) (string, error) {
+	params := map[string]any{"DvAuthMethod": "DNS_AUTO", "DomainName": domain, "DeleteDnsAutoRecord": true, "CsrEncryptAlgo": algo}
+	if algo == "ECC" {
+		params["CsrKeyParameter"] = "prime256v1"
+	} else {
+		params["CsrKeyParameter"] = "2048"
+	}
+	var out struct {
+		CertificateID string `json:"CertificateId"`
+	}
+	if err := s.call(ctx, "ApplyCertificate", params, &out); err != nil {
+		return "", err
+	}
+	if out.CertificateID == "" {
+		return "", errors.New("tencentcloud: ApplyCertificate returned no certificate ID")
+	}
+	return out.CertificateID, nil
+}
+
+func (s *sdk) status(ctx context.Context, id string) (certStatus, error) {
+	var out certStatus
+	err := s.call(ctx, "DescribeCertificate", map[string]any{"CertificateId": id}, &out)
+	return out, err
+}
+
+func (s *sdk) complete(ctx context.Context, id string) error {
+	return s.call(ctx, "CompleteCertificate", map[string]any{"CertificateId": id}, nil)
 }
 
 // statusIssued is the status of an issued certificate, and maxListed

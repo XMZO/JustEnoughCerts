@@ -129,6 +129,9 @@ type CollectRequest struct {
 	// the first version.
 	Current    string
 	CurrentEnd time.Time
+	// State is what the source kept when the last attempt of this
+	// issuance ended in a Wait, as for IssueRequest; nil before that.
+	State []byte
 	// Log receives the steps of the issuance.
 	Log func(LogLine)
 }

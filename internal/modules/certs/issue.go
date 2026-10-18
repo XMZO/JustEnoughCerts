@@ -380,7 +380,7 @@ func (s *service) obtain(ctx context.Context, cl *claimed, log func(contracts.Lo
 	defer closeProvider(provider, s)
 	cl.source = c.SourceProvider
 	if ks, ok := provider.(contracts.KeySource); ok {
-		return s.collect(ctx, c, ks, log)
+		return s.collect(ctx, cl, c, ks, log)
 	}
 	source, ok := provider.(contracts.Source)
 	if !ok {
@@ -419,9 +419,15 @@ func (s *service) obtain(ctx context.Context, cl *claimed, log func(contracts.Lo
 
 // collect takes in what a KeySource found for c, key included: there is no
 // key to make, and nothing new is a Wait the source returns.
-func (s *service) collect(ctx context.Context, c *Certificate, ks contracts.KeySource, log func(contracts.LogLine)) (*cryptox.Bundle, error) {
-	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepKey, Key: i18n.CertsLogKeyFromSource})
-	req := contracts.CollectRequest{Domains: c.Domains, Log: log}
+func (s *service) collect(ctx context.Context, cl *claimed, c *Certificate, ks contracts.KeySource, log func(contracts.LogLine)) (*cryptox.Bundle, error) {
+	state, err := s.keptState(ctx, cl)
+	if err != nil {
+		return nil, err
+	}
+	if state == nil {
+		log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepKey, Key: i18n.CertsLogKeyFromSource})
+	}
+	req := contracts.CollectRequest{Domains: c.Domains, Log: log, State: state}
 	if c.Current != nil {
 		req.Current, req.CurrentEnd = c.Current.Fingerprint, c.Current.NotAfter
 	}
@@ -437,6 +443,24 @@ func (s *service) collect(ctx context.Context, c *Certificate, ks contracts.KeyS
 		return nil, &contracts.Problem{Key: i18n.CertsErrorNamesMissing, Params: map[string]any{"domains": strings.Join(missing, ", ")}}
 	}
 	return b, nil
+}
+
+// keptState returns what the source of the issuance of c kept from its
+// last attempt, if anything.
+func (s *service) keptState(ctx context.Context, c *claimed) ([]byte, error) {
+	var sealed []byte
+	err := s.db.QueryRowContext(ctx, "SELECT sealed_state FROM certs_issuances WHERE id = ?", c.id).Scan(&sealed)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return nil, errNotFound
+	case err != nil || sealed == nil:
+		return nil, err
+	}
+	state, err := s.secrets.Open(sealed, stateContext(c.certificateID))
+	if err != nil {
+		return nil, retry.Permanent(err)
+	}
+	return state, nil
 }
 
 // kept returns the private key of the issuance of c, making it of

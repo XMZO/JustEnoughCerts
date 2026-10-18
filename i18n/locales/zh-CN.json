@@ -2353,6 +2353,10 @@
       "fetch_bad": "从腾讯云下载的证书 {id} 读不出来，私钥设了密码，或者证书和私钥对不上。",
       "fetch_no_key": "腾讯云没有证书 {id} 的私钥：申请时用的是自己的 CSR。请在腾讯云重新申请，由腾讯云生成 CSR。",
       "fetch_none": "腾讯云 SSL 证书服务里没有覆盖 {domains}、可以下载的有效证书（上传的证书不算）。请先在腾讯云申请或购买，并检查域名。",
+      "free_domains": "腾讯云的免费证书只有一个域名，不能是通配符：{domains}",
+      "free_gone": "腾讯云上的证书 {id} 已经取消、过期或找不到了，JEC 会重新申请。",
+      "free_quota": "这个账号的免费证书额度用完了。请在腾讯云控制台查看，或者改用其他证书来源。",
+      "free_refused": "证书 {id} 没有通过审核：{reason}。下次签发时会重新申请。",
       "network": "连不上 {endpoint}。",
       "resource": "SSL 证书服务不能更新 {resource} 类型的资源。它能更新：{types}",
       "resources": "请填写要更新的资源类型。",
@@ -2367,6 +2371,8 @@
       "delete_old": "删除被替换的证书",
       "delete_old_help": "只删除 JEC 上传、已被后来的版本替换的证书。",
       "fetch_secret_key_help": "最好用只授予 SSL 证书服务的 DescribeCertificates 和 DownloadCertificate 权限的 CAM 子用户。",
+      "free_secret_key_help": "最好用只授予 SSL 证书服务的 ApplyCertificate、DescribeCertificate、CompleteCertificate、DownloadCertificate、DescribeCertificates 权限，以及 DNSPod 修改解析权限的 CAM 子用户。",
+      "key_algorithm": "密钥类型",
       "regions": "地域",
       "regions_help": "用于 clb、waf、apigateway、tke、tcb、tse 和 cos：地域，用逗号分隔，比如 ap-guangzhou、ap-shanghai。留空时由腾讯云决定。",
       "replace": "首次替换的证书",
@@ -2378,6 +2384,14 @@
       "secret_key_help": "最好用只授予 SSL 证书服务的 UploadCertificate、UpdateCertificateInstance、DeleteCertificate、DescribeCertificates 权限，以及要更新的资源所需权限的 CAM 子用户。",
       "site": "站点"
     },
+    "free": {
+      "description": "向腾讯云 SSL 证书服务申请免费证书（TrustAsia DV，3 个月，一个域名）：腾讯云生成私钥，在同一账号的 DNSPod（腾讯云 DNS 解析）里自动添加验证记录，签好后 JEC 取回、部署出去，到续期时间再申请新的一张。域名要托管在这个账号的 DNSPod 里；免费证书的数量有限额。",
+      "name": "腾讯云免费证书"
+    },
+    "key": {
+      "ecc": "ECDSA P-256",
+      "rsa": "RSA 2048"
+    },
     "log": {
       "delete_failed": "删除 {id} 失败，下次部署会再试。",
       "deleted": "已删除 {id}",
@@ -2385,6 +2399,8 @@
       "fetch_look": "在腾讯云 SSL 证书服务里找 {domains} 的证书",
       "fetch_no_chain": "证书 {id} 没有带中间证书：只部署它的网站，有的客户端会不信任",
       "fetch_same": "腾讯云上 {domains} 最新的证书（ID {id}）还是现在这张：在腾讯云续费或申请新的免费证书后，JEC 会取回新证书，{hours, plural, other {# 小时}}后再看",
+      "free_apply": "向腾讯云申请 {domain} 的免费证书",
+      "free_wait": "证书 {id} 的状态：{status}，稍后再看",
       "no_old": "没有要替换的证书：请在 SSL 证书控制台把 {id} 部署到资源上一次，之后的版本会替换它。",
       "update": "在 {resources} 上用 {id} 替换 {old}",
       "updating": "腾讯云正在更新资源（任务 {record}）。",
@@ -2392,7 +2408,7 @@
       "uploaded": "已上传，证书 ID {id}"
     },
     "module": {
-      "description": "通过腾讯云 SSL 证书服务部署证书，可以更新 CDN、EdgeOne、CLB 等资源；也能取回 SSL 证书服务签发的证书。",
+      "description": "通过腾讯云 SSL 证书服务部署证书，可以更新 CDN、EdgeOne、CLB 等资源；也能申请免费证书，或取回 SSL 证书服务签发的证书。",
       "name": "腾讯云"
     },
     "site": {

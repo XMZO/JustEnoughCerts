@@ -25,6 +25,7 @@ Reports of what works with a real account, or does not, are welcome.
 | `aliyun.fetch` | Certificates Alibaba Cloud's Certificate Management Service issued | Fake |
 | `aliyun.apply` | Certificates applied for at Alibaba Cloud, its personal test ones by default | Fake |
 | `tencentcloud.fetch` | Certificates Tencent Cloud's SSL Certificates issued | Fake, at the HTTP level through the SDK's client |
+| `tencentcloud.free` | Tencent Cloud's free certificates, for domains in its DNSPod | Fake, at the HTTP level through the SDK's client |
 | Upload | PEM, PFX/P12 | Unit tests |
 
 ## Domain validation

@@ -1067,3 +1067,41 @@ func TestKeySource(t *testing.T) {
 		t.Errorf("after the renewal: %+v", c)
 	}
 }
+
+func TestKeySourceKeepsState(t *testing.T) {
+	f := newFixture(t)
+	held := f.leaf(60, "example.com")
+	var states []string
+	f.fake.mu.Lock()
+	f.fake.collect = func(_ context.Context, req contracts.CollectRequest) (*contracts.Collected, error) {
+		// A vendor that makes the key: it orders first, then waits for
+		// the order, which the state names.
+		states = append(states, string(req.State))
+		if req.State == nil {
+			return nil, &contracts.Wait{State: []byte("order-1"), After: time.Minute}
+		}
+		b, err := cryptox.ParseBundle([]byte(held.cert), []byte(held.key))
+		if err != nil {
+			return nil, err
+		}
+		return &contracts.Collected{Chain: append([]*x509.Certificate{b.Leaf}, b.Chain...), Key: b.Key}, nil
+	}
+	f.fake.mu.Unlock()
+
+	var c CertificateBody
+	f.call(f.api.Post("/certificates/issue", map[string]any{"domains": []string{"example.com"}, "sourceProvider": f.provider("fake.files")}), http.StatusCreated, &c)
+	f.run()
+	is := f.certificate(c.ID).Issuance
+	if _, state := f.sealed(is.ID); is.State != "waiting" || !state {
+		t.Fatalf("after ordering: %+v, state %v", is, state)
+	}
+	f.now = *is.NextAt
+	f.run()
+	if c = f.certificate(c.ID); c.State != "ok" || !slices.Equal(states, []string{"", "order-1"}) {
+		t.Errorf("after the order: %+v, states %q", c, states)
+	}
+	keys := logKeys(f.issuanceDetail(c.Issuance.ID))
+	if n := len(slices.DeleteFunc(slices.Clone(keys), func(k i18n.Key) bool { return k != i18n.CertsLogKeyFromSource })); n != 1 {
+		t.Errorf("the key from the source logged %d times: %v", n, keys)
+	}
+}
