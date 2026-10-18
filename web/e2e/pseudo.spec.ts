@@ -549,4 +549,16 @@ test('every page is translated and fits', async ({ page }, info) => {
   await dialog.locator('button[type=submit]').click()
   await expect(page.getByRole('status').filter({ hasText: label('kernel.settings.two_factor_off_done') })).toBeVisible()
   expect.soft(await problems(page), 'two-factor authentication off').toEqual([])
+
+  // The audit log of all that, then what failed, then filtered down to
+  // nothing.
+  await page.goto('./audit')
+  // The table on wide screens, the list on phones: whichever shows.
+  await expect(page.getByText(label('audit.op.backup')).filter({ visible: true }).first()).toBeVisible()
+  expect.soft(await problems(page), 'audit log').toEqual([])
+  await page.getByRole('button', { name: label('audit.result.failed') }).click()
+  expect.soft(await problems(page), 'audit log: what failed').toEqual([])
+  await page.getByRole('searchbox').fill('nothing.example')
+  await expect(page.getByText(label('audit.page.no_match'))).toBeVisible()
+  expect.soft(await problems(page), 'audit log with no match').toEqual([])
 })

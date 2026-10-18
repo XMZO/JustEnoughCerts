@@ -108,6 +108,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		return nil, err
 	}
 	build := buildinfo.Get()
+	var recorders []recorder
 	a, err := api.New(api.Options{
 		BasePath:      cfg.BasePath(),
 		Origin:        origin(cfg.BaseURL),
@@ -115,7 +116,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		Commit:        build.Commit,
 		Date:          build.Date,
 		Platform:      build.Platform,
-		Middlewares:   []func(huma.Context, func(huma.Context)){accounts.Middleware},
+		Middlewares:   []func(huma.Context, func(huma.Context)){accounts.Middleware, audit(set, cfg.BasePath()+api.Prefix, &recorders)},
 		SessionCookie: auth.CookieName,
 	}, set, log)
 	if err != nil {
@@ -144,6 +145,9 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 			DataDir:         cfg.DataDir,
 			ConfirmPassword: accounts.ConfirmPassword,
 			WellKnown:       func(h http.Handler) { wellKnown = append(wellKnown, wellKnownHandler{module: id, h: h}) },
+			Audit: func(record func(context.Context, module.Request)) {
+				recorders = append(recorders, recorder{module: id, record: record})
+			},
 		}
 		if err := m.Register(r); err != nil {
 			return nil, fmt.Errorf("module %s: %w", id, err)
@@ -171,6 +175,41 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		}
 	}
 	return &App{store: st, modules: set, api: a, handler: router, bus: bus, jobs: sched}, nil
+}
+
+// recorder is a module's recorder of operations (module.Registry.Audit).
+type recorder struct {
+	module string
+	record func(context.Context, module.Request)
+}
+
+// audit hands each operation that may change something, once answered, to
+// the recorders of the modules that are on. It runs after the session
+// check, so it knows who asked, and requests turned away there do not
+// reach it. prefix is the path of the API, which the record leaves out.
+func audit(set *module.Set, prefix string, recorders *[]recorder) func(huma.Context, func(huma.Context)) {
+	return func(ctx huma.Context, next func(huma.Context)) {
+		next(ctx)
+		method := ctx.Method()
+		if method == http.MethodGet || method == http.MethodHead || len(*recorders) == 0 {
+			return
+		}
+		req := module.Request{
+			At: time.Now().UTC(), Method: method, Path: strings.TrimPrefix(ctx.URL().Path, prefix), Status: ctx.Status(),
+			Client: auth.ClientFrom(ctx.Context()), UserAgent: ctx.Header("User-Agent"),
+		}
+		if op := ctx.Operation(); op != nil {
+			req.Operation = op.OperationID
+		}
+		if u, ok := auth.UserFrom(ctx.Context()); ok {
+			req.User = u.Username
+		}
+		for _, r := range *recorders {
+			if set.Enabled(r.module) {
+				r.record(ctx.Context(), req)
+			}
+		}
+	}
 }
 
 // wellKnownHandler is a module's handler of the requests under

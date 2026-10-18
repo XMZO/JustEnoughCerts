@@ -121,6 +121,11 @@ func UserFrom(ctx context.Context) (User, bool) {
 	return s.user, ok
 }
 
+// ClientFrom returns the address of the client of the request of ctx, as
+// the Middleware found it: behind trusted proxies, the one they forwarded
+// for.
+func ClientFrom(ctx context.Context) string { return clientFrom(ctx) }
+
 func clientFrom(ctx context.Context) string {
 	c, _ := ctx.Value(clientKey{}).(string)
 	return c

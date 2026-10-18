@@ -92,6 +92,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/audit/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List what was done
+         * @description The operations of the last days that may have changed something, the newest first, at most 5000.
+         */
+        get: operations["audit-entries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/certs/certificates": {
         parameters: {
             query?: never;
@@ -878,6 +898,33 @@ export interface components {
             /** @description The password of the signed-in account, asked again before a private key leaves JEC */
             password: string;
         };
+        EntriesOutputBody: {
+            /** @description The newest first */
+            entries: components["schemas"]["EntryBody"][];
+            /** @description There are older ones in the time asked for than one answer holds */
+            more: boolean;
+        };
+        EntryBody: {
+            /** Format: date-time */
+            at: string;
+            /** @description The address of the client */
+            client: string;
+            /** Format: int64 */
+            id: number;
+            method: string;
+            /** @description The ID of the operation, such as certs-delete */
+            operation: string;
+            /** @description The path below /api/v1 */
+            path: string;
+            /**
+             * Format: int64
+             * @description The status of the answer
+             */
+            status: number;
+            /** @description The account signed in; none for a sign-in */
+            user?: string;
+            userAgent?: string;
+        };
         Error: {
             /** @description Message key, rendered by the client in the viewer's language */
             code: string;
@@ -1528,6 +1575,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TwoFactorSetup"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "audit-entries": {
+        parameters: {
+            query?: {
+                /** @description How many days back to list; 0 for all */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntriesOutputBody"];
                 };
             };
             /** @description Error */

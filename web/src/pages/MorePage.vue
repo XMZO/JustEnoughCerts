@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Blocks, ChevronRight, Globe, LogOut, Package, Server, Settings } from '@lucide/vue'
+import { Bell, Blocks, ChevronRight, Globe, LogOut, Package, ScrollText, Server, Settings } from '@lucide/vue'
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
@@ -25,6 +25,7 @@ const config = [
 ] as const
 
 const modulesOn = computed(() => manifest.data.value?.modules.filter((m) => m.required || m.switched).length)
+const audited = computed(() => manifest.data.value?.modules.some((m) => m.id === 'audit' && m.enabled) ?? false)
 
 const signedIn = computed(() => (session.data.value ? t('kernel.shell.signed_in', { username: session.data.value.username }) : ''))
 
@@ -60,6 +61,15 @@ async function leave() {
         <Blocks class="size-5 flex-none text-ink-muted" aria-hidden="true" />
         <span class="min-w-0 flex-1">{{ t('kernel.modules.title') }}</span>
         <span v-if="modulesOn !== undefined" class="text-small text-ink-muted">{{ t('kernel.modules.on_count', { count: modulesOn }) }}</span>
+        <ChevronRight class="size-4 flex-none text-ink-muted" aria-hidden="true" />
+      </RouterLink>
+      <RouterLink
+        v-if="audited"
+        to="/audit"
+        class="flex min-h-12 items-center gap-3 border-t border-line px-4 text-ink no-underline hover:bg-surface-sunken hover:text-ink"
+      >
+        <ScrollText class="size-5 flex-none text-ink-muted" aria-hidden="true" />
+        <span class="min-w-0 flex-1">{{ t('audit.page.title') }}</span>
         <ChevronRight class="size-4 flex-none text-ink-muted" aria-hidden="true" />
       </RouterLink>
       <RouterLink

@@ -13,6 +13,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 
@@ -104,4 +105,23 @@ type Registry struct {
 	// download. Its error is an API response: a wrong body.password, or
 	// too many attempts.
 	ConfirmPassword func(ctx context.Context, password string) error
+	// Audit takes the module's recorder of what is done through the API:
+	// after each operation that may change something, any but a GET or a
+	// HEAD, it gets what was asked, by whom, from where, and how it ended.
+	// Those turned away for want of a session are not recorded. It runs
+	// while the module is enabled, before the answer goes out.
+	Audit func(record func(context.Context, Request))
+}
+
+// Request is an operation of the API that may have changed something, as
+// Registry.Audit hands it on.
+type Request struct {
+	At        time.Time
+	Operation string // its ID, such as certs-delete
+	Method    string
+	Path      string // below /api/v1, such as /certs/certificates/12
+	Status    int    // of the answer
+	User      string // the account signed in; "" for none, as for a sign-in
+	Client    string // the client's address
+	UserAgent string
 }

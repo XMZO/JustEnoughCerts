@@ -377,3 +377,95 @@ func TestSecretKey(t *testing.T) {
 		t.Errorf("restart with another key: %v", err)
 	}
 }
+
+// auditor is a module that records the operations of the API, and has one
+// of its own.
+type auditor struct {
+	mu   *sync.Mutex
+	seen *[]module.Request
+}
+
+func (auditor) Manifest() module.Manifest {
+	return module.Manifest{ID: "auditor", Category: module.Feature, Name: "auditor.module.name", Description: "auditor.module.description"}
+}
+
+func (auditor) Migrations() fs.FS { return nil }
+
+func (a auditor) Register(r *module.Registry) error {
+	r.Audit(func(_ context.Context, req module.Request) {
+		a.mu.Lock()
+		defer a.mu.Unlock()
+		*a.seen = append(*a.seen, req)
+	})
+	huma.Register(r.API, huma.Operation{OperationID: "auditor-poke", Method: http.MethodPost, Path: "/poke", DefaultStatus: http.StatusNoContent},
+		func(context.Context, *struct{}) (*struct{}, error) { return nil, nil })
+	return nil
+}
+
+func TestAudit(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.DataDir = t.TempDir()
+	cfg.BaseURL = "https://example.com/jec"
+	var logs syncBuffer
+	var mu sync.Mutex
+	var seen []module.Request
+	app, err := New(t.Context(), cfg, slog.New(slog.NewTextHandler(&logs, nil)), []module.Module{auditor{mu: &mu, seen: &seen}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Close()
+	if err := app.Modules().SetEnabled(t.Context(), "auditor", true); err != nil {
+		t.Fatal(err)
+	}
+	m := setupToken.FindStringSubmatch(logs.String())
+	if m == nil {
+		t.Fatalf("no setup token in the log:\n%s", logs.String())
+	}
+	c := &client{t: t, srv: httptest.NewServer(app.Handler())}
+	defer c.srv.Close()
+	took := func() []module.Request {
+		mu.Lock()
+		defer mu.Unlock()
+		out := seen
+		seen = nil
+		return out
+	}
+
+	// Turned away for want of a session: not recorded.
+	if status, _ := c.call(http.MethodPost, "/jec/api/v1/auditor/poke", ""); status != http.StatusUnauthorized {
+		t.Fatalf("poke without a session = %d", status)
+	}
+	if got := took(); len(got) != 0 {
+		t.Errorf("recorded without a session: %+v", got)
+	}
+	if status, body := c.call(http.MethodPost, "/jec/api/v1/setup", `{"token": "`+m[1]+`", "username": "admin", "password": "correct horse"}`); status != http.StatusCreated {
+		t.Fatalf("setup = %d %s", status, body)
+	}
+	c.call(http.MethodGet, "/jec/api/v1/manifest", "")
+	c.call(http.MethodPost, "/jec/api/v1/auditor/poke", "")
+	got := took()
+	if len(got) != 2 || got[0].Operation != "setup" || got[0].Status != http.StatusCreated || got[0].Path != "/setup" {
+		t.Fatalf("recorded %+v", got)
+	}
+	if p := got[1]; p.Operation != "auditor-poke" || p.Method != http.MethodPost || p.Path != "/auditor/poke" || p.Status != http.StatusNoContent ||
+		p.User != "admin" || p.Client != "127.0.0.1" || p.UserAgent == "" || p.At.IsZero() {
+		t.Errorf("poke recorded as %+v", p)
+	}
+
+	// A failed sign-in, by no one yet.
+	c.call(http.MethodDelete, "/jec/api/v1/session", "")
+	c.call(http.MethodPost, "/jec/api/v1/session", `{"username": "admin", "password": "wrong horse"}`)
+	got = took()
+	if len(got) != 2 || got[1].Operation != "sign-in" || got[1].Status != http.StatusUnauthorized || got[1].User != "" {
+		t.Errorf("sign-out and a failed sign-in recorded as %+v", got)
+	}
+
+	// Switched off, the module records nothing.
+	if err := app.Modules().SetEnabled(t.Context(), "auditor", false); err != nil {
+		t.Fatal(err)
+	}
+	c.call(http.MethodPost, "/jec/api/v1/session", `{"username": "admin", "password": "wrong horse"}`)
+	if got := took(); len(got) != 0 {
+		t.Errorf("recorded while off: %+v", got)
+	}
+}

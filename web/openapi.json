@@ -626,6 +626,77 @@
         ],
         "type": "object"
       },
+      "EntriesOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "description": "The newest first",
+            "items": {
+              "$ref": "#/components/schemas/EntryBody"
+            },
+            "type": "array"
+          },
+          "more": {
+            "description": "There are older ones in the time asked for than one answer holds",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "entries",
+          "more"
+        ],
+        "type": "object"
+      },
+      "EntryBody": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "client": {
+            "description": "The address of the client",
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "method": {
+            "type": "string"
+          },
+          "operation": {
+            "description": "The ID of the operation, such as certs-delete",
+            "type": "string"
+          },
+          "path": {
+            "description": "The path below /api/v1",
+            "type": "string"
+          },
+          "status": {
+            "description": "The status of the answer",
+            "format": "int64",
+            "type": "integer"
+          },
+          "user": {
+            "description": "The account signed in; none for a sign-in",
+            "type": "string"
+          },
+          "userAgent": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "at",
+          "operation",
+          "method",
+          "path",
+          "status",
+          "client"
+        ],
+        "type": "object"
+      },
       "Error": {
         "additionalProperties": false,
         "properties": {
@@ -2211,6 +2282,54 @@
         "summary": "Make a new secret for two-factor authentication",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/audit/entries": {
+      "get": {
+        "description": "The operations of the last days that may have changed something, the newest first, at most 5000.",
+        "operationId": "audit-entries",
+        "parameters": [
+          {
+            "description": "How many days back to list; 0 for all",
+            "explode": false,
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "default": 30,
+              "description": "How many days back to list; 0 for all",
+              "format": "int64",
+              "maximum": 36500,
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntriesOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List what was done",
+        "tags": [
+          "audit"
         ]
       }
     },

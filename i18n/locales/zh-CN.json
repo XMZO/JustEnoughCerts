@@ -115,6 +115,73 @@
       "ok": "找到了加速域名 {domains}。"
     }
   },
+  "audit": {
+    "column": {
+      "account": "账户",
+      "action": "操作",
+      "client": "来源地址",
+      "result": "结果",
+      "time": "时间"
+    },
+    "module": {
+      "description": "记下通过面板做的事，比如登录、修改、下载私钥和备份，以及是谁、从哪里做的。保留一年。",
+      "name": "审计日志"
+    },
+    "op": {
+      "backup": "下载备份",
+      "certs_add": "上传证书",
+      "certs_delete": "删除证书",
+      "certs_deploy": "立即部署证书",
+      "certs_download": "下载私钥",
+      "certs_issue": "立即签发证书",
+      "certs_issue_new": "添加要签发的证书",
+      "certs_save_settings": "修改续期默认值",
+      "certs_update": "修改证书设置",
+      "certs_upload": "上传新版本",
+      "change_password": "修改密码",
+      "monitor_check": "立即线上检查",
+      "notify_test": "发送测试通知",
+      "providers_create": "添加服务商",
+      "providers_delete": "删除服务商",
+      "providers_test": "测试服务商连接",
+      "providers_update": "修改服务商",
+      "setup": "初始化 JEC",
+      "sign_in": "登录",
+      "sign_out": "退出登录",
+      "switch_module": "开关模块",
+      "two_factor_disable": "关闭两步验证",
+      "two_factor_enable": "开启两步验证",
+      "two_factor_secret": "开始设置两步验证",
+      "update_account": "修改账户设置"
+    },
+    "page": {
+      "empty": "还没有记录。",
+      "export": "导出 CSV",
+      "filter": "结果",
+      "intro": "通过面板做过的事，是谁、从哪里做的，最新的在前。保留一年。",
+      "more": "这段时间里还有更多：只列出了最近的 {count} 条。",
+      "no_account": "未登录",
+      "no_match": "没有符合条件的记录。",
+      "search": "搜索操作、账户和地址",
+      "summary": "显示 {shown} 条，共 {total} 条。",
+      "title": "审计日志",
+      "today": "今天",
+      "yesterday": "昨天"
+    },
+    "range": {
+      "all": "全部",
+      "days_30": "最近 30 天",
+      "days_7": "最近 7 天",
+      "days_90": "最近 90 天",
+      "label": "时间范围"
+    },
+    "result": {
+      "all": "全部",
+      "failed": "失败",
+      "ok": "成功",
+      "status": "HTTP {status}"
+    }
+  },
   "baota": {
     "error": {
       "api": "面板拒绝了：{message}",

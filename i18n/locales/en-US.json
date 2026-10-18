@@ -115,6 +115,73 @@
       "ok": "Found the accelerated domains {domains}."
     }
   },
+  "audit": {
+    "column": {
+      "account": "Account",
+      "action": "Action",
+      "client": "From",
+      "result": "Result",
+      "time": "Time"
+    },
+    "module": {
+      "description": "Records what is done through the panel, such as sign-ins, changes and downloads of private keys and backups, with who did it and from where. Kept for a year.",
+      "name": "Audit log"
+    },
+    "op": {
+      "backup": "Download a backup",
+      "certs_add": "Upload a certificate",
+      "certs_delete": "Delete a certificate",
+      "certs_deploy": "Deploy a certificate now",
+      "certs_download": "Download a private key",
+      "certs_issue": "Issue a certificate now",
+      "certs_issue_new": "Add a certificate to issue",
+      "certs_save_settings": "Change the renewal defaults",
+      "certs_update": "Change a certificate",
+      "certs_upload": "Upload a new version",
+      "change_password": "Change the password",
+      "monitor_check": "Check a certificate online",
+      "notify_test": "Send a test notification",
+      "providers_create": "Add a provider",
+      "providers_delete": "Delete a provider",
+      "providers_test": "Test a provider's connection",
+      "providers_update": "Change a provider",
+      "setup": "Set up JEC",
+      "sign_in": "Sign in",
+      "sign_out": "Sign out",
+      "switch_module": "Turn a module on or off",
+      "two_factor_disable": "Turn off two-factor authentication",
+      "two_factor_enable": "Turn on two-factor authentication",
+      "two_factor_secret": "Start setting up two-factor authentication",
+      "update_account": "Change the account settings"
+    },
+    "page": {
+      "empty": "Nothing recorded yet.",
+      "export": "Export CSV",
+      "filter": "Result",
+      "intro": "What was done through the panel, by whom and from where, the newest first. Kept for a year.",
+      "more": "There are more in this time: only the latest {count} are listed.",
+      "no_account": "Not signed in",
+      "no_match": "Nothing matches.",
+      "search": "Search actions, accounts and addresses",
+      "summary": "{shown} of {total} shown.",
+      "title": "Audit log",
+      "today": "Today",
+      "yesterday": "Yesterday"
+    },
+    "range": {
+      "all": "All",
+      "days_30": "Last 30 days",
+      "days_7": "Last 7 days",
+      "days_90": "Last 90 days",
+      "label": "Time"
+    },
+    "result": {
+      "all": "All",
+      "failed": "Failed",
+      "ok": "Succeeded",
+      "status": "HTTP {status}"
+    }
+  },
   "baota": {
     "error": {
       "api": "The panel refused: {message}",

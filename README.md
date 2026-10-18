@@ -61,7 +61,8 @@ Working on the main branch:
   channels and ways to validate domains without rebuilding JEC
   ([docs/plugins.md](docs/plugins.md)).
 - Sign-in with a password and, if you like, the codes of an authenticator
-  app (two-factor authentication).
+  app (two-factor authentication); an audit log of what was done through
+  the panel, by whom and from where; strict security headers.
 - One small container image or one static binary, with SQLite.
 
 Planned: records of any type for the DNS validations of vendors, hooks, and more CDNs and panels.
