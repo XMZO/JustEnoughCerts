@@ -75,9 +75,9 @@ func (s *session) call(method, path, body string, out any) int {
 }
 
 // TestEverySwitchOff is the acceptance of M3 (PLAN.md 11): with any one
-// module switched off while JEC runs, the rest of JEC goes on working, and
-// the provider types of that module are gone; switched on again, they are
-// back.
+// module switched off while JEC runs, the rest of its API goes on working,
+// and the provider types of that module are gone; switched on again, they
+// are back. The UI is left out: a build without the web app has none.
 func TestEverySwitchOff(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.DataDir = t.TempDir()
@@ -155,7 +155,7 @@ func TestEverySwitchOff(t *testing.T) {
 		if slices.ContainsFunc(types(), func(id string) bool { return strings.HasPrefix(id, m.ID+".") }) {
 			t.Errorf("%s off: its types are still there", m.ID)
 		}
-		for _, path := range []string{"/api/v1/session", "/api/v1/system", "/api/v1/providers", "/"} {
+		for _, path := range []string{"/api/v1/session", "/api/v1/system", "/api/v1/providers"} {
 			if status := s.call(http.MethodGet, path, "", nil); status != http.StatusOK {
 				t.Errorf("%s off: %s %d", m.ID, path, status)
 			}
