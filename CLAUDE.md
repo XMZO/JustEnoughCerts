@@ -82,7 +82,7 @@
 - M3 还完成了：阿里云 OSS 自定义域名 `aliyun.oss`（先传到数字证书管理服务，再 `PutCname`；OSS 自己的 V4 签名在 `aliyun/osssign.go`，规范请求按文档示例的哈希核对过；只用替身测过）。
 - M3 还完成了：DNS 记录管理层（`PLAN.md` 5.3.2 ②）：`contracts.RecordSolver`（`AddRecord` 返回的标识由来源存进签发状态；手动添加的标识为空，记录留给用户删），验证类型标 `records`、来源的 `challenges` 写 `record`，合不合用看 `providers.Type.Takes`，类型列表的“任意记录”分组由接口按 `records` 加上；`internal/lib/dnsrecord`（腾讯云 DNSPod、阿里云 DNS、Cloudflare、华为云 DNS，用 lego 带的 SDK、沿用 lego 的变量名，lego 模块里这四家的验证方式同时是 `RecordSolver`）；`internal/lib/dnscheck`（直接问权威 DNS，只依赖 DNS 库，来源用它等记录生效）。Namecheap 来源能做 DNS 验证（记录名用 `dnscheck.RecordName` 转成完整域名，权威 DNS 查得到才报告，签好后删除），也能配手动添加。只用替身测过。
 - M3 还完成了：取回阿里云、腾讯云签发的证书（`PLAN.md` 5.3.1）：自带私钥的来源 `aliyun.fetch`（`ListUserCertificateOrder` + `GetUserCertificateDetail`）、`tencentcloud.fetch`（`DescribeCertificates` + `DownloadCertificate` 的 ZIP），上传的证书不算；覆盖判断共用 `cryptox.Covers`。只用替身测过。
-- M3 还完成了：向阿里云申请证书 `aliyun.apply`（`PLAN.md` 5.3.1：资源包接口，默认个人测试证书，JEC 自己的私钥和 CSR，DNS 或文件验证，CA 自己来查）；`contracts.Restart`：来源标出订单作废时，证书模块失败或重试都不留私钥和状态（`PLAN.md` 4.3）。只用替身测过。
+- M3 还完成了：向阿里云申请证书 `aliyun.apply`（`PLAN.md` 5.3.1：资源包接口，默认个人测试证书，JEC 自己的私钥和 CSR，DNS 或文件验证，CA 自己来查）；`contracts.Restart`：来源标出订单作废时，证书模块失败或重试都不留私钥和状态（`PLAN.md` 4.3）。阿里云 ALB 目标 `aliyun.alb`（默认证书或扩展证书，改之前等监听配置完）。都只用替身测过。
 - 下一步：用真实账号验证阿里云 ESA 部署、ESA 边缘应答和 Namecheap 模块（M1/M2 验收，`PLAN.md` 5.4、5.6 列了要确认的点，包括 Namecheap 给不给 DNS 验证）；腾讯云免费证书（私钥由腾讯云生成，要做成带验证的自带私钥来源，`PLAN.md` 5.3.1）。
 
 ## 工程约定

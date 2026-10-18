@@ -80,6 +80,10 @@
     }
   },
   "aliyun": {
+    "alb": {
+      "description": "把每张新证书上传到数字证书管理服务，再设到应用型负载均衡的 HTTPS 和 QUIC 监听上，作为默认证书或扩展证书；删除 JEC 以前上传的。",
+      "name": "阿里云应用型负载均衡（ALB）"
+    },
     "apply": {
       "description": "用阿里云数字证书管理服务的证书资源包申请证书，默认是免费的个人测试证书（DigiCert DV，3 个月，每年 20 张，只在中国站）。私钥由 JEC 生成，阿里云只拿到 CSR；域名验证用网站文件或 DNS 记录。账号要先在阿里云领取个人测试证书的额度。",
       "name": "向阿里云申请证书"
@@ -101,6 +105,9 @@
       "name": "阿里云全站加速（DCDN）"
     },
     "error": {
+      "alb_busy": "监听 {listener} 一直在配置中，稍后重试。",
+      "alb_listener": "负载均衡 {id} 没有监听 {listener}。",
+      "alb_no_listeners": "负载均衡 {id} 没有 HTTPS 或 QUIC 监听。",
       "api": "阿里云返回了错误 {code}，完整日志里有原因。",
       "apply_add": "没能添加验证记录 {name}。请检查 DNS 服务商的设置。",
       "apply_bad": "阿里云签发的证书（订单 {order}）读不出来，或者和这次签发的私钥对不上。",
@@ -134,6 +141,11 @@
     "field": {
       "access_key_id": "AccessKey ID",
       "access_key_secret": "AccessKey Secret",
+      "alb_additional": "作为扩展证书",
+      "alb_additional_help": "打开时把证书加为监听的扩展证书（监听按访问的域名挑证书），并去掉 JEC 以前加的；关闭时替换监听的默认证书。",
+      "alb_listeners": "监听 ID",
+      "alb_listeners_help": "多个用逗号分隔。留空时设置这个负载均衡的所有 HTTPS 和 QUIC 监听。",
+      "alb_secret_help": "最好用只授予这些权限的 RAM 用户：alb:GetLoadBalancerAttribute、alb:ListListeners、alb:GetListenerAttribute、alb:UpdateListenerAttribute、alb:ListListenerCertificates、alb:AssociateAdditionalCertificatesWithListener、alb:DissociateAdditionalCertificatesFromListener，以及数字证书管理服务的 yundun-cert:ListUserCertificateOrder、yundun-cert:UploadUserCertificate、yundun-cert:GetUserCertificateDetail 和 yundun-cert:DeleteUserCertificate。",
       "apply_contact_help": "留空时用数字证书管理服务里最新的联系人。证书颁发机构可能打电话或发邮件核实。",
       "apply_email": "联系人邮箱",
       "apply_phone": "联系人手机号",
@@ -167,6 +179,11 @@
       "site": "站点"
     },
     "log": {
+      "alb_additional": "加为监听 {listener} 的扩展证书",
+      "alb_already": "监听 {listener} 已经在用这张证书",
+      "alb_default": "设为监听 {listener} 的默认证书",
+      "alb_dissociate": "从监听 {listener} 去掉 JEC 以前加的扩展证书：{ids}",
+      "alb_wait": "监听 {listener} 正在配置，等它完成",
       "apply_file": "在 {domain} 放验证文件 {path}",
       "apply_file_left": "没能删除 {domain} 的验证文件 {path}，可以到网站上手动删除",
       "apply_issued": "阿里云已签发证书（订单 {order}）",
@@ -199,7 +216,7 @@
       "set": "给 {domain} 设置证书"
     },
     "module": {
-      "description": "把证书部署到阿里云 CDN 和全站加速（DCDN）、数字证书管理服务、OSS 存储空间的自定义域名和传统型负载均衡（CLB）；也能向数字证书管理服务申请证书，或取回它签发的证书。",
+      "description": "把证书部署到阿里云 CDN 和全站加速（DCDN）、数字证书管理服务、OSS 存储空间的自定义域名、传统型负载均衡（CLB）和应用型负载均衡（ALB）；也能向数字证书管理服务申请证书，或取回它签发的证书。",
       "name": "阿里云"
     },
     "oss": {
@@ -211,6 +228,7 @@
       "intl": "国际站（cas.ap-southeast-1.aliyuncs.com）"
     },
     "test": {
+      "alb_ok": "找到负载均衡 {name}，有 {count, plural, other {# 个}} HTTPS 或 QUIC 监听。",
       "apply_ok": "已连上阿里云：资源包里的 {product} 共 {total, plural, other {# 张}}，已申请 {used} 张。",
       "cas_ok": "登录成功。数字证书管理服务里有 {count, plural, other {# 张}}上传的证书。",
       "clb_ok": "找到了负载均衡 {name}，有 {count, plural, other {# 个}} HTTPS 监听。",

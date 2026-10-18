@@ -2,8 +2,9 @@
 // targets: CDN and DCDN (Dynamic Route for CDN), where each new
 // certificate is set on the accelerated domains, as acme.sh's ali_cdn and
 // ali_dcdn hooks do; the Certificate Management Service, where it is
-// uploaded for the other products; the custom domains of OSS buckets; and
-// CLB, the Classic Load Balancer. ESA has a module of its own. The
+// uploaded for the other products; the custom domains of OSS buckets; CLB,
+// the Classic Load Balancer; and ALB, the Application Load Balancer. ESA
+// has a module of its own. The
 // Certificate Management Service is a source too: of the certificates it
 // issued, and of those JEC applies for there with keys of its own.
 package aliyun
@@ -53,8 +54,8 @@ func (*Module) Manifest() module.Manifest {
 // Migrations returns nil: the module keeps nothing of its own.
 func (*Module) Migrations() fs.FS { return nil }
 
-// Register adds the CDN, DCDN, Certificate Management Service, OSS and
-// CLB types, and the sources of the certificates the Certificate
+// Register adds the CDN, DCDN, Certificate Management Service, OSS, CLB
+// and ALB types, and the sources of the certificates the Certificate
 // Management Service issued and of those JEC applies for there.
 func (m *Module) Register(r *module.Registry) error {
 	for _, svc := range []service{cdn, dcdn} {
@@ -69,6 +70,9 @@ func (m *Module) Register(r *module.Registry) error {
 		return err
 	}
 	if err := r.Providers.Add(clbType(), m.clbFactory); err != nil {
+		return err
+	}
+	if err := r.Providers.Add(albType(), m.albFactory); err != nil {
 		return err
 	}
 	if err := r.Providers.Add(fetchType(), m.fetchFactory); err != nil {

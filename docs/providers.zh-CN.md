@@ -43,6 +43,7 @@ JEC 的每种证书来源、验证方式、部署目标和通知渠道，以及�
 | `aliyun.cas` | 阿里云数字证书管理服务 | 替身 |
 | `aliyun.oss` | 阿里云 OSS 存储空间的自定义域名 | 替身 |
 | `aliyun.clb` | 阿里云传统型负载均衡（CLB） | 替身 |
+| `aliyun.alb` | 阿里云应用型负载均衡（ALB） | 替身 |
 | `huaweicloud.cdn` | 华为云 CDN | 替身 |
 | `cloudflare.custom` | Cloudflare 自定义证书 | 替身 |
 | `tencentcloud.ssl` | 腾讯云 SSL 证书，更新到 CDN、EdgeOne、CLB 等 | 替身 |

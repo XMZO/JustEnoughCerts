@@ -249,7 +249,7 @@ func (b *bucket) Deploy(ctx context.Context, req contracts.DeployRequest) (contr
 	if err != nil {
 		return none, err
 	}
-	identifier, err := b.identifier(ctx, id)
+	identifier, err := casIdentifier(ctx, b.cas, b.casEndpoint, b.casRegion, id)
 	if err != nil {
 		return none, err
 	}
@@ -280,18 +280,19 @@ func (b *bucket) Deploy(ctx context.Context, req contracts.DeployRequest) (contr
 	return res, nil
 }
 
-// identifier is how OSS names CAS certificate id: with its region, as
-// GetUserCertificateDetail tells.
-func (b *bucket) identifier(ctx context.Context, id string) (string, error) {
+// casIdentifier is how the other products, such as OSS and ALB, name
+// certificate id of the Certificate Management Service at endpoint, of
+// region: with the region, as GetUserCertificateDetail tells.
+func casIdentifier(ctx context.Context, cas rpc, endpoint, region, id string) (string, error) {
 	var out struct {
 		CertIdentifier string `json:"CertIdentifier"`
 	}
-	err := b.cas.do(ctx, "GetUserCertificateDetail", map[string]string{"CertId": id, "CertFilter": "true"}, nil, &out)
+	err := cas.do(ctx, "GetUserCertificateDetail", map[string]string{"CertId": id, "CertFilter": "true"}, nil, &out)
 	if err != nil {
-		return "", explainRPC(err, b.casEndpoint, noneAbsent)
+		return "", explainRPC(err, endpoint, noneAbsent)
 	}
 	if out.CertIdentifier == "" {
-		return id + "-" + b.casRegion, nil
+		return id + "-" + region, nil
 	}
 	return out.CertIdentifier, nil
 }
