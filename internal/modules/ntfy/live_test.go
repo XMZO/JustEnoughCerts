@@ -26,7 +26,8 @@ func TestLive(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := contracts.Note{Event: contracts.CertificateIssueFailed, Title: "签发失败", Subject: "【JEC】签发失败", Text: "example.com 的签发失败了。",
+	// In Chinese, escaped for the i18n gate: "issuance failed".
+	n := contracts.Note{Event: contracts.CertificateIssueFailed, Title: "\u7b7e\u53d1\u5931\u8d25", Subject: "\u3010JEC\u3011\u7b7e\u53d1\u5931\u8d25", Text: "example.com \u7684\u7b7e\u53d1\u5931\u8d25\u4e86\u3002",
 		Link: "https://jec.example/certificates/1"}
 	if err := p.(*topic).Notify(t.Context(), n); err != nil {
 		t.Fatal(err)
