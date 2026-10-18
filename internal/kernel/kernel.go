@@ -203,6 +203,8 @@ func audit(set *module.Set, prefix string, recorders *[]recorder) func(huma.Cont
 		}
 		if u, ok := auth.UserFrom(ctx.Context()); ok {
 			req.User = u.Username
+		} else {
+			req.User = auth.SignedInAs(ctx.Context())
 		}
 		for _, r := range *recorders {
 			if set.Enabled(r.module) {

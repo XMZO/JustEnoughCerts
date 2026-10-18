@@ -444,7 +444,7 @@ func TestAudit(t *testing.T) {
 	c.call(http.MethodGet, "/jec/api/v1/manifest", "")
 	c.call(http.MethodPost, "/jec/api/v1/auditor/poke", "")
 	got := took()
-	if len(got) != 2 || got[0].Operation != "setup" || got[0].Status != http.StatusCreated || got[0].Path != "/setup" {
+	if len(got) != 2 || got[0].Operation != "setup" || got[0].Status != http.StatusCreated || got[0].Path != "/setup" || got[0].User != "admin" {
 		t.Fatalf("recorded %+v", got)
 	}
 	if p := got[1]; p.Operation != "auditor-poke" || p.Method != http.MethodPost || p.Path != "/auditor/poke" || p.Status != http.StatusNoContent ||
@@ -452,12 +452,14 @@ func TestAudit(t *testing.T) {
 		t.Errorf("poke recorded as %+v", p)
 	}
 
-	// A failed sign-in, by no one yet.
+	// A failed sign-in, by no one; a sign-in, by whom it signed in.
 	c.call(http.MethodDelete, "/jec/api/v1/session", "")
 	c.call(http.MethodPost, "/jec/api/v1/session", `{"username": "admin", "password": "wrong horse"}`)
+	c.call(http.MethodPost, "/jec/api/v1/session", `{"username": "admin", "password": "correct horse"}`)
 	got = took()
-	if len(got) != 2 || got[1].Operation != "sign-in" || got[1].Status != http.StatusUnauthorized || got[1].User != "" {
-		t.Errorf("sign-out and a failed sign-in recorded as %+v", got)
+	if len(got) != 3 || got[1].Operation != "sign-in" || got[1].Status != http.StatusUnauthorized || got[1].User != "" ||
+		got[2].Status != http.StatusOK || got[2].User != "admin" {
+		t.Errorf("sign-out and sign-ins recorded as %+v", got)
 	}
 
 	// Switched off, the module records nothing.

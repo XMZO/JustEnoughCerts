@@ -121,6 +121,27 @@ func UserFrom(ctx context.Context) (User, bool) {
 	return s.user, ok
 }
 
+// actor holds the account an operation signs in, as a sign-in or the
+// setup does: the request has no session to tell it yet.
+type actor struct{ username string }
+
+type actorKey struct{}
+
+// SignedInAs returns the account the operation of ctx signed in, once it
+// ran; "" for none, as when the sign-in failed.
+func SignedInAs(ctx context.Context) string {
+	if a, ok := ctx.Value(actorKey{}).(*actor); ok {
+		return a.username
+	}
+	return ""
+}
+
+func signedIn(ctx context.Context, username string) {
+	if a, ok := ctx.Value(actorKey{}).(*actor); ok {
+		a.username = username
+	}
+}
+
 // ClientFrom returns the address of the client of the request of ctx, as
 // the Middleware found it: behind trusted proxies, the one they forwarded
 // for.
@@ -135,6 +156,7 @@ func clientFrom(ctx context.Context) string {
 // without one unless its operation is api.Public.
 func (s *Service) Middleware(ctx huma.Context, next func(huma.Context)) {
 	ctx = huma.WithValue(ctx, clientKey{}, s.client(ctx))
+	ctx = huma.WithValue(ctx, actorKey{}, &actor{})
 	if sess, ok := s.lookup(ctx.Context(), cookie(ctx)); ok {
 		ctx = huma.WithValue(ctx, sessionKey{}, sess)
 	} else if op := ctx.Operation(); op == nil || op.Security == nil || len(op.Security) > 0 {
@@ -373,6 +395,7 @@ func (s *Service) setup(ctx context.Context, in *setupInput) (*sessionOutput, er
 	s.setupToken = ""
 	s.mu.Unlock()
 	s.limit.reset(client)
+	signedIn(ctx, in.Body.Username)
 	s.log.Info("first account created", "username", in.Body.Username)
 	account, err := s.account(ctx, id)
 	if err != nil {
@@ -425,6 +448,7 @@ func (s *Service) signIn(ctx context.Context, in *signInInput) (*sessionOutput, 
 	if err != nil {
 		return nil, err
 	}
+	signedIn(ctx, account.Username)
 	return &sessionOutput{SetCookie: s.cookie(token, expires), Body: account}, nil
 }
 
