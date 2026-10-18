@@ -49,6 +49,7 @@ JEC 的每种证书来源、验证方式、部署目标和通知渠道，以及�
 | `tencentcloud.ssl` | 腾讯云 SSL 证书，更新到 CDN、EdgeOne、CLB 等 | 替身 |
 | `qiniu.cdn` | 七牛云 CDN | 替身 |
 | `volcengine.cdn` | 火山引擎 CDN | 替身，签名用官方 SDK |
+| `baiducloud.cdn` | 百度智能云 CDN | 替身，签名和官方 SDK 的核对过 |
 | `aws.acm` | AWS Certificate Manager，供 CloudFront 和负载均衡使用 | 模拟器：moto |
 | `baota.site` | 宝塔（aaPanel）网站 | 替身 |
 | `onepanel.certificate` | 1Panel 证书 | 替身 |

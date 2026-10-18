@@ -348,6 +348,39 @@
       "keys": "The keys work in {region}. JEC imports a certificate of its own at the first deployment."
     }
   },
+  "baiducloud": {
+    "cdn": {
+      "description": "Sets each new certificate on the accelerated domains of Baidu AI Cloud CDN, with HTTPS on. The old ones stay in Baidu AI Cloud's certificate management, where you can delete them.",
+      "name": "Baidu AI Cloud CDN"
+    },
+    "error": {
+      "api": "Baidu AI Cloud's API answered with the error {code}; the log has the details.",
+      "auth": "Baidu AI Cloud refused the keys, or they lack the permissions needed.",
+      "domain": "This account has no accelerated domain {domain}.",
+      "network": "Could not reach Baidu AI Cloud's API at {endpoint}.",
+      "no_domains": "No accelerated domain to deploy to: with only wildcard names in the certificate, enter the accelerated domains.",
+      "throttled": "Baidu AI Cloud's API is throttling requests; trying again later."
+    },
+    "field": {
+      "access_key": "Access key",
+      "domains": "Accelerated domains",
+      "domains_help": "Separated by commas. Left empty, the domains of the certificate, wildcards aside.",
+      "secret_help": "Best from a sub-user granted CDN permissions only.",
+      "secret_key": "Secret key"
+    },
+    "log": {
+      "already": "The accelerated domain {domain} has the certificate already",
+      "deployed": "The CDN took the new certificate",
+      "set": "Setting it on the accelerated domain {domain}"
+    },
+    "module": {
+      "description": "Deploys certificates to Baidu AI Cloud CDN.",
+      "name": "Baidu AI Cloud"
+    },
+    "test": {
+      "cdn_ok": "Connected to Baidu AI Cloud CDN; {count, plural, one {# accelerated domain} other {# accelerated domains}}."
+    }
+  },
   "baota": {
     "error": {
       "api": "The panel refused: {message}",

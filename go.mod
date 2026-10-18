@@ -7,6 +7,7 @@ require (
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.2.4
 	github.com/alibabacloud-go/tea v1.5.3
 	github.com/aws/aws-sdk-go-v2 v1.47.0
+	github.com/baidubce/bce-sdk-go v0.9.275
 	github.com/boombuler/barcode v1.0.1
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/go-acme/esa-20240910/v3 v3.13.1
@@ -66,7 +67,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.50.0 // indirect
 	github.com/aws/smithy-go v1.28.1 // indirect
 	github.com/aziontech/azionapi-go-sdk v0.148.0 // indirect
-	github.com/baidubce/bce-sdk-go v0.9.275 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/bodgit/gssapi v0.0.4 // indirect
 	github.com/bodgit/tsig v1.3.1 // indirect

@@ -348,6 +348,39 @@
       "keys": "密钥在 {region} 可用。JEC 会在第一次部署时导入一张自己的证书。"
     }
   },
+  "baiducloud": {
+    "cdn": {
+      "description": "把每张新证书设到百度智能云 CDN 的加速域名上，并打开 HTTPS。旧证书留在百度智能云的证书管理里，可以在那里删除。",
+      "name": "百度智能云 CDN"
+    },
+    "error": {
+      "api": "百度智能云的接口返回了错误 {code}，详情见日志。",
+      "auth": "百度智能云不接受这对密钥，或者它没有需要的权限。",
+      "domain": "这个账号没有加速域名 {domain}。",
+      "network": "连不上百度智能云的接口 {endpoint}。",
+      "no_domains": "没有可以部署的加速域名：证书里只有通配符域名时，请填写加速域名。",
+      "throttled": "百度智能云的接口限流了，稍后重试。"
+    },
+    "field": {
+      "access_key": "Access Key",
+      "domains": "加速域名",
+      "domains_help": "多个用逗号分隔。留空时用证书里的域名（通配符除外）。",
+      "secret_help": "最好用只授予 CDN 权限的子用户。",
+      "secret_key": "Secret Key"
+    },
+    "log": {
+      "already": "加速域名 {domain} 已经在用这张证书",
+      "deployed": "CDN 已换上新证书",
+      "set": "设到加速域名 {domain}"
+    },
+    "module": {
+      "description": "把证书部署到百度智能云 CDN。",
+      "name": "百度智能云"
+    },
+    "test": {
+      "cdn_ok": "已连上百度智能云 CDN，有 {count, plural, other {# 个加速域名}}。"
+    }
+  },
   "baota": {
     "error": {
       "api": "面板拒绝了：{message}",
