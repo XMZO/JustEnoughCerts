@@ -64,6 +64,7 @@
       "order": "Asking for a certificate for {domains}",
       "present": "Adding the validation record for {domain}",
       "put_file": "Putting the validation file for {domain} in place",
+      "record": "The TXT record {name}, with the value {value}",
       "register": "Registering the account at {directory}",
       "remove_file": "Removing the validation file for {domain}",
       "remove_file_failed": "Could not remove the validation file for {domain}; you can remove it from the website",
@@ -1137,6 +1138,20 @@
     "module": {
       "description": "Proves control of a domain by adding a TXT record at any of 221 DNS providers, through lego.",
       "name": "DNS providers (lego)"
+    }
+  },
+  "manual": {
+    "dns": {
+      "description": "The issuance's log lists the TXT records to add: add them at your DNS provider, and JEC goes on once they show. Each renewal needs them added anew, so this suits certificates you issue now and then.",
+      "name": "Add DNS records by hand"
+    },
+    "field": {
+      "minutes": "Minutes to wait",
+      "minutes_help": "How long JEC looks for the records, 25 minutes at most. When they do not show in time, it tries again later, with new records to add."
+    },
+    "module": {
+      "description": "Validates domains with the TXT records you add yourself at your DNS provider.",
+      "name": "Manual DNS records"
     }
   },
   "monitor": {

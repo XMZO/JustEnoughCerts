@@ -64,6 +64,7 @@
       "order": "正在申请 {domains} 的证书",
       "present": "正在为 {domain} 添加验证记录",
       "put_file": "正在为 {domain} 放验证文件",
+      "record": "TXT 记录 {name}，值为 {value}",
       "register": "正在向 {directory} 注册账号",
       "remove_file": "正在删除 {domain} 的验证文件",
       "remove_file_failed": "没能删除 {domain} 的验证文件，可以到网站上手动删除",
@@ -1137,6 +1138,20 @@
     "module": {
       "description": "借助 lego，在 221 家 DNS 服务商添加 TXT 记录，完成域名验证。",
       "name": "DNS 服务商（lego）"
+    }
+  },
+  "manual": {
+    "dns": {
+      "description": "签发日志会列出要添加的 TXT 记录：在 DNS 服务商那里添加后，JEC 查到就继续。每次续期都要重新添加，所以适合偶尔签发的证书。",
+      "name": "手动添加 DNS 记录"
+    },
+    "field": {
+      "minutes": "等待分钟数",
+      "minutes_help": "JEC 查找记录的最长时间，最多 25 分钟。超时没查到时会稍后重试，那时要添加新的记录。"
+    },
+    "module": {
+      "description": "用你自己在 DNS 服务商那里添加的 TXT 记录验证域名。",
+      "name": "手动 DNS 记录"
     }
   },
   "monitor": {

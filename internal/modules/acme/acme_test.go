@@ -168,7 +168,7 @@ func TestDNSProvider(t *testing.T) {
 	}
 	p.Timeout() // logs the wait once
 	if !slices.Equal(s.calls, []string{"present example.com", "cleanup example.com"}) ||
-		!slices.Equal(logged, []i18n.Key{i18n.AcmeLogPresent, i18n.AcmeLogCleanup, i18n.AcmeLogWait}) {
+		!slices.Equal(logged, []i18n.Key{i18n.AcmeLogPresent, i18n.AcmeLogRecord, i18n.AcmeLogCleanup, i18n.AcmeLogWait}) {
 		t.Errorf("calls %v, log %v", s.calls, logged)
 	}
 }

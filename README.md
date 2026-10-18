@@ -29,7 +29,8 @@ Working on the main branch:
   the client of Namecheap's SSL Manager. Experimental and off until you
   switch it on; not yet tried against a real account.
 - Domain validation through DNS records at any of the 221 providers that
-  [lego](https://github.com/go-acme/lego) supports, or over HTTP: files in
+  [lego](https://github.com/go-acme/lego) supports, or added by hand at
+  any other, or over HTTP: files in
   a website's directory, local or over SSH, answers from JEC itself once
   the website's proxy or CDN sends `/.well-known/` on to it, or, for
   websites on Alibaba Cloud ESA, answers at ESA's edge from Edge KV,
@@ -60,7 +61,7 @@ Working on the main branch:
   app (two-factor authentication).
 - One small container image or one static binary, with SQLite.
 
-Planned: manual validation, hooks, and more CDNs and panels.
+Planned: records of any type for the DNS validations of vendors, hooks, and more CDNs and panels.
 
 ## Quick start
 

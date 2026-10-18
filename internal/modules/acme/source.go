@@ -2,7 +2,9 @@ package acme
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"slices"
@@ -222,6 +224,12 @@ type dnsProvider struct {
 
 func (p *dnsProvider) Present(ctx context.Context, domain, token, keyAuth string) error {
 	p.log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepChallenge, Key: i18n.AcmeLogPresent, Params: map[string]any{"domain": domain}})
+	// The record itself, for people to check, or to add by hand (RFC 8555
+	// section 8.4).
+	sum := sha256.Sum256([]byte(keyAuth))
+	p.log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepChallenge, Key: i18n.AcmeLogRecord, Params: map[string]any{
+		"name": "_acme-challenge." + domain, "value": base64.RawURLEncoding.EncodeToString(sum[:]),
+	}})
 	err := p.solver.Present(ctx, contracts.Challenge{Domain: domain, Token: token, KeyAuth: keyAuth})
 	var problem *contracts.Problem
 	if err != nil && !errors.As(err, &problem) {
