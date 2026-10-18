@@ -416,6 +416,34 @@
       "name": "Bark"
     }
   },
+  "caddy": {
+    "admin": {
+      "description": "Puts certificates into Caddy through its admin API (apps.tls.certificates.load_pem): each new version replaces the one before in place, and Caddy serves it at once, with no restart. Mind that a Caddy starting from a Caddyfile loses them when it restarts: start it with caddy run --resume, or deploy to a local directory with a tls directive instead.",
+      "name": "Caddy (admin API)"
+    },
+    "error": {
+      "api": "Caddy refused the change (status {status}): {error}",
+      "connect": "Could not reach Caddy's admin API at {url}. Check the address, and that Caddy's admin listens where JEC can reach it.",
+      "plain": "{url} is on the public internet, where the private key may not go over http://. Use an address of the local network or a unix:// socket.",
+      "url": "The admin API address must start with http:// or unix://: {url}"
+    },
+    "field": {
+      "url": "Admin API address",
+      "url_help": "Such as http://caddy:2019 in the Docker network of JEC, with admin 0.0.0.0:2019 in Caddy's config, or a unix:// socket mounted in. The private key goes through it, so http:// reaches this machine or the local network only."
+    },
+    "log": {
+      "add": "Caddy has no certificate {id} yet; adding it",
+      "loaded": "Caddy took the new certificate",
+      "replace": "Replacing certificate {id} in Caddy"
+    },
+    "module": {
+      "description": "Puts certificates into Caddy through its admin API.",
+      "name": "Caddy"
+    },
+    "test": {
+      "ok": "Connected to Caddy's admin API at {url}."
+    }
+  },
   "certs": {
     "action": {
       "add": "Add certificate",

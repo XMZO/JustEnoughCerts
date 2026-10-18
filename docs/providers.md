@@ -58,6 +58,7 @@ Reports of what works with a real account, or does not, are welcome.
 | `baota.site` | BaoTa (aaPanel) websites | Fake |
 | `onepanel.certificate` | 1Panel certificates | Fake |
 | `npm.certificate` | Nginx Proxy Manager | Real software: NPM 2.16 |
+| `caddy.admin` | Caddy, through its admin API | Real software: Caddy 2.11 |
 | `synology.dsm` | Synology DSM | Fake, after acme.sh's deploy hook |
 | `proxmox.node` | Proxmox VE nodes | Fake |
 | `kubernetes.secret` | Kubernetes TLS Secrets | Real software: kube-apiserver 1.36 with RBAC |

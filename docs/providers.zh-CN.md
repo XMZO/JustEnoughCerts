@@ -52,6 +52,7 @@ JEC 的每种证书来源、验证方式、部署目标和通知渠道，以及�
 | `baota.site` | 宝塔（aaPanel）网站 | 替身 |
 | `onepanel.certificate` | 1Panel 证书 | 替身 |
 | `npm.certificate` | Nginx Proxy Manager | 真实软件：NPM 2.16 |
+| `caddy.admin` | 经管理接口装进 Caddy | 真实软件：Caddy 2.11 |
 | `synology.dsm` | 群晖 DSM | 替身，照着 acme.sh 的部署脚本 |
 | `proxmox.node` | Proxmox VE 节点 | 替身 |
 | `kubernetes.secret` | Kubernetes 的 TLS Secret | 真实软件：kube-apiserver 1.36，带 RBAC |

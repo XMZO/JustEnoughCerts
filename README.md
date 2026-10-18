@@ -48,7 +48,8 @@ Working on the main branch:
   through Tencent Cloud's SSL Certificates to its CDN, EdgeOne, CLB and
   more, and through AWS Certificate Manager to CloudFront and load
   balancers; to websites of BaoTa (aaPanel) and 1Panel, to Nginx Proxy
-  Manager, Synology DSM and Proxmox VE nodes; to local directories and to
+  Manager, Synology DSM and Proxmox VE nodes; into Caddy through its admin
+  API; to local directories and to
   servers over SSH, each with a command afterwards, such as reloading
   nginx; into Docker containers, which are then signaled to reload, or
   restarted; into Kubernetes TLS Secrets; and to webhooks, as JSON or in

@@ -416,6 +416,34 @@
       "name": "Bark"
     }
   },
+  "caddy": {
+    "admin": {
+      "description": "通过管理接口把证书装进 Caddy（apps.tls.certificates.load_pem），每个新版本原地替换，Caddy 立即换上，不用重启。注意：Caddy 从 Caddyfile 启动时，重启后会丢掉接口装上的证书，可以用 caddy run --resume 启动，或者改用本地目录部署加 tls 指令。",
+      "name": "Caddy（管理接口）"
+    },
+    "error": {
+      "api": "Caddy 拒绝了这次修改（状态 {status}）：{error}",
+      "connect": "连不上 Caddy 的管理接口 {url}。请检查地址，以及 Caddy 的 admin 有没有监听在 JEC 能访问的地址上。",
+      "plain": "{url} 在公网上：私钥不能经公网用 http:// 发送。请用内网地址或 unix:// 套接字。",
+      "url": "管理接口地址要以 http:// 或 unix:// 开头：{url}"
+    },
+    "field": {
+      "url": "管理接口地址",
+      "url_help": "比如同一个 Docker 网络里的 http://caddy:2019（Caddy 的配置里要写 admin 0.0.0.0:2019），或者挂载进来的 unix:// 套接字。私钥会经过这个接口，所以 http:// 只能连本机或内网。"
+    },
+    "log": {
+      "add": "Caddy 里还没有证书 {id}，加进去",
+      "loaded": "Caddy 已换上新证书",
+      "replace": "替换 Caddy 里的证书 {id}"
+    },
+    "module": {
+      "description": "通过 Caddy 的管理接口把证书装进 Caddy。",
+      "name": "Caddy"
+    },
+    "test": {
+      "ok": "已连上 Caddy 的管理接口 {url}。"
+    }
+  },
   "certs": {
     "action": {
       "add": "添加证书",
