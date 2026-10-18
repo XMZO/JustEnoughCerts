@@ -77,6 +77,33 @@
       "ok": "Reached {directory}; the account works."
     }
   },
+  "bark": {
+    "device": {
+      "description": "Pushes notes to an iPhone with the Bark app, by its device key.",
+      "name": "Bark (iPhone)"
+    },
+    "error": {
+      "api": "Bark refused the message: {message} ({code})",
+      "key": "The Bark server does not know this device key. Copy it again from the Bark app.",
+      "network": "Could not reach {host}.",
+      "private": "{host} is a private address. To reach it, turn on “Allow private addresses” in the advanced settings.",
+      "redirect": "The server redirects (HTTP {status}) to {location}; use that address instead.",
+      "server": "Not a valid server address: {server}",
+      "status": "The server's answer made no sense (HTTP {status}). Check its address."
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "By default only public addresses are reached. Turn it on for a server of your own on this machine or on your network.",
+      "key": "Device key",
+      "key_help": "The Bark app shows example URLs like https://api.day.app/<key>/…: copy the part after the server's address.",
+      "server": "Server",
+      "server_help": "Change it only for a Bark server of your own."
+    },
+    "module": {
+      "description": "Pushes notes to iPhones through the Bark app.",
+      "name": "Bark"
+    }
+  },
   "certs": {
     "action": {
       "add": "Add certificate",
@@ -710,6 +737,33 @@
       "shared": "This directory serves every domain"
     }
   },
+  "gotify": {
+    "app": {
+      "description": "Pushes notes as an application of your Gotify server, to its apps and web UI.",
+      "name": "Gotify"
+    },
+    "error": {
+      "api": "Gotify refused the message: {message} (HTTP {status})",
+      "network": "Could not reach {host}.",
+      "private": "{host} is a private address. To reach it, turn on “Allow private addresses” in the advanced settings.",
+      "redirect": "The server redirects (HTTP {status}) to {location}; use that address instead.",
+      "server": "Not a valid server address: {server}",
+      "status": "The server's answer made no sense (HTTP {status}). Check its address.",
+      "token": "Gotify does not accept this token. Use the token of an application, not of a client."
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "By default only public addresses are reached. Turn it on when the server is on this machine or on your network.",
+      "server": "Server",
+      "server_help": "The address of your Gotify server, such as https://gotify.example.com.",
+      "token": "Application token",
+      "token_help": "In Gotify's web UI: Apps → Create Application, then copy its token. The token of a client does not work."
+    },
+    "module": {
+      "description": "Pushes notes to a Gotify server of your own.",
+      "name": "Gotify"
+    }
+  },
   "kernel": {
     "account": {
       "confirm_password": "Your password",
@@ -1052,6 +1106,58 @@
       "sent": "The test is on its way.",
       "text": "If this reached you, the channel is set up right.",
       "title": "A test note"
+    }
+  },
+  "ntfy": {
+    "error": {
+      "api": "The server refused the message: {error} (HTTP {status})",
+      "auth": "The server refused: the topic needs an access token, or this one may not publish to it ({error}).",
+      "network": "Could not reach {host}.",
+      "private": "{host} is a private address. To reach it, turn on “Allow private addresses” in the advanced settings.",
+      "redirect": "The server redirects (HTTP {status}) to {location}; use that address instead.",
+      "server": "Not a valid server address: {server}",
+      "status": "The server's answer made no sense (HTTP {status}). Check its address.",
+      "throttled": "The server asked to slow down ({error}); trying again later.",
+      "topic": "A topic's name has 1 to 64 letters, digits, - or _."
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "By default only public addresses are reached. Turn it on for a server of your own on this machine or on your network.",
+      "server": "Server",
+      "server_help": "ntfy.sh, or the address of your own ntfy server.",
+      "token": "Access token",
+      "token_help": "For a server or topic that needs one: a token starting with tk_, made in the web app's account settings or with ntfy token add.",
+      "topic": "Topic",
+      "topic_help": "Subscribe to the same topic in the ntfy app. On ntfy.sh anyone who knows a topic's name can read it, so pick one hard to guess: letters, digits, - and _."
+    },
+    "module": {
+      "description": "Publishes notes to an ntfy topic, on ntfy.sh or a server of your own.",
+      "name": "ntfy"
+    },
+    "topic": {
+      "description": "Every phone and browser subscribed to the topic gets the notes.",
+      "name": "ntfy"
+    }
+  },
+  "serverchan": {
+    "error": {
+      "api": "ServerChan refused the message: {message} ({code})",
+      "key": "ServerChan does not accept this SendKey. Copy it again from its SendKey page.",
+      "network": "Could not reach ServerChan.",
+      "status": "ServerChan's answer made no sense (HTTP {status}).",
+      "throttled": "ServerChan limits how often an address may call it in a day; trying again later."
+    },
+    "field": {
+      "key": "SendKey",
+      "key_help": "From the SendKey page of sct.ftqq.com (Turbo) or sc3.ft07.com (ServerChan³, whose keys start with sctp); JEC tells them apart."
+    },
+    "module": {
+      "description": "Sends notes to WeChat and other apps through ServerChan.",
+      "name": "ServerChan"
+    },
+    "sendkey": {
+      "description": "Pushes notes through a SendKey of ServerChan Turbo or ServerChan³.",
+      "name": "ServerChan"
     }
   },
   "ssh": {

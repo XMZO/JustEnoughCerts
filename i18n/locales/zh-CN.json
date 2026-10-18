@@ -77,6 +77,33 @@
       "ok": "已连上 {directory}，账号可以用。"
     }
   },
+  "bark": {
+    "device": {
+      "description": "用 Bark App 的设备 Key 把通知推送到 iPhone。",
+      "name": "Bark（iPhone）"
+    },
+    "error": {
+      "api": "Bark 拒绝了这条消息：{message}（{code}）",
+      "key": "Bark 服务器不认这个设备 Key，请从 Bark App 里重新复制。",
+      "network": "连不上 {host}。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "redirect": "服务器要求跳转（HTTP {status}）到 {location}，请直接填写跳转后的地址。",
+      "server": "服务器地址不对：{server}",
+      "status": "服务器的回应看不懂（HTTP {status}），请检查服务器地址。"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "默认只连公网地址。自建服务器在本机或内网里时打开。",
+      "key": "设备 Key",
+      "key_help": "Bark App 里的示例地址形如 https://api.day.app/你的Key/…，复制服务器地址后面的那一段。",
+      "server": "服务器",
+      "server_help": "只有自建 Bark 服务器时才需要改。"
+    },
+    "module": {
+      "description": "通过 Bark App 把通知推送到 iPhone。",
+      "name": "Bark"
+    }
+  },
   "certs": {
     "action": {
       "add": "添加证书",
@@ -710,6 +737,33 @@
       "shared": "所有域名都用这个目录"
     }
   },
+  "gotify": {
+    "app": {
+      "description": "作为 Gotify 服务器上的一个应用推送通知，Gotify 的 App 和网页都能收到。",
+      "name": "Gotify"
+    },
+    "error": {
+      "api": "Gotify 拒绝了这条消息：{message}（HTTP {status}）",
+      "network": "连不上 {host}。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "redirect": "服务器要求跳转（HTTP {status}）到 {location}，请直接填写跳转后的地址。",
+      "server": "服务器地址不对：{server}",
+      "status": "服务器的回应看不懂（HTTP {status}），请检查服务器地址。",
+      "token": "Gotify 不认这个令牌。请用应用（App）的令牌，不是客户端（Client）的。"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "默认只连公网地址。服务器在本机或内网里时打开。",
+      "server": "服务器",
+      "server_help": "自建 Gotify 服务器的地址，比如 https://gotify.example.com。",
+      "token": "应用令牌",
+      "token_help": "在 Gotify 网页里：Apps → Create Application，然后复制它的令牌。客户端（Client）的令牌不能用。"
+    },
+    "module": {
+      "description": "把通知推送到自建的 Gotify 服务器。",
+      "name": "Gotify"
+    }
+  },
   "kernel": {
     "account": {
       "confirm_password": "你的登录密码",
@@ -1052,6 +1106,58 @@
       "sent": "测试通知已发出，请查收。",
       "text": "能收到这条消息，说明这个通知渠道设置正确。",
       "title": "测试通知"
+    }
+  },
+  "ntfy": {
+    "error": {
+      "api": "服务器拒绝了这条消息：{error}（HTTP {status}）",
+      "auth": "服务器拒绝了：这个主题需要访问令牌，或者这个令牌没有发布权限（{error}）。",
+      "network": "连不上 {host}。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "redirect": "服务器要求跳转（HTTP {status}）到 {location}，请直接填写跳转后的地址。",
+      "server": "服务器地址不对：{server}",
+      "status": "服务器的回应看不懂（HTTP {status}），请检查服务器地址。",
+      "throttled": "服务器限制了发送频率（{error}），稍后再试。",
+      "topic": "主题名只能用 1 到 64 个字母、数字、- 或 _。"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "默认只连公网地址。自建服务器在本机或内网里时打开。",
+      "server": "服务器",
+      "server_help": "用 ntfy.sh，或者填自建 ntfy 服务器的地址。",
+      "token": "访问令牌",
+      "token_help": "服务器或主题需要登录时填写：以 tk_ 开头的令牌，在网页版的账号设置里或用 ntfy token add 生成。",
+      "topic": "主题",
+      "topic_help": "在 ntfy App 里订阅同一个主题。在 ntfy.sh 上，知道主题名的人都能看到消息，所以要取一个难猜的名字，只能用字母、数字、- 和 _。"
+    },
+    "module": {
+      "description": "把通知发布到 ntfy 的主题，可以用 ntfy.sh 或自建服务器。",
+      "name": "ntfy"
+    },
+    "topic": {
+      "description": "订阅了这个主题的手机和浏览器都能收到通知。",
+      "name": "ntfy"
+    }
+  },
+  "serverchan": {
+    "error": {
+      "api": "Server酱 拒绝了这条消息：{message}（{code}）",
+      "key": "Server酱 不认这个 SendKey，请到 SendKey 页面重新复制。",
+      "network": "连不上 Server酱。",
+      "status": "Server酱 的回应看不懂（HTTP {status}）。",
+      "throttled": "Server酱 限制了这个地址一天内的调用次数，稍后再试。"
+    },
+    "field": {
+      "key": "SendKey",
+      "key_help": "在 sct.ftqq.com（Turbo 版）或 sc3.ft07.com（Server酱³，以 sctp 开头）的 SendKey 页面复制，JEC 会自动区分。"
+    },
+    "module": {
+      "description": "通过 Server酱 把通知推送到微信等 App。",
+      "name": "Server酱"
+    },
+    "sendkey": {
+      "description": "用 Server酱（Turbo 版或 Server酱³）的 SendKey 推送通知。",
+      "name": "Server酱"
     }
   },
   "ssh": {

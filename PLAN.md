@@ -361,7 +361,7 @@ DNS 验证分成两种能力，实现方式不同：
 | 阶段 | 渠道 |
 |---|---|
 | M1 | Telegram、SMTP 邮件、通用 Webhook |
-| M3 | 钉钉、飞书、企业微信（已完成）；Server酱、Bark、ntfy、Gotify |
+| M3 | 钉钉、飞书、企业微信、Server酱、Bark、ntfy、Gotify（已完成） |
 
 **实现**（M1）：
 
@@ -371,6 +371,12 @@ DNS 验证分成两种能力，实现方式不同：
 - **邮件**（`email.smtp`）：服务器、加密方式（SSL/TLS、STARTTLS、不加密）、端口（留空时按加密方式取 465、587、25）、用户名、密码或授权码、发件人、收件人（逗号分隔）。按服务器提供的方式用 PLAIN 或 LOGIN 登录（net/smtp 没有 LOGIN，自己实现），两者都不会在不加密的连接上发送密码（发往本机除外）。邮件标题用消息的主题。UTF-8 纯文本，quoted-printable 编码。登录失败、收件人被拒、证书不受信任、加密方式和端口对不上都不重试。
 - **Webhook**（`webhook.notify`）：把 `contracts.Note` 原样 POST 成 JSON；签名、请求头、内网限制和重试规则同 Webhook 部署。
 - **群机器人**（M3）：钉钉（`dingtalk.robot`）、飞书（`feishu.bot`，也接受 Lark 国际版的地址）、企业微信（`wecom.robot`）。都填群里机器人的 Webhook 地址（地址里有令牌，保密保存，必须是官方地址的前缀），发纯文本：主题加正文，主题里有 `JEC`，所以机器人的安全设置可以用关键词 `JEC`。钉钉和飞书还可以填加签密钥：钉钉用密钥对“毫秒时间戳 + 换行 + 密钥”算 HMAC-SHA256，`timestamp`、`sign` 放进 URL；飞书以“秒时间戳 + 换行 + 密钥”为密钥对空内容算 HMAC-SHA256，放进请求体。文字超过上限时在字符之间截断（企业微信 2048 字节，钉钉、飞书 4000 字节）。令牌失效、签名不对、缺关键词等不重试；限流（每个机器人每分钟 20 条左右）一分钟后再试；网络问题和 5xx 照常重试。错误信息不带 URL。
+- **推送服务**（M3）：
+  - **Bark**（`bark.device`）：设备 Key（保密）、服务器（默认 `https://api.day.app`，可以换成自建的）。POST `/push`：标题用主题，内容用正文，分组 `JEC`，有链接时点通知打开 JEC 里对应的页面。服务器不认这个 Key 时不重试。
+  - **Server酱**（`serverchan.sendkey`）：SendKey（保密），按开头区分 Turbo 版（`https://sctapi.ftqq.com/<SendKey>.send`）和 Server酱³（`sctp<uid>t…`，发到 `https://<uid>.push.ft07.com/send/<SendKey>.send`）。标题最多 32 个字，超出时截断，完整标题放进正文；卡片摘要（`short`）是正文第一行；正文是 Markdown，每行一段，链接以外的格式字符都转义。Turbo 加 `noip=1`，不显示调用方 IP；Server酱³ 加标签 `JEC`。SendKey 不对不重试；429（这个 IP 一天内调用太多）按退避重试。
+  - **ntfy**（`ntfy.topic`）：服务器（默认 `https://ntfy.sh`）、主题（保密：在 ntfy.sh 上知道主题名就能订阅）、访问令牌（可选，`Authorization: Bearer`）。JSON 发到服务器根路径；签发失败、部署失败、快到期、线上还是旧证书用高优先级（4）和 `warning` 标签，签发、部署成功用 `white_check_mark` 标签；有链接时点通知打开对应页面；正文超过 4000 字节时截断（超过 4096 字节 ntfy 会把消息变成附件）。401、403 不重试，429 按 `Retry-After` 或退避重试。
+  - **Gotify**（`gotify.app`）：服务器、应用令牌（保密，放在 `X-Gotify-Key` 头里）。POST `/message`，纯文本；需要处理的事件优先级 8（安卓 App 弹横幅），其他是 5；有链接时点通知打开对应页面。令牌不对不重试。
+  - 能自建的三种（Bark、ntfy、Gotify）都有“允许内网地址”开关（默认关，同 Webhook），都不跟随跳转（跳转会把 POST 变成 GET，还可能把令牌带到别处），遇到跳转时报出跳转到的地址。
 - 共用的 HTTP 客户端在 `internal/lib/httpx`：超时、单独设置的代理（不读环境变量里的代理），以及“只连公网地址”（第 10 节）。
 
 ### 5.4 阿里云 ESA 目标的注意点（来自实际调研）

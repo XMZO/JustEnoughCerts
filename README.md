@@ -40,9 +40,9 @@ Working on the main branch:
 - Renewal once a certificate enters its renewal window, at the time of
   day set on the Settings page (02:00 by default), or at once with a week
   or less left; failures are retried with a growing delay.
-- Notifications through Telegram, email (SMTP), webhooks and the group
-  robots of DingTalk, Feishu (Lark) and WeCom, each in the language you
-  choose for it.
+- Notifications through Telegram, email (SMTP), webhooks, the group
+  robots of DingTalk, Feishu (Lark) and WeCom, ServerChan, Bark, ntfy and
+  Gotify, each in the language you choose for it.
 - A history of every issuance, renewal and deployment, with its full log.
 - Online checks: JEC connects to each domain as a browser does and tells
   you when one still serves the old certificate after a renewal, as when a
@@ -51,8 +51,7 @@ Working on the main branch:
   Modules page or left out at build time.
 - One small container image or one static binary, with SQLite.
 
-Planned: manual validation, hooks, and more CDNs, panels and notification
-channels.
+Planned: manual validation, hooks, and more CDNs and panels.
 
 ## Quick start
 
