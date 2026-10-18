@@ -1510,6 +1510,45 @@
       "ok": "JEC can reach the node {node} with the token."
     }
   },
+  "qiniu": {
+    "cdn": {
+      "description": "Uploads each new version to the SSL certificates of Qiniu Cloud and sets it on the accelerated domains, turning HTTPS on where it is off.",
+      "name": "Qiniu Cloud CDN"
+    },
+    "error": {
+      "api": "Qiniu Cloud refused: {message} (HTTP {status})",
+      "domain": "Qiniu Cloud has no accelerated domain {domain} in this account: {message}",
+      "keys": "Qiniu Cloud refused the keys: {message}. Check the AccessKey and SecretKey.",
+      "network": "Could not reach Qiniu Cloud.",
+      "no_domains": "No domain to set the certificate on: enter the accelerated domains, as the certificate holds wildcards only.",
+      "status": "The answer of Qiniu Cloud made no sense (HTTP {status})."
+    },
+    "field": {
+      "access_key": "AccessKey",
+      "delete_old": "Delete old certificates",
+      "delete_old_help": "Once the domains use the new version, delete the certificates JEC uploaded before. Qiniu keeps those that a domain still uses.",
+      "domains": "Accelerated domains",
+      "domains_help": "Separated by commas; a wildcard domain is written as .example.com. Leave empty to use the domains of the certificate, but for wildcards.",
+      "secret_key": "SecretKey",
+      "secret_key_help": "From Personal Center → Key Management in the Qiniu console."
+    },
+    "log": {
+      "current": "{domain} uses the certificate already",
+      "remove_failed": "Could not delete the certificate {id} of an earlier deployment; JEC tries again next time",
+      "removed": "Deleted the certificate {id} of an earlier deployment",
+      "sslize": "Turning HTTPS on for {domain}, with the certificate",
+      "switch": "Setting the certificate on {domain}",
+      "upload": "Uploading the certificate as {name}"
+    },
+    "module": {
+      "description": "Deploys certificates to the CDN of Qiniu Cloud.",
+      "name": "Qiniu Cloud"
+    },
+    "test": {
+      "keys": "The keys work. JEC sets the certificate on its own domains, but for wildcards.",
+      "ok": "Found the accelerated domains {domains}."
+    }
+  },
   "serverchan": {
     "error": {
       "api": "ServerChan refused the message: {message} ({code})",

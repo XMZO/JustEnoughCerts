@@ -347,7 +347,7 @@ DNS 验证分成两种能力，实现方式不同：
 
 | 类别 | 平台 | 阶段 |
 |---|---|---|
-| CDN / 边缘 | **阿里云 ESA**（M1）；阿里云 CDN / DCDN（已完成）、腾讯云 EdgeOne、腾讯云 CDN、华为云 CDN、百度智能云 CDN、火山引擎 CDN、七牛云、又拍云、AWS CloudFront、Cloudflare（自定义证书需付费套餐） | M1 / M3 |
+| CDN / 边缘 | **阿里云 ESA**（M1）；阿里云 CDN / DCDN、七牛云（已完成）、腾讯云 EdgeOne、腾讯云 CDN、华为云 CDN、百度智能云 CDN、火山引擎 CDN、又拍云、AWS CloudFront、Cloudflare（自定义证书需付费套餐） | M1 / M3 |
 | 负载均衡 / 证书库 | 阿里云 SLB / ALB、阿里云证书服务、腾讯云 CLB、腾讯云 SSL 证书（已完成，经它更新 CDN、EdgeOne、CLB 等）、AWS ACM | M3 |
 | 对象存储 | 阿里云 OSS、腾讯云 COS 的自定义域名 HTTPS | M3 |
 | 服务器 | 本地文件 + 执行命令（nginx、caddy、haproxy 等）；SSH / SFTP 上传 + 远程命令；Docker 容器（通过挂载的 Docker API 发信号或重启，不需要 docker 命令行）；Kubernetes Secret | M1（本地、SSH）/ M3（Docker 已完成） |
@@ -378,6 +378,8 @@ DNS 验证分成两种能力，实现方式不同：
 **腾讯云的实现**（`internal/modules/tencentcloud`，M3）：部署目标类型 `tencentcloud.ssl`：SecretId、SecretKey，要更新的资源类型（`cdn`、`teo`、`clb`、`waf`、`live`、`ddos`、`apigateway`、`vod`、`tke`、`tcb`、`tse`、`cos`，逗号分隔，默认 `cdn`），首次替换的证书 ID，删除被替换的证书（默认开），地域（给 clb 等要地域的类型），站点（中国站 `ssl.tencentcloudapi.com` 或国际站）。每个新版本先 `UploadCertificate`（`Repeatable=false`：同一张证书已经在时返回它的 ID，重试不会重复上传），再用 `UpdateCertificateInstance` 一键更新：旧证书是上一个版本（第一次是设置的首次替换证书），腾讯云把绑定旧证书的资源都换成新证书；这个接口是异步的，任务 ID 为 0 时每 3 秒再调一次，最多 2 分钟。没有旧证书时只上传，日志提示去控制台部署一次。删除只针对更早的版本：正在被替换的那张下次部署时再删，删不掉只记警告。测试连接调 `DescribeCertificates`。用 SDK 的通用客户端（TC3 签名），不引入 SSL 服务的 SDK。只用替身 API 测过，还没有对真实账号验证。
 
 **阿里云 CDN 和全站加速的实现**（`internal/modules/aliyun`，M3）：部署目标类型 `aliyun.cdn`、`aliyun.dcdn`：AccessKey，加速域名（逗号分隔；留空时用证书里不是通配符的域名）。每个新版本对每个加速域名调一次 `SetCdnDomainSSLCertificate` / `SetDcdnDomainSSLCertificate`：`CertType=upload`、`SSLProtocol=on`，证书链和私钥放在表单里，不传证书名，由阿里云起名，和 acme.sh 的 `ali_cdn`、`ali_dcdn` 一样。上传的证书会存进数字证书管理服务，JEC 不删旧的。测试连接对每个加速域名调 `DescribeDomainCertificateInfo` / `DescribeDcdnDomainCertificateInfo`，不做改动。用阿里云 OpenAPI 客户端的通用调用（V3 签名），不引入各产品的 SDK；错误码由 `internal/lib/aliyunapi` 读取（客户端返回的是 `*tea.SDKError`）。域名不在这个账号、AccessKey 或权限不对都不重试，限流和 5xx 照常重试。只用替身 API 测过，还没有对真实账号验证。
+
+**七牛云的实现**（`internal/modules/qiniu`，M3）：部署目标类型 `qiniu.cdn`：AccessKey、SecretKey、加速域名（逗号分隔，泛域名写成 `.example.com`；留空时用证书里不是通配符的域名）、删除旧证书（默认开）。接口用法依据 acme.sh 的 `deploy/qiniu.sh` 和七牛的文档；请求用 QBox 签名：`Authorization: QBox AK:签名`，签名是 SecretKey 对“路径和查询 + 换行”的 HMAC-SHA1，URL 安全的 Base64，JSON 请求体不参与签名。先在证书列表（`GET /sslcert`，分页）里按名字找这次要传的证书（名字是 `jec-<证书 ID>-<指纹前 12 位>`，中断后重试不会重复上传），没有就 `POST /sslcert`（`name`、`common_name`、`ca` 证书链、`pri` 私钥）。再对每个加速域名查 `GET /domain/<域名>`：已经在用这张的跳过；开了 HTTPS 的用 `PUT /domain/<域名>/httpsconf` 换证书，保留原来的强制 HTTPS 和 HTTP/2 设置；没开的用 `PUT …/sslize` 开启（不强制 HTTPS，开 HTTP/2）。最后删除以前部署上传的证书（`DELETE /sslcert/<ID>`）：还有域名在用的七牛不让删，只记警告，下次部署再删。密钥不对、域名不在这个账号都不重试。只用替身 API 测过。
 
 **Docker 容器的实现**（`internal/modules/docker`，M3）：部署目标类型 `docker.container`：容器（名字或 ID）、容器里的目录（可选，绝对路径，要已经存在）和放法（同本地文件）、放好之后做什么（发信号，默认 `HUP`；重启；什么都不做）、文件属主（`uid:gid`，默认 root）、Docker 地址（默认 `unix:///var/run/docker.sock`，也可以是 `tcp://` 的 socket 代理）。经 Docker Engine API，路径不带版本号，由 Docker 按它自己的版本回答（Docker 29 起不再接受 1.44 以下的版本）：四个文件打成 tar 用 `PUT /containers/{id}/archive` 放进目录（私钥 0600），再 `POST /containers/{id}/kill?signal=…` 或 `/restart`。容器没在运行时不发信号，算部署成功（启动时会读到新文件）。测试连接只读：查容器（`GET /containers/{id}/json`）和目录（`HEAD …/archive`）。找不到容器或目录、没有 socket、没有权限（socket 所属的组、代理没放开）都不重试，Docker 的 5xx 和网络问题照常重试。挂载 Docker socket 等于给了主机的 root 权限，所以 `docker-compose.yml` 的注释建议用只放开 `CONTAINERS=1`、`POST=1` 的 socket 代理。
 

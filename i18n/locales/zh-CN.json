@@ -1510,6 +1510,45 @@
       "ok": "JEC 用这个令牌能访问节点 {node}。"
     }
   },
+  "qiniu": {
+    "cdn": {
+      "description": "把每个新版本上传到七牛云的 SSL 证书，并设置到加速域名上；没开 HTTPS 的域名会顺便开启。",
+      "name": "七牛云 CDN"
+    },
+    "error": {
+      "api": "七牛云拒绝了：{message}（HTTP {status}）",
+      "domain": "这个七牛云账号里没有加速域名 {domain}：{message}",
+      "keys": "七牛云拒绝了密钥：{message}。请核对 AccessKey 和 SecretKey。",
+      "network": "连不上七牛云。",
+      "no_domains": "没有可设置证书的域名：证书里只有通配符域名，请填写加速域名。",
+      "status": "七牛云的回应看不懂（HTTP {status}）。"
+    },
+    "field": {
+      "access_key": "AccessKey",
+      "delete_old": "删除旧证书",
+      "delete_old_help": "加速域名换上新版本后，删除 JEC 以前上传的证书。还有域名在用的，七牛云不让删。",
+      "domains": "加速域名",
+      "domains_help": "用逗号分隔；泛域名写成 .example.com。留空时用证书里不是通配符的域名。",
+      "secret_key": "SecretKey",
+      "secret_key_help": "在七牛云控制台的 个人中心 → 密钥管理 里。"
+    },
+    "log": {
+      "current": "{domain} 已经在用这张证书",
+      "remove_failed": "没能删除以前部署的证书 {id}，下次部署时再删",
+      "removed": "删除了以前部署的证书 {id}",
+      "sslize": "为 {domain} 开启 HTTPS，使用这张证书",
+      "switch": "把证书设置到 {domain}",
+      "upload": "上传证书，名为 {name}"
+    },
+    "module": {
+      "description": "把证书部署到七牛云 CDN。",
+      "name": "七牛云"
+    },
+    "test": {
+      "keys": "密钥可用。JEC 会把证书设置到它自己的域名上（通配符域名除外）。",
+      "ok": "找到了加速域名 {domains}。"
+    }
+  },
   "serverchan": {
     "error": {
       "api": "Server酱 拒绝了这条消息：{message}（{code}）",
