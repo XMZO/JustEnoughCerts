@@ -1,6 +1,7 @@
 package i18n
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -404,6 +405,18 @@ func integer(v any) (int64, bool) {
 		return unsigned(uint64(v))
 	case uint64:
 		return unsigned(v)
+	case float64:
+		// A number decoded from JSON, such as the params of a stored
+		// message.
+		if v != math.Trunc(v) || v < math.MinInt64 || v >= math.MaxInt64 {
+			return 0, false
+		}
+		return int64(v), true
+	case float32:
+		return integer(float64(v))
+	case json.Number:
+		n, err := v.Int64()
+		return n, err == nil
 	}
 	return 0, false
 }

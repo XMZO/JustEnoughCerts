@@ -1,6 +1,7 @@
 package i18n
 
 import (
+	"encoding/json"
 	"math"
 	"slices"
 	"testing"
@@ -57,6 +58,11 @@ func TestFormat(t *testing.T) {
 		{ru, "{n, plural, one {one} few {few} many {many} other {other}}", Args{"n": 22}, "few"},
 		{ru, "{n, plural, one {one} few {few} many {many} other {other}}", Args{"n": 25}, "many"},
 		{en, "{n, plural, one {# day} other {# days}}", Args{"n": int64(20_000_001)}, "20,000,001 days"},
+		// Numbers decoded from JSON, as the params of stored messages are.
+		{en, days, Args{"n": float64(1)}, "1 day"},
+		{en, days, Args{"n": float64(3)}, "3 days"},
+		{en, days, Args{"n": float32(0)}, "no days"},
+		{en, days, Args{"n": json.Number("2")}, "2 days"},
 
 		// Selects, and nesting.
 		{en, "{kind, select, dns {DNS} http {HTTP} other {check}}", Args{"kind": "dns"}, "DNS"},
@@ -97,6 +103,8 @@ func TestFormatErrors(t *testing.T) {
 		{"Hi {name}", nil, "Hi {name}"},
 		{"{n, plural, other {# x}}", Args{"n": "three"}, "{n}"},
 		{"{n, plural, other {# x}}", Args{"n": 1.5}, "{n}"},
+		{"{n, plural, other {# x}}", Args{"n": 1e300}, "{n}"},
+		{"{n, plural, other {# x}}", Args{"n": json.Number("2.5")}, "{n}"},
 		{"{k, select, other {x}}", nil, "{k}"},
 	}
 	for _, tt := range tests {
