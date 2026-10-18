@@ -19,6 +19,7 @@ require (
 	golang.org/x/term v0.47.0
 	golang.org/x/text v0.43.0
 	golang.org/x/tools v0.52.0
+	mvdan.cc/sh/v3 v3.14.1
 	software.sslmate.com/src/go-pkcs12 v0.7.3
 )
 

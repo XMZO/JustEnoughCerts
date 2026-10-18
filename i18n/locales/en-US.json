@@ -688,6 +688,9 @@
       "name": "Local directory"
     },
     "error": {
+      "command": "The command failed with status {status}; the log has its output.",
+      "command_syntax": "The command is not valid shell: {error}",
+      "command_timeout": "The command was still running after {minutes, plural, one {# minute} other {# minutes}}, and was stopped.",
       "file_path": "The source asked for a file outside /.well-known/, which JEC does not write: {path}",
       "relative": "The directory must be an absolute path: {directory}",
       "watch_denied": "JEC cannot read {path}: permission denied. The keys of certbot and acme.sh are usually their owner's alone. Run JEC as that user, such as root (user 0:0 in docker-compose.yml), or have certbot's --deploy-hook copy them where JEC can read them.",
@@ -698,6 +701,8 @@
       "write": "Could not write to {directory}. Check that it exists and that JEC may write there."
     },
     "field": {
+      "command": "Command to run afterwards",
+      "command_help": "Such as systemctl reload nginx; leave it empty for none. JEC runs it with its built-in shell, in the certificate's directory, where $JEC_FULLCHAIN_FILE, $JEC_KEY_FILE, $JEC_DOMAINS and the like name the files and domains, as do certbot's $RENEWED_LINEAGE and $RENEWED_DOMAINS. The container image has no programs besides JEC.",
       "directory": "Directory",
       "directory_help": "An absolute path JEC can write to. In a container, a mounted directory, such as /data/certs.",
       "layout": "Where the files go",
@@ -712,6 +717,8 @@
       "flat": "Right in this directory"
     },
     "log": {
+      "command": "Running the command",
+      "output": "What the command wrote",
       "watch_found": "Took in {path}, valid until {date}",
       "watch_same": "{path} still holds the certificate in use: waiting for its client to renew it, looking again in {hours, plural, one {# hour} other {# hours}}",
       "watch_scan": "Looking in {directory} for the certificate of {domains}",

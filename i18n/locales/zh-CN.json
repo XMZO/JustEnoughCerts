@@ -688,6 +688,9 @@
       "name": "本地目录"
     },
     "error": {
+      "command": "命令执行失败，退出码 {status}，输出见日志。",
+      "command_syntax": "命令的 shell 语法不对：{error}",
+      "command_timeout": "命令执行了 {minutes, plural, other {# 分钟}}还没结束，已停止。",
       "file_path": "来源要放的文件不在 /.well-known/ 下，JEC 不会写：{path}",
       "relative": "目录必须是绝对路径：{directory}",
       "watch_denied": "JEC 读不了 {path}：没有权限。certbot 和 acme.sh 的私钥通常只有它们的属主能读：可以让 JEC 以这个用户运行，比如 root（在 docker-compose.yml 里把 user 设为 0:0），或者用 certbot 的 --deploy-hook 复制一份到 JEC 能读的地方。",
@@ -698,6 +701,8 @@
       "write": "没能写入 {directory}。请检查目录是否存在、JEC 有没有写入权限。"
     },
     "field": {
+      "command": "写入后执行的命令",
+      "command_help": "比如 systemctl reload nginx；留空则不执行。JEC 用内置的 shell 在证书目录里执行，可以用 $JEC_FULLCHAIN_FILE、$JEC_KEY_FILE、$JEC_DOMAINS 等变量取文件路径和域名，也设了 certbot 的 $RENEWED_LINEAGE 和 $RENEWED_DOMAINS。容器镜像里除了 JEC 没有别的程序。",
       "directory": "目录",
       "directory_help": "JEC 能写入的绝对路径。在容器里运行时，填挂载进来的目录，比如 /data/certs。",
       "layout": "文件放在哪里",
@@ -712,6 +717,8 @@
       "flat": "直接放在这个目录里"
     },
     "log": {
+      "command": "执行命令",
+      "output": "命令的输出",
       "watch_found": "取进 {path}，{date} 到期",
       "watch_same": "{path} 还是现在这张证书，等原来的工具续期，{hours, plural, other {# 小时}}后再看",
       "watch_scan": "在 {directory} 里找 {domains} 的证书",

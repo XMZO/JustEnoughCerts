@@ -345,7 +345,7 @@ DNS 验证分成两种能力，实现方式不同：
 | 面板与应用 | 1Panel、宝塔、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Caddy 管理 API | M3 |
 | 通用 | Webhook、外部插件 | M1 |
 
-**本地文件的实现**（`internal/modules/files`，M1）：部署目标类型 `files.directory`：目录（绝对路径）和放法（每张证书一个以主域名命名的子目录，`*` 写成 `star`；或者直接放在这个目录里）。按 certbot 的文件名写 `cert.pem`、`chain.pem`、`fullchain.pem`、`privkey.pem`（私钥只有所有者可读），每个文件先写到临时文件再改名，读的程序不会读到写了一半的文件；新版本直接覆盖，没有旧版本要删。目录是相对路径、没有写入权限时不自动重试。部署后重载 Web 服务器的命令还没有做，和钩子（5.2）一起做。
+**本地文件的实现**（`internal/modules/files`，M1）：部署目标类型 `files.directory`：目录（绝对路径）和放法（每张证书一个以主域名命名的子目录，`*` 写成 `star`；或者直接放在这个目录里）。按 certbot 的文件名写 `cert.pem`、`chain.pem`、`fullchain.pem`、`privkey.pem`（私钥只有所有者可读），每个文件先写到临时文件再改名，读的程序不会读到写了一半的文件；新版本直接覆盖，没有旧版本要删。目录是相对路径、没有写入权限时不自动重试。写好后可以执行一段命令（比如 `systemctl reload nginx`）：用内嵌的 shell 解释器（`mvdan.cc/sh`，POSIX sh 和 Bash 的写法都认）在证书目录里执行，最多 5 分钟；环境变量是 JEC 自己的环境去掉 `JEC_` 开头的设置（比如主密钥），加上 `JEC_CERT_DIR`、`JEC_CERT_FILE`、`JEC_CHAIN_FILE`、`JEC_FULLCHAIN_FILE`、`JEC_KEY_FILE`、`JEC_DOMAIN`、`JEC_DOMAINS`、`JEC_CERTIFICATE_ID`、`JEC_NOT_AFTER`，以及 certbot 部署钩子用的 `RENEWED_LINEAGE`、`RENEWED_DOMAINS`，现成的 certbot 钩子脚本可以直接用。输出的最后 4000 字节记进部署日志；退出码不是 0、语法不对、超时都不自动重试。测试连接只检查命令的语法，不执行。容器镜像里除了 JEC 没有别的程序，所以这主要给原生二进制部署用。
 
 **本机证书目录**（来源类型 `files.watch`，在 `files` 模块里）：取进另一个 ACME 客户端在本机续期的证书和私钥，比如 certbot 的 `/etc/letsencrypt`（`live/<名字>/fullchain.pem`、`privkey.pem`，以及 `archive/` 里的历次版本）、acme.sh 的主目录（`<域名>/fullchain.cer`、`<域名>.key`，ECC 证书在 `<域名>_ecc/`）。JEC 只读：在设置的目录里往下找 4 层，读 `.pem`、`.crt`、`.cer`、`.key` 文件（最多 5000 个、每个不超过 1 MiB），同一个目录里每把私钥配上那里的证书，按证书指纹去重；签发时取覆盖证书全部域名、到期最晚的那张。读文件经过 `os.Root`，不跟随指到这个目录外面的链接：certbot 的 `live/` 里是指向同级 `archive/` 的链接，所以要填 `/etc/letsencrypt`，填 `live` 目录时会提示改填上一级。
 - 来源接口多了一种 `contracts.KeySource`（类型标 `ownKey`）：证书自带私钥，证书模块不生成私钥（日志的“私钥”一步写明随证书取来），添加证书时也不选密钥类型。

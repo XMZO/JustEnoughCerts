@@ -32,14 +32,16 @@ func directoryType() providers.Type {
 				{Value: byDomain, Label: i18n.FilesLayoutByDomain},
 				{Value: flat, Label: i18n.FilesLayoutFlat},
 			}},
+			{Key: "command", Label: i18n.FilesFieldCommand, Help: i18n.FilesFieldCommandHelp, Kind: providers.Multiline},
 		},
 	}
 }
 
 // directory is a directory at work.
 type directory struct {
-	path   string
-	layout string
+	path    string
+	layout  string
+	command string
 }
 
 var (
@@ -48,17 +50,22 @@ var (
 )
 
 func factory(_ context.Context, in providers.Instance) (any, error) {
-	return &directory{path: strings.TrimSpace(in.Config["directory"]), layout: in.Config["layout"]}, nil
+	return &directory{path: strings.TrimSpace(in.Config["directory"]), layout: in.Config["layout"], command: strings.TrimSpace(in.Config["command"])}, nil
 }
 
 // Close has nothing to release.
 func (*directory) Close() error { return nil }
 
 // Test makes the directory, as the first deployment would, and writes and
-// removes a file there.
+// removes a file there. It reads the command without running it.
 func (d *directory) Test(context.Context) (contracts.Message, error) {
 	if !filepath.IsAbs(d.path) {
 		return contracts.Message{}, retry.Permanent(&contracts.Problem{Key: i18n.FilesErrorRelative, Params: map[string]any{"directory": d.path}})
+	}
+	if d.command != "" {
+		if _, err := parseCommand(d.command); err != nil {
+			return contracts.Message{}, err
+		}
 	}
 	if err := os.MkdirAll(d.path, 0o755); err != nil { //nolint:gosec // G301: a web server has to reach the files
 		return contracts.Message{}, fail(d.path, err)
@@ -75,10 +82,10 @@ func (d *directory) Test(context.Context) (contracts.Message, error) {
 }
 
 // Deploy writes the files, each through a temporary file renamed over the
-// old one, so that a reader never sees half a file. The private key is
-// readable by its owner only. Files are overwritten, so there is nothing
-// to remove afterwards.
-func (d *directory) Deploy(_ context.Context, req contracts.DeployRequest) (contracts.DeployResult, error) {
+// old one, so that a reader never sees half a file, and then runs the
+// command. The private key is readable by its owner only. Files are
+// overwritten, so there is nothing to remove afterwards.
+func (d *directory) Deploy(ctx context.Context, req contracts.DeployRequest) (contracts.DeployResult, error) {
 	var none contracts.DeployResult
 	log := req.Log
 	if log == nil {
@@ -119,6 +126,11 @@ func (d *directory) Deploy(_ context.Context, req contracts.DeployRequest) (cont
 	for _, f := range files {
 		if err := writeFile(filepath.Join(dir, f.name), f.data, f.mode); err != nil {
 			return none, fail(dir, err)
+		}
+	}
+	if d.command != "" {
+		if err := runCommand(ctx, d.command, dir, req, log); err != nil {
+			return none, err
 		}
 	}
 	return contracts.DeployResult{}, nil
