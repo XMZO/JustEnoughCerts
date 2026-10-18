@@ -2484,6 +2484,44 @@
       "ok": "JEC 能访问 SSL 证书服务：这个账号有 {count, plural, other {# 张证书}}。"
     }
   },
+  "upyun": {
+    "cdn": {
+      "description": "上传每张新证书，再设置到加速域名上；还没开 HTTPS 的域名会开启 HTTPS。以前上传的证书留在又拍云的证书管理里。",
+      "name": "又拍云 CDN"
+    },
+    "error": {
+      "api": "又拍云返回了错误：{message}",
+      "domain": "又拍云没能处理加速域名 {domain}：{message}",
+      "login": "又拍云不接受这个用户名和密码：{message}。开了两步验证的账号用不了。",
+      "network": "连不上又拍云的控制台接口。",
+      "no_domains": "没有要部署的加速域名：请填写加速域名，或者让证书包含不是通配符的域名。",
+      "status": "又拍云的控制台接口回答了 HTTP {status}，接口可能已经变了。"
+    },
+    "field": {
+      "domains": "加速域名",
+      "domains_help": "用逗号分隔，泛域名写成 *.example.com；留空时用证书里不是通配符的域名。",
+      "force_https": "强制 HTTPS",
+      "force_https_help": "JEC 为域名开启 HTTPS 时，同时把 HTTP 访问跳转到 HTTPS。已经开了 HTTPS 的域名保持原来的设置。",
+      "password": "密码",
+      "password_help": "登录又拍云控制台的密码，加密保存。开了两步验证的账号用不了。",
+      "username": "用户名"
+    },
+    "log": {
+      "current": "{domain} 已经在用这张证书",
+      "enable": "为 {domain} 开启 HTTPS，用新证书",
+      "kept": "以前上传的证书还留在又拍云的证书管理里，需要时可以到控制台删除",
+      "switch": "把 {domain} 换成新证书",
+      "upload": "上传证书到又拍云"
+    },
+    "module": {
+      "description": "把证书部署到又拍云 CDN。又拍云的开放接口不能上传证书，所以这个模块用账号和密码登录控制台的接口来做，接口随时可能变化。",
+      "name": "又拍云"
+    },
+    "test": {
+      "login": "登录成功",
+      "ok": "登录成功，找到了加速域名 {domains}"
+    }
+  },
   "volcengine": {
     "cdn": {
       "description": "把每张新证书上传到火山引擎的证书中心，再部署到 CDN 的加速域名上。旧证书留在证书中心里，可以在那里删除。",

@@ -2484,6 +2484,44 @@
       "ok": "JEC can reach SSL Certificates: the account has {count, plural, one {# certificate} other {# certificates}}."
     }
   },
+  "upyun": {
+    "cdn": {
+      "description": "Uploads each new certificate, then sets it on the accelerated domains; a domain without HTTPS yet gets HTTPS. The certificates uploaded before stay in UPYUN's certificate store.",
+      "name": "UPYUN CDN"
+    },
+    "error": {
+      "api": "UPYUN answered with an error: {message}",
+      "domain": "UPYUN could not handle the accelerated domain {domain}: {message}",
+      "login": "UPYUN refused the username and password: {message}. Accounts with two-step verification cannot be used.",
+      "network": "Could not reach UPYUN's console.",
+      "no_domains": "There is no accelerated domain to deploy to: enter the accelerated domains, or have the certificate cover a domain that is no wildcard.",
+      "status": "UPYUN's console answered HTTP {status}; its interface may have changed."
+    },
+    "field": {
+      "domains": "Accelerated domains",
+      "domains_help": "Separated by commas, a wildcard domain as *.example.com; left empty, the certificate's domains but its wildcards.",
+      "force_https": "Force HTTPS",
+      "force_https_help": "When JEC turns HTTPS on for a domain, HTTP requests are redirected to HTTPS too. Domains with HTTPS on already keep their setting.",
+      "password": "Password",
+      "password_help": "The password you sign in to UPYUN's console with, kept encrypted. Accounts with two-step verification cannot be used.",
+      "username": "Username"
+    },
+    "log": {
+      "current": "{domain} uses the certificate already",
+      "enable": "Turning HTTPS on for {domain}, with the new certificate",
+      "kept": "The certificates uploaded before stay in UPYUN's certificate store; you can remove them in the console",
+      "switch": "Moving {domain} to the new certificate",
+      "upload": "Uploading the certificate to UPYUN"
+    },
+    "module": {
+      "description": "Deploys certificates to UPYUN's CDN. UPYUN's open API cannot upload certificates, so the module signs in to the console's own interface with the account's name and password, which may change at any time.",
+      "name": "UPYUN"
+    },
+    "test": {
+      "login": "Signed in",
+      "ok": "Signed in, and found the accelerated domains {domains}"
+    }
+  },
   "volcengine": {
     "cdn": {
       "description": "Uploads each new certificate to Volcengine's certificate center, then deploys it to the accelerated domains of its CDN. The old ones stay in the certificate center, where you can delete them.",

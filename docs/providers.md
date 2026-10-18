@@ -55,6 +55,7 @@ Reports of what works with a real account, or does not, are welcome.
 | `cloudflare.custom` | Cloudflare custom certificates | Fake |
 | `tencentcloud.ssl` | Tencent Cloud SSL Certificates, to CDN, EdgeOne, CLB and more | Fake |
 | `qiniu.cdn` | Qiniu Cloud CDN | Fake |
+| `upyun.cdn` | UPYUN CDN, through its console's interface (experimental) | Fake, after other tools' clients |
 | `volcengine.cdn` | Volcengine CDN | Fake; the official SDK signs |
 | `baiducloud.cdn` | Baidu AI Cloud CDN | Fake; signatures checked against the official SDK's |
 | `aws.acm` | AWS Certificate Manager, for CloudFront and load balancers | Emulator: moto |

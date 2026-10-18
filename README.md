@@ -45,7 +45,8 @@ Working on the main branch:
   it replaces), to Alibaba Cloud CDN and DCDN, its Certificate
   Management Service, custom domains of OSS buckets, and CLB and ALB
   load balancers, to Huawei Cloud's CDN, to
-  Qiniu Cloud's, Volcengine's and Baidu AI Cloud's CDNs, to custom
+  Qiniu Cloud's, Volcengine's and Baidu AI Cloud's CDNs (and UPYUN's,
+  experimentally), to custom
   certificates of Cloudflare,
   through Tencent Cloud's SSL Certificates to its CDN, EdgeOne, CLB and
   more, and through AWS Certificate Manager to CloudFront and load
