@@ -199,6 +199,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   const dialog = page.locator('dialog[open]')
   await expect(dialog).toBeVisible()
   expect.soft(await problems(page), 'add a source').toEqual([])
+  await dialog.getByRole('option', { name: label('acme.account.name') }).click()
   await dialog.getByLabel(label('acme.field.ca')).selectOption('custom')
   await dialog.locator('button[type=submit]').click()
   await expect(dialog.getByText(label('kernel.error.field_required'))).toBeVisible()
@@ -285,6 +286,23 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page).toHaveURL(/\/deployments\/\d+$/)
   await expect(page.getByText(label('certs.deployment.done')).first()).toBeVisible()
   expect.soft(await problems(page), 'a deployment').toEqual([])
+
+  // That directory as a source, as certbot's would be: its test finds the
+  // certificate deployed there, with its key.
+  await page.goto('./sources')
+  await page.getByRole('button', { name: label('kernel.providers.source.add') }).filter({ visible: true }).first().click()
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('searchbox').fill('files.watch')
+  await dialog.getByRole('option', { name: label('files.watch.name') }).click()
+  await dialog.getByLabel(label('kernel.providers.field.name')).fill('e2e watch')
+  await dialog.getByLabel(label('files.field.watch_directory')).fill(`${process.env.JEC_E2E_FILES}/${info.project.name}`)
+  expect.soft(await problems(page), 'add a source: a directory to watch').toEqual([])
+  await dialog.locator('button[type=submit]').click()
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  const watched = page.getByRole('article').filter({ hasText: 'e2e watch' })
+  await watched.getByRole('button', { name: label('kernel.providers.test') }).click()
+  await expect(watched.getByRole('status')).toBeVisible()
+  expect.soft(await problems(page), 'sources: a directory watched').toEqual([])
 
   // A directory given as a relative path, which fails for good: the second
   // certificate cannot be deployed.

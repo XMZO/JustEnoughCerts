@@ -372,11 +372,18 @@ func (s *service) obtain(ctx context.Context, cl *claimed, log func(contracts.Lo
 		return nil, retry.Permanent(errNoSource)
 	}
 	// The providers first: a problem with them belongs to no step.
-	source, err := openProvider[contracts.Source](ctx, s.providers, c.SourceProvider)
+	provider, err := openProvider[io.Closer](ctx, s.providers, c.SourceProvider)
 	if err != nil {
 		return nil, err
 	}
-	defer closeProvider(source, s)
+	defer closeProvider(provider, s)
+	if ks, ok := provider.(contracts.KeySource); ok {
+		return s.collect(ctx, c, ks, log)
+	}
+	source, ok := provider.(contracts.Source)
+	if !ok {
+		return nil, retry.Permanent(fmt.Errorf("provider %d is no source", c.SourceProvider))
+	}
 	req := contracts.IssueRequest{Domains: c.Domains, Log: log}
 	if c.SolverProvider != 0 {
 		solver, err := openProvider[io.Closer](ctx, s.providers, c.SolverProvider)
@@ -400,6 +407,28 @@ func (s *service) obtain(ctx context.Context, cl *claimed, log func(contracts.Lo
 	b, err := cryptox.NewBundle(chain, req.Key)
 	if err != nil {
 		return nil, fmt.Errorf("the certificate the source returned: %w", err)
+	}
+	if missing := uncovered(c.Domains, cryptox.Names(b.Leaf)); len(missing) > 0 {
+		return nil, &contracts.Problem{Key: i18n.CertsErrorNamesMissing, Params: map[string]any{"domains": strings.Join(missing, ", ")}}
+	}
+	return b, nil
+}
+
+// collect takes in what a KeySource found for c, key included: there is no
+// key to make, and nothing new is a Wait the source returns.
+func (s *service) collect(ctx context.Context, c *Certificate, ks contracts.KeySource, log func(contracts.LogLine)) (*cryptox.Bundle, error) {
+	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepKey, Key: i18n.CertsLogKeyFromSource})
+	req := contracts.CollectRequest{Domains: c.Domains, Log: log}
+	if c.Current != nil {
+		req.Current, req.CurrentEnd = c.Current.Fingerprint, c.Current.NotAfter
+	}
+	got, err := ks.Collect(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	b, err := cryptox.NewBundle(got.Chain, got.Key)
+	if err != nil {
+		return nil, fmt.Errorf("the certificate the source found: %w", err)
 	}
 	if missing := uncovered(c.Domains, cryptox.Names(b.Leaf)); len(missing) > 0 {
 		return nil, &contracts.Problem{Key: i18n.CertsErrorNamesMissing, Params: map[string]any{"domains": strings.Join(missing, ", ")}}

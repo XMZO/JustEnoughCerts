@@ -1428,6 +1428,9 @@
           "needsSolver": {
             "type": "boolean"
           },
+          "ownKey": {
+            "type": "boolean"
+          },
           "tags": {
             "items": {
               "type": "string"
@@ -1502,6 +1505,10 @@
           },
           "needsSolver": {
             "description": "For a source: issuing needs a solver",
+            "type": "boolean"
+          },
+          "ownKey": {
+            "description": "For a source: its certificates come with their own private key, so there is no key type to choose",
             "type": "boolean"
           },
           "tags": {

@@ -43,6 +43,9 @@ const source = computed<'upload' | number | undefined>(() => {
 const provider = computed(() => (typeof source.value === 'number' ? sources.data.value?.find((p) => p.id === source.value) : undefined))
 const sourceType = computed(() => sourceTypes.data.value?.find((s) => s.id === provider.value?.type))
 const needsSolver = computed(() => !!sourceType.value?.needsSolver)
+// A source with keys of its own, such as the directory of another ACME
+// client: no key type to choose, and renewing is taking the new one in.
+const ownKey = computed(() => !!sourceType.value?.ownKey)
 // How the solvers prove control of the domains: through DNS or files on the website.
 type Challenge = 'dns' | 'http'
 const accepted = computed<Challenge[]>(() => sourceType.value?.challenges ?? ['dns'])
@@ -115,13 +118,21 @@ const plan = computed(() => {
   if (uploading.value) {
     return [t('certs.plan.check'), t('certs.plan.store'), ...deploySteps.value, t('certs.plan.remind', { days: renewDays.value })]
   }
+  const time = settings.data.value?.checkTime ?? '02:00'
+  if (ownKey.value) {
+    return [
+      t('certs.plan.collect', { source: provider.value?.name ?? '' }),
+      ...deploySteps.value,
+      t('certs.plan.watch', { days: renewDays.value, time }),
+    ]
+  }
   const steps = [t('certs.plan.key', { key: keyLabel(keyType.value) }), t('certs.plan.order', { source: provider.value?.name ?? '' })]
   if (needsSolver.value && solverProvider.value) {
     const name = solverProvider.value.name
     steps.push(challengeOf(solverProvider.value) === 'http' ? t('certs.plan.http', { solver: name }) : t('certs.plan.dns', { dns: name }))
   }
   steps.push(t('certs.plan.download'))
-  steps.push(...deploySteps.value, t('certs.plan.renew', { days: renewDays.value, time: settings.data.value?.checkTime ?? '02:00' }))
+  steps.push(...deploySteps.value, t('certs.plan.renew', { days: renewDays.value, time }))
   return steps
 })
 
@@ -153,7 +164,7 @@ async function submit() {
       domains: domains.value,
       sourceProvider: source.value,
       solverProvider: needsSolver.value ? solver.value : undefined,
-      keyType: keyType.value,
+      keyType: ownKey.value ? undefined : keyType.value,
       renewBeforeDays: Number(days.value) || undefined,
       targets: chosenTargets.value,
     })
@@ -219,7 +230,7 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
           :errors="errors.fields.value"
           :error-params="errors.error.value?.params"
         />
-        <JecField v-else-if="provider" id="keyType" label="certs.add.key_type" hint="certs.add.key_type_help" :error="fieldError('keyType')">
+        <JecField v-else-if="provider && !ownKey" id="keyType" label="certs.add.key_type" hint="certs.add.key_type_help" :error="fieldError('keyType')">
           <select
             id="keyType"
             v-model="keyType"

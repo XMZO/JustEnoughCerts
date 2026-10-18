@@ -256,10 +256,13 @@ func (s *service) addIssued(ctx context.Context, in *IssueRequest) (int64, error
 		return 0, err
 	}
 	keyType := in.KeyType
-	if keyType == "" {
+	switch {
+	case source != nil && source.OwnKey:
+		keyType = "" // the source's own, known once the first version comes
+	case keyType == "":
 		keyType = st.KeyType
 	}
-	if !slices.Contains(cryptox.KeyTypes, keyType) {
+	if keyType != "" && !slices.Contains(cryptox.KeyTypes, keyType) {
 		return 0, invalid.WithField("body.keyType", i18n.KernelErrorInvalidField)
 	}
 	renewBefore := in.RenewBeforeDays

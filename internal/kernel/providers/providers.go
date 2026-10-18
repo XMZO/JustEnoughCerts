@@ -120,6 +120,9 @@ type Type struct {
 	// them proven, ChallengeDNS when left out.
 	NeedsSolver bool     `json:"needsSolver,omitempty"`
 	Challenges  []string `json:"challenges,omitempty" enum:"dns,http"`
+	// OwnKey is set on a source whose certificates come with their own
+	// private key (contracts.KeySource): no key type to choose.
+	OwnKey bool `json:"ownKey,omitempty"`
 	// Challenge is how the providers of a solver type prove control of a
 	// domain, ChallengeDNS when left out.
 	Challenge string `json:"challenge,omitempty" enum:"dns,http"`
@@ -270,6 +273,8 @@ func (s *Scope) Add(t Type, f Factory) error {
 		return fmt.Errorf("provider type %s: challenge %q is for solvers, one of %v", t.ID, t.Challenge, challenges)
 	case len(t.Challenges) > 0 && (t.Kind != Source || !t.NeedsSolver || slices.ContainsFunc(t.Challenges, func(c string) bool { return !slices.Contains(challenges, c) })):
 		return fmt.Errorf("provider type %s: challenges %v are for sources that need a solver, out of %v", t.ID, t.Challenges, challenges)
+	case t.OwnKey && (t.Kind != Source || t.NeedsSolver):
+		return fmt.Errorf("provider type %s: own keys are for sources that need no solver", t.ID)
 	}
 	seen, plain := map[string]bool{}, map[string]bool{}
 	for _, field := range t.Fields {

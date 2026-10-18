@@ -76,6 +76,37 @@ type Source interface {
 	Close() error
 }
 
+// KeySource is a source whose certificates come with their own private
+// key, made elsewhere: the files another ACME client, such as certbot or
+// acme.sh, keeps renewing. JEC takes them in rather than issuing, so the
+// providers of kind "source" make either a Source or a KeySource.
+type KeySource interface {
+	// Collect returns the certificate, its chain and its key, or a *Wait
+	// while what it finds is no newer than the version in use.
+	Collect(ctx context.Context, req CollectRequest) (*Collected, error)
+	Close() error
+}
+
+// CollectRequest asks a KeySource for a certificate.
+type CollectRequest struct {
+	// Domains to cover, the primary first.
+	Domains []string
+	// Current is the SHA-256 of the leaf of the version in use, in
+	// lowercase hex, and CurrentEnd when it ends; empty and zero before
+	// the first version.
+	Current    string
+	CurrentEnd time.Time
+	// Log receives the steps of the issuance.
+	Log func(LogLine)
+}
+
+// Collected is what a KeySource found.
+type Collected struct {
+	// Chain is the certificate and its intermediates, leaf first.
+	Chain []*x509.Certificate
+	Key   crypto.Signer
+}
+
 // Wait is the error of a Source whose certificate takes longer than an
 // attempt, as when a CA reviews an order, or a vendor has yet to make the
 // next certificate of a subscription. The issuance keeps its key and the

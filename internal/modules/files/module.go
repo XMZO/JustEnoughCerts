@@ -2,10 +2,13 @@
 // version of a certificate is written to a directory, laid out as certbot
 // does (cert.pem, chain.pem, fullchain.pem and privkey.pem), for a web
 // server on the same machine or a mounted volume to read; as a solver, the
-// files of validations over HTTP go to the web root of the domains.
+// files of validations over HTTP go to the web root of the domains; as a
+// source, the certificates another ACME client renews in a directory come
+// in with their keys.
 package files
 
 import (
+	"errors"
 	"io/fs"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
@@ -31,10 +34,11 @@ func (*Module) Manifest() module.Manifest {
 // Migrations returns nil: the module keeps nothing of its own.
 func (*Module) Migrations() fs.FS { return nil }
 
-// Register adds the directory and web root types.
+// Register adds the directory, web root and watched directory types.
 func (*Module) Register(r *module.Registry) error {
-	if err := r.Providers.Add(directoryType(), factory); err != nil {
-		return err
-	}
-	return r.Providers.Add(webrootType(), webrootFactory)
+	return errors.Join(
+		r.Providers.Add(directoryType(), factory),
+		r.Providers.Add(webrootType(), webrootFactory),
+		r.Providers.Add(watchType(), watchFactory),
+	)
 }

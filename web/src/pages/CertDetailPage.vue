@@ -69,6 +69,12 @@ const issued = computed(() => cert.value?.source === 'provider')
 const sources = useProviders('source')
 const solvers = useProviders('solver')
 const sourceName = computed(() => sources.data.value?.find((p) => p.id === cert.value?.sourceProvider)?.name)
+// A source with keys of its own is not asked to issue: it is looked at.
+const sourceTypes = useProviderTypes('source')
+const ownKey = computed(() => {
+  const type = sources.data.value?.find((p) => p.id === cert.value?.sourceProvider)?.type
+  return !!sourceTypes.data.value?.find((s) => s.id === type)?.ownKey
+})
 const solverName = computed(() => solvers.data.value?.find((p) => p.id === cert.value?.solverProvider)?.name)
 const issuances = useIssuances(() => props.id, issued)
 const latest = computed(() => cert.value?.issuance)
@@ -258,7 +264,7 @@ async function confirmDelete() {
         <Upload class="size-4" aria-hidden="true" />{{ t('certs.action.upload') }}
       </JecButton>
       <JecButton v-if="issued" variant="primary" :busy="issueNow.isPending.value" @click="startIssue">
-        <ShieldCheck class="size-4" aria-hidden="true" />{{ t('certs.action.issue_now') }}
+        <ShieldCheck class="size-4" aria-hidden="true" />{{ t(ownKey ? 'certs.action.collect_now' : 'certs.action.issue_now') }}
       </JecButton>
     </template>
   </PageHeader>
@@ -515,7 +521,7 @@ async function confirmDelete() {
 
           <div class="flex flex-col gap-2 sm:hidden">
             <JecButton v-if="issued" variant="primary" :busy="issueNow.isPending.value" @click="startIssue">
-              <ShieldCheck class="size-4" aria-hidden="true" />{{ t('certs.action.issue_now') }}
+              <ShieldCheck class="size-4" aria-hidden="true" />{{ t(ownKey ? 'certs.action.collect_now' : 'certs.action.issue_now') }}
             </JecButton>
             <JecButton v-if="current" @click="startDownload(current.id)">
               <Download class="size-4" aria-hidden="true" />{{ t('certs.action.download') }}

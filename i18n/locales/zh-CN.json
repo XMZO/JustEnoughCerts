@@ -81,6 +81,7 @@
     "action": {
       "add": "添加证书",
       "choose_targets": "选择部署目标",
+      "collect_now": "立即检查",
       "copy_fingerprint": "复制 SHA-256 指纹",
       "copy_serial": "复制序列号",
       "delete": "删除证书",
@@ -350,6 +351,7 @@
       "gave_up": "不再自动重试。解决问题后，请手动重新签发。",
       "interrupted": "JEC 停止时签发被打断，重新开始",
       "key": "生成新私钥：{kind, select, rsa {RSA {size}} ecdsa {ECDSA {size}} other {{kind}}}",
+      "key_from_source": "私钥随证书一起取来，不用生成",
       "retry": "{minutes, plural, other {# 分钟}}后自动重试",
       "stored": "证书已保存，有效期还有 {days, plural, other {# 天}}",
       "take_over": "接着做上一次签发留下的订单，用它的私钥"
@@ -379,6 +381,7 @@
     },
     "plan": {
       "check": "检查证书和私钥是否匹配",
+      "collect": "从 {source} 取证书和私钥",
       "deploy": "部署到 {target}",
       "dns": "在 {dns} 添加验证记录，验证后删除",
       "download": "证书颁发机构验证域名后，下载证书",
@@ -390,7 +393,8 @@
       "renew": "到期前 {days, plural, other {# 天}}，在每天 {time} 自动续期",
       "store": "加密保存私钥",
       "upload": "手动上传的证书无法自动续期，到期前 {days, plural, other {# 天}}会提醒你上传新证书。",
-      "upload_due": "请在 {date} 前上传新证书。"
+      "upload_due": "请在 {date} 前上传新证书。",
+      "watch": "到期前 {days, plural, other {# 天}}起，在每天 {time} 等原来的工具续期，再把新证书取进来"
     },
     "reason": {
       "first": "首次签发",
@@ -608,12 +612,18 @@
     "error": {
       "file_path": "来源要放的文件不在 /.well-known/ 下，JEC 不会写：{path}",
       "relative": "目录必须是绝对路径：{directory}",
+      "watch_denied": "JEC 读不了 {path}：没有权限。certbot 和 acme.sh 的私钥通常只有它们的属主能读：可以让 JEC 以这个用户运行，比如 root（在 docker-compose.yml 里把 user 设为 0:0），或者用 certbot 的 --deploy-hook 复制一份到 JEC 能读的地方。",
+      "watch_empty": "在 {directory} 里没找到带私钥的证书。",
+      "watch_missing": "目录 {directory} 不存在。用 Docker 时要把它挂载进容器。",
+      "watch_none": "在 {directory} 里没找到 {domains} 的有效证书和私钥。请检查目录和域名；用 Docker 时检查目录有没有挂载进容器。",
       "write": "没能写入 {directory}。请检查目录是否存在、JEC 有没有写入权限。"
     },
     "field": {
       "directory": "目录",
       "directory_help": "JEC 能写入的绝对路径。在容器里运行时，填挂载进来的目录，比如 /data/certs。",
       "layout": "文件放在哪里",
+      "watch_directory": "目录",
+      "watch_directory_help": "certbot 用 /etc/letsencrypt，acme.sh 用它的主目录（如 /root/.acme.sh）。JEC 按域名在里面找证书和私钥。",
       "webroot": "网站目录",
       "webroot_help": "Web 服务器给这些域名用的网站根目录（root 设置的那个），绝对路径，比如 /var/www/html。在容器里运行时，填挂载进来的目录。",
       "webroot_layout": "哪个目录对应哪个域名"
@@ -623,15 +633,23 @@
       "flat": "直接放在这个目录里"
     },
     "log": {
+      "watch_found": "取进 {path}，{date} 到期",
+      "watch_same": "{path} 还是现在这张证书，等原来的工具续期，{hours, plural, other {# 小时}}后再看",
+      "watch_scan": "在 {directory} 里找 {domains} 的证书",
       "write": "写入 {directory}"
     },
     "module": {
-      "description": "把证书写到 JEC 所在机器的一个目录里，供同一台机器上的 Web 服务器或挂载的卷读取。",
+      "description": "本机文件：把证书写到 JEC 所在机器的目录，把 HTTP 验证文件放进网站目录，还能取进 certbot、acme.sh 等工具在本机目录里续期的证书。",
       "name": "本地文件"
     },
     "test": {
       "ok": "{directory} 可以写入。",
+      "watch_ok": "在 {directory} 找到 {count, plural, other {# 张}}带私钥的证书：{domains}",
       "webroot_ok": "{directory} 可以放文件。"
+    },
+    "watch": {
+      "description": "取进另一个 ACME 客户端（如 certbot、acme.sh）在本机续期的证书和私钥。JEC 只读这个目录，不改动里面的文件。证书到续期时间后，等那个工具续期完，再把新证书取进来、部署出去。用 Docker 时把目录只读挂载进容器。",
+      "name": "本机证书目录（certbot、acme.sh 等）"
     },
     "webroot": {
       "description": "通过 HTTP 验证域名：把验证文件放进 JEC 所在机器上 Web 服务器的网站目录（/.well-known/ 下），验证后删除。",

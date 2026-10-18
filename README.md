@@ -23,7 +23,8 @@ Minecraft mod JEI.
 Working on the main branch:
 
 - Certificates from any ACME CA, with External Account Binding, or
-  uploaded by hand, as PEM or as a PFX/P12 file.
+  uploaded by hand, as PEM or as a PFX/P12 file, or taken in with their
+  keys from where certbot or acme.sh renews them on the same machine.
 - Namecheap's paid certificates, such as PositiveSSL, with JEC acting as
   the client of Namecheap's SSL Manager. Experimental and off until you
   switch it on; not yet tried against a real account.

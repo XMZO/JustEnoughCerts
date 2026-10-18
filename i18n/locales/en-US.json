@@ -81,6 +81,7 @@
     "action": {
       "add": "Add certificate",
       "choose_targets": "Choose targets",
+      "collect_now": "Check now",
       "copy_fingerprint": "Copy the SHA-256 fingerprint",
       "copy_serial": "Copy the serial number",
       "delete": "Delete certificate",
@@ -350,6 +351,7 @@
       "gave_up": "No more automatic retries. Once the cause is fixed, issue the certificate again.",
       "interrupted": "JEC stopped during the issuance; starting over",
       "key": "New private key: {kind, select, rsa {RSA {size}} ecdsa {ECDSA {size}} other {{kind}}}",
+      "key_from_source": "The private key comes with the certificate: none to make",
       "retry": "Trying again in {minutes, plural, one {# minute} other {# minutes}}",
       "stored": "Certificate saved, valid for {days, plural, one {# day} other {# days}}",
       "take_over": "Picking up the order the last issuance left, with its private key"
@@ -379,6 +381,7 @@
     },
     "plan": {
       "check": "Check that the certificate and the private key match",
+      "collect": "Take the certificate and its key from {source}",
       "deploy": "Deploy to {target}",
       "dns": "Add the validation records at {dns}, and remove them afterwards",
       "download": "Download the certificate once the CA has validated the domains",
@@ -390,7 +393,8 @@
       "renew": "Renew {days, plural, one {# day} other {# days}} before the end, at {time}",
       "store": "Store the private key encrypted",
       "upload": "Uploaded certificates are not renewed automatically. JEC reminds you {days, plural, one {# day} other {# days}} before this one expires.",
-      "upload_due": "Upload a new certificate before {date}."
+      "upload_due": "Upload a new certificate before {date}.",
+      "watch": "From {days, plural, one {# day} other {# days}} before the end, at {time}, wait for the other client to renew it and take the new one in"
     },
     "reason": {
       "first": "First issuance",
@@ -608,12 +612,18 @@
     "error": {
       "file_path": "The source asked for a file outside /.well-known/, which JEC does not write: {path}",
       "relative": "The directory must be an absolute path: {directory}",
+      "watch_denied": "JEC cannot read {path}: permission denied. The keys of certbot and acme.sh are usually their owner's alone. Run JEC as that user, such as root (user 0:0 in docker-compose.yml), or have certbot's --deploy-hook copy them where JEC can read them.",
+      "watch_empty": "{directory} holds no certificate with its key.",
+      "watch_missing": "The directory {directory} does not exist. With Docker, mount it into the container.",
+      "watch_none": "{directory} holds no valid certificate with its key for {domains}. Check the directory and the domains, and with Docker that the directory is mounted into the container.",
       "write": "Could not write to {directory}. Check that it exists and that JEC may write there."
     },
     "field": {
       "directory": "Directory",
       "directory_help": "An absolute path JEC can write to. In a container, a mounted directory, such as /data/certs.",
       "layout": "Where the files go",
+      "watch_directory": "Directory",
+      "watch_directory_help": "/etc/letsencrypt for certbot, its home for acme.sh (such as /root/.acme.sh). JEC looks there for the certificate and key of the domains.",
       "webroot": "Website directory",
       "webroot_help": "The absolute path the web server serves the domains from, as its root setting says, such as /var/www/html. In a container, the mounted directory.",
       "webroot_layout": "Which directory serves which domain"
@@ -623,15 +633,23 @@
       "flat": "Right in this directory"
     },
     "log": {
+      "watch_found": "Took in {path}, valid until {date}",
+      "watch_same": "{path} still holds the certificate in use: waiting for its client to renew it, looking again in {hours, plural, one {# hour} other {# hours}}",
+      "watch_scan": "Looking in {directory} for the certificate of {domains}",
       "write": "Writing to {directory}"
     },
     "module": {
-      "description": "Writes certificates to a directory on JEC's machine, for a web server there or a mounted volume to read.",
+      "description": "Local files: writes certificates to a directory on JEC's machine, puts the files of HTTP validations in a website's directory, and takes in the certificates another ACME client, such as certbot or acme.sh, renews in a directory.",
       "name": "Local files"
     },
     "test": {
       "ok": "JEC can write to {directory}.",
+      "watch_ok": "Found {count, plural, one {# certificate} other {# certificates}} with their key in {directory}: {domains}",
       "webroot_ok": "JEC can put files in {directory}."
+    },
+    "watch": {
+      "description": "Takes in the certificates and keys another ACME client, such as certbot or acme.sh, renews on this machine. JEC only reads the directory and changes nothing there. Once a certificate is due, JEC waits for that client to renew it, then takes the new one in and deploys it. With Docker, mount the directory into the container, read-only.",
+      "name": "Certificates on this machine (certbot, acme.sh…)"
     },
     "webroot": {
       "description": "Validates domains over HTTP: puts the validation files under /.well-known/ in the directory a web server on JEC's machine serves the domains from, and removes them afterwards.",

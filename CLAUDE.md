@@ -65,7 +65,8 @@
 - 测试版 `v0.1.0-alpha.1`、`v0.1.0-alpha.2`（加了 ESA 边缘应答）已于 2026-10-17 发布（预发布：镜像标签是版本号和 `beta`，`latest` 不动），给用户用真实账号试。
 - M2 还完成了：ESA 边缘应答（验证类型 `esa.edge`，在 `esa` 模块里，`PLAN.md` 5.4）：验证文件存进 ESA 的边缘 KV，第一次用时自动建 KV 命名空间 `jec_validation`、边缘函数 `jec-validation`（代码 `internal/modules/esa/routine.js`，经 OSS 上传）和站点上 `/.well-known/` 的路由；放好后从外网取到才算放好。`httpx` 的 `SkipVerify`：核对验证文件时像 CA 一样跟随跳转、不校验证书（wellknown、namecheap 也用）。测试用替身 API 和替身边缘，装了 Node.js 时实际运行函数代码；还没有用真实账号试过。
 - 设置页 `/settings`（按设计稿，改动立即保存）：语言、续期默认值（证书模块的 `certs_settings`，`GET`/`PUT /api/v1/certs/settings`：提前几天、每天检查时间、默认密钥类型）、账号和安全（改密码 `PUT /api/v1/account/password`，其他地方的登录随之退出）、面板访问和数据（内核的 `internal/kernel/system`：`GET /api/v1/system`；下载备份 `POST /api/v1/system/backup`，要密码，`VACUUM INTO` 出副本）、关于（清单接口带了构建日期和平台）。续期改为进入续期窗口后在每天检查时间开始（默认 02:00，服务器时区），只剩一周或更少时立即开始；证书接口带 `renewAt`。两步验证、登录有效期、在界面里恢复备份还没做。
-- 下一步：用真实账号验证阿里云 ESA 部署、ESA 边缘应答和 Namecheap 模块（M1/M2 验收，`PLAN.md` 5.4、5.6 列了要确认的点）；M1 剩下的导入：扫描 acme.sh / certbot 的目录（上传 PFX/P12 已做，`cryptox.ParsePFX`）；DNS 验证（要先确认 Namecheap 给不给 DNS 验证，还要能加 CNAME 记录）。
+- 本机证书目录（来源类型 `files.watch`，`PLAN.md` 5.3.3）：取进 certbot、acme.sh 在本机续期的证书和私钥，只读；来源接口多了 `contracts.KeySource`（类型标 `ownKey`，不生成私钥、不选密钥类型），文件里还是旧证书时等待 6 小时再看。M1 的导入就此做完（PEM、PFX/P12 上传，读目录）。
+- 下一步：用真实账号验证阿里云 ESA 部署、ESA 边缘应答和 Namecheap 模块（M1/M2 验收，`PLAN.md` 5.4、5.6 列了要确认的点）；DNS 验证（要先确认 Namecheap 给不给 DNS 验证，还要能加 CNAME 记录）。
 
 ## 工程约定
 

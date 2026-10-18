@@ -17,15 +17,18 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
 
 // fakes are the providers of module "fake": a source that issues from the
 // fixture's CA, or does what issue says, and a solver that records calls.
 type fakes struct {
-	mu     sync.Mutex
-	issue  func(ctx context.Context, req contracts.IssueRequest) ([]*x509.Certificate, error)
-	calls  []string // of the solver
-	opened int      // sources, solvers and targets open
+	mu    sync.Mutex
+	issue func(ctx context.Context, req contracts.IssueRequest) ([]*x509.Certificate, error)
+	// collect is what the fake source with keys of its own finds.
+	collect func(ctx context.Context, req contracts.CollectRequest) (*contracts.Collected, error)
+	calls   []string // of the solver
+	opened  int      // sources, solvers and targets open
 	// deploy replaces the fake target's own work: a ref per deployment,
 	// removing the previous ones.
 	deploy   func(ctx context.Context, req contracts.DeployRequest) (contracts.DeployResult, error)
@@ -42,12 +45,15 @@ func (f *fixture) addFakes() {
 		{ID: "fake.dns", Kind: providers.Solver, Brand: "Fake DNS"},
 		{ID: "fake.web", Kind: providers.Solver, Brand: "Fake web root", Challenge: providers.ChallengeHTTP},
 		{ID: "fake.hook", Kind: providers.Target, Brand: "Fake target"},
+		{ID: "fake.files", Kind: providers.Source, Brand: "Fake files of another client", OwnKey: true},
 	} {
 		err := scope.Add(typ, func(context.Context, providers.Instance) (any, error) {
 			f.fake.mu.Lock()
 			defer f.fake.mu.Unlock()
 			f.fake.opened++
 			switch {
+			case typ.OwnKey:
+				return &fakeKeySource{f}, nil
 			case typ.Kind == providers.Source:
 				return &fakeSource{f}, nil
 			case typ.Challenge == providers.ChallengeHTTP:
@@ -88,6 +94,17 @@ func (s *fakeSource) Issue(ctx context.Context, req contracts.IssueRequest) ([]*
 }
 
 func (s *fakeSource) Close() error { return s.f.closed() }
+
+type fakeKeySource struct{ f *fixture }
+
+func (s *fakeKeySource) Collect(ctx context.Context, req contracts.CollectRequest) (*contracts.Collected, error) {
+	s.f.fake.mu.Lock()
+	collect := s.f.fake.collect
+	s.f.fake.mu.Unlock()
+	return collect(ctx, req)
+}
+
+func (s *fakeKeySource) Close() error { return s.f.closed() }
 
 // issueAll goes through the steps of an ACME issuance and issues the
 // certificate.
@@ -896,5 +913,60 @@ func TestNormalizeDomain(t *testing.T) {
 	out, bad := normalizeDomains([]string{"a.com", "A.com", "bad name", "b.com"})
 	if !slices.Equal(out, []string{"a.com", "b.com"}) || !slices.Equal(bad, []int{2}) {
 		t.Errorf("normalizeDomains: %v, %v", out, bad)
+	}
+}
+
+func TestKeySource(t *testing.T) {
+	f := newFixture(t)
+	held := f.leaf(60, "example.com") // what the other client keeps
+	var asked []contracts.CollectRequest
+	f.fake.mu.Lock()
+	f.fake.collect = func(_ context.Context, req contracts.CollectRequest) (*contracts.Collected, error) {
+		asked = append(asked, req)
+		b, err := cryptox.ParseBundle([]byte(held.cert), []byte(held.key))
+		if err != nil {
+			return nil, err
+		}
+		if req.Current == cryptox.Fingerprint(b.Leaf) {
+			return nil, &contracts.Wait{After: 6 * time.Hour}
+		}
+		return &contracts.Collected{Chain: append([]*x509.Certificate{b.Leaf}, b.Chain...), Key: b.Key}, nil
+	}
+	f.fake.mu.Unlock()
+
+	var c CertificateBody
+	f.call(f.api.Post("/certificates/issue", map[string]any{
+		"domains": []string{"example.com"}, "sourceProvider": f.provider("fake.files"), "keyType": "rsa-4096",
+	}), http.StatusCreated, &c)
+	if c.KeyType != "" {
+		t.Errorf("a key type of its own: %q", c.KeyType)
+	}
+	f.run()
+	c = f.certificate(c.ID)
+	if c.Current == nil || c.Current.KeyType != "ecdsa-p256" || c.State != "ok" || c.Issuance.State != "done" {
+		t.Fatalf("first version: %+v", c)
+	}
+	first := c.Current.Fingerprint
+
+	// Due, but the other client has yet to renew it: the issuance waits.
+	f.now = *c.RenewAt
+	if err := f.svc.renew(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	f.run()
+	if is := f.certificate(c.ID).Issuance; is.State != "waiting" || is.Reason != "renewal" {
+		t.Fatalf("nothing new: %+v", is)
+	}
+	if last := asked[len(asked)-1]; last.Current != first || !last.CurrentEnd.Equal(c.Current.NotAfter) {
+		t.Errorf("asked with %+v", last)
+	}
+
+	// It renewed: the next look takes the new one in.
+	held = f.leaf(90, "example.com")
+	f.now = f.now.Add(7 * time.Hour)
+	f.run()
+	c = f.certificate(c.ID)
+	if c.Current.Fingerprint == first || c.Issuance.State != "done" {
+		t.Errorf("after the renewal: %+v", c)
 	}
 }

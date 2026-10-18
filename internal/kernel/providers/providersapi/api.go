@@ -28,6 +28,7 @@ type TypeSummary struct {
 	URL          string         `json:"url,omitempty"`
 	Tags         []string       `json:"tags,omitempty"`
 	NeedsSolver  bool           `json:"needsSolver,omitempty" doc:"For a source: issuing needs a solver"`
+	OwnKey       bool           `json:"ownKey,omitempty" doc:"For a source: its certificates come with their own private key, so there is no key type to choose"`
 	Challenges   []string       `json:"challenges,omitempty" enum:"dns,http" doc:"For a source that needs a solver: the challenges of the solvers it can use"`
 	Challenge    string         `json:"challenge,omitempty" enum:"dns,http" doc:"For a solver: how it proves control of a domain, through DNS records or files on the web server"`
 	Testable     bool           `json:"testable,omitempty" doc:"Its instances can be tested"`
@@ -121,7 +122,7 @@ func Register(a huma.API, r *providers.Registry) {
 		for _, t := range r.Types(providers.Kind(in.Kind)) {
 			sum := TypeSummary{
 				ID: t.ID, Kind: t.Kind, Module: t.Module, Name: t.Name, Description: t.Description,
-				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, Testable: t.Testable, Experimental: t.Experimental,
+				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, OwnKey: t.OwnKey, Testable: t.Testable, Experimental: t.Experimental,
 			}
 			switch {
 			case t.Kind == providers.Solver:

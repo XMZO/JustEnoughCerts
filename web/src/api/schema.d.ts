@@ -1015,6 +1015,7 @@ export interface components {
             module: string;
             name?: string;
             needsSolver?: boolean;
+            ownKey?: boolean;
             tags?: string[];
             testable?: boolean;
             url?: string;
@@ -1039,6 +1040,8 @@ export interface components {
             name?: string;
             /** @description For a source: issuing needs a solver */
             needsSolver?: boolean;
+            /** @description For a source: its certificates come with their own private key, so there is no key type to choose */
+            ownKey?: boolean;
             tags?: string[];
             /** @description Its instances can be tested */
             testable?: boolean;
