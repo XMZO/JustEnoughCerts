@@ -1538,6 +1538,10 @@
             "description": "Where the database and the key file are",
             "type": "string"
           },
+          "hsts": {
+            "description": "Answers send Strict-Transport-Security, as JEC_HSTS asks",
+            "type": "boolean"
+          },
           "listen": {
             "description": "The address the HTTP server binds to, from JEC_LISTEN",
             "type": "string"
@@ -1549,12 +1553,17 @@
               "file"
             ],
             "type": "string"
+          },
+          "trustedProxies": {
+            "description": "The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES",
+            "type": "string"
           }
         },
         "required": [
           "dataDir",
           "listen",
-          "secretKey"
+          "secretKey",
+          "hsts"
         ],
         "type": "object"
       },

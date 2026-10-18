@@ -21,6 +21,9 @@ import (
 // Options are what the operations tell and use.
 type Options struct {
 	DataDir, Listen, BaseURL string
+	// TrustedProxies and HSTS are those settings, as config has them.
+	TrustedProxies string
+	HSTS           bool
 	// KeyFromEnv tells that the master key comes from JEC_SECRET_KEY, not
 	// from the key file in DataDir.
 	KeyFromEnv bool
@@ -38,6 +41,9 @@ type RuntimeBody struct {
 	Listen    string `json:"listen" doc:"The address the HTTP server binds to, from JEC_LISTEN"`
 	BaseURL   string `json:"baseURL,omitempty" doc:"The URL people open, from JEC_BASE_URL; links in notifications need it"`
 	SecretKey string `json:"secretKey" enum:"env,file" doc:"Where the master key comes from: JEC_SECRET_KEY, or the key file in dataDir"`
+	// The proxies are addresses and ranges, data to show as they are.
+	TrustedProxies string `json:"trustedProxies,omitempty" doc:"The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES"`
+	HSTS           bool   `json:"hsts" doc:"Answers send Strict-Transport-Security, as JEC_HSTS asks"`
 }
 
 type backupInput struct {
@@ -60,7 +66,7 @@ func Register(a huma.API, o Options) {
 		OperationID: "get-system", Method: http.MethodGet, Path: "/system", Tags: tags,
 		Summary: "Tell where JEC keeps its data and how it is reached",
 	}, func(context.Context, *struct{}) (*struct{ Body RuntimeBody }, error) {
-		info := RuntimeBody{DataDir: o.DataDir, Listen: o.Listen, BaseURL: o.BaseURL, SecretKey: "file"}
+		info := RuntimeBody{DataDir: o.DataDir, Listen: o.Listen, BaseURL: o.BaseURL, SecretKey: "file", TrustedProxies: o.TrustedProxies, HSTS: o.HSTS}
 		if o.KeyFromEnv {
 			info.SecretKey = "env"
 		}

@@ -1271,6 +1271,8 @@ export interface components {
             baseURL?: string;
             /** @description Where the database and the key file are */
             dataDir: string;
+            /** @description Answers send Strict-Transport-Security, as JEC_HSTS asks */
+            hsts: boolean;
             /** @description The address the HTTP server binds to, from JEC_LISTEN */
             listen: string;
             /**
@@ -1278,6 +1280,8 @@ export interface components {
              * @enum {string}
              */
             secretKey: "env" | "file";
+            /** @description The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES */
+            trustedProxies?: string;
         };
         SendBody: {
             /** Format: date-time */

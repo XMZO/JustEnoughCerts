@@ -126,6 +126,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	providersapi.Register(a.Kernel(), registry)
 	system.Register(a.Kernel(), system.Options{
 		DataDir: cfg.DataDir, Listen: cfg.Listen, BaseURL: cfg.BaseURL, KeyFromEnv: cfg.SecretKey != "",
+		TrustedProxies: cfg.TrustedProxies, HSTS: cfg.HSTS == "true",
 		DB: st.DB(), Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log,
 	})
 	var wellKnown []wellKnownHandler

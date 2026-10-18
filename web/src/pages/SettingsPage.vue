@@ -419,6 +419,29 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
         </div>
         <span class="min-w-0 max-w-[60%] text-right font-mono text-small [overflow-wrap:anywhere]" translate="no">{{ system.data.value.listen }}</span>
       </div>
+      <div :class="row">
+        <div class="min-w-0 flex-1">
+          <span class="block font-semibold">{{ t('kernel.settings.trusted_proxies') }}</span>
+          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.trusted_proxies_help') }}</span>
+        </div>
+        <span
+          v-if="system.data.value.trustedProxies"
+          class="min-w-0 max-w-[60%] text-right font-mono text-small [overflow-wrap:anywhere]"
+          translate="no"
+        >
+          {{ system.data.value.trustedProxies }}
+        </span>
+        <span v-else class="flex-none text-ink-muted">{{ t('kernel.settings.not_set') }}</span>
+      </div>
+      <div :class="row">
+        <div class="min-w-0 flex-1">
+          <span class="block font-semibold">{{ t('kernel.settings.hsts') }}</span>
+          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.hsts_help') }}</span>
+        </div>
+        <span :class="['flex-none', system.data.value.hsts ? 'font-semibold text-ok-ink' : 'text-ink-muted']">{{
+          t(system.data.value.hsts ? 'kernel.settings.hsts_on' : 'kernel.settings.hsts_off')
+        }}</span>
+      </div>
     </section>
 
     <section v-if="system.data.value" aria-labelledby="data" :class="panel">
