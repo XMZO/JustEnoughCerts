@@ -348,7 +348,7 @@ DNS 验证分成两种能力，实现方式不同：
 | 类别 | 平台 | 阶段 |
 |---|---|---|
 | CDN / 边缘 | **阿里云 ESA**（M1）；阿里云 CDN / DCDN（已完成）、腾讯云 EdgeOne、腾讯云 CDN、华为云 CDN、百度智能云 CDN、火山引擎 CDN、七牛云、又拍云、AWS CloudFront、Cloudflare（自定义证书需付费套餐） | M1 / M3 |
-| 负载均衡 / 证书库 | 阿里云 SLB / ALB、阿里云证书服务、腾讯云 CLB、腾讯云 SSL 证书、AWS ACM | M3 |
+| 负载均衡 / 证书库 | 阿里云 SLB / ALB、阿里云证书服务、腾讯云 CLB、腾讯云 SSL 证书（已完成，经它更新 CDN、EdgeOne、CLB 等）、AWS ACM | M3 |
 | 对象存储 | 阿里云 OSS、腾讯云 COS 的自定义域名 HTTPS | M3 |
 | 服务器 | 本地文件 + 执行命令（nginx、caddy、haproxy 等）；SSH / SFTP 上传 + 远程命令；Docker 容器（通过挂载的 Docker API 发信号或重启，不需要 docker 命令行）；Kubernetes Secret | M1（本地、SSH）/ M3（Docker 已完成） |
 | 面板与应用 | 1Panel、宝塔、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Caddy 管理 API | M3 |
@@ -362,6 +362,8 @@ DNS 验证分成两种能力，实现方式不同：
 - 读不了私钥时（certbot、acme.sh 的私钥通常只有属主能读）报出是哪个文件，提示让 JEC 以那个用户运行（`docker-compose.yml` 里 `user: "0:0"`）或者用 `--deploy-hook` 复制一份；目录不存在时提示挂载。测试连接列出找到了哪些证书。用 Docker 时把目录只读挂载进容器，`docker-compose.yml` 里有注释掉的示例。
 
 **SSH 的实现**（`internal/modules/ssh`，M1）：部署目标类型 `ssh.server`：主机、端口、用户名、私钥（OpenSSH 或 PEM，可以带口令）或密码、主机公钥、远程目录（绝对路径）和放法（同本地文件），以及写入后执行的命令。用已有依赖里的 `golang.org/x/crypto/ssh`，不用 SFTP：每个文件用一条 `cat > 临时文件` 命令写入（私钥在 `umask 077` 下写），四个都写好后用一条命令一起改名，再执行设置的命令（比如 `systemctl reload nginx`），它的输出记进部署日志。所以服务器要有 POSIX shell，Linux 和 BSD 都有。主机公钥一定核对：可以填 `SHA256:` 开头的指纹，或 known_hosts 里的那一行；留空时第一次部署会失败，错误信息给出服务器出示的指纹，让人核对后填进去。登录被拒、主机公钥不对、写不进去、命令退出码不是 0 都不自动重试，网络问题照常重试。
+
+**腾讯云的实现**（`internal/modules/tencentcloud`，M3）：部署目标类型 `tencentcloud.ssl`：SecretId、SecretKey，要更新的资源类型（`cdn`、`teo`、`clb`、`waf`、`live`、`ddos`、`apigateway`、`vod`、`tke`、`tcb`、`tse`、`cos`，逗号分隔，默认 `cdn`），首次替换的证书 ID，删除被替换的证书（默认开），地域（给 clb 等要地域的类型），站点（中国站 `ssl.tencentcloudapi.com` 或国际站）。每个新版本先 `UploadCertificate`（`Repeatable=false`：同一张证书已经在时返回它的 ID，重试不会重复上传），再用 `UpdateCertificateInstance` 一键更新：旧证书是上一个版本（第一次是设置的首次替换证书），腾讯云把绑定旧证书的资源都换成新证书；这个接口是异步的，任务 ID 为 0 时每 3 秒再调一次，最多 2 分钟。没有旧证书时只上传，日志提示去控制台部署一次。删除只针对更早的版本：正在被替换的那张下次部署时再删，删不掉只记警告。测试连接调 `DescribeCertificates`。用 SDK 的通用客户端（TC3 签名），不引入 SSL 服务的 SDK。只用替身 API 测过，还没有对真实账号验证。
 
 **阿里云 CDN 和全站加速的实现**（`internal/modules/aliyun`，M3）：部署目标类型 `aliyun.cdn`、`aliyun.dcdn`：AccessKey，加速域名（逗号分隔；留空时用证书里不是通配符的域名）。每个新版本对每个加速域名调一次 `SetCdnDomainSSLCertificate` / `SetDcdnDomainSSLCertificate`：`CertType=upload`、`SSLProtocol=on`，证书链和私钥放在表单里，不传证书名，由阿里云起名，和 acme.sh 的 `ali_cdn`、`ali_dcdn` 一样。上传的证书会存进数字证书管理服务，JEC 不删旧的。测试连接对每个加速域名调 `DescribeDomainCertificateInfo` / `DescribeDcdnDomainCertificateInfo`，不做改动。用阿里云 OpenAPI 客户端的通用调用（V3 签名），不引入各产品的 SDK；错误码由 `internal/lib/aliyunapi` 读取（客户端返回的是 `*tea.SDKError`）。域名不在这个账号、AccessKey 或权限不对都不重试，限流和 5xx 照常重试。只用替身 API 测过，还没有对真实账号验证。
 

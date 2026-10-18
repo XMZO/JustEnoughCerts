@@ -1419,6 +1419,55 @@
       "name": "Telegram"
     }
   },
+  "tencentcloud": {
+    "error": {
+      "api": "Tencent Cloud returned the error {code}. The full log says why; a certificate to replace that is deployed to no resource cannot be replaced.",
+      "auth": "Tencent Cloud refused the SecretId and SecretKey, or they lack the permissions needed.",
+      "network": "Could not reach {endpoint}.",
+      "resource": "SSL Certificates updates no resources of the type {resource}. It updates: {types}",
+      "resources": "Enter the types of resource to update.",
+      "throttled": "Tencent Cloud refused for now: too many requests. JEC tries again later.",
+      "update_slow": "Tencent Cloud did not start updating the resources in time; JEC tries again later."
+    },
+    "field": {
+      "delete_old": "Delete the replaced certificates",
+      "delete_old_help": "Only those JEC uploaded, once a later version replaced them.",
+      "regions": "Regions",
+      "regions_help": "For clb, waf, apigateway, tke, tcb, tse and cos: regions separated by commas, such as ap-guangzhou, ap-shanghai. Left empty, Tencent Cloud picks.",
+      "replace": "Certificate to replace first",
+      "replace_help": "The ID, in the SSL Certificates console, of the certificate the resources have now: JEC's first certificate replaces it, and each later one the one before. Left empty, the first certificate is only uploaded: deploy it to the resources in the console once.",
+      "resources": "Resources to update",
+      "resources_help": "Their types, separated by commas: cdn, teo (EdgeOne), clb, waf, live, ddos, apigateway, vod, tke, tcb, tse, cos.",
+      "secret_id": "SecretId",
+      "secret_key": "SecretKey",
+      "secret_key_help": "Best from a CAM user granted UploadCertificate, UpdateCertificateInstance, DeleteCertificate and DescribeCertificates of SSL Certificates only, with what the resources to update need.",
+      "site": "Site"
+    },
+    "log": {
+      "delete_failed": "Could not delete {id}; the next deployment tries again.",
+      "deleted": "Deleted {id}",
+      "no_old": "No certificate to replace: deploy {id} to the resources in the SSL Certificates console once, and the next versions replace it.",
+      "update": "Replacing {old} with {id} on {resources}",
+      "updating": "Tencent Cloud is updating the resources (task {record}).",
+      "upload": "Uploading {alias}",
+      "uploaded": "Uploaded as {id}"
+    },
+    "module": {
+      "description": "Deploys certificates through Tencent Cloud's SSL Certificates service, to CDN, EdgeOne, CLB and the other resources it updates.",
+      "name": "Tencent Cloud"
+    },
+    "site": {
+      "china": "China (ssl.tencentcloudapi.com)",
+      "international": "International (ssl.intl.tencentcloudapi.com)"
+    },
+    "ssl": {
+      "description": "Uploads each new certificate to SSL Certificates, then has the resources of the one it follows take it, in one go.",
+      "name": "Tencent Cloud (SSL Certificates)"
+    },
+    "test": {
+      "ok": "JEC can reach SSL Certificates: the account has {count, plural, one {# certificate} other {# certificates}}."
+    }
+  },
   "webhook": {
     "deploy": {
       "description": "Posts each new version of a certificate, with its private key, as JSON to an HTTPS endpoint of yours, which installs it.",

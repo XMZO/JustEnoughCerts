@@ -14,6 +14,7 @@ require (
 	github.com/ncruces/go-sqlite3 v0.35.6
 	github.com/pquerna/otp v1.5.0
 	github.com/pressly/goose/v3 v3.29.0
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.177
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/crypto v0.58.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20261014201258-cf169cd0986f
@@ -182,7 +183,6 @@ require (
 	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.177 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/transip/gotransip/v6 v6.28.0 // indirect
 	github.com/ucloud/ucloud-sdk-go v0.22.123 // indirect

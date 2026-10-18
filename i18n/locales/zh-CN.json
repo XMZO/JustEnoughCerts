@@ -1419,6 +1419,55 @@
       "name": "Telegram"
     }
   },
+  "tencentcloud": {
+    "error": {
+      "api": "腾讯云返回了错误 {code}，完整日志里有原因；要替换的证书如果没有部署在任何资源上，是不能被替换的。",
+      "auth": "腾讯云不认这对 SecretId 和 SecretKey，或者它们缺少需要的权限。",
+      "network": "连不上 {endpoint}。",
+      "resource": "SSL 证书服务不能更新 {resource} 类型的资源。它能更新：{types}",
+      "resources": "请填写要更新的资源类型。",
+      "throttled": "腾讯云暂时拒绝了：请求太多。JEC 稍后再试。",
+      "update_slow": "腾讯云没有及时开始更新资源，JEC 稍后再试。"
+    },
+    "field": {
+      "delete_old": "删除被替换的证书",
+      "delete_old_help": "只删除 JEC 上传、已被后来的版本替换的证书。",
+      "regions": "地域",
+      "regions_help": "用于 clb、waf、apigateway、tke、tcb、tse 和 cos：地域，用逗号分隔，比如 ap-guangzhou、ap-shanghai。留空时由腾讯云决定。",
+      "replace": "首次替换的证书",
+      "replace_help": "资源上现在用的证书的 ID（在 SSL 证书控制台查看）：JEC 的第一张证书会替换它，之后每张替换上一张。留空时第一张只上传，需要在控制台把它部署到资源上一次。",
+      "resources": "要更新的资源",
+      "resources_help": "资源类型，用逗号分隔：cdn、teo（EdgeOne）、clb、waf、live、ddos、apigateway、vod、tke、tcb、tse、cos。",
+      "secret_id": "SecretId",
+      "secret_key": "SecretKey",
+      "secret_key_help": "最好用只授予 SSL 证书服务的 UploadCertificate、UpdateCertificateInstance、DeleteCertificate、DescribeCertificates 权限，以及要更新的资源所需权限的 CAM 子用户。",
+      "site": "站点"
+    },
+    "log": {
+      "delete_failed": "删除 {id} 失败，下次部署会再试。",
+      "deleted": "已删除 {id}",
+      "no_old": "没有要替换的证书：请在 SSL 证书控制台把 {id} 部署到资源上一次，之后的版本会替换它。",
+      "update": "在 {resources} 上用 {id} 替换 {old}",
+      "updating": "腾讯云正在更新资源（任务 {record}）。",
+      "upload": "上传 {alias}",
+      "uploaded": "已上传，证书 ID {id}"
+    },
+    "module": {
+      "description": "通过腾讯云 SSL 证书服务部署证书，可以更新 CDN、EdgeOne、CLB 等资源。",
+      "name": "腾讯云"
+    },
+    "site": {
+      "china": "中国站（ssl.tencentcloudapi.com）",
+      "international": "国际站（ssl.intl.tencentcloudapi.com）"
+    },
+    "ssl": {
+      "description": "把每张新证书上传到 SSL 证书服务，再用“一键更新”让旧证书所在的资源都换上新证书。",
+      "name": "腾讯云（SSL 证书服务）"
+    },
+    "test": {
+      "ok": "JEC 能访问 SSL 证书服务：这个账号有 {count, plural, other {# 张证书}}。"
+    }
+  },
   "webhook": {
     "deploy": {
       "description": "把每个新版本的证书和私钥以 JSON 发到你的 HTTPS 接口，由你的程序完成安装。",
