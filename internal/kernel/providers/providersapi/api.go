@@ -56,13 +56,26 @@ type InstanceBody struct {
 	Credential int64             `json:"credentialId,omitempty" doc:"The credential that fills the fields the type takes from one"`
 	CreatedAt  time.Time         `json:"createdAt"`
 	UpdatedAt  time.Time         `json:"updatedAt"`
+	LastTest   *TestBody         `json:"lastTest,omitempty" doc:"What the last test said, until the settings change"`
+}
+
+// TestBody is what a test of an instance said, when: its message of
+// success, or its error.
+type TestBody struct {
+	At      time.Time         `json:"at"`
+	OK      bool              `json:"ok"`
+	Message contracts.Message `json:"message"`
 }
 
 func instanceBody(s providers.Summary) InstanceBody {
-	return InstanceBody{
+	b := InstanceBody{
 		ID: s.ID, Type: s.Type, Kind: string(s.Kind), Name: s.Name, Config: s.Config,
 		SecretKeys: s.SecretKeys, Credential: s.Credential, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
 	}
+	if t := s.LastTest; t != nil {
+		b.LastTest = &TestBody{At: t.At, OK: t.OK, Message: contracts.Message{Key: t.Key, Params: t.Params}}
+	}
+	return b
 }
 
 type kindInput struct {
@@ -257,12 +270,21 @@ func test(ctx context.Context, r *providers.Registry, id int64) (*testOutput, er
 	if !ok {
 		return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorProviderUntestable, nil)
 	}
-	ctx, cancel := context.WithTimeout(ctx, testTimeout)
+	tctx, cancel := context.WithTimeout(ctx, testTimeout)
 	defer cancel()
-	msg, err := tester.Test(ctx)
+	msg, err := tester.Test(tctx)
+	// What it said shows on the provider's card until its settings change;
+	// failing to keep it changes nothing of the answer.
 	if err != nil {
+		var p *contracts.Problem
+		key, params := i18n.KernelErrorProviderTest, map[string]any(nil)
+		if errors.As(err, &p) {
+			key, params = p.Key, p.Params
+		}
+		_ = r.RecordTest(ctx, id, false, key, params)
 		return nil, testError(err)
 	}
+	_ = r.RecordTest(ctx, id, true, msg.Key, msg.Params)
 	out := &testOutput{}
 	out.Body.Message = msg
 	return out, nil

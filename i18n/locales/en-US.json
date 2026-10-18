@@ -1610,6 +1610,11 @@
         "intro": "Where certificates come from: certificate authorities that speak ACME, such as Let's Encrypt. Uploads need no setup here.",
         "title": "Certificate sources"
       },
+      "status": {
+        "deploy_failed": "The last deployment failed: {error}",
+        "deployed": "The last deployment went through",
+        "test_failed": "The last test failed: {error}"
+      },
       "tag": {
         "all": "All",
         "china": "China",

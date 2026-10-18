@@ -90,6 +90,7 @@
 - 测试里不要访问界面（`/`）：本机的 `web/dist` 是构建过的，CI 里只有 `.gitkeep`，本机过了 CI 也会失败。
 - 凭据（`PLAN.md` 6.1，设计稿 `Credentials`）：前后端都已完成（界面：`/credentials`、`CredentialDialog.vue`，服务商表单里的“凭据”选择在 `ProviderForm.vue`，`providers/fields.ts` 的 `credentialChoice`）。凭据是一种“凭据种类”（`providers.CredentialKind`）的一组值，多个实例共用，存在 `kernel_credentials`；类型用 `Type.Credential` 说明哪些字段可以由凭据填，打开实例时由注册表填好。几个模块共用的种类放在 `internal/lib/credentials`（各家云的访问密钥、SSH 私钥），新加的云服务类型要声明它用的种类（`credentials.Use`），lego 的映射在 `lego/catalog.go` 的 `credentialOf`。接口在 `/api/v1/credentials`，添加和修改实例可以带 `credentialId` 或 `newCredential`；配置文件有 `credentials` 一节。
 - DNS 服务商的测试连接：`dnsrecord` 的四家（腾讯云 DNSPod、阿里云 DNS、Cloudflare、华为云 DNS）列出账号下的域名（`API.Domains`），lego 模块里这四家的类型标 `testable`。
+- 服务商卡片的状态行（设计稿 `Providers`）：实例记下最近一次测试（`kernel_providers` 的 `tested_at`、`test_result`，接口里是 `lastTest`；改了设置或凭据就作废），部署目标还看最近一次部署，取较新的显示。
 - 设置页按设计稿补上了主题（`web/src/theme.ts`，跟随系统、浅色、深色，存在浏览器里）和“检查更新”（`GET /api/v1/system/release`，点了才问 GitHub）。
 - 下一步：用真实账号验证阿里云 ESA 部署、ESA 边缘应答和 Namecheap 模块（M1/M2 验收，`PLAN.md` 5.4、5.6 列了要确认的点，包括 Namecheap 给不给 DNS 验证）；M4（`PLAN.md` 11）。
 

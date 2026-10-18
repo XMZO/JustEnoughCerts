@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Pencil, PlugZap, Plus, Send, Trash2 } from '@lucide/vue'
+import { CircleCheck, Pencil, PlugZap, Plus, Send, Trash2, TriangleAlert } from '@lucide/vue'
 import { useQueries } from '@tanstack/vue-query'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
-import { useCertificates } from '../api/certs'
+import { useCertificates, useRuns } from '../api/certs'
 import { useCredentials } from '../api/credentials'
 import { useManifest } from '../api/manifest'
 import { api, ApiError, networkError, unwrap } from '../api/client'
@@ -35,6 +35,8 @@ const list = useProviders(() => props.kind)
 const types = useProviderTypes(() => props.kind)
 const certificates = useCertificates()
 const credentials = useCredentials()
+// The deployments of the last month, for the cards of targets.
+const runs = useRuns(30, () => props.kind === 'target')
 const loadError = useApiError(computed(() => list.error.value))
 
 // The full types of the instances, for the settings their cards show.
@@ -69,6 +71,33 @@ function events(p: Provider): string {
   return on.length ? t('notify.card.events', { events: intl.list(on) }) : t('notify.card.no_events')
 }
 const errorText = (e?: { key: string; params?: Record<string, unknown> }) => (e ? t(e.key as MessageKey, (e.params ?? {}) as Params) : '')
+
+// How a provider fared last (docs/design/boards/Providers): what its last
+// test said, or, for a target, how its last deployment went, whichever
+// came later.
+interface CardStatus {
+  ok: boolean
+  text: string
+  at: string
+}
+function statusOf(p: Provider): CardStatus | undefined {
+  const found: CardStatus[] = []
+  if (p.lastTest) {
+    const said = errorText(p.lastTest.message)
+    found.push({ ok: p.lastTest.ok, at: p.lastTest.at, text: p.lastTest.ok ? said : t('kernel.providers.status.test_failed', { error: said }) })
+  }
+  if (props.kind === 'target') {
+    const d = runs.data.value?.runs?.find((r) => r.kind === 'deployment' && r.target === p.id && (r.state === 'done' || r.state === 'failed') && r.finishedAt)
+    if (d?.finishedAt) {
+      found.push({
+        ok: d.state === 'done',
+        at: d.finishedAt,
+        text: d.state === 'done' ? t('kernel.providers.status.deployed') : t('kernel.providers.status.deploy_failed', { error: errorText(d.error) }),
+      })
+    }
+  }
+  return found.sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0]
+}
 
 // Tests: a note through a notifier, or a check of the settings of any
 // other provider whose type has one. Each card keeps what its last test
@@ -118,6 +147,7 @@ const cards = computed(() =>
       shown: summary(fullType(p.type), p),
       secrets: p.secretKeys.length,
       credential: p.credentialId ? (credentials.data.value?.find((c) => c.id === p.credentialId)?.name ?? '') : undefined,
+      status: notifiers.value ? undefined : statusOf(p),
       uses,
       events: notifiers.value ? events(p) : '',
       send: sends.data.value?.find((s) => s.notifier === p.id),
@@ -226,7 +256,18 @@ async function confirmDelete() {
             <p v-else class="m-0 text-small text-danger-ink [overflow-wrap:anywhere]">{{ t('notify.card.failed', { error: errorText(c.send.error) }) }}</p>
           </template>
         </template>
-        <p v-else class="m-0 text-small text-ink-muted">{{ t('kernel.providers.uses', { count: c.uses }) }}</p>
+        <template v-else>
+          <p
+            v-if="c.status && !tested[c.provider.id]"
+            :class="['m-0 flex items-start gap-1.5 text-small [overflow-wrap:anywhere]', c.status.ok ? 'text-ok-ink' : 'text-warn-ink']"
+          >
+            <component :is="c.status.ok ? CircleCheck : TriangleAlert" class="mt-0.5 size-4 flex-none" aria-hidden="true" />
+            <span>
+              {{ c.status.text }} <time :datetime="c.status.at" class="text-ink-muted">{{ intl.dateTime(c.status.at) }}</time>
+            </span>
+          </p>
+          <p class="m-0 text-small text-ink-muted">{{ t('kernel.providers.uses', { count: c.uses }) }}</p>
+        </template>
         <p v-if="testPassed(c.provider.id)" role="status" class="m-0 text-small text-ok-ink [overflow-wrap:anywhere]">{{ testPassed(c.provider.id) }}</p>
         <JecAlert v-else-if="testError(c.provider.id)" :code="testError(c.provider.id)!.code" :params="testError(c.provider.id)!.params" />
         <div class="mt-auto flex flex-wrap gap-2 pt-1">

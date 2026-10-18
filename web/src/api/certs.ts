@@ -75,10 +75,11 @@ function useCertsMutation<V, R>(fn: (vars: V) => Promise<R>) {
 }
 
 /** The issuances and deployments of the last days (0 for all), polled while some are under way. */
-export function useRuns(days: MaybeRefOrGetter<number>) {
+export function useRuns(days: MaybeRefOrGetter<number>, enabled: MaybeRefOrGetter<boolean> = true) {
   return useQuery({
     queryKey: computed(() => [...all, 'runs', toValue(days)] as const),
     queryFn: () => unwrap(api.GET('/certs/runs', { params: { query: { days: toValue(days) } } })),
+    enabled: computed(() => toValue(enabled)),
     refetchInterval: (q) => {
       const runs = q.state.data?.runs ?? []
       if (runs.some((r) => r.state === 'running' || (r.state === 'pending' && !r.error))) return 3000

@@ -399,6 +399,11 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'a deployment that failed').toEqual([])
   await page.goto('./certificates')
   expect.soft(await problems(page), 'certificates with one that could not be deployed').toEqual([])
+  // The target's card tells how it fared last: the deployment, after the test.
+  await page.goto('./targets')
+  const relative = page.getByRole('article').filter({ hasText: 'e2e relative' })
+  await expect(relative.locator('p.text-warn-ink time')).toBeVisible()
+  expect.soft(await problems(page), 'deploy targets, one of which failed').toEqual([])
 
   // Notifications: Telegram's form, then a webhook to this machine, whose
   // test the guard against private addresses refuses.

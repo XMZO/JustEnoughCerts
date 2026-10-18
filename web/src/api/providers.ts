@@ -71,10 +71,15 @@ function useProvidersMutation<V, R>(fn: (vars: V) => Promise<R>) {
   })
 }
 
-/** Tests a configured provider of a testable type; it fails with the provider's own error. */
+/**
+ * Tests a configured provider of a testable type; it fails with the
+ * provider's own error. The provider keeps what the test said.
+ */
 export function useProviderTest() {
+  const client = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => unwrap(api.POST('/providers/{id}/test', { params: { path: { id } } })),
+    onSettled: () => client.invalidateQueries({ queryKey: [...all, 'list'] }),
   })
 }
 

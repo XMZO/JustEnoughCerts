@@ -476,13 +476,15 @@ type stored struct {
 	secrets           []byte
 	created, updated  int64
 	credential        sql.NullInt64
+	testedAt          sql.NullInt64
+	testResult        sql.NullString
 }
 
-const providerColumns = "id, type, name, config, secrets, created_at, updated_at, credential_id"
+const providerColumns = "id, type, name, config, secrets, created_at, updated_at, credential_id, tested_at, test_result"
 
 func scanStored(row scanner) (stored, error) {
 	var s stored
-	err := row.Scan(&s.id, &s.typ, &s.name, &s.config, &s.secrets, &s.created, &s.updated, &s.credential)
+	err := row.Scan(&s.id, &s.typ, &s.name, &s.config, &s.secrets, &s.created, &s.updated, &s.credential, &s.testedAt, &s.testResult)
 	if errors.Is(err, sql.ErrNoRows) {
 		return s, ErrNotFound
 	}
@@ -749,6 +751,12 @@ func (r *Registry) UpdateWithTx(ctx context.Context, tx *sql.Tx, id int64, name 
 		in.Name, string(plain), r.now().UnixMilli(), nullID(in.Credential), id); err != nil {
 		return err
 	}
+	// What the last test said of other settings tells nothing of these.
+	if config != nil || len(secrets) > 0 || credential != nil {
+		if err := forgetTest(ctx, tx, id); err != nil {
+			return err
+		}
+	}
 	return r.sealSecrets(ctx, tx, id, in.Secrets)
 }
 
@@ -796,6 +804,49 @@ type Summary struct {
 	Credential int64 // 0 for none
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	// LastTest is what the last test said, nil before one and once the
+	// settings changed.
+	LastTest *TestResult
+}
+
+// TestResult is what a test of an instance said, when: its message of
+// success, or its error, by message key.
+type TestResult struct {
+	At     time.Time
+	OK     bool
+	Key    i18n.Key
+	Params map[string]any
+}
+
+// storedTest is a TestResult as test_result holds it.
+type storedTest struct {
+	OK     bool           `json:"ok"`
+	Key    i18n.Key       `json:"key"`
+	Params map[string]any `json:"params,omitempty"`
+}
+
+// RecordTest keeps what a test of instance id said: ok, and the message of
+// key with params.
+func (r *Registry) RecordTest(ctx context.Context, id int64, ok bool, key i18n.Key, params map[string]any) error {
+	data, err := json.Marshal(storedTest{OK: ok, Key: key, Params: params})
+	if err != nil {
+		return err
+	}
+	_, err = r.db.ExecContext(ctx, "UPDATE kernel_providers SET tested_at = ?, test_result = ? WHERE id = ?", r.now().UnixMilli(), string(data), id)
+	return err
+}
+
+// forgetTest drops the last test of instance id.
+func forgetTest(ctx context.Context, tx *sql.Tx, id int64) error {
+	_, err := tx.ExecContext(ctx, "UPDATE kernel_providers SET tested_at = NULL, test_result = NULL WHERE id = ?", id)
+	return err
+}
+
+// forgetCredentialTests drops the last tests of the instances whose fields
+// credential fills.
+func forgetCredentialTests(ctx context.Context, tx *sql.Tx, credential int64) error {
+	_, err := tx.ExecContext(ctx, "UPDATE kernel_providers SET tested_at = NULL, test_result = NULL WHERE credential_id = ?", credential)
+	return err
 }
 
 // List returns the instances whose type is of kind, or every instance for
@@ -843,6 +894,10 @@ func (r *Registry) summary(s stored) (Summary, error) {
 		SecretKeys: append([]string{}, slices.Sorted(maps.Keys(in.Secrets))...),
 		Credential: in.Credential,
 		CreatedAt:  time.UnixMilli(s.created).UTC(), UpdatedAt: time.UnixMilli(s.updated).UTC(),
+	}
+	var t storedTest
+	if s.testedAt.Valid && json.Unmarshal([]byte(s.testResult.String), &t) == nil {
+		sum.LastTest = &TestResult{At: time.UnixMilli(s.testedAt.Int64).UTC(), OK: t.OK, Key: t.Key, Params: t.Params}
 	}
 	if e := r.available(s.typ); e != nil {
 		sum.Kind = e.Kind

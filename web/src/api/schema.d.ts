@@ -1352,6 +1352,8 @@ export interface components {
             id: number;
             /** @description The type's kind, or empty when the type is not available */
             kind: string;
+            /** @description What the last test said, until the settings change */
+            lastTest?: components["schemas"]["TestBody"];
             name: string;
             /** @description The secret fields that hold a value */
             secretKeys: string[];
@@ -1755,6 +1757,12 @@ export interface components {
         SwitchInputBody: {
             /** @description Switch the module on, or off */
             on: boolean;
+        };
+        TestBody: {
+            /** Format: date-time */
+            at: string;
+            message: components["schemas"]["Message"];
+            ok: boolean;
         };
         TestOutputBody: {
             /** @description What the test found */

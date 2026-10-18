@@ -1144,6 +1144,10 @@
             "description": "The type's kind, or empty when the type is not available",
             "type": "string"
           },
+          "lastTest": {
+            "$ref": "#/components/schemas/TestBody",
+            "description": "What the last test said, until the settings change"
+          },
           "name": {
             "type": "string"
           },
@@ -2288,6 +2292,27 @@
         },
         "required": [
           "on"
+        ],
+        "type": "object"
+      },
+      "TestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "message": {
+            "$ref": "#/components/schemas/Message"
+          },
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "at",
+          "ok",
+          "message"
         ],
         "type": "object"
       },

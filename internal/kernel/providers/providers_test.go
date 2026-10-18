@@ -443,6 +443,32 @@ func TestTest(t *testing.T) {
 		t.Errorf("an error without a message: %+v", e)
 	}
 
+	// Each instance keeps what its last test said, until its settings
+	// change.
+	last := func(id int64) *providersapi.TestBody {
+		t.Helper()
+		var in providersapi.InstanceBody
+		if err := json.Unmarshal(f.api.Get("/providers/"+strconv.FormatInt(id, 10)).Body.Bytes(), &in); err != nil {
+			t.Fatal(err)
+		}
+		return in.LastTest
+	}
+	if got := last(ok.ID); got == nil || !got.OK || got.Message.Key != "probe.test.ok" || got.Message.Params["n"] != float64(1) || got.At.IsZero() {
+		t.Errorf("the last test of ok: %+v", got)
+	}
+	if got := last(refused.ID); got == nil || got.OK || got.Message.Key != "probe.error.refused" || got.Message.Params["why"] != "no" {
+		t.Errorf("the last test of refused: %+v", got)
+	}
+	if got := last(odd.ID); got == nil || got.OK || got.Message.Key != "kernel.error.provider_test" {
+		t.Errorf("the last test of odd: %+v", got)
+	}
+	if resp := f.api.Patch("/providers/"+strconv.FormatInt(ok.ID, 10), map[string]any{"name": "still ok"}); resp.Code != http.StatusOK || last(ok.ID) == nil {
+		t.Errorf("a new name forgot the test: %d", resp.Code)
+	}
+	if resp := f.api.Patch("/providers/"+strconv.FormatInt(ok.ID, 10), map[string]any{"config": map[string]string{"RESULT": "other"}}); resp.Code != http.StatusOK || last(ok.ID) != nil {
+		t.Errorf("new settings kept the test: %d", resp.Code)
+	}
+
 	solver := f.create(map[string]any{"type": "dns.acme_dns", "name": "x", "config": map[string]string{"API_USER": "u"}, "secrets": map[string]string{"API_KEY": "k"}})
 	if e := f.fails(http.MethodPost, path(solver.ID), nil, http.StatusUnprocessableEntity); e.Code != "kernel.error.provider_untestable" {
 		t.Errorf("a type without a test: %+v", e)

@@ -197,13 +197,20 @@ func TestCredentials(t *testing.T) {
 		t.Errorf("a credential for a type that takes none: %s", got)
 	}
 
-	// A new value reaches every instance.
+	// A new value reaches every instance, whose last tests were of the old.
+	if err := f.reg.RecordTest(t.Context(), store.ID, true, "cloud.test.ok", nil); err != nil {
+		t.Fatal(err)
+	}
 	resp := f.api.Patch("/credentials/"+itoa(main.ID), map[string]any{"secrets": map[string]string{"key_secret": "rotated"}})
 	if resp.Code != http.StatusOK {
 		t.Fatalf("update %d %s", resp.Code, resp.Body.String())
 	}
 	if in := f.open(store.ID); in.Secrets["CLOUD_SECRET"] != "rotated" {
 		t.Errorf("after the update: %+v", in.Secrets)
+	}
+	var stored providersapi.InstanceBody
+	if err := json.Unmarshal(f.api.Get("/providers/"+itoa(store.ID)).Body.Bytes(), &stored); err != nil || stored.LastTest != nil {
+		t.Errorf("the test of the old keys stayed: %+v %v", stored.LastTest, err)
 	}
 	if got := locations(f.fails(http.MethodPatch, "/credentials/"+itoa(box.ID), map[string]any{"name": "main"}, http.StatusUnprocessableEntity)); got != "body.name=kernel.error.credential_name" {
 		t.Errorf("a taken name: %s", got)

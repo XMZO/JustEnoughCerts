@@ -1610,6 +1610,11 @@
         "intro": "证书从哪里来：支持 ACME 的证书颁发机构，例如 Let's Encrypt。手动上传不用在这里设置。",
         "title": "证书来源"
       },
+      "status": {
+        "deploy_failed": "上次部署失败：{error}",
+        "deployed": "上次部署成功",
+        "test_failed": "上次测试没通过：{error}"
+      },
       "tag": {
         "all": "全部",
         "china": "国内",

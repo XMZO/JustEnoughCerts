@@ -353,6 +353,12 @@ func (r *Registry) UpdateCredentialTx(ctx context.Context, tx *sql.Tx, id int64,
 		c.Name, string(plain), r.now().UnixMilli(), id); err != nil {
 		return err
 	}
+	// The tests of the instances that use it were of other values.
+	if config != nil || len(secrets) > 0 {
+		if err := forgetCredentialTests(ctx, tx, id); err != nil {
+			return err
+		}
+	}
 	return r.sealCredential(ctx, tx, id, c.Secrets)
 }
 
