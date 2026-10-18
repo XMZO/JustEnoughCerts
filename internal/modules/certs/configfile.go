@@ -317,7 +317,7 @@ func (s *service) addCertificate(ctx context.Context, ci *certImport, e certific
 // source.
 func solverProblems(source, solver providers.Type, domains []string) []configfile.Problem {
 	switch {
-	case source.NeedsSolver && !source.Accepts(solver.Solves()):
+	case source.NeedsSolver && !source.Takes(solver):
 		return []configfile.Problem{{Field: "solver", Key: i18n.CertsErrorSolverChallenge}}
 	case solver.Solves() == providers.ChallengeHTTP && slices.ContainsFunc(domains, isWildcard):
 		return []configfile.Problem{{Field: "solver", Key: i18n.CertsErrorWildcardHttp}}

@@ -1991,7 +1991,8 @@
             "items": {
               "enum": [
                 "dns",
-                "http"
+                "http",
+                "record"
               ],
               "type": "string"
             },
@@ -2034,6 +2035,9 @@
             "type": "boolean"
           },
           "ownKey": {
+            "type": "boolean"
+          },
+          "records": {
             "type": "boolean"
           },
           "tags": {
@@ -2082,11 +2086,12 @@
             "type": "string"
           },
           "challenges": {
-            "description": "For a source that needs a solver: the challenges of the solvers it can use",
+            "description": "For a source that needs a solver: the challenges of the solvers it can use; record takes a solver of DNS that adds records of any type",
             "items": {
               "enum": [
                 "dns",
-                "http"
+                "http",
+                "record"
               ],
               "type": "string"
             },
@@ -2125,7 +2130,12 @@
             "description": "For a source: its certificates come with their own private key, so there is no key type to choose",
             "type": "boolean"
           },
+          "records": {
+            "description": "For a solver of DNS: it adds records of any type too, as some sources ask",
+            "type": "boolean"
+          },
           "tags": {
+            "description": "The groups of the type in the UI; a solver that adds records of any type is in records too",
             "items": {
               "type": "string"
             },

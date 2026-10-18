@@ -121,13 +121,17 @@ type Type struct {
 	// through a solver, as ACME does; Challenges are the ways it can have
 	// them proven, ChallengeDNS when left out.
 	NeedsSolver bool     `json:"needsSolver,omitempty"`
-	Challenges  []string `json:"challenges,omitempty" enum:"dns,http"`
+	Challenges  []string `json:"challenges,omitempty" enum:"dns,http,record"`
 	// OwnKey is set on a source whose certificates come with their own
 	// private key (contracts.KeySource): no key type to choose.
 	OwnKey bool `json:"ownKey,omitempty"`
 	// Challenge is how the providers of a solver type prove control of a
 	// domain, ChallengeDNS when left out.
 	Challenge string `json:"challenge,omitempty" enum:"dns,http"`
+	// Records is set on a solver type of DNS whose providers add records
+	// of any type too (contracts.RecordSolver), as vendors' validations
+	// ask for.
+	Records bool `json:"records,omitempty"`
 	// Testable types make providers that can check their settings
 	// (contracts.Tester), through POST /api/v1/providers/{id}/test.
 	Testable     bool `json:"testable,omitempty"`
@@ -143,9 +147,15 @@ type Type struct {
 const (
 	ChallengeDNS  = "dns"  // records in the domain's DNS, by a contracts.Solver
 	ChallengeHTTP = "http" // files on the domain's web server, by a contracts.FileSolver
+	// ChallengeRecord is what a source asks for whose validation has DNS
+	// records of any type: a solver of DNS that sets Records.
+	ChallengeRecord = "record"
 )
 
-var challenges = []string{ChallengeDNS, ChallengeHTTP}
+var (
+	challenges       = []string{ChallengeDNS, ChallengeHTTP}
+	sourceChallenges = []string{ChallengeDNS, ChallengeHTTP, ChallengeRecord}
+)
 
 // Solves returns how the providers of solver type t prove control of a
 // domain.
@@ -158,6 +168,14 @@ func (t Type) Accepts(c string) bool {
 		return c == ChallengeDNS
 	}
 	return slices.Contains(t.Challenges, c)
+}
+
+// Takes reports whether source type t can have control of its domains
+// proven by a solver of type solver: one of its challenge, or one that adds
+// any record, for a source that asks for records.
+func (t Type) Takes(solver Type) bool {
+	c := solver.Solves()
+	return t.Accepts(c) || (c == ChallengeDNS && solver.Records && t.Accepts(ChallengeRecord))
 }
 
 // Instance is a configured provider with its secrets opened, as a Factory
@@ -278,8 +296,10 @@ func (s *Scope) Add(t Type, f Factory) error {
 		return fmt.Errorf("provider type %s has no factory", t.ID)
 	case t.Challenge != "" && (t.Kind != Solver || !slices.Contains(challenges, t.Challenge)):
 		return fmt.Errorf("provider type %s: challenge %q is for solvers, one of %v", t.ID, t.Challenge, challenges)
-	case len(t.Challenges) > 0 && (t.Kind != Source || !t.NeedsSolver || slices.ContainsFunc(t.Challenges, func(c string) bool { return !slices.Contains(challenges, c) })):
-		return fmt.Errorf("provider type %s: challenges %v are for sources that need a solver, out of %v", t.ID, t.Challenges, challenges)
+	case len(t.Challenges) > 0 && (t.Kind != Source || !t.NeedsSolver || slices.ContainsFunc(t.Challenges, func(c string) bool { return !slices.Contains(sourceChallenges, c) })):
+		return fmt.Errorf("provider type %s: challenges %v are for sources that need a solver, out of %v", t.ID, t.Challenges, sourceChallenges)
+	case t.Records && (t.Kind != Solver || t.Solves() != ChallengeDNS):
+		return fmt.Errorf("provider type %s: records are for solvers of DNS", t.ID)
 	case t.OwnKey && (t.Kind != Source || t.NeedsSolver):
 		return fmt.Errorf("provider type %s: own keys are for sources that need no solver", t.ID)
 	}

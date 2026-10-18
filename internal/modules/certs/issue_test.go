@@ -45,8 +45,9 @@ func (f *fixture) addFakes() {
 	for _, typ := range []providers.Type{
 		{ID: "fake.ca", Kind: providers.Source, Brand: "Fake CA", NeedsSolver: true},
 		{ID: "fake.free", Kind: providers.Source, Brand: "Fake CA without validation"},
-		{ID: "fake.vendor", Kind: providers.Source, Brand: "Fake vendor", NeedsSolver: true, Challenges: []string{providers.ChallengeHTTP}},
+		{ID: "fake.vendor", Kind: providers.Source, Brand: "Fake vendor", NeedsSolver: true, Challenges: []string{providers.ChallengeHTTP, providers.ChallengeRecord}},
 		{ID: "fake.dns", Kind: providers.Solver, Brand: "Fake DNS"},
+		{ID: "fake.records", Kind: providers.Solver, Brand: "Fake DNS with any record", Records: true},
 		{ID: "fake.web", Kind: providers.Solver, Brand: "Fake web root", Challenge: providers.ChallengeHTTP},
 		{ID: "fake.hook", Kind: providers.Target, Brand: "Fake target"},
 		{ID: "fake.files", Kind: providers.Source, Brand: "Fake files of another client", OwnKey: true},
@@ -62,6 +63,8 @@ func (f *fixture) addFakes() {
 				return &fakeSource{f}, nil
 			case typ.Challenge == providers.ChallengeHTTP:
 				return &fakeFiles{f}, nil
+			case typ.Records:
+				return &fakeRecords{fakeSolver{f}}, nil
 			case typ.Kind == providers.Solver:
 				return &fakeSolver{f}, nil
 			case typ.Kind == providers.Target:
@@ -197,6 +200,19 @@ func (s *fakeFiles) RemoveFile(_ context.Context, file contracts.File) error {
 }
 
 func (s *fakeFiles) Close() error { return s.f.closed() }
+
+// fakeRecords is a solver of DNS that adds records of any type too.
+type fakeRecords struct{ fakeSolver }
+
+func (s *fakeRecords) AddRecord(_ context.Context, r contracts.Record) (string, error) {
+	s.record("add " + r.Type + " " + r.Name)
+	return "ref", nil
+}
+
+func (s *fakeRecords) RemoveRecord(_ context.Context, r contracts.Record, ref string) error {
+	s.record("remove " + r.Type + " " + r.Name + " " + ref)
+	return nil
+}
 
 // issueNew adds a certificate issued by the fake CA through the fake DNS.
 func (f *fixture) issueNew(domains ...string) CertificateBody {
@@ -408,6 +424,32 @@ func TestIssueChallenges(t *testing.T) {
 	f.run()
 	if got.Files == nil || got.Solver != nil || f.certificate(c.ID).State != "ok" || !slices.Equal(f.fake.calls, []string{"put example.com/.well-known/x"}) {
 		t.Errorf("request %+v, calls %v", got, f.fake.calls)
+	}
+
+	// A solver of DNS that adds any record comes as Records too, for a
+	// source that asks for records; a plain one, for a CA, does not.
+	f.fake.calls = nil
+	f.fake.issue = func(ctx context.Context, req contracts.IssueRequest) ([]*x509.Certificate, error) {
+		got = req
+		if req.Records != nil {
+			if _, err := req.Records.AddRecord(ctx, contracts.Record{Name: "_x." + req.Domains[0], Type: "CNAME", Value: "v"}); err != nil {
+				return nil, err
+			}
+		}
+		req.Solver = nil
+		return f.issueAll(ctx, req)
+	}
+	f.call(f.api.Post("/certificates/issue", map[string]any{"domains": []string{"vendor.example.com"}, "sourceProvider": vendor, "solverProvider": f.provider("fake.records")}),
+		http.StatusCreated, &c)
+	f.run()
+	if got.Records == nil || got.Solver == nil || f.certificate(c.ID).State != "ok" || !slices.Equal(f.fake.calls, []string{"add CNAME _x.vendor.example.com"}) {
+		t.Errorf("request %+v, calls %v", got, f.fake.calls)
+	}
+	f.call(f.api.Post("/certificates/issue", map[string]any{"domains": []string{"ca.example.com"}, "sourceProvider": ca, "solverProvider": dns}),
+		http.StatusCreated, &c)
+	f.run()
+	if got.Records != nil || got.Solver == nil || f.certificate(c.ID).State != "ok" {
+		t.Errorf("request %+v", got)
 	}
 	if f.fake.opened != 0 {
 		t.Errorf("%d providers left open", f.fake.opened)

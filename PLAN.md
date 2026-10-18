@@ -103,7 +103,7 @@ flowchart LR
 | 数据库 | **SQLite** | 不需要额外服务；数据访问层留接口，以后可以加 PostgreSQL。驱动用纯 Go 的 `ncruces/go-sqlite3`（M0 实测后选定，见 8.3） |
 | 迁移 | `goose` | 启动时自动迁移；每个模块带自己的迁移文件，随二进制嵌入 |
 | ACME | `go-acme/lego` v5 | 支持 EAB 和自定义 CA，DNS 服务商最全 |
-| 通用 DNS 记录增删 | `libdns` 生态 + 自己实现 | lego 只会加 ACME 用的 TXT 记录；付费证书要加任意 CNAME/TXT，需要单独一层（见 5.3.2） |
+| 通用 DNS 记录增删 | 自己实现，用 lego 已带的各家 SDK | lego 只会加 ACME 用的 TXT 记录；付费证书要加任意 CNAME/TXT，需要单独一层（见 5.3.2） |
 | 国际化 | 独立的 `i18n` 模块 + 每种语言一个 JSON 文件 | 前后端共用同一份翻译文件，见第 7 节 |
 | 日志 | 标准库 `log/slog` | 结构化日志；每次签发的日志单独存库，界面上可以实时看 |
 | 前端 | **Vue 3**（已定）+ TypeScript + Vite + Tailwind CSS + shadcn-vue + vue-i18n | 见第 6 节；构建产物通过 `go:embed` 打进二进制 |
@@ -336,15 +336,17 @@ DNS 验证分成两种能力，实现方式不同：
 - **国际**：Cloudflare、AWS Route 53、Google Cloud DNS、Azure DNS、DigitalOcean、Linode、Vultr、Hetzner、OVH、Gandi、GoDaddy、Namecheap、Spaceship、Porkbun、Name.com、NameSilo、Dynadot、deSEC、DuckDNS、Netlify、Vercel、Bunny、NS1 等
 - **自建 / 通用**：PowerDNS、RFC 2136 动态更新（BIND 等，lego v5 里叫 `dnsupdate`）、acme-dns、HTTP 请求；执行外部脚本和手动模式由 JEC 自己实现（外部插件协议和手动验证），不用 lego 的那两个
 
-**② 任意记录增删（厂商 API 验证用，M3）**：付费证书走厂商专有 API 时，DNS 验证通常要加 CNAME 或 TXT，例如 Sectigo 系证书的 `_<哈希>.example.com CNAME <哈希>.sectigo.com`，而 lego 的接口只能加 ACME 的 TXT 记录。所以这部分单独做一层“DNS 记录管理”：
+**② 任意记录增删（厂商 API 验证用，M3，已实现）**：付费证书走厂商专有 API 时，DNS 验证通常要加 CNAME 或 TXT，例如 Sectigo 系证书的 `_<哈希>.example.com CNAME <哈希>.sectigo.com`，而 lego 的接口只能加 ACME 的 TXT 记录。所以这部分单独做一层“DNS 记录管理”：
 
-- 优先复用 **libdns** 生态（Caddy 使用的通用 DNS 记录接口，支持任意记录类型）。首批：DNSPod / 腾讯云、阿里云 DNS、Cloudflare、AWS Route 53、华为云、火山引擎、西部数码，libdns 都已有实现。
-- 其余服务商按需求补；暂时补不到的用**手动模式**（模块 `manual`，验证类型 `manual.dns`，ACME 的 DNS-01 已可用）：签发日志列出每条要加的 TXT 记录（ACME 来源给所有 DNS 验证都记这一行），用户在 DNS 服务商那里添加，JEC 每 10 秒查一次权威 DNS，查到就继续，不用点“已添加”；最多等设置的分钟数（默认 20，最多 25，在一次尝试 30 分钟的时限内）。每次续期都要重新添加，签发失败的通知会提醒。给厂商来源用的任意记录（CNAME 等）还要等记录管理层。
+- 接口是 `contracts.RecordSolver`：`AddRecord` 加一条 TXT 或 CNAME 记录（完整域名），返回删除时要用的标识，来源把它存在签发的状态里，跨多次检查；`RemoveRecord` 删掉。验证类型标 `records` 表示它的实例也能加任意记录；来源类型在 `challenges` 里写 `record` 表示它要这种记录（Namecheap SSL Manager 是 `http` 和 `record`）。添加证书时只列出合用的验证方式，接口也会核对（`providers.Type.Takes`）；添加 DNS 服务商时可以按“任意记录”筛选。
+- 实现在 `internal/lib/dnsrecord`，没有用 libdns：lego 已经带了这些服务商的 SDK，直接用它们，这一层连同 Namecheap 的 DNS 验证只让程序大了约 0.1 MiB；引入 libdns 等于每家再多一套客户端。设置沿用 lego 的变量名，同一个 DNS 服务商实例两种验证都能用（lego 模块里这几家的验证方式同时是 `RecordSolver`）。首批四家：腾讯云 DNSPod（API 3.0 的 `CreateRecord`、`DeleteRecord`，线路“默认”）、阿里云 DNS（`AddDomainRecord`、`DeleteDomainRecord`）、Cloudflare（v4 接口，API 令牌或全局密钥）、华为云 DNS（官方 SDK，TXT 的值加引号）。记录所在的区按 SOA 查出。其余服务商按需求补。只用替身 API 测过。
+- 记录什么时候生效由来源判断：`internal/lib/dnscheck` 直接问区的每台权威 DNS 服务器（不经过递归解析的缓存），答复了的服务器都有这条记录才算生效；它还把厂商给的记录名转成完整域名（`RecordName`，见 5.6）。这个包只依赖 DNS 库，用它的来源不会带上各家 SDK。
+- 补不到的服务商用**手动模式**（模块 `manual`，验证类型 `manual.dns`）：签发日志列出每条要加的记录（ACME 来源给所有 DNS 验证都记这一行），用户在 DNS 服务商那里添加，JEC 查权威 DNS，查到就继续，不用点“已添加”。ACME 最多等设置的分钟数（默认 20，最多 25，在一次尝试 30 分钟的时限内）；厂商来源跨多次检查一直等。每次续期都要重新添加，签发失败的通知会提醒；手动加的记录由用户自己删，日志会提示。
 - 注意：付费证书的验证记录名由 CSR 计算得出，每次重签都会变，所以不能像 ACME 那样把记录永久 CNAME 委派到别处。
 
 **③ CNAME 委派（仅 ACME）**：把 `_acme-challenge.example.com` 永久 CNAME 到一个有 API 的域，以后签发都在那个域里操作。这样即使域名所在的 DNS 没有 API，也能全自动。
 
-**④ HTTP 文件验证（M2，已实现）**：验证方式的另一类是把文件放到域名的网站上（`contracts.FileSolver`：`PutFile`、`RemoveFile`），用于 ACME 的 http-01 和厂商来源（如 Namecheap SSL Manager）的文件验证。验证类型声明 `challenge`（`dns` 或 `http`），来源类型声明 `challenges`（它能用的验证方式，ACME 两种都能用，Namecheap 只能用 `http`）；添加证书时只列出合用的验证方式，接口也会核对；通配符证书不能用 HTTP 验证。为了不让来源改动网站的页面，文件只能放在 `/.well-known/` 下，路径只能由字母、数字和 `-._~/` 组成，不能有 `..`。JEC 从外网取回验证文件核对时和 CA 一样跟随跳转，跳到 HTTPS 时不校验证书（`httpx` 的 `SkipVerify`）：网站上可能还是快过期或已经过期的旧证书。几种实现：
+**④ HTTP 文件验证（M2，已实现）**：验证方式的另一类是把文件放到域名的网站上（`contracts.FileSolver`：`PutFile`、`RemoveFile`），用于 ACME 的 http-01 和厂商来源（如 Namecheap SSL Manager）的文件验证。验证类型声明 `challenge`（`dns` 或 `http`），来源类型声明 `challenges`（它能用的验证方式，ACME 能用 `dns` 和 `http`，Namecheap 能用 `http` 和 ② 的 `record`）；添加证书时只列出合用的验证方式，接口也会核对；通配符证书不能用 HTTP 验证。为了不让来源改动网站的页面，文件只能放在 `/.well-known/` 下，路径只能由字母、数字和 `-._~/` 组成，不能有 `..`。JEC 从外网取回验证文件核对时和 CA 一样跟随跳转，跳到 HTTPS 时不校验证书（`httpx` 的 `SkipVerify`）：网站上可能还是快过期或已经过期的旧证书。几种实现：
 
 - **网站目录**（`files.webroot`）：JEC 所在机器上（或挂载进容器的）Web 服务器的网站根目录，所有域名共用这个目录，或者每个域名一个以域名命名的子目录。先写临时文件再改名，文件所有人可读。
 - **SSH 网站目录**（`ssh.webroot`）：经 SSH 写到远程服务器的网站目录，连接设置和 SSH 部署目标一样（主机公钥一定核对），一次签发里第一次用到时连接，之后复用。
@@ -548,8 +550,8 @@ DNS 验证分成两种能力，实现方式不同：
 - 请求按官方客户端的格式发，工具名也是 `ssl-manager`；User-Agent 在官方格式后面加上 `JustEnoughCerts/<版本>`；对 API 的请求不跟随跳转，令牌不会被带到别处。注册后发一次 `updateMeta`，`controlPanel.type` 填 `manual_interactive`（官方的取值有 `cpanel`、`plugin`、`web_server`、`manual_interactive`，JEC 最接近手动模式）。
 - 签发用 4.3 的“等待来源”：每次检查先查 status，fingerprint 没变（最多 6 小时）就 5 分钟后再查；变了就列出主域名的证书，取这次签发交过 CSR 的那张，否则取最新的 `Awaiting CSR`，否则取最新的一张，按状态处理：
   - `Awaiting CSR`：用这次签发的私钥做 CSR（只有 CN 和 SAN，就是主域名），提交；只签 RSA，别的密钥类型直接报错。
-  - `Awaiting Challenges Installation`：CSR 不是这次签发交的就只记日志、等着（要在面板重签）。否则把每个 HTTP 验证的文件交给证书选的网站目录类验证方式放好（还放 `installed.txt`、`installed.b64.json` 两个标记文件），从外网取一次核对（取不到只记警告，可能是 JEC 看到的和 CA 不一样），再报告已放好。只有 DNS、Email 验证时报错。
-  - `Certificate Issued`：模数的 SHA-1 不是这次签发的私钥的，就是以前那张，等 Namecheap 准备下一张；是的话下载证书和中间证书，确认和私钥配对，删掉验证文件（标记文件留着），调 `confirmInstallation`（安装标识 `jec-<序列号>`，取回证书时就报告，不等部署完），交给证书模块，照常部署到 ESA 等目标、删掉旧证书。
+  - `Awaiting Challenges Installation`：CSR 不是这次签发交的就只记日志、等着（要在面板重签）。否则把每个 HTTP 验证的文件交给证书选的网站目录类验证方式放好（还放 `installed.txt`、`installed.b64.json` 两个标记文件），从外网取一次核对（取不到只记警告，可能是 JEC 看到的和 CA 不一样），再报告已放好。DNS 验证（5.3.2 ②）：证书选的是能加任意记录的 DNS 服务商或手动添加时，加上每条记录（`recordName` 由 `dnscheck.RecordName` 转成完整域名：在主域名的可注册域名下就照用，`@` 是域名本身，以域名在可注册域名下的那几段结尾的当作控制台里的主机记录，如 www.example.com 的 `_dnsauth.www`，其余当作相对于域名的名字，所以记录不会加到别的域名下；只加 TXT 和 CNAME），等域名的权威 DNS 服务器都查得到再报告已放好，没查到就 5 分钟后再看（这时不管 fingerprint 变没变）。Namecheap 给的验证和证书选的验证方式对不上（比如给了 DNS 但选的是网站目录）、只有 Email 验证时报错。
+  - `Certificate Issued`：模数的 SHA-1 不是这次签发的私钥的，就是以前那张，等 Namecheap 准备下一张；是的话下载证书和中间证书，确认和私钥配对，删掉验证文件和 JEC 加的验证记录（标记文件留着；手动加的记录在日志里提示用户自己删），调 `confirmInstallation`（安装标识 `jec-<序列号>`，取回证书时就报告，不等部署完），交给证书模块，照常部署到 ESA 等目标、删掉旧证书。
   - `Order Failed`、`Certificate Revoked`：报错，不再自动重试；其他状态记一次日志，接着等。
 - 下一张证书什么时候来由 Namecheap 决定：进入续期窗口后签发就一直等，直到 Namecheap 准备好下一张。
 - 测试用假的 Namecheap 服务器（`internal/modules/namecheap/vendor_test.go`）走完注册、交 CSR、放验证文件、签出、下载、刷新令牌。不运行官方的程序；协议写在模块的注释和本节。
@@ -560,9 +562,9 @@ DNS 验证分成两种能力，实现方式不同：
 - 或者在源站或 CDN 上把 `/.well-known/` 转给 JEC，由 JEC 应答；
 - 或者网站在 ESA 上时用 ESA 边缘应答：文件存在 ESA 的边缘 KV，由边缘函数回答，不经过源站。
 
-CDN 不能缓存这些路径；有跳转（如 HTTP 跳 HTTPS）时要确认 CA 会跟随，官方客户端的手动模式也这样提示。这就是 5.3.2 ④ 的 HTTP 文件验证（网站目录、SSH 网站目录、JEC 自己应答、ESA 边缘应答都已实现），标记文件也由它放。协议里有 DNS 验证（记录类型由服务端给），但没有面板的官方客户端只处理 HTTP；DNS 记录管理层（5.3.2 ②）移到 M3。
+CDN 不能缓存这些路径；有跳转（如 HTTP 跳 HTTPS）时要确认 CA 会跟随，官方客户端的手动模式也这样提示。这就是 5.3.2 ④ 的 HTTP 文件验证（网站目录、SSH 网站目录、JEC 自己应答、ESA 边缘应答都已实现），标记文件也由它放。协议里还有 DNS 验证（记录类型由服务端给），没有面板的官方客户端只处理 HTTP；JEC 用 5.3.2 ② 的记录管理层也能做 DNS 验证，但 Namecheap 会不会给 Server-side automation 发 DNS 验证，要用真实账号确认。
 
-**还不确定，要用真实账号试**：一次注册能看到账户里的哪些证书（只有激活时选了 “Server-side automation” 的那一张，还是全部），第二张证书要不要再注册；交了验证之后、签出之前的状态叫什么；服务端是否真的检查 `installed.txt`；`controlPanel.type` 会不会影响给哪种验证；access token 的有效期；User-Agent 里多了 JEC 会不会被拒。
+**还不确定，要用真实账号试**：一次注册能看到账户里的哪些证书（只有激活时选了 “Server-side automation” 的那一张，还是全部），第二张证书要不要再注册；交了验证之后、签出之前的状态叫什么；服务端是否真的检查 `installed.txt`；`controlPanel.type` 会不会影响给哪种验证，会不会给 DNS 验证，`recordName` 是完整域名还是相对的名字；access token 的有效期；User-Agent 里多了 JEC 会不会被拒。
 
 **对证书模块的要求**（M2 的“厂商来源通用框架”，已实现，见 4.3 的“等待来源”）：厂商来源要等 CA 审核，跨多次检查才拿到证书，所以签发要能处在“等待中”而不算失败，私钥要在等待期间加密保存，取回的证书要和当初的私钥配对。
 
@@ -887,7 +889,8 @@ JustEnoughCerts/
 │       ├── cryptox/            # 私钥、CSR、PEM/PFX 处理，加密存储
 │       ├── shellx/             # 内嵌的 shell：钩子的脚本、本地目录部署的命令
 │       ├── cloudsign/          # 阿里云 V3、腾讯云 TC3、AWS SigV4 等轻量签名
-│       └── dnsrecord/          # 任意 DNS 记录增删（libdns 适配 + 自己实现）
+│       ├── dnscheck/           # 在权威 DNS 上查记录是否生效
+│       └── dnsrecord/          # 任意 DNS 记录增删（腾讯云、阿里云、Cloudflare、华为云）
 ├── web/
 │   └── src/
 │       ├── core/               # 前端内核：布局、路由、请求、i18n 加载
@@ -916,7 +919,7 @@ JustEnoughCerts/
 | **M0 骨架** | 仓库、CI、发布流水线、`scratch` 镜像、体积检查；内核与模块注册表、模块脚手架；**i18n 模块和全部门禁**（从第一行界面文字开始就不允许硬编码）；空的前端、登录和初始化向导（中英文）；SQLite（含驱动选型实测） | 打一个 `v0.0.1` 标签，能自动产出全部二进制和镜像，`docker compose up` 能打开中英文登录页，i18n 门禁和体积检查在 CI 里生效 |
 | **M1 最小可用** | 证书模块、状态机、调度器；手动上传和导入；ACME（任意 CA + EAB）+ lego 的 221 家 DNS；阿里云 ESA、本地文件、SSH、Webhook 部署；Telegram、邮件、Webhook 通知；总览和证书页 | 用免费证书完整跑通“签发 → 部署到 ESA → 删除旧证书 → 到期自动续” |
 | **M2 厂商来源与付费证书** | 厂商来源的通用框架（提交后等 CA 审核，跨多次检查才取回证书，等待期间加密保存私钥）；第一个实现是 Namecheap SSL Manager（实验性，JEC 扮演它的客户端，见 5.6）；HTTP 文件验证（写到源站的网站目录、经 SSH 写到远程服务器，或由 JEC 自己应答）；导入已有的付费证书；逐家验证商业 CA 的 ACME + EAB（含 Namecheap ACME 上线后） | 第 1 节的验收场景全自动跑通一个周期 |
-| **M3 扩展** | 国内云平台证书来源；DNS 记录管理层（任意记录增删，5.3.2 ②）和手动验证（ACME 的手动 DNS 已完成）；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子、YAML 导入导出（都已完成）；线上巡检（已完成） | 不改核心代码，写一个外部插件接入新平台；停用任意模块后其余功能正常 |
+| **M3 扩展** | 国内云平台证书来源；DNS 记录管理层（任意记录增删，5.3.2 ②）和手动验证（都已完成）；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子、YAML 导入导出（都已完成）；线上巡检（已完成） | 不改核心代码，写一个外部插件接入新平台；停用任意模块后其余功能正常 |
 | **M4 打磨** | 两步验证、审计日志（都已提前完成）、OIDC、PWA、文档站、翻译指南、服务商兼容表（已有 `docs/providers.md`：每个服务商测到了哪一步） | 发布 `v1.0.0` |
 | **以后** | Namecheap 官方 API、Spaceship 的 SSL Manager、其他厂商证书 API、更多语言（社区贡献）、多用户和角色、PostgreSQL、私有 CA | 按需求排期 |
 

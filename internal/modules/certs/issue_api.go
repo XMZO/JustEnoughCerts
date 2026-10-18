@@ -237,7 +237,7 @@ func (s *service) addIssued(ctx context.Context, in *IssueRequest) (int64, error
 			invalid = invalid.WithField("body.solverProvider", code)
 		} else if typ, err := s.providers.Type(ctx, in.SolverProvider); err == nil {
 			switch {
-			case source != nil && source.NeedsSolver && !source.Accepts(typ.Solves()):
+			case source != nil && source.NeedsSolver && !source.Takes(typ):
 				invalid = invalid.WithField("body.solverProvider", i18n.CertsErrorSolverChallenge)
 			case typ.Solves() == providers.ChallengeHTTP && slices.ContainsFunc(domains, isWildcard):
 				invalid = invalid.WithField("body.solverProvider", i18n.CertsErrorWildcardHttp)

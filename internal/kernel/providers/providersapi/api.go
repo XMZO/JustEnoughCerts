@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -26,11 +27,12 @@ type TypeSummary struct {
 	Description  i18n.Key       `json:"description,omitempty"`
 	Brand        string         `json:"brand,omitempty" doc:"A third party's name for the type, shown as it is"`
 	URL          string         `json:"url,omitempty"`
-	Tags         []string       `json:"tags,omitempty"`
+	Tags         []string       `json:"tags,omitempty" doc:"The groups of the type in the UI; a solver that adds records of any type is in records too"`
 	NeedsSolver  bool           `json:"needsSolver,omitempty" doc:"For a source: issuing needs a solver"`
 	OwnKey       bool           `json:"ownKey,omitempty" doc:"For a source: its certificates come with their own private key, so there is no key type to choose"`
-	Challenges   []string       `json:"challenges,omitempty" enum:"dns,http" doc:"For a source that needs a solver: the challenges of the solvers it can use"`
+	Challenges   []string       `json:"challenges,omitempty" enum:"dns,http,record" doc:"For a source that needs a solver: the challenges of the solvers it can use; record takes a solver of DNS that adds records of any type"`
 	Challenge    string         `json:"challenge,omitempty" enum:"dns,http" doc:"For a solver: how it proves control of a domain, through DNS records or files on the web server"`
+	Records      bool           `json:"records,omitempty" doc:"For a solver of DNS: it adds records of any type too, as some sources ask"`
 	Testable     bool           `json:"testable,omitempty" doc:"Its instances can be tested"`
 	Experimental bool           `json:"experimental,omitempty"`
 	// Texts holds the messages of the keys above that the locale files
@@ -130,10 +132,13 @@ func Register(a huma.API, r *providers.Registry) {
 			}
 			switch {
 			case t.Kind == providers.Solver:
-				sum.Challenge = t.Solves()
+				sum.Challenge, sum.Records = t.Solves(), t.Records
+				if t.Records { // a group of their own in the UI
+					sum.Tags = append(slices.Clip(t.Tags), "records")
+				}
 			case t.NeedsSolver:
 				sum.Challenges = []string{}
-				for _, c := range []string{providers.ChallengeDNS, providers.ChallengeHTTP} {
+				for _, c := range []string{providers.ChallengeDNS, providers.ChallengeHTTP, providers.ChallengeRecord} {
 					if t.Accepts(c) {
 						sum.Challenges = append(sum.Challenges, c)
 					}

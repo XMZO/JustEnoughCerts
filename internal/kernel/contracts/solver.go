@@ -31,6 +31,31 @@ type Solver interface {
 	Close() error
 }
 
+// Record is a DNS record that proves control of a domain, as a CA's own
+// validation asks for it: of any type, at any name, such as Sectigo's
+// CNAME or a vendor's TXT, where ACME has its own TXT (Challenge).
+type Record struct {
+	// Name is the record's full name, such as _dnsauth.example.com,
+	// without a final dot.
+	Name  string
+	Type  string // TXT or CNAME
+	Value string
+}
+
+// RecordSolver adds records of any type to the DNS of the domains, and
+// removes them afterwards, for sources that are not ACME. AddRecord
+// returns what RemoveRecord needs, which the source keeps between the
+// attempts of its issuance, each of which opens the solver anew; it is ""
+// for a record people add themselves, which RemoveRecord leaves to them
+// too. Close releases the solver. Waiting for a record to show is up to
+// the source (lib/dnscheck.Visible). The solvers whose type sets Records
+// make RecordSolvers as well as Solvers, and only they.
+type RecordSolver interface {
+	AddRecord(ctx context.Context, r Record) (ref string, err error)
+	RemoveRecord(ctx context.Context, r Record, ref string) error
+	Close() error
+}
+
 // File is what a domain's web server must serve to prove control of the
 // domain: http://<Domain><Path> answers Content, as for ACME's http-01
 // (RFC 8555 section 8.3) or a CA's file validation.

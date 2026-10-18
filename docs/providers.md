@@ -29,7 +29,8 @@ Reports of what works with a real account, or does not, are welcome.
 | Type | What | Tested against |
 |---|---|---|
 | `lego.*` | 221 DNS providers through lego | Fake, for the subprocess JEC runs them in; the providers are lego's |
-| `manual.dns` | TXT records added by hand | Fake resolver |
+| `lego.tencentcloud`, `lego.alidns`, `lego.cloudflare`, `lego.huaweicloud` adding any record | The TXT and CNAME records of vendors' validations, through JEC's own clients | Fake (Huawei Cloud's through its SDK) |
+| `manual.dns` | DNS records added by hand | Fake resolver |
 | `files.webroot` | A website directory on this machine | The file system |
 | `ssh.webroot` | A website directory over SSH | An SSH server in the test |
 | `wellknown.answer` | JEC answers /.well-known/ itself | Real HTTP |

@@ -217,6 +217,9 @@ func TestAddChecks(t *testing.T) {
 		"challenges, no solver":  {ID: "dns.x", Kind: providers.Source, Brand: "X", Challenges: []string{providers.ChallengeHTTP}},
 		"bad challenges":         {ID: "dns.x", Kind: providers.Source, Brand: "X", NeedsSolver: true, Challenges: []string{"email"}},
 		"challenges of a solver": {ID: "dns.x", Kind: providers.Solver, Brand: "X", NeedsSolver: true, Challenges: []string{providers.ChallengeDNS}},
+		"solver of a record":     {ID: "dns.x", Kind: providers.Solver, Brand: "X", Challenge: providers.ChallengeRecord},
+		"records of a source":    {ID: "dns.x", Kind: providers.Source, Brand: "X", NeedsSolver: true, Records: true},
+		"records over http":      {ID: "dns.x", Kind: providers.Solver, Brand: "X", Challenge: providers.ChallengeHTTP, Records: true},
 		"text of another module": {ID: "dns.x", Kind: providers.Solver, Brand: "X", Texts: map[string]map[i18n.Key]string{"en-US": {"web.x.name": "X"}}},
 		"text in no language":    {ID: "dns.x", Kind: providers.Solver, Brand: "X", Texts: map[string]map[i18n.Key]string{"no language!": {"dns.x.name": "X"}}},
 	} {
@@ -262,6 +265,25 @@ func TestTypes(t *testing.T) {
 		t.Error("a type of a module that is off is listed")
 	}
 	f.fails(http.MethodGet, "/providers/types/dns.acme_dns", nil, http.StatusNotFound)
+}
+
+func TestTakes(t *testing.T) {
+	ca := providers.Type{Kind: providers.Source, NeedsSolver: true}
+	vendor := providers.Type{Kind: providers.Source, NeedsSolver: true, Challenges: []string{providers.ChallengeHTTP, providers.ChallengeRecord}}
+	dns := providers.Type{Kind: providers.Solver}
+	records := providers.Type{Kind: providers.Solver, Records: true}
+	web := providers.Type{Kind: providers.Solver, Challenge: providers.ChallengeHTTP}
+	for i, c := range []struct {
+		source, solver providers.Type
+		want           bool
+	}{
+		{ca, dns, true}, {ca, records, true}, {ca, web, false},
+		{vendor, dns, false}, {vendor, records, true}, {vendor, web, true},
+	} {
+		if got := c.source.Takes(c.solver); got != c.want {
+			t.Errorf("case %d: %v", i, got)
+		}
+	}
 }
 
 func TestCreateAndValidate(t *testing.T) {

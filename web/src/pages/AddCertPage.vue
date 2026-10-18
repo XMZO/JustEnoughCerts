@@ -15,6 +15,7 @@ import JecInput from '../components/JecInput.vue'
 import PageHeader from '../components/PageHeader.vue'
 import PemFields from '../components/PemFields.vue'
 import { useT, type MessageKey } from '../i18n'
+import { useIntl } from '../i18n/intl'
 import { typeName } from '../providers/fields'
 
 // Adding a certificate: one page, no wizard (docs/design/boards/AddCert).
@@ -23,6 +24,7 @@ import { typeName } from '../providers/fields'
 // with, a DNS provider or a website directory, of a kind the source takes.
 // The plan on the side says what JEC will do.
 const { t } = useT()
+const intl = useIntl()
 const router = useRouter()
 
 const sources = useProviders('source')
@@ -46,11 +48,27 @@ const needsSolver = computed(() => !!sourceType.value?.needsSolver)
 // A source with keys of its own, such as the directory of another ACME
 // client: no key type to choose, and renewing is taking the new one in.
 const ownKey = computed(() => !!sourceType.value?.ownKey)
-// How the solvers prove control of the domains: through DNS or files on the website.
-type Challenge = 'dns' | 'http'
+// How the solvers prove control of the domains: through DNS or files on
+// the website. A source whose validation has records of any type, as a
+// vendor's, takes a solver of DNS that adds them.
+type Challenge = 'dns' | 'http' | 'record'
 const accepted = computed<Challenge[]>(() => sourceType.value?.challenges ?? ['dns'])
-const challengeOf = (p: Provider): Challenge => solverTypes.data.value?.find((s) => s.id === p.type)?.challenge ?? 'dns'
-const usable = computed(() => (solvers.data.value ?? []).filter((p) => accepted.value.includes(challengeOf(p))))
+const solverType = (p: Provider) => solverTypes.data.value?.find((s) => s.id === p.type)
+const challengeOf = (p: Provider): 'dns' | 'http' => solverType(p)?.challenge ?? 'dns'
+const takes = (p: Provider) =>
+  accepted.value.includes(challengeOf(p)) || (challengeOf(p) === 'dns' && !!solverType(p)?.records && accepted.value.includes('record'))
+const usable = computed(() => (solvers.data.value ?? []).filter(takes))
+// The kinds of solver that add records of any type, for a source that has none to use.
+const recordKinds = computed(() =>
+  intl.list(
+    (solverTypes.data.value ?? [])
+      .filter((s) => s.records)
+      .map((s) => {
+        const n = typeName(s)
+        return n.brand ?? (n.key ? t(n.key) : s.id)
+      }),
+  ),
+)
 
 const typeLabel = (p: Provider, types: typeof sourceTypes) => {
   const n = typeName(types.data.value?.find((s) => s.id === p.type))
@@ -70,14 +88,18 @@ const solverProvider = computed(() => usable.value.find((p) => p.id === solver.v
 // The words of the solver field: for the kind the source takes, or the one picked.
 const only = computed<Challenge | undefined>(() => (accepted.value.length === 1 ? accepted.value[0] : undefined))
 const solverLabel = computed<MessageKey>(() =>
-  only.value === 'dns' ? 'certs.add.dns' : only.value === 'http' ? 'certs.add.http' : 'certs.add.solver',
+  only.value === 'dns' || only.value === 'record' ? 'certs.add.dns' : only.value === 'http' ? 'certs.add.http' : 'certs.add.solver',
 )
-const solverHint = computed<MessageKey>(() =>
-  solverProvider.value && challengeOf(solverProvider.value) === 'http' ? 'certs.add.http_help' : 'certs.add.dns_help',
-)
-const noSolver = computed<MessageKey>(() =>
-  only.value === 'dns' ? 'certs.add.no_dns' : only.value === 'http' ? 'certs.add.no_http' : 'certs.add.no_solver',
-)
+const solverHint = computed<MessageKey>(() => {
+  if (solverProvider.value && challengeOf(solverProvider.value) === 'http') return 'certs.add.http_help'
+  return accepted.value.includes('dns') ? 'certs.add.dns_help' : 'certs.add.records_help'
+})
+const noSolver = computed<MessageKey>(() => {
+  if (accepted.value.includes('record') && !accepted.value.includes('dns')) {
+    return accepted.value.includes('http') ? 'certs.add.no_http_records' : 'certs.add.no_records'
+  }
+  return only.value === 'dns' ? 'certs.add.no_dns' : only.value === 'http' ? 'certs.add.no_http' : 'certs.add.no_solver'
+})
 const keyTypes: KeyType[] = ['rsa-2048', 'ecdsa-p256', 'ecdsa-p384', 'rsa-3072', 'rsa-4096']
 const keyType = ref<KeyType>('rsa-2048')
 const keyLabel = (k: string) => {
@@ -271,7 +293,9 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
             <RouterLink to="/dns" class="self-start text-small">{{ t('certs.add.manage_solvers') }}</RouterLink>
           </template>
           <div v-else class="flex flex-col items-start gap-2">
-            <p :class="['m-0', fieldError('solverProvider') ? 'text-danger-ink' : 'text-ink-muted']">{{ t(noSolver) }}</p>
+            <p :class="['m-0', fieldError('solverProvider') ? 'text-danger-ink' : 'text-ink-muted']">
+              {{ t(noSolver, { providers: recordKinds }) }}
+            </p>
             <JecButton to="/dns" size="sm"><Plus class="size-4" aria-hidden="true" />{{ t('kernel.providers.solver.add') }}</JecButton>
           </div>
         </section>

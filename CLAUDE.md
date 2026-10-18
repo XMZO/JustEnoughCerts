@@ -77,10 +77,11 @@
 - M3 还完成了：Webhook 的自定义请求（`webhook.notify`、`webhook.deploy` 的高级设置，`PLAN.md` 5.3.3）：请求体可以写成 Go 模板（字段名同默认 JSON，`json` 函数），可选 POST/PUT 和 Content-Type。
 - M3 还完成了：YAML 导入导出（内核 `internal/kernel/configfile`，接口 `configfileapi`，`PLAN.md` 11）：模块用 `r.Config` 登记自己那部分（证书模块的 `renewal`、`certificates`），导入在一个事务里先预览后执行，服务商按种类和名称对应、证书按域名对应，只增改不删；设置页“数据和备份”的“配置文件”。模块的导入只能经给它的事务写数据库。
 - M3 还完成了：阿里云数字证书管理服务 `aliyun.cas` 和传统型负载均衡 `aliyun.clb`（在 `internal/modules/aliyun`，通用 RPC 调用 `rpc.do`，按名字 `jec-<ID>-<指纹>` 找上次传的，删除旧证书；只用替身测过）。参考实现：certimate 的源码可以浅克隆到草稿目录里查接口用法（只读，不运行）。
-- M3 还完成了：华为云 CDN `internal/modules/huaweicloud`（`huaweicloud.cdn`，用官方 SDK，先读出域名的 HTTPS 设置再连同 HTTP/2、TLS、OCSP 一起写回；只用替身测过）。引入新的 SDK 前先实测体积（用 `-tags no_<模块>` 对比 `-trimpath -ldflags "-s -w"` 的构建大小）。SDK 的客户端不要存进会被转成接口的结构体：程序里有用反射调方法的代码（text/template）时，链接器会保留这个类型的全部方法，华为云 CDN 的客户端因此多出 1 MiB；只存要用的方法值（`client.ShowDomainFullConfig`）。
+- M3 还完成了：华为云 CDN `internal/modules/huaweicloud`（`huaweicloud.cdn`，用官方 SDK，先读出域名的 HTTPS 设置再连同 HTTP/2、TLS、OCSP 一起写回；只用替身测过）。引入新的 SDK 前先实测体积（用 `-tags no_<模块>` 对比 `-trimpath -ldflags "-s -w"` 的构建大小）。SDK 的客户端不要存进会被转成接口的结构体：程序里有用反射调方法的代码（text/template）时，链接器会保留这个类型的全部方法，华为云 CDN 的客户端因此多出 1 MiB；只存要用的方法值（`client.ShowDomainFullConfig`）。和旧提交比体积时，旧提交的工作区要放进同一份 `web/dist`，否则差出整个界面（约 1.2 MiB）。
 - M3 还完成了：Cloudflare 自定义证书 `internal/modules/cloudflare`（`cloudflare.custom`，第一次添加、以后原地 PATCH 同一张，按主机和到期时间找中断前添加的；只用替身测过）。
 - M3 还完成了：阿里云 OSS 自定义域名 `aliyun.oss`（先传到数字证书管理服务，再 `PutCname`；OSS 自己的 V4 签名在 `aliyun/osssign.go`，规范请求按文档示例的哈希核对过；只用替身测过）。
-- 下一步：用真实账号验证阿里云 ESA 部署、ESA 边缘应答和 Namecheap 模块（M1/M2 验收，`PLAN.md` 5.4、5.6 列了要确认的点）；DNS 验证（要先确认 Namecheap 给不给 DNS 验证，还要能加 CNAME 记录）。
+- M3 还完成了：DNS 记录管理层（`PLAN.md` 5.3.2 ②）：`contracts.RecordSolver`（`AddRecord` 返回的标识由来源存进签发状态；手动添加的标识为空，记录留给用户删），验证类型标 `records`、来源的 `challenges` 写 `record`，合不合用看 `providers.Type.Takes`，类型列表的“任意记录”分组由接口按 `records` 加上；`internal/lib/dnsrecord`（腾讯云 DNSPod、阿里云 DNS、Cloudflare、华为云 DNS，用 lego 带的 SDK、沿用 lego 的变量名，lego 模块里这四家的验证方式同时是 `RecordSolver`）；`internal/lib/dnscheck`（直接问权威 DNS，只依赖 DNS 库，来源用它等记录生效）。Namecheap 来源能做 DNS 验证（记录名用 `dnscheck.RecordName` 转成完整域名，权威 DNS 查得到才报告，签好后删除），也能配手动添加。只用替身测过。
+- 下一步：用真实账号验证阿里云 ESA 部署、ESA 边缘应答和 Namecheap 模块（M1/M2 验收，`PLAN.md` 5.4、5.6 列了要确认的点，包括 Namecheap 给不给 DNS 验证）；国内云平台的免费证书来源（M3）。
 
 ## 工程约定
 

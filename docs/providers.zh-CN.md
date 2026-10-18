@@ -23,7 +23,8 @@ JEC 的每种证书来源、验证方式、部署目标和通知渠道，以及�
 | 类型 | 是什么 | 测过的对象 |
 |---|---|---|
 | `lego.*` | 经 lego 支持的 221 家 DNS 服务商 | 替身，测的是 JEC 运行它们的子进程；服务商的实现是 lego 的 |
-| `manual.dns` | 手动添加的 TXT 记录 | 假的 DNS 查询 |
+| `lego.tencentcloud`、`lego.alidns`、`lego.cloudflare`、`lego.huaweicloud` 加任意记录 | 厂商验证要的 TXT、CNAME 记录，用 JEC 自己的客户端 | 替身（华为云经 SDK 发到替身） |
+| `manual.dns` | 手动添加的 DNS 记录 | 假的 DNS 查询 |
 | `files.webroot` | 本机的网站目录 | 文件系统 |
 | `ssh.webroot` | 经 SSH 的网站目录 | 测试里的 SSH 服务器 |
 | `wellknown.answer` | JEC 自己应答 /.well-known/ | 真实 HTTP |

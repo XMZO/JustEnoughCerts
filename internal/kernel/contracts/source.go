@@ -58,9 +58,11 @@ type IssueRequest struct {
 	// keeps. Every attempt of an issuance gets the same key.
 	Key crypto.Signer
 	// Solver or Files proves control of the domains, for sources that need
-	// it: whichever the certificate's solver is.
-	Solver Solver
-	Files  FileSolver
+	// it: whichever the certificate's solver is. Records is the solver too,
+	// when it adds records of any type, for sources that ask for them.
+	Solver  Solver
+	Files   FileSolver
+	Records RecordSolver
 	// State is what the source kept when the last attempt of this issuance
 	// ended in a Wait; nil before that.
 	State []byte

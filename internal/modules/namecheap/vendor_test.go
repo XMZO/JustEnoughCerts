@@ -38,8 +38,8 @@ const (
 
 // vendor is Namecheap's API as the official client shows it, with its
 // certificates in memory: it registers a one-time token once, refreshes
-// access tokens, takes CSRs, hands out an HTTP challenge each, and issues
-// from a test CA when the test says so.
+// access tokens, takes CSRs, hands out an HTTP challenge each, or a DNS
+// one, and issues from a test CA when the test says so.
 type vendor struct {
 	t  *testing.T
 	ca *cryptoxtest.CA
@@ -55,6 +55,9 @@ type vendor struct {
 	calls       []string // the paths called, without the API prefix
 	meta        bool     // updateMeta was called
 	confirmed   []string // installation IDs
+	// dns, if set, is the record of the DNS challenge each certificate
+	// has in place of the file of an HTTP one.
+	dns *dnsRecord
 }
 
 type vendorCert struct {
@@ -205,10 +208,14 @@ func (v *vendor) serve(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, v.model(c))
 	case "/certificates/listChallenges":
 		c := v.find(body["id"].(string))
-		writeJSON(w, map[string]any{"total": 1, "items": []map[string]any{{
+		ch := map[string]any{
 			"id": "ch-" + c.id, "domain": c.domain, "method": methodHTTP, "state": "Pending",
 			"meta": map[string]string{"filePath": challenge1, "content": "abc123\ncomodoca.com"},
-		}}})
+		}
+		if v.dns != nil {
+			ch["method"], ch["meta"] = methodDNS, v.dns
+		}
+		writeJSON(w, map[string]any{"total": 1, "items": []map[string]any{ch}})
 	case "/certificates/markChallengeInstalled":
 		c := v.find(strings.TrimPrefix(body["id"].(string), "ch-"))
 		c.marked = true
@@ -285,6 +292,62 @@ func (s *website) RoundTrip(r *http.Request) (*http.Response, error) {
 	return &http.Response{StatusCode: status, Body: io.NopCloser(bytes.NewReader(data)), Header: http.Header{}, Request: r}, nil
 }
 
+// zone is a solver of DNS records and the authoritative servers behind it:
+// what it adds, the module's lookups see, unless they lag.
+type zone struct {
+	mu      sync.Mutex
+	records map[contracts.Record]string // the refs, by record
+	added   int
+	removed []string
+	lag     bool  // the servers do not answer the records yet
+	manual  bool  // people add the records, so there are no refs
+	fail    error // what AddRecord answers, if not nil
+}
+
+func newZone() *zone { return &zone{records: map[contracts.Record]string{}} }
+
+func (z *zone) AddRecord(_ context.Context, r contracts.Record) (string, error) {
+	z.mu.Lock()
+	defer z.mu.Unlock()
+	if z.fail != nil {
+		return "", z.fail
+	}
+	z.added++
+	if z.manual {
+		return "", nil
+	}
+	ref := "rec-" + strconv.Itoa(z.added)
+	z.records[r] = ref
+	return ref, nil
+}
+
+func (z *zone) RemoveRecord(_ context.Context, r contracts.Record, ref string) error {
+	z.mu.Lock()
+	defer z.mu.Unlock()
+	if z.records[r] != ref {
+		return errors.New("no such record")
+	}
+	delete(z.records, r)
+	z.removed = append(z.removed, ref)
+	return nil
+}
+
+func (*zone) Close() error { return nil }
+
+// visible stands for the lookup on the authoritative servers.
+func (z *zone) visible(_ context.Context, name, typ, value string) (bool, error) {
+	z.mu.Lock()
+	defer z.mu.Unlock()
+	_, ok := z.records[contracts.Record{Name: name, Type: typ, Value: value}]
+	return !z.lag && (ok || z.manual), nil
+}
+
+func (z *zone) with(fn func()) {
+	z.mu.Lock()
+	defer z.mu.Unlock()
+	fn()
+}
+
 // fixture is the module against a vendor, with a registry holding one
 // instance of the SSL Manager type.
 type fixture struct {
@@ -355,12 +418,18 @@ func (f *fixture) log(l contracts.LogLine) {
 	f.logged = append(f.logged, l)
 }
 
-// issue runs an attempt with key and the state of the last one.
+// issue runs an attempt with key and the state of the last one, over
+// HTTP.
 func (f *fixture) issue(key crypto.Signer, state []byte) ([]*x509.Certificate, *contracts.Wait, error) {
 	f.t.Helper()
-	chain, err := f.source().Issue(f.t.Context(), contracts.IssueRequest{
-		Domains: []string{"example.com"}, Key: key, Files: f.site, State: state, Log: f.log,
-	})
+	return f.attempt(contracts.IssueRequest{Key: key, Files: f.site, State: state})
+}
+
+// attempt runs an attempt of req for example.com.
+func (f *fixture) attempt(req contracts.IssueRequest) ([]*x509.Certificate, *contracts.Wait, error) {
+	f.t.Helper()
+	req.Domains, req.Log = []string{"example.com"}, f.log
+	chain, err := f.source().Issue(f.t.Context(), req)
 	var w *contracts.Wait
 	if errors.As(err, &w) {
 		return nil, w, nil

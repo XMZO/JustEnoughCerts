@@ -21,7 +21,7 @@ const (
 
 func dnsType() providers.Type {
 	return providers.Type{
-		ID: "manual.dns", Kind: providers.Solver, Challenge: providers.ChallengeDNS,
+		ID: "manual.dns", Kind: providers.Solver, Challenge: providers.ChallengeDNS, Records: true,
 		Name: i18n.ManualDnsName, Description: i18n.ManualDnsDescription,
 		Fields: []providers.Field{
 			{Key: "minutes", Label: i18n.ManualFieldMinutes, Help: i18n.ManualFieldMinutesHelp, Kind: providers.Number, Default: strconv.Itoa(defaultMinutes)},
@@ -32,7 +32,10 @@ func dnsType() providers.Type {
 // solver waits for records people add: it adds and removes nothing.
 type solver struct{ wait time.Duration }
 
-var _ contracts.Solver = (*solver)(nil)
+var (
+	_ contracts.Solver       = (*solver)(nil)
+	_ contracts.RecordSolver = (*solver)(nil)
+)
 
 func factory(_ context.Context, in providers.Instance) (any, error) {
 	minutes, err := strconv.Atoi(strings.TrimSpace(in.Config["minutes"]))
@@ -48,6 +51,13 @@ func (*solver) Present(context.Context, contracts.Challenge) error { return nil 
 
 // CleanUp removes nothing: people remove the record when they like.
 func (*solver) CleanUp(context.Context, contracts.Challenge) error { return nil }
+
+// AddRecord adds nothing: the source lists the record, for people to add
+// it.
+func (*solver) AddRecord(context.Context, contracts.Record) (string, error) { return "", nil }
+
+// RemoveRecord removes nothing: people remove the record when they like.
+func (*solver) RemoveRecord(context.Context, contracts.Record, string) error { return nil }
 
 // Wait is the minutes set, looking every ten seconds.
 func (s *solver) Wait() (time.Duration, time.Duration) { return s.wait, interval }

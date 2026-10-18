@@ -30,7 +30,9 @@ Working on the main branch:
   switch it on; not yet tried against a real account.
 - Domain validation through DNS records at any of the 221 providers that
   [lego](https://github.com/go-acme/lego) supports, or added by hand at
-  any other, or over HTTP: files in
+  any other (the TXT and CNAME records a vendor such as Namecheap may ask
+  for go in by themselves at Tencent Cloud DNSPod, Alibaba Cloud DNS,
+  Cloudflare and Huawei Cloud DNS), or over HTTP: files in
   a website's directory, local or over SSH, answers from JEC itself once
   the website's proxy or CDN sends `/.well-known/` on to it, or, for
   websites on Alibaba Cloud ESA, answers at ESA's edge from Edge KV,
@@ -78,7 +80,7 @@ Working on the main branch:
   headers.
 - One small container image or one static binary, with SQLite.
 
-Planned: records of any type for the DNS validations of vendors, and more CDNs and panels.
+Planned: the free certificates of Chinese cloud platforms as sources, and more CDNs and panels.
 
 How far each provider is tested, against a real account, the real
 software, an emulator or a fake: [docs/providers.md](docs/providers.md).

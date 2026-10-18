@@ -15,7 +15,7 @@ main 分支上已经可用：
 
 - 从任意 ACME CA（支持 External Account Binding）获取证书，或者手动上传（PEM，或者 PFX/P12 文件），或者连同私钥取进 certbot、acme.sh 在本机续期的证书。
 - 由 JEC 扮演 Namecheap SSL Manager 的客户端，自动取得在 Namecheap 买的付费证书（如 PositiveSSL）。实验性功能，默认关闭；还没有用真实账号试过。
-- 域名验证：在 [lego](https://github.com/go-acme/lego) 支持的 221 家 DNS 服务商添加记录（其他服务商可以手动添加），或者走 HTTP：把文件放进网站目录（本机或经 SSH），或者让网站的反向代理或 CDN 把 `/.well-known/` 转给 JEC，由 JEC 自己应答；网站在阿里云 ESA 上时，还可以由 JEC 部署的边缘函数从边缘 KV 直接应答，不经过源站。
+- 域名验证：在 [lego](https://github.com/go-acme/lego) 支持的 221 家 DNS 服务商添加记录（其他服务商可以手动添加；Namecheap 等厂商要的任意 TXT、CNAME 记录，能在腾讯云 DNSPod、阿里云 DNS、Cloudflare、华为云 DNS 自动添加），或者走 HTTP：把文件放进网站目录（本机或经 SSH），或者让网站的反向代理或 CDN 把 `/.well-known/` 转给 JEC，由 JEC 自己应答；网站在阿里云 ESA 上时，还可以由 JEC 部署的边缘函数从边缘 KV 直接应答，不经过源站。
 - 每张新证书自动部署到阿里云 ESA（并删掉被替换的旧证书）、阿里云 CDN 和全站加速（DCDN）、阿里云数字证书管理服务、OSS 存储空间的自定义域名和传统型负载均衡（CLB）、华为云 CDN、七牛云 CDN、Cloudflare 自定义证书、经腾讯云 SSL 证书服务更新到腾讯云 CDN、EdgeOne、CLB 等资源，经 AWS Certificate Manager 更新到 CloudFront 和负载均衡，宝塔面板和 1Panel 的网站、Nginx Proxy Manager、群晖 DSM、Proxmox VE 节点，本地目录和 SSH 服务器（写完都可以执行一条命令，比如重载 nginx）、Docker 容器（放好后发信号让它重载，或者重启它）、Kubernetes 的 TLS Secret 和 Webhook（发 JEC 的 JSON，或者按你写的格式）。
 - 进入续期窗口后，在设置页设定的时间自动续期（默认每天 02:00），只剩一周或更少时立即续期；CA 经 ACME 续期信息（ARI）建议提前续期时（比如要吊销证书之前）提前续期；失败时按逐渐拉长的间隔重试。
 - 通过 Telegram、邮件（SMTP）、Webhook，钉钉、飞书（Lark）、企业微信的群机器人，以及 Server酱、Bark、ntfy、Gotify、Discord、Slack（Mattermost、Rocket.Chat 也行）、Pushover 发通知，每个渠道可以选自己的语言；别的系统可以用自定义格式的 Webhook 对接，或者用你自己的脚本，由 JEC 内置的 shell 运行。
@@ -27,7 +27,7 @@ main 分支上已经可用：
 - 用密码登录，也可以开启两步验证，再输入验证器 App 里的验证码；给脚本用的 API 令牌；审计日志记下通过面板做过的事，是谁、从哪里做的；严格的安全响应头。
 - 一个很小的容器镜像，或者一个静态二进制文件，数据存在 SQLite 里。
 
-计划中：厂商验证需要的任意 DNS 记录，以及更多 CDN 和面板。
+计划中：国内云平台的免费证书作为来源，以及更多 CDN 和面板。
 
 每个服务商测到了哪一步（真实账号、真实软件、模拟器还是替身）：[docs/providers.zh-CN.md](docs/providers.zh-CN.md)。
 

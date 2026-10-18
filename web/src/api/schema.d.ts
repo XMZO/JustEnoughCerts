@@ -1517,7 +1517,7 @@ export interface components {
             brand?: string;
             /** @enum {string} */
             challenge?: "dns" | "http";
-            challenges?: ("dns" | "http")[];
+            challenges?: ("dns" | "http" | "record")[];
             description?: string;
             doc?: string;
             experimental?: boolean;
@@ -1529,6 +1529,7 @@ export interface components {
             name?: string;
             needsSolver?: boolean;
             ownKey?: boolean;
+            records?: boolean;
             tags?: string[];
             testable?: boolean;
             texts?: {
@@ -1546,8 +1547,8 @@ export interface components {
              * @enum {string}
              */
             challenge?: "dns" | "http";
-            /** @description For a source that needs a solver: the challenges of the solvers it can use */
-            challenges?: ("dns" | "http")[];
+            /** @description For a source that needs a solver: the challenges of the solvers it can use; record takes a solver of DNS that adds records of any type */
+            challenges?: ("dns" | "http" | "record")[];
             description?: string;
             experimental?: boolean;
             id: string;
@@ -1560,6 +1561,9 @@ export interface components {
             needsSolver?: boolean;
             /** @description For a source: its certificates come with their own private key, so there is no key type to choose */
             ownKey?: boolean;
+            /** @description For a solver of DNS: it adds records of any type too, as some sources ask */
+            records?: boolean;
+            /** @description The groups of the type in the UI; a solver that adds records of any type is in records too */
             tags?: string[];
             /** @description Its instances can be tested */
             testable?: boolean;

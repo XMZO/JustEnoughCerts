@@ -8,8 +8,9 @@
 // back is sealed in the module's table and refreshed as the official
 // client does. Issuing follows the vendor's certificate step by step,
 // waiting in between (contracts.Wait): it sends the CSR of the issuance's
-// key, puts the files of the domain validation on the website through the
-// certificate's solver, and downloads the certificate once issued.
+// key, puts the files of the domain validation on the website, or its
+// records in the DNS, through the certificate's solver, and downloads the
+// certificate once issued.
 //
 // The API is not public; what JEC knows of it comes from reading the
 // official client, which it does not run. The module is experimental, so
@@ -17,6 +18,7 @@
 package namecheap
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"io/fs"
@@ -33,6 +35,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/dnscheck"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
 
@@ -46,6 +49,9 @@ type Module struct {
 	// httpx.Options.SkipVerify), both on the public internet only; tests
 	// replace them.
 	api, web *http.Client
+	// visible tells whether the authoritative servers answer a record;
+	// tests replace it.
+	visible func(ctx context.Context, name, typ, value string) (bool, error)
 
 	db        *sql.DB
 	secrets   *secrets.Scope
@@ -62,7 +68,7 @@ func New() *Module {
 	web, _ := httpx.Client(httpx.Options{Timeout: 15 * time.Second, PublicOnly: true, SkipVerify: true})
 	// The access token goes to the API only, not where a redirect points.
 	api.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	return &Module{now: time.Now, api: api, web: web, locks: map[int64]*sync.Mutex{}}
+	return &Module{now: time.Now, api: api, web: web, visible: dnscheck.Visible, locks: map[int64]*sync.Mutex{}}
 }
 
 // Manifest describes the module.

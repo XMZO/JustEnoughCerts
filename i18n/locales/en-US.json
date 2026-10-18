@@ -412,6 +412,8 @@
       "new_source_desc": "An ACME account, such as Let's Encrypt.",
       "no_dns": "No DNS providers yet. First add the one that serves these domains.",
       "no_http": "No website directories yet. First add the one these domains are served from.",
+      "no_http_records": "No validation method this source can use yet. First add a website directory, or a DNS provider that adds records of any type: {providers}.",
+      "no_records": "No DNS provider that adds records of any type yet. This source needs one of them: {providers}.",
       "no_solver": "No validation methods yet. First add a DNS provider or a website directory.",
       "no_targets": "No targets yet. The certificate stays in JEC; you can choose targets later.",
       "pfx_file": "PFX or P12 file",
@@ -419,6 +421,7 @@
       "pfx_password": "File password",
       "pfx_password_help": "The password set when the file was exported; leave it empty if there is none.",
       "plan": "What happens next",
+      "records_help": "JEC adds the validation records the source asks for there, TXT or CNAME, and removes them once issued. It must serve the domains above.",
       "reminder": "Reminder",
       "renew_days": "Renew ahead",
       "renew_days_help": "The certificate renews when this many days are left: 1 to 365.",
@@ -1390,6 +1393,7 @@
         "http": "Website files",
         "plugin": "Plugins",
         "popular": "Popular",
+        "records": "Any record",
         "self_hosted": "Self-hosted"
       },
       "target": {
@@ -1579,7 +1583,7 @@
   },
   "manual": {
     "dns": {
-      "description": "The issuance's log lists the TXT records to add: add them at your DNS provider, and JEC goes on once they show. Each renewal needs them added anew, so this suits certificates you issue now and then.",
+      "description": "The issuance's log lists the validation records to add: add them at your DNS provider, and JEC goes on once they show. Each renewal needs them added anew, so this suits certificates you issue now and then.",
       "name": "Add DNS records by hand"
     },
     "field": {
@@ -1587,7 +1591,7 @@
       "minutes_help": "How long JEC looks for the records, 25 minutes at most. When they do not show in time, it tries again later, with new records to add."
     },
     "module": {
-      "description": "Validates domains with the TXT records you add yourself at your DNS provider.",
+      "description": "Validates domains with the records you add yourself at your DNS provider.",
       "name": "Manual DNS records"
     }
   },
@@ -1621,15 +1625,17 @@
   },
   "namecheap": {
     "error": {
+      "add_record": "Could not add the validation record {name}. Check the settings of the DNS provider.",
       "api": "Namecheap's API answered with an error (status {status}); the log has the details.",
       "auth": "Namecheap no longer accepts JEC's credentials. Make a new token in Namecheap's panel and enter it.",
       "connect": "Could not reach Namecheap's API.",
       "key_mismatch": "The certificate Namecheap issued does not match this issuance's private key.",
       "key_type": "Namecheap's SSL Manager issues RSA certificates only. Add the certificate again with an RSA key type.",
-      "methods": "Namecheap asks to validate the domain by {methods}; for now JEC validates through files on the website only.",
+      "methods": "Namecheap asks to validate the domain by {methods}, which the certificate's validation method cannot do. For HTTP, choose a method that puts files on the website; for DNS, a DNS provider that adds records of any type, or adding DNS records by hand.",
       "no_token": "Enter the one-time token first.",
       "order_failed": "Namecheap's order for {domain} failed. See why in Namecheap's panel, reissue there, then issue again.",
       "put_file": "Could not put the validation file of {domain} in place. Check the settings of the validation method.",
+      "record": "JEC cannot add the validation record Namecheap asks for ({type} {name}): it adds TXT and CNAME records under the domain only.",
       "revoked": "Namecheap revoked the certificate of {domain}. Sort it out in Namecheap's panel, then issue again.",
       "token": "Namecheap refused the token: it may be mistyped, used already or expired after 24 hours. Make a new one in Namecheap's panel.",
       "url": "The API address must start with https:// : {url}"
@@ -1641,6 +1647,7 @@
       "url_help": "The address of the SSL Manager API. There is rarely a reason to change it."
     },
     "log": {
+      "add_record": "The validation record to add: the {type} record {name}, with the value {value}",
       "confirm_failed": "Could not tell Namecheap the certificate is installed, which changes nothing here",
       "issued": "Namecheap issued the certificate",
       "mark_failed": "Could not put SSL Manager's marks on {domain}, which Namecheap may look for",
@@ -1649,12 +1656,16 @@
       "not_ours": "The CSR of Namecheap's certificate did not come from this issuance. Reissue it in Namecheap's panel and JEC carries on.",
       "not_served": "{url} does not serve the validation file from here, so the CA may not get it either. Check the CDN and the website.",
       "put_file": "Putting the validation file {path} on {domain}",
+      "record_left": "The {type} record {name} is no longer needed; you can remove it at the DNS provider",
+      "record_wait": "The authoritative DNS servers of the domain do not answer the validation record {names} yet; checking again later",
       "register": "Registering with Namecheap with the one-time token",
       "remove_failed": "Could not remove the validation file {path} from {domain}; you can remove it from the website",
       "remove_file": "Removing the validation file {path} from {domain}",
+      "remove_record": "Removing the validation record: the {type} record {name}",
+      "remove_record_failed": "Could not remove the {type} record {name}; you can remove it at the DNS provider",
       "request": "Sending the CSR for {domain} to Namecheap",
       "state": "State at Namecheap: {state}",
-      "validate": "The validation files are in place; waiting for the certificate authority to check them"
+      "validate": "The validation files or records are in place; waiting for the certificate authority to check them"
     },
     "module": {
       "description": "Gets the certificates bought at Namecheap, such as PositiveSSL, through Namecheap's SSL Manager. It uses an API that is not public and may break at any time.",

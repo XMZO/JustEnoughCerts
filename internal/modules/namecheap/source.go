@@ -28,6 +28,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/dnscheck"
 )
 
 // How an issuance follows the vendor: it looks at the integration's status
@@ -46,7 +47,7 @@ func sslManagerType() providers.Type {
 			{Key: "token", Label: i18n.NamecheapFieldToken, Help: i18n.NamecheapFieldTokenHelp, Kind: providers.Text, Secret: true, Required: true},
 			{Key: "url", Label: i18n.NamecheapFieldUrl, Help: i18n.NamecheapFieldUrlHelp, Kind: providers.URL, Default: defaultURL, Advanced: true},
 		},
-		NeedsSolver: true, Challenges: []string{providers.ChallengeHTTP}, Testable: true, Experimental: true,
+		NeedsSolver: true, Challenges: []string{providers.ChallengeHTTP, providers.ChallengeRecord}, Testable: true, Experimental: true,
 	}
 }
 
@@ -88,10 +89,12 @@ type order struct {
 	// Cert is the vendor's certificate the issuance fills, once it sent
 	// the CSR for it.
 	Cert string `json:"cert,omitempty"`
-	// Files are on the website, to remove once the certificate is issued;
-	// Marked lists the challenges reported in place.
-	Files  []placed `json:"files,omitempty"`
-	Marked []string `json:"marked,omitempty"`
+	// Files are on the website, and Records in the DNS, to remove once the
+	// certificate is issued; Marked lists the challenges reported in
+	// place.
+	Files   []placed       `json:"files,omitempty"`
+	Records []placedRecord `json:"records,omitempty"`
+	Marked  []string       `json:"marked,omitempty"`
 	// Fingerprint is the integration's status at the last look, at Looked.
 	Fingerprint string `json:"fingerprint,omitempty"`
 	Looked      int64  `json:"looked,omitempty"`
@@ -102,6 +105,19 @@ type order struct {
 type placed struct {
 	Domain string `json:"domain"`
 	Path   string `json:"path"`
+}
+
+// placedRecord is a record in the DNS, with the solver's ref for removing
+// it.
+type placedRecord struct {
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Value string `json:"value"`
+	Ref   string `json:"ref,omitempty"`
+}
+
+func (p placedRecord) record() contracts.Record {
+	return contracts.Record{Name: p.Name, Type: p.Type, Value: p.Value}
 }
 
 // wait ends an attempt that has to wait for the vendor.
@@ -124,8 +140,9 @@ func (o *order) note(log func(contracts.LogLine), seen string, line contracts.Lo
 // Issue follows the vendor's certificate for the primary domain, as the
 // official client does: it sends the CSR of req.Key when the certificate
 // awaits one, puts the files of the domain validation in place through
-// req.Files when it awaits them, and downloads it once issued. Between the
-// steps it waits, for as long as the vendor takes.
+// req.Files, or its records through req.Records, when it awaits them, and
+// downloads it once issued. Between the steps it waits, for as long as the
+// vendor takes.
 func (s *sslManager) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509.Certificate, error) {
 	log := req.Log
 	if log == nil {
@@ -134,8 +151,8 @@ func (s *sslManager) Issue(ctx context.Context, req contracts.IssueRequest) ([]*
 	switch {
 	case len(req.Domains) == 0:
 		return nil, retry.Permanent(errors.New("namecheap: no domain to issue for"))
-	case req.Files == nil:
-		return nil, retry.Permanent(errors.New("namecheap: the domain validation needs a solver over HTTP"))
+	case req.Files == nil && req.Records == nil:
+		return nil, retry.Permanent(errors.New("namecheap: the domain validation needs a solver over HTTP or of DNS records"))
 	}
 	pub, ok := req.Key.Public().(*rsa.PublicKey)
 	if !ok {
@@ -255,18 +272,29 @@ func makeCSR(key crypto.Signer, domain string) ([]byte, error) {
 	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: der}), nil
 }
 
-// validate puts the answers of cert's HTTP challenges on the website, with
-// the marks the official client leaves that it manages the domain, checks
-// that the website serves them, and reports them in place.
+// validate answers cert's challenges with the certificate's solver: over
+// HTTP, it puts the files on the website, with the marks the official
+// client leaves that it manages the domain, and checks that the website
+// serves them; of DNS records, it adds the records and waits for the
+// domain's authoritative servers to answer them. It reports each challenge
+// in place once answered.
 func (s *sslManager) validate(ctx context.Context, sess *session, cert *certificate, req contracts.IssueRequest, domain string, o *order, log func(contracts.LogLine)) error {
 	challenges, err := sess.challenges(ctx, sess.access, cert.ID)
 	if err != nil {
 		return explain(err)
 	}
 	var methods []string
+	var pending unseen
 	answered := false
 	for _, ch := range challenges {
-		if ch.Method != methodHTTP {
+		if ch.Method == methodDNS && req.Records != nil {
+			if err := s.answerRecords(ctx, sess, ch, req.Records, cmp.Or(ch.Domain, domain), o, log, &pending); err != nil {
+				return err
+			}
+			answered = true
+			continue
+		}
+		if ch.Method != methodHTTP || req.Files == nil {
 			methods = append(methods, ch.Method)
 			continue
 		}
@@ -294,8 +322,81 @@ func (s *sslManager) validate(ctx context.Context, sess *session, cert *certific
 	if !answered {
 		return retry.Permanent(&contracts.Problem{Key: i18n.NamecheapErrorMethods, Params: map[string]any{"methods": strings.Join(methods, ", ")}})
 	}
+	if len(pending.names) > 0 {
+		line := contracts.LogLine{Level: contracts.Info, Step: contracts.StepValidate, Key: i18n.NamecheapLogRecordWait, Params: map[string]any{"names": strings.Join(pending.names, ", ")}}
+		if pending.err != nil {
+			line.Detail = pending.err.Error()
+		}
+		o.note(log, "records:"+strings.Join(pending.names, " "), line)
+		o.Fingerprint = "" // the vendor's status stays as it is: look again all the same
+		return nil
+	}
 	o.note(log, "validating:"+cert.ID, contracts.LogLine{Level: contracts.Info, Step: contracts.StepValidate, Key: i18n.NamecheapLogValidate})
 	return nil
+}
+
+// unseen gathers the records the authoritative servers do not answer yet,
+// by name, and the last failure to ask them.
+type unseen struct {
+	names []string
+	err   error
+}
+
+// answerRecords adds the records of a DNS challenge through records,
+// unless an earlier attempt did, and reports the challenge in place once
+// the authoritative servers answer each record; the records they do not
+// answer yet go into pending.
+func (s *sslManager) answerRecords(ctx context.Context, sess *session, ch challenge, records contracts.RecordSolver, domain string, o *order, log func(contracts.LogLine), pending *unseen) error {
+	if slices.Contains(o.Marked, ch.ID) {
+		return nil
+	}
+	list := ch.records()
+	if len(list) == 0 {
+		return retry.Permanent(&contracts.Problem{Key: i18n.NamecheapErrorMethods, Params: map[string]any{"methods": ch.Method}})
+	}
+	ready := true
+	for _, r := range list {
+		p := placedRecord{Name: dnscheck.RecordName(r.RecordName, domain), Type: strings.ToUpper(strings.TrimSpace(r.RecordType)), Value: r.RecordValue}
+		if p.Name == "" || (p.Type != "TXT" && p.Type != "CNAME") || p.Value == "" {
+			return retry.Permanent(&contracts.Problem{Key: i18n.NamecheapErrorRecord, Params: map[string]any{"type": r.RecordType, "name": r.RecordName}})
+		}
+		if !slices.ContainsFunc(o.Records, func(q placedRecord) bool { return q.record() == p.record() }) {
+			log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepChallenge, Key: i18n.NamecheapLogAddRecord,
+				Params: map[string]any{"name": p.Name, "type": p.Type, "value": p.Value}})
+			ref, err := records.AddRecord(ctx, p.record())
+			if err != nil {
+				return addFailed(err, p.Name)
+			}
+			p.Ref = ref
+			o.Records = append(o.Records, p)
+		}
+		ok, err := s.m.visible(ctx, p.Name, p.Type, p.Value)
+		if !ok {
+			ready = false
+			pending.names = append(pending.names, p.Name)
+			if err != nil {
+				pending.err = err
+			}
+		}
+	}
+	if !ready {
+		return nil
+	}
+	if err := sess.installed(ctx, sess.access, ch.ID); err != nil {
+		return explain(err)
+	}
+	o.Marked = append(o.Marked, ch.ID)
+	return nil
+}
+
+// addFailed explains a failure to add a record: the solver's own reason,
+// if it gave one.
+func addFailed(err error, name string) error {
+	var problem *contracts.Problem
+	if errors.As(err, &problem) {
+		return err
+	}
+	return &contracts.Problem{Key: i18n.NamecheapErrorAddRecord, Params: map[string]any{"name": name}, Err: err}
 }
 
 // putFailed explains a failure to put a file on the website: the solver's
@@ -393,12 +494,27 @@ func (s *sslManager) download(ctx context.Context, sess *session, cert *certific
 		return nil, fmt.Errorf("namecheap: the certificate: %w", err)
 	}
 	for _, f := range o.Files {
+		if req.Files == nil { // put by a solver no longer chosen
+			log(contracts.LogLine{Level: contracts.Warn, Step: contracts.StepCleanup, Key: i18n.NamecheapLogRemoveFailed, Params: map[string]any{"domain": f.Domain, "path": f.Path}})
+			continue
+		}
 		log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepCleanup, Key: i18n.NamecheapLogRemoveFile, Params: map[string]any{"domain": f.Domain, "path": f.Path}})
 		if err := req.Files.RemoveFile(ctx, contracts.File{Domain: f.Domain, Path: f.Path}); err != nil {
 			log(contracts.LogLine{Level: contracts.Warn, Step: contracts.StepCleanup, Key: i18n.NamecheapLogRemoveFailed, Params: map[string]any{"domain": f.Domain, "path": f.Path}, Detail: err.Error()})
 		}
 	}
 	o.Files = nil
+	for _, r := range o.Records {
+		if r.Ref == "" || req.Records == nil { // added by people, or by a solver no longer chosen
+			log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepCleanup, Key: i18n.NamecheapLogRecordLeft, Params: map[string]any{"name": r.Name, "type": r.Type}})
+			continue
+		}
+		log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepCleanup, Key: i18n.NamecheapLogRemoveRecord, Params: map[string]any{"name": r.Name, "type": r.Type}})
+		if err := req.Records.RemoveRecord(ctx, r.record(), r.Ref); err != nil {
+			log(contracts.LogLine{Level: contracts.Warn, Step: contracts.StepCleanup, Key: i18n.NamecheapLogRemoveRecordFailed, Params: map[string]any{"name": r.Name, "type": r.Type}, Detail: err.Error()})
+		}
+	}
+	o.Records = nil
 	log(contracts.LogLine{Level: contracts.OK, Step: contracts.StepDownload, Key: i18n.NamecheapLogIssued})
 	if err := sess.confirm(ctx, sess.access, cert.ID, "jec-"+b.Leaf.SerialNumber.Text(16)); err != nil {
 		log(contracts.LogLine{Level: contracts.Warn, Step: contracts.StepDownload, Key: i18n.NamecheapLogConfirmFailed, Detail: err.Error()})

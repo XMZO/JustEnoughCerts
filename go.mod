@@ -13,6 +13,7 @@ require (
 	github.com/go-acme/lego/v5 v5.5.2
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/huaweicloud/huaweicloud-sdk-go-v3 v0.1.215
+	github.com/miekg/dns v1.1.73
 	github.com/ncruces/go-sqlite3 v0.35.6
 	github.com/pquerna/otp v1.5.0
 	github.com/pressly/goose/v3 v3.29.0
@@ -133,7 +134,6 @@ require (
 	github.com/magiconair/properties v1.8.10 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
-	github.com/miekg/dns v1.1.73 // indirect
 	github.com/mimuret/golang-iij-dpf v0.9.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect

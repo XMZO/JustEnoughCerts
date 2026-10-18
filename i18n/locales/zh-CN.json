@@ -412,6 +412,8 @@
       "new_source_desc": "ACME 账号，例如 Let's Encrypt。",
       "no_dns": "还没有 DNS 服务商。先添加管理这些域名的那一家。",
       "no_http": "还没有网站目录。先添加这些域名所用的网站目录。",
+      "no_http_records": "还没有这个来源能用的验证方式。先添加网站目录类的验证方式，或者能添加任意记录的 DNS 服务商：{providers}。",
+      "no_records": "还没有能添加任意记录的 DNS 服务商。这个来源要用其中之一：{providers}。",
       "no_solver": "还没有验证方式。先添加 DNS 服务商或网站目录。",
       "no_targets": "还没有部署目标。证书只保存在 JEC 里，也可以以后再选。",
       "pfx_file": "PFX / P12 文件",
@@ -419,6 +421,7 @@
       "pfx_password": "文件密码",
       "pfx_password_help": "导出文件时设的密码，没有就留空。",
       "plan": "接下来的步骤",
+      "records_help": "JEC 在这里添加证书来源要的验证记录（TXT 或 CNAME），签好后删除。它必须管理上面的域名。",
       "reminder": "到期提醒",
       "renew_days": "提前续期",
       "renew_days_help": "证书只剩这么多天时自动续期，可以填 1 到 365。",
@@ -1390,6 +1393,7 @@
         "http": "网站文件",
         "plugin": "插件",
         "popular": "常用",
+        "records": "任意记录",
         "self_hosted": "自建"
       },
       "target": {
@@ -1579,7 +1583,7 @@
   },
   "manual": {
     "dns": {
-      "description": "签发日志会列出要添加的 TXT 记录：在 DNS 服务商那里添加后，JEC 查到就继续。每次续期都要重新添加，所以适合偶尔签发的证书。",
+      "description": "签发日志会列出要添加的验证记录：在 DNS 服务商那里添加后，JEC 查到就继续。每次续期都要重新添加，所以适合偶尔签发的证书。",
       "name": "手动添加 DNS 记录"
     },
     "field": {
@@ -1587,7 +1591,7 @@
       "minutes_help": "JEC 查找记录的最长时间，最多 25 分钟。超时没查到时会稍后重试，那时要添加新的记录。"
     },
     "module": {
-      "description": "用你自己在 DNS 服务商那里添加的 TXT 记录验证域名。",
+      "description": "用你自己在 DNS 服务商那里添加的记录验证域名。",
       "name": "手动 DNS 记录"
     }
   },
@@ -1621,15 +1625,17 @@
   },
   "namecheap": {
     "error": {
+      "add_record": "没能添加验证记录 {name}。请检查 DNS 服务商的设置。",
       "api": "Namecheap 的接口返回了错误（状态 {status}），详情见日志。",
       "auth": "Namecheap 不再接受 JEC 的凭据。请在 Namecheap 面板重新生成令牌并填进来。",
       "connect": "连不上 Namecheap 的接口。",
       "key_mismatch": "Namecheap 签出的证书和这次签发的私钥对不上。",
       "key_type": "Namecheap SSL Manager 只签 RSA 证书。请用 RSA 密钥类型重新添加这张证书。",
-      "methods": "Namecheap 要求用 {methods} 验证域名，JEC 目前只能用网站文件验证。",
+      "methods": "Namecheap 要求用 {methods} 验证域名，这张证书选的验证方式做不到。HTTP 验证要选放验证文件的验证方式，DNS 验证要选能添加任意记录的 DNS 服务商，或者手动添加 DNS 记录。",
       "no_token": "还没有填一次性令牌。",
       "order_failed": "{domain} 在 Namecheap 的订单失败了。请在 Namecheap 面板查看原因，重签后再签发。",
       "put_file": "没能为 {domain} 放验证文件。请检查验证方式的设置。",
+      "record": "JEC 加不了 Namecheap 要求的验证记录（{type} {name}）：只加域名下的 TXT 和 CNAME 记录。",
       "revoked": "{domain} 在 Namecheap 的证书已被吊销。请在 Namecheap 面板处理后再签发。",
       "token": "Namecheap 不接受这个令牌：可能填错了、已经用过，或者过了 24 小时。请在 Namecheap 面板重新生成一个。",
       "url": "接口地址要以 https:// 开头：{url}"
@@ -1641,6 +1647,7 @@
       "url_help": "SSL Manager 的接口地址，一般不用改。"
     },
     "log": {
+      "add_record": "要添加的验证记录：{type} 记录 {name}，值为 {value}",
       "confirm_failed": "没能告诉 Namecheap 证书已安装，不影响使用",
       "issued": "Namecheap 已签发证书",
       "mark_failed": "没能在 {domain} 放 SSL Manager 的标记文件，Namecheap 可能会看",
@@ -1649,12 +1656,16 @@
       "not_ours": "Namecheap 上这张证书的 CSR 不是这次签发交的。在 Namecheap 面板重签后，JEC 会接着做。",
       "not_served": "从这里访问 {url} 拿不到验证文件，证书颁发机构可能也拿不到。请检查 CDN 和网站的设置。",
       "put_file": "在 {domain} 放验证文件 {path}",
+      "record_left": "{type} 记录 {name} 已经用不到了，可以到 DNS 服务商那里删除",
+      "record_wait": "还没从域名的权威 DNS 服务器查到验证记录 {names}，稍后再查",
       "register": "用一次性令牌向 Namecheap 注册",
       "remove_failed": "没能删除 {domain} 的验证文件 {path}，可以到网站上手动删除",
       "remove_file": "删除 {domain} 的验证文件 {path}",
+      "remove_record": "删除验证记录：{type} 记录 {name}",
+      "remove_record_failed": "没能删除 {type} 记录 {name}，可以到 DNS 服务商那里手动删除",
       "request": "向 Namecheap 提交 {domain} 的 CSR",
       "state": "Namecheap 上的状态：{state}",
-      "validate": "验证文件已放好，等证书颁发机构验证"
+      "validate": "验证文件或记录已放好，等证书颁发机构验证"
     },
     "module": {
       "description": "通过 Namecheap 的 SSL Manager 自动取得在 Namecheap 买的证书（如 PositiveSSL）。用的是非公开接口，可能随时失效。",

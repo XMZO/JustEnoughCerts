@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/dnsrecord"
 )
 
 // catalogJSON describes lego's DNS providers; tools/legocatalog writes it
@@ -73,6 +74,8 @@ func providerType(p catalogProvider) providers.Type {
 		ID: "lego." + p.Code, Kind: providers.Solver,
 		Brand: p.Name, Doc: p.Description, URL: p.URL,
 		Fields: []providers.Field{},
+		// JEC adds records of any type through some providers itself.
+		Records: slices.Contains(dnsrecord.Codes, p.Code),
 	}
 	switch {
 	case slices.Contains(china, p.Code):
@@ -91,16 +94,24 @@ func providerType(p catalogProvider) providers.Type {
 }
 
 // factory makes the Solver of an instance of p: a child process whose
-// environment holds the instance's settings.
+// environment holds the instance's settings. For a provider JEC adds
+// records of any type through itself, it is a contracts.RecordSolver too.
 func factory(p catalogProvider, log *slog.Logger) providers.Factory {
 	keys := p.keys()
+	own := slices.Contains(dnsrecord.Codes, p.Code)
 	return func(_ context.Context, in providers.Instance) (any, error) {
 		var env []string
+		settings := map[string]string{}
 		for _, k := range keys {
 			if v := in.Value(k.Key); v != "" {
 				env = append(env, k.Key+"="+v)
+				settings[k.Key] = v
 			}
 		}
-		return newSolver(p.Code, env, log.With("provider", p.Code, "instance", in.ID)), nil
+		s := newSolver(p.Code, env, log.With("provider", p.Code, "instance", in.ID))
+		if !own {
+			return s, nil
+		}
+		return &records{solver: s, settings: settings}, nil
 	}
 }

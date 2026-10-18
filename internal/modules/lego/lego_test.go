@@ -3,6 +3,7 @@ package lego
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -17,6 +18,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/children"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/dnsrecord"
 )
 
 // The test binary runs the provider children too.
@@ -63,6 +65,24 @@ func TestCatalog(t *testing.T) {
 	}
 	if !secret["TENCENTCLOUD_SECRET_ID"] || !secret["TENCENTCLOUD_SECRET_KEY"] || secret["TENCENTCLOUD_REGION"] {
 		t.Errorf("secret fields: %v", secret)
+	}
+}
+
+func TestRecords(t *testing.T) {
+	// JEC adds records of any type through some providers itself: their
+	// solvers are RecordSolvers too, with the instance's settings.
+	if !providerType(provider(t, "tencentcloud")).Records || providerType(provider(t, "httpreq")).Records {
+		t.Error("records for the wrong providers")
+	}
+	if _, ok := open(t, "httpreq", httpreq("http://127.0.0.1:1")).(contracts.RecordSolver); ok {
+		t.Error("httpreq adds records")
+	}
+	rs, ok := open(t, "tencentcloud", map[string]string{"TENCENTCLOUD_REGION": "ap-guangzhou"}).(contracts.RecordSolver)
+	if !ok {
+		t.Fatal("tencentcloud adds no records")
+	}
+	if _, err := rs.AddRecord(t.Context(), contracts.Record{Name: "_x.example.com", Type: "TXT", Value: "v"}); !errors.Is(err, dnsrecord.ErrUnsupported) {
+		t.Errorf("without credentials: %v", err)
 	}
 }
 

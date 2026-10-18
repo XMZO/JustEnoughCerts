@@ -164,12 +164,36 @@ type challenge struct {
 	// Meta holds the file of an HTTP challenge, or the record of a DNS one.
 	Meta         json.RawMessage `json:"meta"`
 	Instructions *struct {
-		Files []webFile `json:"files"`
+		Files   []webFile   `json:"files"`
+		Records []dnsRecord `json:"records"`
 	} `json:"instructions"`
 }
 
 // Methods of challenges.
-const methodHTTP = "HTTP"
+const (
+	methodHTTP = "HTTP"
+	methodDNS  = "DNS"
+)
+
+// dnsRecord is what a DNS challenge has the domain's DNS answer.
+type dnsRecord struct {
+	RecordName  string `json:"recordName"`
+	RecordType  string `json:"recordType"`
+	RecordValue string `json:"recordValue"`
+}
+
+// records returns the records of a DNS challenge, from its meta or else
+// its instructions.
+func (ch challenge) records() []dnsRecord {
+	var r dnsRecord
+	if json.Unmarshal(ch.Meta, &r) == nil && r.RecordName != "" {
+		return []dnsRecord{r}
+	}
+	if ch.Instructions != nil {
+		return ch.Instructions.Records
+	}
+	return nil
+}
 
 // webFile is what an HTTP challenge has the website answer: the content at
 // a URL path of the domain.

@@ -4,11 +4,13 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -240,6 +242,174 @@ func TestIssueFailures(t *testing.T) {
 	f.vendor.with(func() { f.vendor.access = "gone" })
 	if _, _, err := f.issue(key, nil); problemKey(err) != i18n.NamecheapErrorAuth || !retry.IsPermanent(err) {
 		t.Errorf("access refused: %v", err)
+	}
+}
+
+// count counts the lines of the log with key k.
+func (f *fixture) count(k i18n.Key) int {
+	n := 0
+	for _, key := range f.logKeys() {
+		if key == k {
+			n++
+		}
+	}
+	return n
+}
+
+func TestIssueDNS(t *testing.T) {
+	f := newFixture(t)
+	key := rsaKeys()[0]
+	z := newZone()
+	f.m.visible = z.visible
+	f.vendor.with(func() {
+		f.vendor.dns = &dnsRecord{RecordName: "_ABC123.example.com.", RecordType: "cname", RecordValue: "abc.def.sectigo.com"}
+	})
+	f.vendor.add("c1", "example.com", stateAwaitingCSR, nil)
+	want := contracts.Record{Name: "_abc123.example.com", Type: "CNAME", Value: "abc.def.sectigo.com"}
+	attempt := func(state []byte) ([]*x509.Certificate, *contracts.Wait, error) {
+		return f.attempt(contracts.IssueRequest{Key: key, Records: z, State: state})
+	}
+
+	// The record goes in, but the servers do not answer it yet: no report.
+	z.with(func() { z.lag = true })
+	_, wait, err := attempt(nil)
+	if err != nil || wait == nil {
+		t.Fatalf("first attempt: %v", err)
+	}
+	z.with(func() {
+		if z.records[want] != "rec-1" || z.added != 1 {
+			t.Fatalf("records %v", z.records)
+		}
+	})
+	marked := func() (m bool) {
+		f.vendor.with(func() { m = f.vendor.find("c1").marked })
+		return m
+	}
+	if marked() {
+		t.Fatal("reported before the servers answer the record")
+	}
+
+	// Still not: the record is not added again, nor the wait logged again.
+	if _, wait, err = attempt(wait.State); err != nil || wait == nil || marked() {
+		t.Fatalf("second attempt: %v", err)
+	}
+	if f.count(i18n.NamecheapLogAddRecord) != 1 || f.count(i18n.NamecheapLogRecordWait) != 1 {
+		t.Errorf("log %v", f.logKeys())
+	}
+
+	// The servers answer it: report.
+	z.with(func() { z.lag = false })
+	if _, wait, err = attempt(wait.State); err != nil || wait == nil || !marked() {
+		t.Fatalf("once the servers answer: %v, marked %v", err, marked())
+	}
+	z.with(func() {
+		if z.added != 1 {
+			t.Errorf("added %d records", z.added)
+		}
+	})
+
+	// Issued: the record goes.
+	f.vendor.issue("c1")
+	chain, _, err := attempt(wait.State)
+	if err != nil || len(chain) != 2 || !key.PublicKey.Equal(chain[0].PublicKey) {
+		t.Fatalf("download: %v %v", chain, err)
+	}
+	z.with(func() {
+		if len(z.records) != 0 || !slices.Equal(z.removed, []string{"rec-1"}) {
+			t.Errorf("records %v, removed %v", z.records, z.removed)
+		}
+	})
+	for _, k := range []i18n.Key{i18n.NamecheapLogValidate, i18n.NamecheapLogRemoveRecord, i18n.NamecheapLogIssued} {
+		if f.count(k) != 1 {
+			t.Errorf("log %v: %s", f.logKeys(), k)
+		}
+	}
+}
+
+func TestIssueDNSByHand(t *testing.T) {
+	f := newFixture(t)
+	key := rsaKeys()[0]
+	z := newZone()
+	z.manual, z.lag = true, true
+	f.m.visible = z.visible
+	f.vendor.with(func() {
+		f.vendor.dns = &dnsRecord{RecordName: "_abc123", RecordType: "TXT", RecordValue: "2026101900000000abcdef"}
+	})
+	f.vendor.add("c1", "example.com", stateAwaitingCSR, nil)
+
+	// The log lists the record, under the domain, for people to add.
+	_, wait, err := f.attempt(contracts.IssueRequest{Key: key, Records: z})
+	if err != nil || wait == nil {
+		t.Fatalf("first attempt: %v", err)
+	}
+	f.logMu.Lock()
+	i := slices.IndexFunc(f.logged, func(l contracts.LogLine) bool { return l.Key == i18n.NamecheapLogAddRecord })
+	if i < 0 || f.logged[i].Params["name"] != "_abc123.example.com" || f.logged[i].Params["type"] != "TXT" || f.logged[i].Params["value"] != "2026101900000000abcdef" {
+		t.Errorf("log %+v", f.logged)
+	}
+	f.logMu.Unlock()
+
+	// People add it; once issued, it is theirs to remove.
+	z.with(func() { z.lag = false })
+	if _, wait, err = f.attempt(contracts.IssueRequest{Key: key, Records: z, State: wait.State}); err != nil || wait == nil {
+		t.Fatalf("second attempt: %v", err)
+	}
+	f.vendor.issue("c1")
+	if chain, _, err := f.attempt(contracts.IssueRequest{Key: key, Records: z, State: wait.State}); err != nil || len(chain) != 2 {
+		t.Fatalf("download: %v", err)
+	}
+	if f.count(i18n.NamecheapLogRecordLeft) != 1 || f.count(i18n.NamecheapLogRemoveRecord) != 0 {
+		t.Errorf("log %v", f.logKeys())
+	}
+	z.with(func() {
+		if len(z.removed) != 0 {
+			t.Errorf("removed %v", z.removed)
+		}
+	})
+}
+
+func TestIssueDNSFailures(t *testing.T) {
+	f := newFixture(t)
+	key := rsaKeys()[0]
+	z := newZone()
+	f.m.visible = z.visible
+	// Each case starts on a certificate of its own, awaiting the CSR.
+	certs := 0
+	next := func(record *dnsRecord) {
+		certs++
+		f.vendor.add("c"+strconv.Itoa(certs), "example.com", stateAwaitingCSR, nil)
+		f.vendor.with(func() { f.vendor.dns = record })
+	}
+
+	// The vendor asks for a record over HTTP, or for a file of DNS.
+	next(&dnsRecord{RecordName: "_abc123", RecordType: "TXT", RecordValue: "v"})
+	if _, _, err := f.issue(key, nil); problemKey(err) != i18n.NamecheapErrorMethods || !retry.IsPermanent(err) {
+		t.Errorf("a record over HTTP: %v", err)
+	}
+	next(nil)
+	if _, _, err := f.attempt(contracts.IssueRequest{Key: key, Records: z}); problemKey(err) != i18n.NamecheapErrorMethods || !retry.IsPermanent(err) {
+		t.Errorf("a file of DNS: %v", err)
+	}
+	if _, _, err := f.attempt(contracts.IssueRequest{Key: key}); err == nil || !retry.IsPermanent(err) {
+		t.Errorf("no solver: %v", err)
+	}
+
+	// A record JEC does not add.
+	next(&dnsRecord{RecordName: "example.com", RecordType: "MX", RecordValue: "mail.example.com"})
+	if _, _, err := f.attempt(contracts.IssueRequest{Key: key, Records: z}); problemKey(err) != i18n.NamecheapErrorRecord || !retry.IsPermanent(err) {
+		t.Errorf("an MX record: %v", err)
+	}
+
+	// The provider refuses the record: why, if it says, else that it did.
+	next(&dnsRecord{RecordName: "_abc123", RecordType: "TXT", RecordValue: "v"})
+	z.with(func() { z.fail = errors.New("quota") })
+	if _, _, err := f.attempt(contracts.IssueRequest{Key: key, Records: z}); problemKey(err) != i18n.NamecheapErrorAddRecord || retry.IsPermanent(err) {
+		t.Errorf("a refused record: %v", err)
+	}
+	next(&dnsRecord{RecordName: "_abc123", RecordType: "TXT", RecordValue: "v"})
+	z.with(func() { z.fail = retry.Permanent(&contracts.Problem{Key: "test.denied"}) })
+	if _, _, err := f.attempt(contracts.IssueRequest{Key: key, Records: z}); problemKey(err) != "test.denied" || !retry.IsPermanent(err) {
+		t.Errorf("a record refused with a reason: %v", err)
 	}
 }
 

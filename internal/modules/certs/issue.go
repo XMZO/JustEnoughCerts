@@ -395,6 +395,7 @@ func (s *service) obtain(ctx context.Context, cl *claimed, log func(contracts.Lo
 		defer closeProvider(solver, s)
 		req.Solver, _ = solver.(contracts.Solver)
 		req.Files, _ = solver.(contracts.FileSolver)
+		req.Records, _ = solver.(contracts.RecordSolver)
 		if req.Solver == nil && req.Files == nil {
 			return nil, retry.Permanent(fmt.Errorf("provider %d is no solver", c.SolverProvider))
 		}
