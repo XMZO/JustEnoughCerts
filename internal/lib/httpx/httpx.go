@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -47,6 +48,10 @@ type Options struct {
 	// panel, as SSH trusts a host key. Fingerprint tells it from the error
 	// of a connection that did not pin it.
 	Pin string
+	// Roots, when set, are the only certificate authorities trusted, in
+	// place of those of the system: for a server with a certificate of a
+	// private CA, such as the API server of a Kubernetes cluster.
+	Roots *x509.CertPool
 }
 
 // Errors of Client and of the requests it makes.
@@ -107,6 +112,8 @@ func Client(o Options) (*http.Client, error) {
 				return nil
 			},
 		}
+	case o.Roots != nil:
+		t.TLSClientConfig = &tls.Config{RootCAs: o.Roots, MinVersion: tls.VersionTLS12}
 	}
 	if o.Proxy != "" {
 		if o.PublicOnly {

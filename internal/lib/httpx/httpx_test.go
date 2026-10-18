@@ -1,14 +1,21 @@
 package httpx
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/hex"
 	"errors"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestPublic(t *testing.T) {
@@ -142,6 +149,50 @@ func TestPin(t *testing.T) {
 	}
 	if _, err := Client(Options{Pin: "not hex"}); err == nil {
 		t.Error("a pin that is no fingerprint")
+	}
+}
+
+func TestRoots(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	defer srv.Close()
+	roots := x509.NewCertPool()
+	roots.AddCert(srv.Certificate())
+	c, err := Client(Options{Roots: roots})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.Get(srv.URL)
+	if err != nil {
+		t.Fatalf("a server of the CA trusted: %v", err)
+	}
+	_ = resp.Body.Close()
+
+	// Only the roots given are trusted, not those of the system.
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "another CA"}, IsCA: true, BasicConstraintsValid: true,
+		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageCertSign}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, key.Public(), key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ca, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	others := x509.NewCertPool()
+	others.AddCert(ca)
+	if c, err = Client(Options{Roots: others}); err != nil {
+		t.Fatal(err)
+	}
+	resp, err = c.Get(srv.URL)
+	if err == nil {
+		_ = resp.Body.Close()
+	}
+	if _, ok := Fingerprint(err); !ok {
+		t.Errorf("a server of another CA: %v", err)
 	}
 }
 

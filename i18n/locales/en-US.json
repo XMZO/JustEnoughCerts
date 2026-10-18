@@ -1134,6 +1134,54 @@
       "title_on": "Turn on two-factor authentication"
     }
   },
+  "kubernetes": {
+    "error": {
+      "account": "Could not read the service account of the pod JEC runs in. Check that the pod mounts it (automountServiceAccountToken).",
+      "api": "The API server refused: {message} (HTTP {status})",
+      "ca": "The CA certificate could not be read: paste certificate-authority-data from the kubeconfig, or the PEM of the CA.",
+      "forbidden": "The API server refused: {message}",
+      "hostname": "The certificate of the API server is not valid for {host}. Use an address it is valid for, as the kubeconfig does.",
+      "network": "Could not reach {host}.",
+      "no_token": "Enter a token: outside the cluster, JEC needs one to reach the API server.",
+      "outside": "JEC does not run in a cluster: enter the address of the API server.",
+      "private": "{host} is a private address. To reach it, turn on “Allow private addresses” in the advanced settings.",
+      "status": "The answer made no sense (HTTP {status}): check the address of the API server.",
+      "token": "The API server refused the token.",
+      "type": "{secret} is a Secret of the type {type}, which JEC does not overwrite. Enter another name, for JEC to create a TLS Secret.",
+      "unverified": "JEC cannot verify the certificate of the API server (SHA-256 fingerprint {fingerprint}). Enter the CA certificate of the cluster: certificate-authority-data in the kubeconfig.",
+      "url": "Not an API server address: {url}. Such an address starts with https://.",
+      "verbs": "The token may not {verbs} the Secret {secret}. Give it a Role with the verbs get, create and patch on secrets in the namespace."
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "For an API server on this machine or on your network, as most are.",
+      "ca": "CA certificate",
+      "ca_help": "The CA of the cluster, as certificate-authority-data in the kubeconfig, in Base64 or PEM. Leave it empty when the API server has a certificate of a public CA.",
+      "namespace": "Namespace",
+      "secret": "Secret name",
+      "secret_help": "Such as example-com-tls. JEC creates it, of the type kubernetes.io/tls, when it is missing.",
+      "token": "Token",
+      "token_help": "A bearer token allowed to get, create and patch Secrets in the namespace, such as that of a service account from a Secret of the type kubernetes.io/service-account-token, which does not expire. Not needed in the cluster.",
+      "url": "API server",
+      "url_help": "Such as https://192.168.1.10:6443, the server in the kubeconfig. Leave it empty when JEC runs in the cluster: it then uses the service account of its pod."
+    },
+    "log": {
+      "create": "Creating the Secret {secret}",
+      "patch": "Writing the new version into the Secret {secret}"
+    },
+    "module": {
+      "description": "Keeps TLS Secrets of Kubernetes clusters up to date, for Ingresses and other workloads.",
+      "name": "Kubernetes"
+    },
+    "secret": {
+      "description": "Writes each new version into a TLS Secret through the API server, creating it when missing. Ingress controllers that use the Secret pick up the change themselves.",
+      "name": "Kubernetes Secret"
+    },
+    "test": {
+      "found": "The token may update the Secret {secret}, which is there.",
+      "new": "The token may create the Secret {secret}, which JEC does at the first deployment."
+    }
+  },
   "lego": {
     "module": {
       "description": "Proves control of a domain by adding a TXT record at any of 221 DNS providers, through lego.",

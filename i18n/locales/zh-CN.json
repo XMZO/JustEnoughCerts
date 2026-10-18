@@ -1134,6 +1134,54 @@
       "title_on": "开启两步验证"
     }
   },
+  "kubernetes": {
+    "error": {
+      "account": "读不到 JEC 所在 Pod 的服务账号。请检查 Pod 是否挂载了它（automountServiceAccountToken）。",
+      "api": "API Server 拒绝了：{message}（HTTP {status}）",
+      "ca": "CA 证书读不出来：请粘贴 kubeconfig 里的 certificate-authority-data，或者 CA 的 PEM。",
+      "forbidden": "API Server 拒绝了：{message}",
+      "hostname": "API Server 的证书对 {host} 无效。请用证书里有的地址，比如 kubeconfig 里的那个。",
+      "network": "连不上 {host}。",
+      "no_token": "请填写令牌：在集群外，JEC 要用令牌访问 API Server。",
+      "outside": "JEC 没有运行在集群里：请填写 API Server 地址。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "status": "回应看不懂（HTTP {status}）：请检查 API Server 地址。",
+      "token": "API Server 拒绝了令牌。",
+      "type": "{secret} 是 {type} 类型的 Secret，JEC 不会覆盖它。请换一个名称，JEC 会创建 TLS Secret。",
+      "unverified": "JEC 验证不了 API Server 的证书（SHA-256 指纹 {fingerprint}）。请填写集群的 CA 证书：kubeconfig 里的 certificate-authority-data。",
+      "url": "API Server 地址不对：{url}。地址以 https:// 开头。",
+      "verbs": "这个令牌不能对 Secret {secret} 执行 {verbs}。请给它一个 Role：在这个命名空间里对 secrets 有 get、create、patch 权限。"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "API Server 在本机或内网时打开（大多数集群都是这样）。",
+      "ca": "CA 证书",
+      "ca_help": "集群的 CA，也就是 kubeconfig 里的 certificate-authority-data，Base64 或 PEM 都行。API Server 用公共 CA 签的证书时留空。",
+      "namespace": "命名空间",
+      "secret": "Secret 名称",
+      "secret_help": "比如 example-com-tls。没有时 JEC 会创建一个 kubernetes.io/tls 类型的 Secret。",
+      "token": "令牌",
+      "token_help": "能在这个命名空间里 get、create、patch Secret 的令牌，比如服务账号的令牌（用 kubernetes.io/service-account-token 类型的 Secret 生成，不会过期）。在集群里运行时不用填。",
+      "url": "API Server 地址",
+      "url_help": "比如 https://192.168.1.10:6443，也就是 kubeconfig 里的 server。JEC 运行在这个集群里时留空：它会用所在 Pod 的服务账号。"
+    },
+    "log": {
+      "create": "创建 Secret {secret}",
+      "patch": "把新版本写进 Secret {secret}"
+    },
+    "module": {
+      "description": "更新 Kubernetes 集群里的 TLS Secret，供 Ingress 等工作负载使用。",
+      "name": "Kubernetes"
+    },
+    "secret": {
+      "description": "经 API Server 把每个新版本写进一个 TLS Secret，没有就创建。用这个 Secret 的 Ingress 控制器会自己换上新证书。",
+      "name": "Kubernetes Secret"
+    },
+    "test": {
+      "found": "这个令牌可以更新 Secret {secret}（已存在）。",
+      "new": "这个令牌可以创建 Secret {secret}，JEC 会在第一次部署时创建。"
+    }
+  },
   "lego": {
     "module": {
       "description": "借助 lego，在 221 家 DNS 服务商添加 TXT 记录，完成域名验证。",
