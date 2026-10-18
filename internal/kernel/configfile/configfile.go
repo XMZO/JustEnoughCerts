@@ -1,8 +1,9 @@
 // Package configfile writes JEC's configuration to a YAML file and reads
-// one back (PLAN.md 11): the provider instances, the certificates and the
-// settings, to take them to another JEC or to keep them in Git. Modules
-// add the sections they keep (module.Registry.Config); the kernel keeps
-// the providers. Secrets stay out of a file unless asked for.
+// one back (PLAN.md 11): the credentials and provider instances, the
+// certificates and the settings, to take them to another JEC or to keep
+// them in Git. Modules add the sections they keep
+// (module.Registry.Config); the kernel keeps the credentials and the
+// providers. Secrets stay out of a file unless asked for.
 //
 // An import adds and changes, and never deletes. It runs in one
 // transaction, which a dry run rolls back, so that what a file would do
@@ -104,9 +105,10 @@ type SectionReport struct {
 // Import is what a section reads its part of a file with: the providers
 // the file names, and the report.
 type Import struct {
-	report  *Report
-	section *SectionReport
-	named   map[ref][]Provider
+	report      *Report
+	section     *SectionReport
+	named       map[ref][]Provider
+	credentials map[string]namedCredential
 }
 
 // ref is how a file names a provider instance: by its name, among those
@@ -176,7 +178,7 @@ func New(db *sql.DB, prov *providers.Registry, enabled func(module string) bool)
 // Add adds a section of module. Its key is its own: not another
 // section's, nor one the kernel keeps.
 func (r *Registry) Add(module string, s Section) error {
-	if s.Key == "" || s.Key == keyVersion || s.Key == keyProviders || slices.ContainsFunc(r.sections, func(e entry) bool { return e.Key == s.Key }) {
+	if s.Key == "" || s.Key == keyVersion || s.Key == keyCredentials || s.Key == keyProviders || slices.ContainsFunc(r.sections, func(e entry) bool { return e.Key == s.Key }) {
 		return fmt.Errorf("configfile: module %s: section key %q is taken", module, s.Key)
 	}
 	if s.New == nil || s.Export == nil || s.Import == nil {
@@ -191,16 +193,21 @@ func (r *Registry) Add(module string, s Section) error {
 
 // The keys the kernel keeps.
 const (
-	keyVersion   = "version"
-	keyProviders = "providers"
+	keyVersion     = "version"
+	keyCredentials = "credentials"
+	keyProviders   = "providers"
 )
 
+// The fields of a file before those of the sections.
+const kernelFields = 3
+
 // fileType is what a file decodes into and is written from: the version,
-// the providers, and a field for each section. A section's field is a
-// pointer, nil where the file lacks the section.
+// the credentials, the providers, and a field for each section. A
+// section's field is a pointer, nil where the file lacks the section.
 func (r *Registry) fileType() reflect.Type {
 	fields := []reflect.StructField{
 		{Name: "Version", Type: reflect.TypeFor[int](), Tag: `yaml:"version"`},
+		{Name: "Credentials", Type: reflect.TypeFor[*[]credentialEntry](), Tag: `yaml:"credentials,omitempty"`},
 		{Name: "Providers", Type: reflect.TypeFor[*[]providerEntry](), Tag: `yaml:"providers,omitempty"`},
 	}
 	for i, s := range r.sections {
@@ -211,16 +218,23 @@ func (r *Registry) fileType() reflect.Type {
 	return reflect.StructOf(fields)
 }
 
-// Export writes the configuration as YAML: the providers, then the section
-// of each module that is on.
+// Export writes the configuration as YAML: the credentials and the
+// providers, then the section of each module that is on.
 func (r *Registry) Export(ctx context.Context, x Export) ([]byte, error) {
 	file := reflect.New(r.fileType()).Elem()
 	file.Field(0).SetInt(Version)
-	list, err := r.exportProviders(ctx, x)
+	creds, names, err := r.exportCredentials(ctx, x)
 	if err != nil {
 		return nil, err
 	}
-	file.Field(1).Set(reflect.ValueOf(&list))
+	if len(creds) > 0 {
+		file.Field(1).Set(reflect.ValueOf(&creds))
+	}
+	list, err := r.exportProviders(ctx, x, names)
+	if err != nil {
+		return nil, err
+	}
+	file.Field(2).Set(reflect.ValueOf(&list))
 	for i, s := range r.sections {
 		if !r.enabled(s.module) {
 			continue
@@ -229,7 +243,7 @@ func (r *Registry) Export(ctx context.Context, x Export) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("configfile: export %s: %w", s.Key, err)
 		}
-		f := file.Field(2 + i)
+		f := file.Field(kernelFields + i)
 		if reflect.TypeOf(v) != f.Type() {
 			return nil, fmt.Errorf("configfile: export %s: %T, not %s", s.Key, v, f.Type())
 		}
@@ -264,7 +278,7 @@ func (r *Registry) checkKeys(data []byte) error {
 	}
 	for i := 0; i < len(root.Content); i += 2 {
 		k := root.Content[i]
-		if k.Value == keyVersion || k.Value == keyProviders || slices.ContainsFunc(r.sections, func(e entry) bool { return e.Key == k.Value }) {
+		if k.Value == keyVersion || k.Value == keyCredentials || k.Value == keyProviders || slices.ContainsFunc(r.sections, func(e entry) bool { return e.Key == k.Value }) {
 			continue
 		}
 		return &FileError{Key: i18n.KernelConfigErrorSection, Params: map[string]any{"name": k.Value, "line": k.Line}}
@@ -281,7 +295,8 @@ type FileError struct {
 func (e *FileError) Error() string { return fmt.Sprintf("configfile: %s %v", e.Key, e.Params) }
 
 // Import makes the changes data asks for: it adds and changes the
-// providers, then each section the file has, in one transaction. It
+// credentials and the providers, then each section the file has, in one
+// transaction. It
 // commits them only when apply is set and no entry has an error; the
 // report tells what was, or would be, done. A file that cannot be read
 // fails with a FileError.
@@ -310,12 +325,15 @@ func (r *Registry) Import(ctx context.Context, data []byte, apply bool) (*Report
 	defer func() { _ = tx.Rollback() }()
 	report := &Report{Sections: []SectionReport{}}
 	in := &Import{report: report}
-	if err := r.importProviders(ctx, tx, f.Field(1).Interface().(*[]providerEntry), in); err != nil {
+	if err := r.importCredentials(ctx, tx, f.Field(1).Interface().(*[]credentialEntry), in); err != nil {
+		return nil, err
+	}
+	if err := r.importProviders(ctx, tx, f.Field(2).Interface().(*[]providerEntry), in); err != nil {
 		return nil, err
 	}
 	var afters []func()
 	for i, s := range r.sections {
-		v := f.Field(2 + i)
+		v := f.Field(kernelFields + i)
 		if v.IsNil() {
 			continue
 		}

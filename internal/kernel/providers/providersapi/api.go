@@ -1,6 +1,7 @@
 // Package providersapi serves the provider registry under /api/v1/providers:
 // the types the modules offer, with the fields their forms are built from,
-// and the configured instances.
+// and the configured instances; and under /api/v1/credentials, the
+// credentials that instances share.
 package providersapi
 
 import (
@@ -35,6 +36,9 @@ type TypeSummary struct {
 	Records      bool           `json:"records,omitempty" doc:"For a solver of DNS: it adds records of any type too, as some sources ask"`
 	Testable     bool           `json:"testable,omitempty" doc:"Its instances can be tested"`
 	Experimental bool           `json:"experimental,omitempty"`
+	// CredentialKind is the kind of credential the type can take some of
+	// its fields from.
+	CredentialKind string `json:"credentialKind,omitempty" doc:"The kind of credential the type can take some of its fields from"`
 	// Texts holds the messages of the keys above that the locale files
 	// lack, such as a plugin's.
 	Texts map[string]map[i18n.Key]string `json:"texts,omitempty" doc:"The type's own messages, by language tag and key, for keys the locale files lack, such as a plugin's"`
@@ -49,6 +53,7 @@ type InstanceBody struct {
 	Name       string            `json:"name"`
 	Config     map[string]string `json:"config"`
 	SecretKeys []string          `json:"secretKeys" doc:"The secret fields that hold a value"`
+	Credential int64             `json:"credentialId,omitempty" doc:"The credential that fills the fields the type takes from one"`
 	CreatedAt  time.Time         `json:"createdAt"`
 	UpdatedAt  time.Time         `json:"updatedAt"`
 }
@@ -56,7 +61,7 @@ type InstanceBody struct {
 func instanceBody(s providers.Summary) InstanceBody {
 	return InstanceBody{
 		ID: s.ID, Type: s.Type, Kind: string(s.Kind), Name: s.Name, Config: s.Config,
-		SecretKeys: s.SecretKeys, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
+		SecretKeys: s.SecretKeys, Credential: s.Credential, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
 	}
 }
 
@@ -100,19 +105,24 @@ type testOutput struct {
 
 type createInput struct {
 	Body struct {
-		Type    string            `json:"type" minLength:"1"`
-		Name    string            `json:"name" minLength:"1" maxLength:"64"`
-		Config  map[string]string `json:"config,omitempty"`
-		Secrets map[string]string `json:"secrets,omitempty"`
+		Type       string            `json:"type" minLength:"1"`
+		Name       string            `json:"name" minLength:"1" maxLength:"64"`
+		Config     map[string]string `json:"config,omitempty"`
+		Secrets    map[string]string `json:"secrets,omitempty"`
+		Credential int64             `json:"credentialId,omitempty" doc:"A credential to fill the fields the type takes from one"`
+		// NewCredential keeps the values of those fields as a credential.
+		NewCredential bool `json:"newCredential,omitempty" doc:"The values given for the fields the type takes from a credential become a new credential, named after the provider, that others can share"`
 	}
 }
 
 type updateInput struct {
 	ID   int64 `path:"id"`
 	Body struct {
-		Name    *string           `json:"name,omitempty" minLength:"1" maxLength:"64"`
-		Config  map[string]string `json:"config,omitempty" doc:"Replaces the plain settings when given"`
-		Secrets map[string]string `json:"secrets,omitempty" doc:"Merged: a value replaces that secret, an empty string removes it"`
+		Name          *string           `json:"name,omitempty" minLength:"1" maxLength:"64"`
+		Config        map[string]string `json:"config,omitempty" doc:"Replaces the plain settings when given"`
+		Secrets       map[string]string `json:"secrets,omitempty" doc:"Merged: a value replaces that secret, an empty string removes it"`
+		Credential    *int64            `json:"credentialId,omitempty" doc:"Sets the credential that fills the fields the type takes from one; 0 for none, so that they take values of their own"`
+		NewCredential bool              `json:"newCredential,omitempty" doc:"The values of the fields the type takes from a credential, those given or else the provider's own, become a new credential, named after the provider"`
 	}
 }
 
@@ -128,7 +138,7 @@ func Register(a huma.API, r *providers.Registry) {
 			sum := TypeSummary{
 				ID: t.ID, Kind: t.Kind, Module: t.Module, Name: t.Name, Description: t.Description,
 				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, OwnKey: t.OwnKey, Testable: t.Testable, Experimental: t.Experimental,
-				Texts: t.Texts,
+				CredentialKind: t.CredentialKind, Texts: t.Texts,
 			}
 			switch {
 			case t.Kind == providers.Solver:
@@ -180,7 +190,8 @@ func Register(a huma.API, r *providers.Registry) {
 		OperationID: "providers-create", Method: http.MethodPost, Path: "/providers", DefaultStatus: http.StatusCreated,
 		Summary: "Configure a provider",
 	}, func(ctx context.Context, in *createInput) (*instanceOutput, error) {
-		id, err := r.Create(ctx, in.Body.Type, in.Body.Name, in.Body.Config, in.Body.Secrets)
+		b := in.Body
+		id, err := r.CreateShared(ctx, b.Type, b.Name, b.Config, b.Secrets, b.Credential, b.NewCredential)
 		if err != nil {
 			return nil, apiError(err)
 		}
@@ -198,7 +209,8 @@ func Register(a huma.API, r *providers.Registry) {
 		OperationID: "providers-update", Method: http.MethodPatch, Path: "/providers/{id}",
 		Summary: "Change a configured provider",
 	}, func(ctx context.Context, in *updateInput) (*instanceOutput, error) {
-		if err := r.Update(ctx, in.ID, in.Body.Name, in.Body.Config, in.Body.Secrets); err != nil {
+		b := in.Body
+		if err := r.UpdateShared(ctx, in.ID, b.Name, b.Config, b.Secrets, b.Credential, b.NewCredential); err != nil {
 			return nil, apiError(err)
 		}
 		return output(ctx, r, in.ID)
@@ -218,6 +230,8 @@ func Register(a huma.API, r *providers.Registry) {
 	}, func(ctx context.Context, in *idInput) (*struct{}, error) {
 		return nil, apiError(r.Delete(ctx, in.ID))
 	})
+
+	registerCredentials(a, r)
 }
 
 // testTimeout bounds a test, which may reach a server across the world.

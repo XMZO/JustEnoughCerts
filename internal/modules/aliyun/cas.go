@@ -12,6 +12,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/aliyunapi"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
 
@@ -49,6 +50,7 @@ func casType() providers.Type {
 			}},
 			deleteOldField,
 		},
+		Credential: credentials.Use(credentials.Aliyun),
 	}
 }
 

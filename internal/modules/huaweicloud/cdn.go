@@ -19,6 +19,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
 
@@ -47,6 +48,7 @@ func cdnType() providers.Type {
 			{Key: "domains", Label: i18n.HuaweicloudFieldDomains, Help: i18n.HuaweicloudFieldDomainsHelp, Kind: providers.Text},
 			{Key: "domain_id", Label: i18n.HuaweicloudFieldDomainId, Help: i18n.HuaweicloudFieldDomainIdHelp, Kind: providers.Text, Advanced: true},
 		},
+		Credential: credentials.Use(credentials.HuaweiCloud),
 	}
 }
 

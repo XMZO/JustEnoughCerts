@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/dnsrecord"
 )
 
@@ -90,7 +91,35 @@ func providerType(p catalogProvider) providers.Type {
 			Key: k.Key, Doc: k.Doc, Kind: providers.Text, Secret: k.Secret, Advanced: i >= len(p.Credentials),
 		})
 	}
+	t.Credential = credentialOf(p.Code)
 	return t
+}
+
+// credentialOf is how lego's provider code takes the keys of a cloud that
+// JEC deploys to too, so that one credential serves both: the environment
+// variables the kind's fields are; nil for the other providers.
+func credentialOf(code string) *providers.CredentialUse {
+	switch code {
+	case "alidns":
+		return credentials.Use(credentials.Aliyun, "ALICLOUD_ACCESS_KEY", "ALICLOUD_SECRET_KEY")
+	case "aliesa":
+		return credentials.Use(credentials.Aliyun, "ALIESA_ACCESS_KEY", "ALIESA_SECRET_KEY")
+	case "tencentcloud":
+		return credentials.Use(credentials.TencentCloud, "TENCENTCLOUD_SECRET_ID", "TENCENTCLOUD_SECRET_KEY")
+	case "edgeone":
+		return credentials.Use(credentials.TencentCloud, "EDGEONE_SECRET_ID", "EDGEONE_SECRET_KEY")
+	case "cloudflare":
+		return credentials.Use(credentials.Cloudflare, "CF_DNS_API_TOKEN")
+	case "route53":
+		return credentials.Use(credentials.AWS, "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")
+	case "huaweicloud":
+		return credentials.Use(credentials.HuaweiCloud, "HUAWEICLOUD_ACCESS_KEY_ID", "HUAWEICLOUD_SECRET_ACCESS_KEY")
+	case "volcengine":
+		return credentials.Use(credentials.Volcengine, "VOLC_ACCESSKEY", "VOLC_SECRETKEY")
+	case "baiducloud":
+		return credentials.Use(credentials.BaiduCloud, "BAIDUCLOUD_ACCESS_KEY_ID", "BAIDUCLOUD_SECRET_ACCESS_KEY")
+	}
+	return nil
 }
 
 // factory makes the Solver of an instance of p: a child process whose

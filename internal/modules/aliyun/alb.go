@@ -13,6 +13,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/aliyunapi"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 )
 
 // ALB, Application Load Balancer (2020-06-16): each new certificate is
@@ -64,6 +65,7 @@ func albType() providers.Type {
 			{Key: "additional", Label: i18n.AliyunFieldAlbAdditional, Help: i18n.AliyunFieldAlbAdditionalHelp, Kind: providers.Switch, Advanced: true},
 			deleteOldField,
 		},
+		Credential: credentials.Use(credentials.Aliyun),
 	}
 }
 

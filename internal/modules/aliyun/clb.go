@@ -12,6 +12,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/aliyunapi"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
 
@@ -47,6 +48,7 @@ func clbType() providers.Type {
 			{Key: "domain", Label: i18n.AliyunFieldClbDomain, Help: i18n.AliyunFieldClbDomainHelp, Kind: providers.Text, Advanced: true},
 			deleteOldField,
 		},
+		Credential: credentials.Use(credentials.Aliyun),
 	}
 }
 

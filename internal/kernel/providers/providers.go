@@ -141,6 +141,13 @@ type Type struct {
 	// web UI adds them to its messages. Their keys start with the module ID
 	// and a dot.
 	Texts map[string]map[i18n.Key]string `json:"texts,omitempty"`
+	// Credential is set on a type that can take some of its fields from a
+	// credential that instances share, such as a cloud's AccessKey.
+	// CredentialKind and CredentialFields tell the UI the same: the kind,
+	// and the type's fields that a credential fills.
+	Credential       *CredentialUse `json:"-"`
+	CredentialKind   string         `json:"credentialKind,omitempty"`
+	CredentialFields []string       `json:"credentialFields,omitempty"`
 }
 
 // Challenges: how a solver proves control of a domain.
@@ -186,6 +193,10 @@ type Instance struct {
 	Name    string
 	Config  map[string]string
 	Secrets map[string]string
+	// Credential is the credential that fills the fields the type takes
+	// from one, 0 for none. A Factory finds its values in Config and
+	// Secrets.
+	Credential int64
 }
 
 // Value returns the setting key, plain or secret.
@@ -331,6 +342,13 @@ func (s *Scope) Add(t Type, f Factory) error {
 		seen[field.Key] = true
 		plain[field.Key] = !field.Secret
 	}
+	t.CredentialKind, t.CredentialFields = "", nil
+	if t.Credential != nil {
+		if err := checkCredential(t); err != nil {
+			return err
+		}
+		t.CredentialKind, t.CredentialFields = t.Credential.Kind.ID, t.Credential.filled()
+	}
 	t.Module = s.module
 	t.Fields = append([]Field{}, t.Fields...) // never nil: the API sends a list
 	t.Tags = slices.Clone(t.Tags)
@@ -348,6 +366,13 @@ func (s *Scope) Add(t Type, f Factory) error {
 		return fmt.Errorf("provider type %s: add types while the module registers", t.ID)
 	case r.types[t.ID] != nil:
 		return fmt.Errorf("provider type %s exists already", t.ID)
+	}
+	if t.Credential != nil {
+		for _, other := range r.types {
+			if other.Credential != nil && other.Credential.Kind.ID == t.Credential.Kind.ID && !sameKind(other.Credential.Kind, t.Credential.Kind) {
+				return fmt.Errorf("provider type %s: credential kind %s differs from that of %s", t.ID, t.Credential.Kind.ID, other.ID)
+			}
+		}
 	}
 	r.types[t.ID] = &entry{Type: t, factory: f}
 	return nil
@@ -373,6 +398,9 @@ func (s *Scope) Open(ctx context.Context, id int64) (any, Instance, error) {
 	e := s.reg.available(in.Type)
 	if e == nil {
 		return nil, Instance{}, fmt.Errorf("provider %d (%s): %w", id, in.Type, ErrUnavailable)
+	}
+	if err := s.reg.fill(ctx, &in, e.Type); err != nil {
+		return nil, Instance{}, err
 	}
 	p, err := e.factory(ctx, in)
 	if err != nil {
@@ -447,18 +475,25 @@ type stored struct {
 	typ, name, config string
 	secrets           []byte
 	created, updated  int64
+	credential        sql.NullInt64
+}
+
+const providerColumns = "id, type, name, config, secrets, created_at, updated_at, credential_id"
+
+func scanStored(row scanner) (stored, error) {
+	var s stored
+	err := row.Scan(&s.id, &s.typ, &s.name, &s.config, &s.secrets, &s.created, &s.updated, &s.credential)
+	if errors.Is(err, sql.ErrNoRows) {
+		return s, ErrNotFound
+	}
+	return s, err
 }
 
 func (r *Registry) context(id int64) string { return "provider:" + strconv.FormatInt(id, 10) }
 
 // load returns instance id with its secrets opened.
 func (r *Registry) load(ctx context.Context, id int64) (Instance, error) {
-	var s stored
-	err := r.db.QueryRowContext(ctx, "SELECT id, type, name, config, secrets, created_at, updated_at FROM kernel_providers WHERE id = ?", id).
-		Scan(&s.id, &s.typ, &s.name, &s.config, &s.secrets, &s.created, &s.updated)
-	if errors.Is(err, sql.ErrNoRows) {
-		return Instance{}, ErrNotFound
-	}
+	s, err := scanStored(r.db.QueryRowContext(ctx, "SELECT "+providerColumns+" FROM kernel_providers WHERE id = ?", id))
 	if err != nil {
 		return Instance{}, err
 	}
@@ -466,7 +501,7 @@ func (r *Registry) load(ctx context.Context, id int64) (Instance, error) {
 }
 
 func (r *Registry) open(s stored) (Instance, error) {
-	in := Instance{ID: s.id, Type: s.typ, Name: s.name, Config: map[string]string{}, Secrets: map[string]string{}}
+	in := Instance{ID: s.id, Type: s.typ, Name: s.name, Config: map[string]string{}, Secrets: map[string]string{}, Credential: s.credential.Int64}
 	if err := json.Unmarshal([]byte(s.config), &in.Config); err != nil {
 		return Instance{}, fmt.Errorf("provider %d: config: %w", s.id, err)
 	}
@@ -481,11 +516,22 @@ func (r *Registry) open(s stored) (Instance, error) {
 }
 
 // validate checks config and secrets against the fields of t, fills in
-// defaults, and drops empty values.
-func validate(t Type, config, secrets map[string]string) error {
+// defaults, and drops empty values. With credential, the fields a
+// credential fills keep no value of their own.
+func validate(t Type, config, secrets map[string]string, credential bool) error {
+	var filled []string
+	if credential && t.Credential != nil {
+		filled = t.Credential.filled()
+	}
+	return validateFields(t.Fields, config, secrets, filled)
+}
+
+// validateFields checks config and secrets against fields, as validate
+// does; the fields filled keep no value.
+func validateFields(fields []Field, config, secrets map[string]string, filled []string) error {
 	var errs []FieldError
 	byKey := map[string]Field{}
-	for _, f := range t.Fields {
+	for _, f := range fields {
 		byKey[f.Key] = f
 	}
 	for key := range config {
@@ -498,13 +544,13 @@ func validate(t Type, config, secrets map[string]string) error {
 			errs = append(errs, FieldError{"body.secrets." + key, i18n.KernelErrorInvalidField})
 		}
 	}
-	for _, f := range t.Fields {
+	for _, f := range fields {
 		values, where := config, "body.config."
 		if f.Secret {
 			values, where = secrets, "body.secrets."
 		}
 		// The field f depends on came before it, so it holds its final value.
-		if f.When != nil && config[f.When.Key] != f.When.Value {
+		if (f.When != nil && config[f.When.Key] != f.When.Value) || slices.Contains(filled, f.Key) {
 			delete(values, f.Key)
 			continue
 		}
@@ -583,16 +629,27 @@ func (r *Registry) Create(ctx context.Context, typ, name string, config, secrets
 
 // CreateTx stores a new instance of type typ in tx, as Create does.
 func (r *Registry) CreateTx(ctx context.Context, tx *sql.Tx, typ, name string, config, secrets map[string]string) (int64, error) {
-	config, secrets, err := r.Normalize(typ, config, secrets)
+	return r.CreateWithTx(ctx, tx, typ, name, config, secrets, 0)
+}
+
+// CreateWithTx stores a new instance of type typ in tx, as CreateTx does,
+// whose credential, unless 0, fills the fields its type takes from one.
+func (r *Registry) CreateWithTx(ctx context.Context, tx *sql.Tx, typ, name string, config, secrets map[string]string, credential int64) (int64, error) {
+	config, secrets, err := r.NormalizeWith(typ, config, secrets, credential != 0)
 	if err != nil {
 		return 0, err
+	}
+	if credential != 0 {
+		if err := credentialFor(ctx, tx, r.available(typ).Type, credential); err != nil {
+			return 0, err
+		}
 	}
 	now := r.now().UnixMilli()
 	plain, _ := json.Marshal(config)
 	var id int64
 	err = tx.QueryRowContext(ctx,
-		"INSERT INTO kernel_providers (type, name, config, secrets, created_at, updated_at) VALUES (?, ?, ?, x'', ?, ?) RETURNING id",
-		typ, strings.TrimSpace(name), string(plain), now, now).Scan(&id)
+		"INSERT INTO kernel_providers (type, name, config, secrets, created_at, updated_at, credential_id) VALUES (?, ?, ?, x'', ?, ?, ?) RETURNING id",
+		typ, strings.TrimSpace(name), string(plain), now, now, nullID(credential)).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
@@ -606,16 +663,24 @@ func (r *Registry) CreateTx(ctx context.Context, tx *sql.Tx, typ, name string, c
 // returns them as an instance would keep them: with the defaults filled
 // in, and without empty values. The maps given stay as they are.
 func (r *Registry) Normalize(typ string, config, secrets map[string]string) (map[string]string, map[string]string, error) {
+	return r.NormalizeWith(typ, config, secrets, false)
+}
+
+// NormalizeWith is Normalize for an instance with a credential, or not.
+func (r *Registry) NormalizeWith(typ string, config, secrets map[string]string, credential bool) (map[string]string, map[string]string, error) {
 	e := r.available(typ)
 	if e == nil {
 		return nil, nil, ErrUnavailable
 	}
 	config, secrets = cloneMap(config), cloneMap(secrets)
-	if err := validate(e.Type, config, secrets); err != nil {
+	if err := validate(e.Type, config, secrets, credential); err != nil {
 		return nil, nil, err
 	}
 	return config, secrets, nil
 }
+
+// nullID is id for a column that is NULL for none.
+func nullID(id int64) sql.NullInt64 { return sql.NullInt64{Int64: id, Valid: id != 0} }
 
 func (r *Registry) sealSecrets(ctx context.Context, tx *sql.Tx, id int64, secrets map[string]string) error {
 	plain, _ := json.Marshal(secrets)
@@ -640,12 +705,14 @@ func (r *Registry) Update(ctx context.Context, id int64, name *string, config, s
 
 // UpdateTx changes instance id in tx, as Update does.
 func (r *Registry) UpdateTx(ctx context.Context, tx *sql.Tx, id int64, name *string, config, secrets map[string]string) error {
-	var s stored
-	err := tx.QueryRowContext(ctx, "SELECT id, type, name, config, secrets, created_at, updated_at FROM kernel_providers WHERE id = ?", id).
-		Scan(&s.id, &s.typ, &s.name, &s.config, &s.secrets, &s.created, &s.updated)
-	if errors.Is(err, sql.ErrNoRows) {
-		return ErrNotFound
-	}
+	return r.UpdateWithTx(ctx, tx, id, name, config, secrets, nil)
+}
+
+// UpdateWithTx changes instance id in tx, as UpdateTx does, and its
+// credential, unless nil: 0 for none, so that the fields a credential
+// filled want values of their own.
+func (r *Registry) UpdateWithTx(ctx context.Context, tx *sql.Tx, id int64, name *string, config, secrets map[string]string, credential *int64) error {
+	s, err := scanStored(tx.QueryRowContext(ctx, "SELECT "+providerColumns+" FROM kernel_providers WHERE id = ?", id))
 	if err != nil {
 		return err
 	}
@@ -666,12 +733,20 @@ func (r *Registry) UpdateTx(ctx context.Context, tx *sql.Tx, id int64, name *str
 	for k, v := range secrets {
 		in.Secrets[k] = v // "" removes it in validate
 	}
-	if err := validate(e.Type, in.Config, in.Secrets); err != nil {
+	if credential != nil {
+		if *credential != 0 && *credential != in.Credential {
+			if err := credentialFor(ctx, tx, e.Type, *credential); err != nil {
+				return err
+			}
+		}
+		in.Credential = *credential
+	}
+	if err := validate(e.Type, in.Config, in.Secrets, in.Credential != 0); err != nil {
 		return err
 	}
 	plain, _ := json.Marshal(in.Config)
-	if _, err := tx.ExecContext(ctx, "UPDATE kernel_providers SET name = ?, config = ?, updated_at = ? WHERE id = ?",
-		in.Name, string(plain), r.now().UnixMilli(), id); err != nil {
+	if _, err := tx.ExecContext(ctx, "UPDATE kernel_providers SET name = ?, config = ?, updated_at = ?, credential_id = ? WHERE id = ?",
+		in.Name, string(plain), r.now().UnixMilli(), nullID(in.Credential), id); err != nil {
 		return err
 	}
 	return r.sealSecrets(ctx, tx, id, in.Secrets)
@@ -718,6 +793,7 @@ type Summary struct {
 	Name       string
 	Config     map[string]string
 	SecretKeys []string
+	Credential int64 // 0 for none
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
@@ -725,15 +801,15 @@ type Summary struct {
 // List returns the instances whose type is of kind, or every instance for
 // "", ordered by name.
 func (r *Registry) List(ctx context.Context, kind Kind) ([]Summary, error) {
-	rows, err := r.db.QueryContext(ctx, "SELECT id, type, name, config, secrets, created_at, updated_at FROM kernel_providers ORDER BY name, id")
+	rows, err := r.db.QueryContext(ctx, "SELECT "+providerColumns+" FROM kernel_providers ORDER BY name, id")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	out := []Summary{}
 	for rows.Next() {
-		var s stored
-		if err := rows.Scan(&s.id, &s.typ, &s.name, &s.config, &s.secrets, &s.created, &s.updated); err != nil {
+		s, err := scanStored(rows)
+		if err != nil {
 			return nil, err
 		}
 		sum, err := r.summary(s)
@@ -749,12 +825,7 @@ func (r *Registry) List(ctx context.Context, kind Kind) ([]Summary, error) {
 
 // Get returns instance id as listed.
 func (r *Registry) Get(ctx context.Context, id int64) (Summary, error) {
-	var s stored
-	err := r.db.QueryRowContext(ctx, "SELECT id, type, name, config, secrets, created_at, updated_at FROM kernel_providers WHERE id = ?", id).
-		Scan(&s.id, &s.typ, &s.name, &s.config, &s.secrets, &s.created, &s.updated)
-	if errors.Is(err, sql.ErrNoRows) {
-		return Summary{}, ErrNotFound
-	}
+	s, err := scanStored(r.db.QueryRowContext(ctx, "SELECT "+providerColumns+" FROM kernel_providers WHERE id = ?", id))
 	if err != nil {
 		return Summary{}, err
 	}
@@ -770,6 +841,7 @@ func (r *Registry) summary(s stored) (Summary, error) {
 		ID: s.id, Type: s.typ, Name: s.name, Config: in.Config,
 		// Never nil, so that the API sends a list even when there are none.
 		SecretKeys: append([]string{}, slices.Sorted(maps.Keys(in.Secrets))...),
+		Credential: in.Credential,
 		CreatedAt:  time.UnixMilli(s.created).UTC(), UpdatedAt: time.UnixMilli(s.updated).UTC(),
 	}
 	if e := r.available(s.typ); e != nil {

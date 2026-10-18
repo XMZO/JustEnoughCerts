@@ -106,6 +106,17 @@ func newFixture(t *testing.T) *fixture {
 		func(_ context.Context, in providers.Instance) (any, error) { return probe(in.Config["RESULT"]), nil }); err != nil {
 		t.Fatal(err)
 	}
+	cloud := f.reg.Scope("cloud")
+	for _, typ := range []providers.Type{cdnType, storeType, mailType} {
+		if err := cloud.Add(typ, func(_ context.Context, in providers.Instance) (any, error) {
+			f.mu.Lock()
+			defer f.mu.Unlock()
+			f.opened = append(f.opened, in)
+			return "target " + in.Name, nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
 	f.reg.Scope("certs").UsedBy(func(_ context.Context, id int64) (bool, error) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
@@ -439,7 +450,8 @@ func TestTest(t *testing.T) {
 	f.fails(http.MethodPost, path(999), nil, http.StatusNotFound)
 
 	var list struct{ Types []providersapi.TypeSummary }
-	if err := json.Unmarshal(f.api.Get("/providers/types?kind=target").Body.Bytes(), &list); err != nil || len(list.Types) != 1 || !list.Types[0].Testable {
+	if err := json.Unmarshal(f.api.Get("/providers/types?kind=target").Body.Bytes(), &list); err != nil || len(list.Types) != 3 ||
+		list.Types[2].ID != "probe.target" || !list.Types[2].Testable || list.Types[0].Testable {
 		t.Errorf("types %+v: %v", list.Types, err)
 	}
 }

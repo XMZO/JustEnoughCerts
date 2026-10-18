@@ -444,6 +444,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the credentials, with the providers that use each */
+        get: operations["credentials-list"];
+        put?: never;
+        /** Add a credential */
+        post: operations["credentials-create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/credentials/kinds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the kinds of credential that the available provider types take */
+        get: operations["credentials-kinds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/credentials/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a credential */
+        get: operations["credentials-get"];
+        put?: never;
+        post?: never;
+        /** Delete a credential, unless a provider uses it */
+        delete: operations["credentials-delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a credential
+         * @description The providers that use it take the new values the next time they run.
+         */
+        patch: operations["credentials-update"];
+        trace?: never;
+    };
     "/manifest": {
         parameters: {
             query?: never;
@@ -1026,11 +1083,28 @@ export interface components {
             Unparsed: string[];
             Value: string;
         };
+        CreateCredentialInputBody: {
+            config?: {
+                [key: string]: string;
+            };
+            kind: string;
+            name: string;
+            secrets?: {
+                [key: string]: string;
+            };
+        };
         CreateInputBody: {
             config?: {
                 [key: string]: string;
             };
+            /**
+             * Format: int64
+             * @description A credential to fill the fields the type takes from one
+             */
+            credentialId?: number;
             name: string;
+            /** @description The values given for the fields the type takes from a credential become a new credential, named after the provider, that others can share */
+            newCredential?: boolean;
             secrets?: {
                 [key: string]: string;
             };
@@ -1048,6 +1122,48 @@ export interface components {
             detail: components["schemas"]["TokenBody"];
             /** @description The token, which no later answer shows again */
             token: string;
+        };
+        CredentialBody: {
+            /** @description An available type takes its kind */
+            available: boolean;
+            config: {
+                [key: string]: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int64 */
+            id: number;
+            kind: string;
+            name: string;
+            /** @description The secret fields that hold a value */
+            secretKeys: string[];
+            /** Format: date-time */
+            updatedAt: string;
+            /**
+             * Format: date-time
+             * @description When an instance last used it
+             */
+            usedAt?: string;
+            /** @description The instances whose fields it fills */
+            usedBy: components["schemas"]["CredentialUser"][];
+        };
+        CredentialKind: {
+            description?: string;
+            fields: components["schemas"]["Field"][];
+            hint?: string;
+            id: string;
+            name: string;
+        };
+        CredentialUser: {
+            /** Format: int64 */
+            id: number;
+            /** @description The type's kind, or empty when the type is not available */
+            kind: string;
+            name: string;
+            type: string;
+        };
+        CredentialsOutputBody: {
+            credentials: components["schemas"]["CredentialBody"][];
         };
         DeployInputBody: {
             /**
@@ -1207,6 +1323,11 @@ export interface components {
             };
             /** Format: date-time */
             createdAt: string;
+            /**
+             * Format: int64
+             * @description The credential that fills the fields the type takes from one
+             */
+            credentialId?: number;
             /** Format: int64 */
             id: number;
             /** @description The type's kind, or empty when the type is not available */
@@ -1303,6 +1424,9 @@ export interface components {
             action: "add" | "change" | "keep" | "skip";
             name?: string;
             problems?: components["schemas"]["Problem"][];
+        };
+        KindsOutputBody: {
+            kinds: components["schemas"]["CredentialKind"][];
         };
         ListOutputBody: {
             providers: components["schemas"]["InstanceBody"][];
@@ -1638,6 +1762,8 @@ export interface components {
             /** @enum {string} */
             challenge?: "dns" | "http";
             challenges?: ("dns" | "http" | "record")[];
+            credentialFields?: string[];
+            credentialKind?: string;
             description?: string;
             doc?: string;
             experimental?: boolean;
@@ -1669,6 +1795,8 @@ export interface components {
             challenge?: "dns" | "http";
             /** @description For a source that needs a solver: the challenges of the solvers it can use; record takes a solver of DNS that adds records of any type */
             challenges?: ("dns" | "http" | "record")[];
+            /** @description The kind of credential the type can take some of its fields from */
+            credentialKind?: string;
             description?: string;
             experimental?: boolean;
             id: string;
@@ -1698,12 +1826,30 @@ export interface components {
         TypesOutputBody: {
             types: components["schemas"]["TypeSummary"][];
         };
+        UpdateCredentialInputBody: {
+            /** @description Replaces the plain values when given */
+            config?: {
+                [key: string]: string;
+            };
+            name?: string;
+            /** @description Merged: a value replaces that secret, an empty string removes it */
+            secrets?: {
+                [key: string]: string;
+            };
+        };
         UpdateInputBody: {
             /** @description Replaces the plain settings when given */
             config?: {
                 [key: string]: string;
             };
+            /**
+             * Format: int64
+             * @description Sets the credential that fills the fields the type takes from one; 0 for none, so that they take values of their own
+             */
+            credentialId?: number;
             name?: string;
+            /** @description The values of the fields the type takes from a credential, those given or else the provider's own, become a new credential, named after the provider */
+            newCredential?: boolean;
             /** @description Merged: a value replaces that secret, an empty string removes it */
             secrets?: {
                 [key: string]: string;
@@ -2687,6 +2833,192 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Report"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "credentials-list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialsOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "credentials-create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCredentialInputBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "credentials-kinds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KindsOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "credentials-get": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "credentials-delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "credentials-update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCredentialInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CredentialBody"];
                 };
             };
             /** @description Error */

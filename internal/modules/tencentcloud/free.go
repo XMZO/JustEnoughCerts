@@ -13,6 +13,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 )
 
 // Free certificates are applied for at SSL Certificates (TrustAsia DV,
@@ -42,6 +43,7 @@ func freeType() providers.Type {
 				{Value: siteIntl, Label: i18n.TencentcloudSiteInternational},
 			}},
 		},
+		Credential: credentials.Use(credentials.TencentCloud),
 	}
 }
 

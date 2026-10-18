@@ -18,6 +18,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/aliyunapi"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/dnscheck"
 )
@@ -58,6 +59,7 @@ func applyType() providers.Type {
 			{Key: "phone", Label: i18n.AliyunFieldApplyPhone, Kind: providers.Text, Advanced: true},
 			{Key: "email", Label: i18n.AliyunFieldApplyEmail, Kind: providers.Text, Advanced: true},
 		},
+		Credential: credentials.Use(credentials.Aliyun),
 	}
 }
 

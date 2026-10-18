@@ -13,6 +13,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 )
 
 // Layouts of a web root, as the files module has them.
@@ -33,6 +34,7 @@ func webrootType() providers.Type {
 				{Value: perDomain, Label: i18n.SshWebrootPerDomain},
 			}},
 		),
+		Credential: credentials.Use(credentials.SSHKey),
 	}
 }
 

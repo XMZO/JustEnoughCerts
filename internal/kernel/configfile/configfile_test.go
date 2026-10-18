@@ -42,6 +42,16 @@ var (
 		{Key: "site", Kind: providers.Text, Required: true},
 	}}
 	edgeType = providers.Type{ID: "cdn.edge", Kind: providers.Target, Brand: "Edge"}
+	// cloudType takes its keys from a credential of cloudKind.
+	cloudKind = providers.CredentialKind{ID: "cloud", Name: "cdn.cloud.key", Fields: []providers.Field{
+		{Key: "key_id", Kind: providers.Text, Required: true},
+		{Key: "key_secret", Kind: providers.Text, Secret: true, Required: true},
+	}}
+	cloudType = providers.Type{ID: "cdn.cloud", Kind: providers.Target, Brand: "Cloud", Fields: []providers.Field{
+		{Key: "key_id", Kind: providers.Text, Required: true},
+		{Key: "key_secret", Kind: providers.Text, Secret: true, Required: true},
+		{Key: "zone", Kind: providers.Text},
+	}, Credential: &providers.CredentialUse{Kind: cloudKind}}
 )
 
 // note is an entry of the section "notes" of module "notes", which names
@@ -84,6 +94,9 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	if err := f.reg.Scope("cdn").Add(edgeType, open); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.reg.Scope("cdn").Add(cloudType, open); err != nil {
 		t.Fatal(err)
 	}
 	f.reg.Seal()
@@ -445,5 +458,98 @@ func TestAdd(t *testing.T) {
 	s.Key, s.New = "list", func() any { return []note{} }
 	if err := f.cfg.Add("other", s); err == nil {
 		t.Error("a section that is not a pointer")
+	}
+}
+
+func TestCredentials(t *testing.T) {
+	f := newFixture(t)
+	main, err := f.reg.CreateCredential(t.Context(), "cloud", "main", map[string]string{"key_id": "AK1"}, map[string]string{"key_secret": "s3cret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := f.db.BeginTx(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.reg.CreateWithTx(t.Context(), tx, "cdn.cloud", "Cloud site", map[string]string{"zone": "z1"}, nil, main); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	// The credential comes first, and the provider names it.
+	data, err := f.cfg.Export(t.Context(), configfile.Export{Secrets: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Credentials []struct {
+			Name    string            `yaml:"name"`
+			Kind    string            `yaml:"kind"`
+			Config  map[string]string `yaml:"config"`
+			Secrets map[string]string `yaml:"secrets"`
+		} `yaml:"credentials"`
+		Providers []struct {
+			Name       string            `yaml:"name"`
+			Credential string            `yaml:"credential"`
+			Config     map[string]string `yaml:"config"`
+		} `yaml:"providers"`
+	}
+	if err := yaml.Unmarshal(data, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Credentials) != 1 || got.Credentials[0].Name != "main" || got.Credentials[0].Kind != "cloud" || got.Credentials[0].Config["key_id"] != "AK1" ||
+		got.Credentials[0].Secrets["key_secret"] != "s3cret" || len(got.Providers) != 1 || got.Providers[0].Credential != "main" || len(got.Providers[0].Config) != 1 {
+		t.Errorf("exported\n%s", data)
+	}
+	if !strings.HasPrefix(string(data), "version: 1\ncredentials:") {
+		t.Errorf("the credentials do not come first:\n%s", data)
+	}
+
+	// Into another JEC, as it is.
+	g := newFixture(t)
+	rep := g.importFile(string(data), true)
+	if rep.Errors != 0 || !rep.Applied || actions(rep, "credentials")["main"] != configfile.Add || actions(rep, "providers")["Cloud site"] != configfile.Add {
+		t.Fatalf("import %+v %v", rep, problems(rep))
+	}
+	list, err := g.reg.List(t.Context(), "")
+	if err != nil || len(list) != 1 || list[0].Credential == 0 {
+		t.Fatalf("providers %+v %v", list, err)
+	}
+	if rep := g.importFile(string(data), false); !maps.Equal(actions(rep, "credentials"), map[string]configfile.Action{"main": configfile.Keep}) ||
+		actions(rep, "providers")["Cloud site"] != configfile.Keep {
+		t.Errorf("again: %+v", rep)
+	}
+
+	// A new secret changes the credential; a credential JEC lacks, of
+	// another kind, or of a kind no type takes, is a problem.
+	rep = g.importFile("version: 1\ncredentials:\n  - name: main\n    kind: cloud\n    config: {key_id: AK1}\n    secrets: {key_secret: rotated}\n", true)
+	if rep.Errors != 0 || actions(rep, "credentials")["main"] != configfile.Change {
+		t.Errorf("rotate: %+v", rep)
+	}
+	if c, err := g.reg.LoadCredential(t.Context(), list[0].Credential); err != nil || c.Secrets["key_secret"] != "rotated" {
+		t.Errorf("rotated %+v %v", c, err)
+	}
+	rep = g.importFile(`version: 1
+credentials:
+  - name: odd
+    kind: nope
+  - name: main
+    kind: other
+providers:
+  - name: Elsewhere
+    type: cdn.cloud
+    credential: missing
+  - name: Edge
+    type: cdn.edge
+    credential: main
+`, true)
+	want := []string{
+		"credentials/odd/kind: kernel.config.error.credential_kind", "credentials/main/kind: kernel.config.error.credential_kind",
+		"providers/Elsewhere/credential: kernel.config.error.no_credential", "providers/Edge/credential: kernel.config.error.credential_type",
+	}
+	if got := problems(rep); strings.Join(got, "\n") != strings.Join(want, "\n") || rep.Applied {
+		t.Errorf("problems %v", got)
 	}
 }

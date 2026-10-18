@@ -16,11 +16,14 @@ import (
 
 // providerEntry is a provider instance in a file. Certificates and the
 // like name it by its name, which is its own among those of its kind.
+// Credential names the credential that fills the fields its type takes
+// from one; left out, an instance JEC has keeps its own.
 type providerEntry struct {
-	Name    string            `yaml:"name"`
-	Type    string            `yaml:"type"`
-	Config  map[string]string `yaml:"config,omitempty"`
-	Secrets map[string]string `yaml:"secrets,omitempty"`
+	Name       string            `yaml:"name"`
+	Type       string            `yaml:"type"`
+	Credential string            `yaml:"credential,omitempty"`
+	Config     map[string]string `yaml:"config,omitempty"`
+	Secrets    map[string]string `yaml:"secrets,omitempty"`
 }
 
 // maxName bounds a provider's name, as the API does.
@@ -37,8 +40,8 @@ func kindOrder(k providers.Kind) int {
 }
 
 // exportProviders lists the provider instances by kind and name, with
-// their secrets if asked for.
-func (r *Registry) exportProviders(ctx context.Context, x Export) ([]providerEntry, error) {
+// their secrets if asked for, and the names of their credentials.
+func (r *Registry) exportProviders(ctx context.Context, x Export, credentials map[int64]string) ([]providerEntry, error) {
 	list, err := r.providers.List(ctx, "")
 	if err != nil {
 		return nil, err
@@ -46,7 +49,7 @@ func (r *Registry) exportProviders(ctx context.Context, x Export) ([]providerEnt
 	slices.SortStableFunc(list, func(a, b providers.Summary) int { return cmp.Compare(kindOrder(a.Kind), kindOrder(b.Kind)) })
 	out := make([]providerEntry, 0, len(list))
 	for _, p := range list {
-		e := providerEntry{Name: p.Name, Type: p.Type, Config: p.Config}
+		e := providerEntry{Name: p.Name, Type: p.Type, Credential: credentials[p.Credential], Config: p.Config}
 		if x.Secrets && len(p.SecretKeys) > 0 {
 			in, err := r.providers.Load(ctx, p.ID)
 			if err != nil {
@@ -114,8 +117,21 @@ func (r *Registry) importProvider(ctx context.Context, tx *sql.Tx, e providerEnt
 		it.Problems = append(it.Problems, Problem{Field: "name", Key: i18n.KernelConfigErrorAmbiguous, Params: map[string]any{"name": name}})
 		return it, nil
 	}
+	var credential int64
+	if c := strings.TrimSpace(e.Credential); c != "" {
+		named, ok := in.credentials[c]
+		switch {
+		case !ok:
+			it.Problems = append(it.Problems, Problem{Field: "credential", Key: i18n.KernelConfigErrorNoCredential, Params: map[string]any{"name": c}})
+			return it, nil
+		case t.Credential == nil || named.kind != t.Credential.Kind.ID:
+			it.Problems = append(it.Problems, Problem{Field: "credential", Key: i18n.KernelConfigErrorCredentialType, Params: map[string]any{"name": c, "type": t.ID}})
+			return it, nil
+		}
+		credential = named.id
+	}
 	if len(found) == 0 {
-		id, err := r.providers.CreateTx(ctx, tx, t.ID, name, e.Config, e.Secrets)
+		id, err := r.providers.CreateWithTx(ctx, tx, t.ID, name, e.Config, e.Secrets, credential)
 		if problems, ok := fieldProblems(err); ok {
 			it.Problems = problems
 			return it, nil
@@ -143,7 +159,10 @@ func (r *Registry) importProvider(ctx context.Context, tx *sql.Tx, e providerEnt
 			secrets[k] = v
 		}
 	}
-	config, secrets, err := r.providers.Normalize(t.ID, e.Config, secrets)
+	if credential == 0 {
+		credential = had.Credential
+	}
+	config, secrets, err := r.providers.NormalizeWith(t.ID, e.Config, secrets, credential != 0)
 	if problems, ok := fieldProblems(err); ok {
 		it.Problems = problems
 		return it, nil
@@ -151,11 +170,11 @@ func (r *Registry) importProvider(ctx context.Context, tx *sql.Tx, e providerEnt
 	if err != nil {
 		return it, err
 	}
-	if maps.Equal(config, had.Config) && maps.Equal(secrets, had.Secrets) {
+	if maps.Equal(config, had.Config) && maps.Equal(secrets, had.Secrets) && credential == had.Credential {
 		it.Action = Keep
 		return it, nil
 	}
-	if err := r.providers.UpdateTx(ctx, tx, p.ID, nil, config, secrets); err != nil {
+	if err := r.providers.UpdateWithTx(ctx, tx, p.ID, nil, config, secrets, &credential); err != nil {
 		return it, err
 	}
 	it.Action = Change

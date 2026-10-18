@@ -24,6 +24,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
@@ -44,6 +45,7 @@ func acmType() providers.Type {
 			{Key: "region", Label: i18n.AwsFieldRegion, Help: i18n.AwsFieldRegionHelp, Kind: providers.Text, Required: true, Default: defaultRegion},
 			{Key: "certificate_arn", Label: i18n.AwsFieldCertificateArn, Help: i18n.AwsFieldCertificateArnHelp, Kind: providers.Text},
 		},
+		Credential: credentials.Use(credentials.AWS),
 	}
 }
 

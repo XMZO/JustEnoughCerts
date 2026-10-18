@@ -461,6 +461,37 @@
         ],
         "type": "object"
       },
+      "CreateCredentialInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "config": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "kind": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "secrets": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "kind",
+          "name"
+        ],
+        "type": "object"
+      },
       "CreateInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -470,10 +501,19 @@
             },
             "type": "object"
           },
+          "credentialId": {
+            "description": "A credential to fill the fields the type takes from one",
+            "format": "int64",
+            "type": "integer"
+          },
           "name": {
             "maxLength": 64,
             "minLength": 1,
             "type": "string"
+          },
+          "newCredential": {
+            "description": "The values given for the fields the type takes from a credential become a new credential, named after the provider, that others can share",
+            "type": "boolean"
           },
           "secrets": {
             "additionalProperties": {
@@ -535,6 +575,140 @@
         "required": [
           "token",
           "detail"
+        ],
+        "type": "object"
+      },
+      "CredentialBody": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "description": "An available type takes its kind",
+            "type": "boolean"
+          },
+          "config": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "secretKeys": {
+            "description": "The secret fields that hold a value",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "usedAt": {
+            "description": "When an instance last used it",
+            "format": "date-time",
+            "type": "string"
+          },
+          "usedBy": {
+            "description": "The instances whose fields it fills",
+            "items": {
+              "$ref": "#/components/schemas/CredentialUser"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "available",
+          "name",
+          "config",
+          "secretKeys",
+          "usedBy",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "CredentialKind": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/Field"
+            },
+            "type": "array"
+          },
+          "hint": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "fields"
+        ],
+        "type": "object"
+      },
+      "CredentialUser": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "kind": {
+            "description": "The type's kind, or empty when the type is not available",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "kind"
+        ],
+        "type": "object"
+      },
+      "CredentialsOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "credentials": {
+            "items": {
+              "$ref": "#/components/schemas/CredentialBody"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "credentials"
         ],
         "type": "object"
       },
@@ -957,6 +1131,11 @@
             "format": "date-time",
             "type": "string"
           },
+          "credentialId": {
+            "description": "The credential that fills the fields the type takes from one",
+            "format": "int64",
+            "type": "integer"
+          },
           "id": {
             "format": "int64",
             "type": "integer"
@@ -1197,6 +1376,21 @@
         },
         "required": [
           "action"
+        ],
+        "type": "object"
+      },
+      "KindsOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/CredentialKind"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "kinds"
         ],
         "type": "object"
       },
@@ -2179,6 +2373,15 @@
             },
             "type": "array"
           },
+          "credentialFields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "credentialKind": {
+            "type": "string"
+          },
           "description": {
             "type": "string"
           },
@@ -2278,6 +2481,10 @@
             },
             "type": "array"
           },
+          "credentialKind": {
+            "description": "The kind of credential the type can take some of its fields from",
+            "type": "string"
+          },
           "description": {
             "type": "string"
           },
@@ -2362,6 +2569,31 @@
         ],
         "type": "object"
       },
+      "UpdateCredentialInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "config": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Replaces the plain values when given",
+            "type": "object"
+          },
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "secrets": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Merged: a value replaces that secret, an empty string removes it",
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
       "UpdateInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -2372,10 +2604,19 @@
             "description": "Replaces the plain settings when given",
             "type": "object"
           },
+          "credentialId": {
+            "description": "Sets the credential that fills the fields the type takes from one; 0 for none, so that they take values of their own",
+            "format": "int64",
+            "type": "integer"
+          },
           "name": {
             "maxLength": 64,
             "minLength": 1,
             "type": "string"
+          },
+          "newCredential": {
+            "description": "The values of the fields the type takes from a credential, those given or else the provider's own, become a new credential, named after the provider",
+            "type": "boolean"
           },
           "secrets": {
             "additionalProperties": {
@@ -3779,6 +4020,233 @@
         "summary": "Import a configuration file",
         "tags": [
           "config"
+        ]
+      }
+    },
+    "/credentials": {
+      "get": {
+        "operationId": "credentials-list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialsOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the credentials, with the providers that use each",
+        "tags": [
+          "credentials"
+        ]
+      },
+      "post": {
+        "operationId": "credentials-create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCredentialInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Add a credential",
+        "tags": [
+          "credentials"
+        ]
+      }
+    },
+    "/credentials/kinds": {
+      "get": {
+        "operationId": "credentials-kinds",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KindsOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the kinds of credential that the available provider types take",
+        "tags": [
+          "credentials"
+        ]
+      }
+    },
+    "/credentials/{id}": {
+      "delete": {
+        "operationId": "credentials-delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Delete a credential, unless a provider uses it",
+        "tags": [
+          "credentials"
+        ]
+      },
+      "get": {
+        "operationId": "credentials-get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get a credential",
+        "tags": [
+          "credentials"
+        ]
+      },
+      "patch": {
+        "description": "The providers that use it take the new values the next time they run.",
+        "operationId": "credentials-update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCredentialInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Change a credential",
+        "tags": [
+          "credentials"
         ]
       }
     },

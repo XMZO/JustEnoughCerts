@@ -12,6 +12,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
 
@@ -38,6 +39,7 @@ func fetchType() providers.Type {
 				{Value: casIntl, Label: i18n.AliyunSiteIntl},
 			}},
 		},
+		Credential: credentials.Use(credentials.Aliyun),
 	}
 }
 

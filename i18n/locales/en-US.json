@@ -264,6 +264,9 @@
       "config_check": "Check a configuration file",
       "config_export_secrets": "Export the configuration with secrets",
       "config_import": "Import a configuration file",
+      "credentials_create": "Add a credential",
+      "credentials_delete": "Delete a credential",
+      "credentials_update": "Change a credential",
       "monitor_check": "Check a certificate online",
       "notify_test": "Send a test notification",
       "oidc_callback": "Signed in through single sign-on",
@@ -958,6 +961,55 @@
       "ok": "Found the zone {zone}, with {count, plural, one {# custom certificate} other {# custom certificates}}."
     }
   },
+  "credentials": {
+    "aliyun": {
+      "access_key_id": "AccessKey ID",
+      "access_key_secret": "AccessKey Secret",
+      "description": "Best made for a RAM user in Alibaba Cloud's access control that has only the rights the services you use need.",
+      "name": "Alibaba Cloud AccessKey"
+    },
+    "aws": {
+      "access_key_id": "Access key ID",
+      "description": "Best made for an IAM user that has only the rights the services you use need: Route 53 for DNS validation, ACM for importing certificates.",
+      "name": "AWS access key",
+      "secret_access_key": "Secret access key"
+    },
+    "baiducloud": {
+      "access_key": "Access Key",
+      "description": "Best made for a sub-user in Baidu AI Cloud's access control that has only the rights the services you use need.",
+      "name": "Baidu AI Cloud access key",
+      "secret_key": "Secret Key"
+    },
+    "cloudflare": {
+      "api_token": "API token",
+      "description": "Made under My Profile → API Tokens at Cloudflare, with the rights of what uses it: Zone → DNS → Edit for DNS validation, Zone → SSL and Certificates → Edit for custom certificates.",
+      "name": "Cloudflare API token"
+    },
+    "huaweicloud": {
+      "access_key_id": "Access Key ID (AK)",
+      "description": "Best made for a user in Huawei Cloud's IAM that has only the rights the services you use need: an access key (AK/SK).",
+      "name": "Huawei Cloud access key",
+      "secret_access_key": "Secret Access Key (SK)"
+    },
+    "ssh_key": {
+      "description": "Several servers can share a private key: add its public key to the authorized_keys of the user on each.",
+      "name": "SSH private key",
+      "passphrase": "Passphrase",
+      "private_key": "Private key"
+    },
+    "tencentcloud": {
+      "description": "Best made for a sub-user in Tencent Cloud's access management (CAM) that has only the rights the services you use need.",
+      "name": "Tencent Cloud API key",
+      "secret_id": "SecretId",
+      "secret_key": "SecretKey"
+    },
+    "volcengine": {
+      "access_key_id": "Access Key ID",
+      "description": "Best made for a sub-user in Volcengine's access control that has only the rights the services you use need.",
+      "name": "Volcengine access key",
+      "secret_access_key": "Secret Access Key"
+    }
+  },
   "dingtalk": {
     "error": {
       "api": "DingTalk refused the message: {message} ({code})",
@@ -1370,9 +1422,13 @@
       "choose": "Choose a file",
       "error": {
         "ambiguous": "More than one is called {name}. Give them names of their own first.",
+        "credential_kind": "No provider type takes credentials of the kind {kind}: it is misspelled, or the modules that take it are off.",
+        "credential_other": "A credential called {name} exists already, of the kind {kind}.",
+        "credential_type": "The credential {name} is not of the kind that {type} takes.",
         "duplicate": "The file has another entry called {name}.",
         "empty": "The file is empty.",
         "module_off": "The module of this section is off. Turn it on on the Modules page first.",
+        "no_credential": "There is no credential called {name}.",
         "no_provider": "There is no {kind, select, source {certificate source} solver {validation method} target {deploy target} notifier {notification channel} other {provider}} called {name}.",
         "no_version": "The file lacks its version, version: 1 at the top. Is it a configuration of JEC?",
         "other_type": "{name} is of type {type} already, which it cannot change.",
@@ -1392,10 +1448,14 @@
       },
       "secrets_intro": "Besides the settings, the file holds the passwords, tokens and keys of the providers, as plain text. Keep it safe, and out of Git.",
       "section": {
+        "credentials": "Credentials",
         "providers": "Providers"
       }
     },
     "error": {
+      "credential_in_use": "{names} still use this credential, so it cannot be deleted. Have them use another first.",
+      "credential_kind": "No provider type takes this kind of credential: the modules that would are off.",
+      "credential_name": "Another credential has this name.",
       "cross_origin": "The request came from another site and was blocked.",
       "field_required": "Fill in this field.",
       "internal": "The server hit an error. Try again, and check the server log if it keeps happening.",

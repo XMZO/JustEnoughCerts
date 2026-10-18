@@ -18,6 +18,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
 
@@ -55,6 +56,7 @@ func serverType() providers.Type {
 			}},
 			providers.Field{Key: "command", Label: i18n.SshFieldCommand, Help: i18n.SshFieldCommandHelp, Kind: providers.Text},
 		),
+		Credential: credentials.Use(credentials.SSHKey),
 	}
 }
 

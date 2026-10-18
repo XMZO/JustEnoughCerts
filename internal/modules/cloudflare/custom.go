@@ -19,6 +19,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
@@ -35,6 +36,7 @@ func customType() providers.Type {
 			{Key: "zone", Label: i18n.CloudflareFieldZone, Help: i18n.CloudflareFieldZoneHelp, Kind: providers.Text, Required: true},
 			{Key: "certificate_id", Label: i18n.CloudflareFieldCertificateId, Help: i18n.CloudflareFieldCertificateIdHelp, Kind: providers.Text, Advanced: true},
 		},
+		Credential: credentials.Use(credentials.Cloudflare),
 	}
 }
 

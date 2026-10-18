@@ -13,6 +13,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
 
@@ -33,6 +34,7 @@ func siteType() providers.Type {
 			{Key: "site", Label: i18n.EsaFieldSite, Help: i18n.EsaFieldSiteHelp, Kind: providers.Text, Required: true},
 			{Key: "delete_old", Label: i18n.EsaFieldDeleteOld, Help: i18n.EsaFieldDeleteOldHelp, Kind: providers.Switch, Default: "true"},
 		},
+		Credential: credentials.Use(credentials.Aliyun),
 	}
 }
 

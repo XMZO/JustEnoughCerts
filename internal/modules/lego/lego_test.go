@@ -68,6 +68,32 @@ func TestCatalog(t *testing.T) {
 	}
 }
 
+// The DNS of the clouds JEC deploys to takes their credentials, under the
+// names of lego's environment variables.
+func TestCredentials(t *testing.T) {
+	for code, want := range map[string]string{
+		"alidns": "aliyun", "aliesa": "aliyun", "tencentcloud": "tencentcloud", "edgeone": "tencentcloud", "cloudflare": "cloudflare",
+		"route53": "aws", "huaweicloud": "huaweicloud", "volcengine": "volcengine", "baiducloud": "baiducloud",
+	} {
+		typ := providerType(provider(t, code))
+		if typ.Credential == nil || typ.Credential.Kind.ID != want {
+			t.Errorf("%s takes %+v", code, typ.Credential)
+			continue
+		}
+		reg := providers.New(nil, nil, func(string) bool { return true })
+		if err := reg.Scope("lego").Add(typ, func(context.Context, providers.Instance) (any, error) { return nil, nil }); err != nil {
+			t.Errorf("%s: %v", code, err)
+		}
+	}
+	if typ := providerType(provider(t, "acmedns")); typ.Credential != nil {
+		t.Errorf("acmedns takes %+v", typ.Credential)
+	}
+	typ := providerType(provider(t, "alidns"))
+	if got := typ.Credential.Fields; got["access_key_id"] != "ALICLOUD_ACCESS_KEY" || got["access_key_secret"] != "ALICLOUD_SECRET_KEY" {
+		t.Errorf("alidns maps %v", got)
+	}
+}
+
 func TestRecords(t *testing.T) {
 	// JEC adds records of any type through some providers itself: their
 	// solvers are RecordSolvers too, with the instance's settings.

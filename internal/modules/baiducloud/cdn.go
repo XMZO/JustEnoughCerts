@@ -18,6 +18,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
@@ -38,6 +39,7 @@ func cdnType() providers.Type {
 			{Key: "secret_key", Label: i18n.BaiducloudFieldSecretKey, Help: i18n.BaiducloudFieldSecretHelp, Kind: providers.Text, Secret: true, Required: true},
 			{Key: "domains", Label: i18n.BaiducloudFieldDomains, Help: i18n.BaiducloudFieldDomainsHelp, Kind: providers.Text},
 		},
+		Credential: credentials.Use(credentials.BaiduCloud),
 	}
 }
 

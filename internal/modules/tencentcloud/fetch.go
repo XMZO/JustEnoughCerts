@@ -18,6 +18,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
 
@@ -50,6 +51,7 @@ func fetchType() providers.Type {
 				{Value: siteIntl, Label: i18n.TencentcloudSiteInternational},
 			}},
 		},
+		Credential: credentials.Use(credentials.TencentCloud),
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
 
@@ -25,6 +26,7 @@ func (svc service) providerType() providers.Type {
 			{Key: "access_key_secret", Label: i18n.AliyunFieldAccessKeySecret, Help: svc.secretHelp(), Kind: providers.Text, Secret: true, Required: true},
 			{Key: "domains", Label: i18n.AliyunFieldDomains, Help: i18n.AliyunFieldDomainsHelp, Kind: providers.Text},
 		},
+		Credential: credentials.Use(credentials.Aliyun),
 	}
 }
 

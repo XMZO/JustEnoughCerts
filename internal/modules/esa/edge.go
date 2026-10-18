@@ -20,6 +20,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
 
@@ -62,6 +63,7 @@ func edgeType() providers.Type {
 				Kind: providers.Text, Secret: true, Required: true},
 			{Key: "domain", Label: i18n.EsaFieldDomain, Help: i18n.EsaFieldDomainHelp, Kind: providers.Text},
 		},
+		Credential: credentials.Use(credentials.Aliyun),
 	}
 }
 

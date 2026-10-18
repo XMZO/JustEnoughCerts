@@ -19,6 +19,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
@@ -43,6 +44,7 @@ func cdnType() providers.Type {
 			{Key: "secret_access_key", Label: i18n.VolcengineFieldSecretAccessKey, Help: i18n.VolcengineFieldSecretHelp, Kind: providers.Text, Secret: true, Required: true},
 			{Key: "domains", Label: i18n.VolcengineFieldDomains, Help: i18n.VolcengineFieldDomainsHelp, Kind: providers.Text},
 		},
+		Credential: credentials.Use(credentials.Volcengine),
 	}
 }
 
