@@ -151,6 +151,8 @@ test('the checks catch untranslated and overflowing text', async ({ page }) => {
 
 // Soft checks: one run reports the problems of every page, not just the first.
 test('every page is translated and fits', async ({ page }, info) => {
+  // A walk through every page: it outgrows the default 30 seconds on CI's runners.
+  test.setTimeout(120_000)
   const token = process.env[`JEC_E2E_TOKEN_${info.project.name.toUpperCase()}`] ?? ''
 
   // A fresh server sends visitors to the setup wizard.
