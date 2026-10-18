@@ -70,6 +70,9 @@ Working on the main branch:
 
 Planned: records of any type for the DNS validations of vendors, hooks, and more CDNs and panels.
 
+How far each provider is tested, against a real account, the real
+software, an emulator or a fake: [docs/providers.md](docs/providers.md).
+
 ## Quick start
 
 With Docker Compose:
