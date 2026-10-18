@@ -843,6 +843,7 @@ export type MessageKey =
   | "kernel.providers.no_match"
   | "kernel.providers.no_secrets"
   | "kernel.providers.notifier.add"
+  | "kernel.providers.notifier.dispatch_off"
   | "kernel.providers.notifier.empty"
   | "kernel.providers.notifier.intro"
   | "kernel.providers.notifier.title"

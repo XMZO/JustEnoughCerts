@@ -2,8 +2,10 @@
 import { Pencil, PlugZap, Plus, Send, Trash2 } from '@lucide/vue'
 import { useQueries } from '@tanstack/vue-query'
 import { computed, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 
 import { useCertificates } from '../api/certs'
+import { useManifest } from '../api/manifest'
 import { api, ApiError, networkError, unwrap } from '../api/client'
 import { useApiError } from '../api/errors'
 import { useSends, useSendTest } from '../api/notify'
@@ -47,9 +49,12 @@ const fullTypes = useQueries({
 const fullType = (id: string) => fullTypes.value.find((q) => q.data?.id === id)?.data
 
 // Notifiers: what they tell about, by the switches every notifier type
-// has, and a test on demand.
+// has, and a test on demand, while the notify module, which sends the
+// notes, is on; when it is off, the page says so.
 const notifiers = computed(() => props.kind === 'notifier')
-const sends = useSends(notifiers)
+const manifest = useManifest()
+const dispatchOff = computed(() => notifiers.value && manifest.data.value?.modules.some((m) => m.id === 'notify' && !m.enabled) === true)
+const sends = useSends(computed(() => notifiers.value && !dispatchOff.value))
 const noteEvents = [
   { key: 'on_issue_failed', label: 'notify.event.issue_failed' },
   { key: 'on_deploy_failed', label: 'notify.event.deploy_failed' },
@@ -113,7 +118,7 @@ const cards = computed(() =>
       uses,
       events: notifiers.value ? events(p) : '',
       send: sends.data.value?.find((s) => s.notifier === p.id),
-      testable: notifiers.value || !!summaryType?.testable,
+      testable: notifiers.value ? !dispatchOff.value : !!summaryType?.testable,
     }
   }),
 )
@@ -171,6 +176,10 @@ async function confirmDelete() {
   <div class="flex flex-col gap-3 px-4 pt-3 sm:mt-4 sm:gap-4 sm:p-0">
     <p class="m-0 text-ink-muted sm:hidden">{{ t(page.intro) }}</p>
     <JecAlert v-if="loadError.error.value" :code="loadError.error.value.code" :params="loadError.error.value.params" />
+    <p v-if="dispatchOff" role="status" class="m-0 rounded-md bg-warn-soft p-3 text-small text-warn-ink">
+      {{ t('kernel.providers.notifier.dispatch_off') }}
+      <RouterLink to="/modules" class="font-semibold text-warn-ink">{{ t('kernel.modules.title') }}</RouterLink>
+    </p>
 
     <section v-if="list.isSuccess.value && !cards.length" class="flex flex-col items-start gap-3 rounded-lg border border-line bg-surface-raised p-4">
       <p class="m-0 text-ink-muted">{{ t(page.empty) }}</p>

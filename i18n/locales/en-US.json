@@ -1162,6 +1162,7 @@
       "no_secrets": "No secrets",
       "notifier": {
         "add": "Add a channel",
+        "dispatch_off": "The notify module is off, so no notification goes out. Turn it on on the page:",
         "empty": "No channels yet. Add one to hear about problems in time.",
         "intro": "When an issuance or a deployment fails, or a certificate is about to expire, these channels tell you.",
         "title": "Notifications"

@@ -465,6 +465,18 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'add a source: Namecheap').toEqual([])
   await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
 
+  // With the notify module off, the notifications say that none go out.
+  await page.goto('./modules')
+  const notify = page.locator('li', { hasText: label('notify.module.name') }).getByRole('switch')
+  await notify.click()
+  await expect(notify).toHaveAttribute('aria-checked', 'false')
+  await page.goto('./notify')
+  await expect(page.getByText(label('kernel.providers.notifier.dispatch_off'))).toBeVisible()
+  expect.soft(await problems(page), 'notifications with the notify module off').toEqual([])
+  await page.goto('./modules')
+  await notify.click()
+  await expect(notify).toHaveAttribute('aria-checked', 'true')
+
   // The settings: a default saved at once, then one the server refuses.
   await page.goto('./settings')
   const days = page.locator('#renewBeforeDays')
