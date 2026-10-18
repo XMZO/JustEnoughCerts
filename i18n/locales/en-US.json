@@ -616,6 +616,7 @@
       "watch_empty": "{directory} holds no certificate with its key.",
       "watch_missing": "The directory {directory} does not exist. With Docker, mount it into the container.",
       "watch_none": "{directory} holds no valid certificate with its key for {domains}. Check the directory and the domains, and with Docker that the directory is mounted into the container.",
+      "watch_outside": "{path} links outside {directory}, where JEC does not follow. For certbot, enter /etc/letsencrypt rather than its live directory.",
       "write": "Could not write to {directory}. Check that it exists and that JEC may write there."
     },
     "field": {

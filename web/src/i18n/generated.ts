@@ -472,6 +472,7 @@ export type MessageKey =
   | "files.error.watch_empty"
   | "files.error.watch_missing"
   | "files.error.watch_none"
+  | "files.error.watch_outside"
   | "files.error.write"
   | "files.field.directory"
   | "files.field.directory_help"

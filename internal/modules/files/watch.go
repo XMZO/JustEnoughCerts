@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -78,19 +79,19 @@ func (w *watcher) Collect(_ context.Context, req contracts.CollectRequest) (*con
 	}
 	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.FilesLogWatchScan,
 		Params: map[string]any{"directory": w.dir, "domains": strings.Join(req.Domains, ", ")}})
-	certs, unreadable, err := w.scan()
+	s, err := w.scan()
 	if err != nil {
 		return nil, err
 	}
 	var best *found
-	for i, c := range certs {
+	for i, c := range s.certs {
 		if covers(cryptox.Names(c.Leaf), req.Domains) && (best == nil || c.Leaf.NotAfter.After(best.Leaf.NotAfter)) {
-			best = &certs[i]
+			best = &s.certs[i]
 		}
 	}
 	switch {
-	case best == nil && unreadable != "":
-		return nil, w.denied(unreadable)
+	case best == nil && s.trouble(w) != nil:
+		return nil, s.trouble(w)
 	case best == nil, req.Current == "" && !best.Leaf.NotAfter.After(w.now()):
 		return nil, &contracts.Problem{Key: i18n.FilesErrorWatchNone,
 			Params: map[string]any{"directory": w.dir, "domains": strings.Join(req.Domains, ", ")}}
@@ -106,18 +107,18 @@ func (w *watcher) Collect(_ context.Context, req contracts.CollectRequest) (*con
 
 // Test scans the directory and tells what it found.
 func (w *watcher) Test(context.Context) (contracts.Message, error) {
-	certs, unreadable, err := w.scan()
+	s, err := w.scan()
 	if err != nil {
 		return contracts.Message{}, err
 	}
-	if len(certs) == 0 {
-		if unreadable != "" {
-			return contracts.Message{}, w.denied(unreadable)
+	if len(s.certs) == 0 {
+		if err := s.trouble(w); err != nil {
+			return contracts.Message{}, err
 		}
 		return contracts.Message{}, &contracts.Problem{Key: i18n.FilesErrorWatchEmpty, Params: map[string]any{"directory": w.dir}}
 	}
 	var names []string
-	for _, c := range certs {
+	for _, c := range s.certs {
 		if n := cryptox.Names(c.Leaf); len(n) > 0 && !slices.Contains(names, n[0]) {
 			names = append(names, n[0])
 		}
@@ -138,76 +139,105 @@ func covers(names, domains []string) bool {
 	return len(domains) > 0
 }
 
-func (w *watcher) denied(path string) error {
-	return &contracts.Problem{Key: i18n.FilesErrorWatchDenied, Params: map[string]any{"path": path}}
+func (w *watcher) denied(name string) error {
+	return &contracts.Problem{Key: i18n.FilesErrorWatchDenied, Params: map[string]any{"path": name}}
 }
+
+// scanned is what a scan found, and what kept it from looking further.
+type scanned struct {
+	certs []found
+	// denied is a file the scan could not read, as the keys of other
+	// clients are often their owner's alone; outside is a link out of the
+	// directory, which it does not follow. Either may explain why it found
+	// nothing.
+	denied, outside string
+}
+
+// trouble explains why s holds no certificate that would do, if it knows.
+func (s scanned) trouble(w *watcher) error {
+	switch {
+	case s.denied != "":
+		return w.denied(s.denied)
+	case s.outside != "":
+		return &contracts.Problem{Key: i18n.FilesErrorWatchOutside, Params: map[string]any{"path": s.outside, "directory": w.dir}}
+	}
+	return nil
+}
+
+// extensions are those of the files a scan reads.
+var extensions = []string{".pem", ".crt", ".cer", ".key"}
 
 // scan finds the certificates of the directory that come with their
 // private key: in each directory, each key with the certificates there,
 // as certbot keeps them (live/<name>/fullchain.pem and privkey.pem) and
 // acme.sh too (<domain>/fullchain.cer and <domain>.key). The same leaf
-// found twice counts once. unreadable is a file it could not read, if
-// any: the keys of other clients are often their owner's alone.
-func (w *watcher) scan() (certs []found, unreadable string, err error) {
+// found twice counts once. It reads through an os.Root, so no link leads
+// it out of the directory: certbot's live/ links to archive/, both inside
+// /etc/letsencrypt.
+func (w *watcher) scan() (scanned, error) {
+	var s scanned
 	if !filepath.IsAbs(w.dir) {
-		return nil, "", retry.Permanent(&contracts.Problem{Key: i18n.FilesErrorRelative, Params: map[string]any{"directory": w.dir}})
+		return s, retry.Permanent(&contracts.Problem{Key: i18n.FilesErrorRelative, Params: map[string]any{"directory": w.dir}})
 	}
+	root, err := os.OpenRoot(w.dir)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return s, &contracts.Problem{Key: i18n.FilesErrorWatchMissing, Params: map[string]any{"directory": w.dir}, Err: err}
+	case errors.Is(err, fs.ErrPermission):
+		return s, w.denied(w.dir)
+	case err != nil:
+		return s, err
+	}
+	defer root.Close()
+	fsys := root.FS()
+	show := func(name string) string { return filepath.Join(w.dir, filepath.FromSlash(name)) }
+
 	type file struct {
-		path  string
+		name  string
 		certs []*x509.Certificate
 		key   bool
 		data  []byte
 	}
 	dirs := map[string][]file{}
 	read := 0
-	root := filepath.Clean(w.dir)
-	walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	err = fs.WalkDir(fsys, ".", func(name string, d fs.DirEntry, err error) error {
 		switch {
 		case errors.Is(err, fs.ErrPermission):
-			unreadable = cmp.Or(unreadable, path)
+			s.denied = cmp.Or(s.denied, show(name))
 			return nil
 		case err != nil:
 			return err
 		case d.IsDir():
-			if rel, _ := filepath.Rel(root, path); rel != "." && strings.Count(rel, string(filepath.Separator)) >= scanDepth-1 {
+			if name != "." && strings.Count(name, "/") >= scanDepth-1 {
 				return fs.SkipDir
 			}
 			return nil
-		}
-		if !slices.Contains([]string{".pem", ".crt", ".cer", ".key"}, strings.ToLower(filepath.Ext(path))) || read >= scanFiles {
+		case !slices.Contains(extensions, strings.ToLower(path.Ext(name))) || read >= scanFiles:
 			return nil
 		}
-		info, err := os.Stat(path) // through the links of certbot's live/
-		if err != nil || !info.Mode().IsRegular() || info.Size() > scanSize {
-			if errors.Is(err, fs.ErrPermission) {
-				unreadable = cmp.Or(unreadable, path)
-			}
+		data, err := readSmall(fsys, name)
+		switch {
+		case errors.Is(err, fs.ErrPermission):
+			s.denied = cmp.Or(s.denied, show(name))
 			return nil
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			if errors.Is(err, fs.ErrPermission) {
-				unreadable = cmp.Or(unreadable, path)
-			}
+		case err != nil && d.Type()&fs.ModeSymlink != 0 && !errors.Is(err, fs.ErrNotExist):
+			s.outside = cmp.Or(s.outside, show(name))
+			return nil
+		case err != nil, data == nil:
 			return nil
 		}
 		read++
-		f := file{path: path, data: data}
+		f := file{name: name, data: data}
 		if bytes.Contains(data, []byte("PRIVATE KEY-----")) {
 			f.key = true
 		} else if f.certs, err = cryptox.ParseCertificates(data); err != nil {
 			return nil // not a certificate after all
 		}
-		dirs[filepath.Dir(path)] = append(dirs[filepath.Dir(path)], f)
+		dirs[path.Dir(name)] = append(dirs[path.Dir(name)], f)
 		return nil
 	})
-	switch {
-	case errors.Is(walkErr, fs.ErrNotExist):
-		return nil, "", &contracts.Problem{Key: i18n.FilesErrorWatchMissing, Params: map[string]any{"directory": w.dir}, Err: walkErr}
-	case errors.Is(walkErr, fs.ErrPermission):
-		return nil, "", w.denied(w.dir)
-	case walkErr != nil:
-		return nil, "", walkErr
+	if err != nil {
+		return s, err
 	}
 
 	seen := map[string]bool{}
@@ -229,16 +259,29 @@ func (w *watcher) scan() (certs []found, unreadable string, err error) {
 				continue
 			}
 			seen[cryptox.Fingerprint(b.Leaf)] = true
-			path := ""
+			where := ""
 			for _, c := range files {
 				if slices.ContainsFunc(c.certs, b.Leaf.Equal) {
-					path = c.path
+					where = show(c.name)
 					break
 				}
 			}
-			certs = append(certs, found{Bundle: b, path: path})
+			s.certs = append(s.certs, found{Bundle: b, path: where})
 		}
 	}
-	slices.SortFunc(certs, func(a, b found) int { return strings.Compare(a.path, b.path) })
-	return certs, unreadable, nil
+	slices.SortFunc(s.certs, func(a, b found) int { return strings.Compare(a.path, b.path) })
+	return s, nil
+}
+
+// readSmall reads a regular file of fsys, following links, unless it is
+// too big to be a certificate or a key: then nil.
+func readSmall(fsys fs.FS, name string) ([]byte, error) {
+	info, err := fs.Stat(fsys, name)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > scanSize {
+		return nil, nil
+	}
+	return fs.ReadFile(fsys, name)
 }

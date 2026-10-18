@@ -632,12 +632,12 @@ func TestIssueWaits(t *testing.T) {
 		t.Errorf("steps %s", got)
 	}
 
-	// Not due yet; then due, waiting again for at least waitMin.
+	// Not due yet; then due, waiting again for at least shortestWait.
 	f.run()
 	f.now = *is.NextAt
 	f.run()
 	is = f.certificate(c.ID).Issuance
-	if len(*calls) != 2 || is.State != "waiting" || is.Attempts != 1 || !is.NextAt.Equal(f.now.Add(waitMin)) {
+	if len(*calls) != 2 || is.State != "waiting" || is.Attempts != 1 || !is.NextAt.Equal(f.now.Add(shortestWait)) {
 		t.Fatalf("after the second call (%d): %+v", len(*calls), is)
 	}
 	if got := stepStates(f.issuanceDetail(is.ID)); got != "key done, order done, challenge pending, validate running, cleanup pending, download pending" {

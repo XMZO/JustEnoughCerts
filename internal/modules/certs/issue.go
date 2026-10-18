@@ -48,10 +48,10 @@ const (
 	// issuance of it failed for good.
 	failedPause  = 24 * time.Hour
 	maxDetailLen = 4000 // bytes of raw text kept with a log line
-	// waitMin and waitMax bound how long an issuance waits on its source
-	// before asking again.
-	waitMin = time.Minute
-	waitMax = 24 * time.Hour
+	// shortestWait and longestWait bound how long an issuance waits on its
+	// source before asking again.
+	shortestWait = time.Minute
+	longestWait  = 24 * time.Hour
 )
 
 // keyContext and stateContext are what an issuance's key and its source's
@@ -490,7 +490,7 @@ func (s *service) wait(ctx context.Context, c *claimed, w *contracts.Wait) error
 	if w.State != nil {
 		state = s.secrets.Seal(w.State, stateContext(c.certificateID))
 	}
-	next := s.now().Add(min(max(w.After, waitMin), waitMax))
+	next := s.now().Add(min(max(w.After, shortestWait), longestWait))
 	_, err := s.db.ExecContext(ctx,
 		`UPDATE certs_issuances SET state = 'waiting', next_at = ?, sealed_state = ?, error_key = '', error_params = ''
 		 WHERE id = ? AND state = 'running'`, next.UnixMilli(), state, c.id)

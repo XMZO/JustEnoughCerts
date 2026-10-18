@@ -464,6 +464,7 @@ const (
 	FilesErrorWatchEmpty            Key = "files.error.watch_empty"
 	FilesErrorWatchMissing          Key = "files.error.watch_missing"
 	FilesErrorWatchNone             Key = "files.error.watch_none"
+	FilesErrorWatchOutside          Key = "files.error.watch_outside"
 	FilesErrorWrite                 Key = "files.error.write"
 	FilesFieldDirectory             Key = "files.field.directory"
 	FilesFieldDirectoryHelp         Key = "files.field.directory_help"

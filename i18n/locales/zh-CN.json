@@ -616,6 +616,7 @@
       "watch_empty": "在 {directory} 里没找到带私钥的证书。",
       "watch_missing": "目录 {directory} 不存在。用 Docker 时要把它挂载进容器。",
       "watch_none": "在 {directory} 里没找到 {domains} 的有效证书和私钥。请检查目录和域名；用 Docker 时检查目录有没有挂载进容器。",
+      "watch_outside": "{path} 是指向 {directory} 外面的链接，JEC 不跟过去。certbot 请填 /etc/letsencrypt，不要填它的 live 目录。",
       "write": "没能写入 {directory}。请检查目录是否存在、JEC 有没有写入权限。"
     },
     "field": {

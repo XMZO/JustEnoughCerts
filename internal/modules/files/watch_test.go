@@ -187,3 +187,28 @@ func TestWatchErrors(t *testing.T) {
 		t.Errorf("unreadable: %v", err)
 	}
 }
+
+func TestWatchLinkOutside(t *testing.T) {
+	c := newClients(t)
+	leaf, key := c.issue(90, "example.com")
+	c.certbot(1, leaf, key)
+	// certbot's live/ links into archive/: from live/ alone, the links lead
+	// out of the directory, where the scan does not follow.
+	live := filepath.Join(c.root, "letsencrypt", "live", "example.com")
+	for _, f := range []string{"fullchain.pem", "privkey.pem"} {
+		target := filepath.Join("..", "..", "archive", "example.com", strings.Replace(f, ".pem", "1.pem", 1))
+		if err := os.Remove(filepath.Join(live, f)); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(target, filepath.Join(live, f)); err != nil {
+			t.Skipf("no symbolic links here: %v", err)
+		}
+	}
+	if got, err := openWatch(t, filepath.Join(c.root, "letsencrypt")).Collect(t.Context(), contracts.CollectRequest{Domains: []string{"example.com"}}); err != nil || !got.Chain[0].Equal(leaf) {
+		t.Errorf("through the links inside: %v", err)
+	}
+	_, err := openWatch(t, filepath.Join(c.root, "letsencrypt", "live")).Collect(t.Context(), contracts.CollectRequest{Domains: []string{"example.com"}})
+	if p := problemOf(err); p == nil || p.Key != i18n.FilesErrorWatchOutside {
+		t.Errorf("links out: %v", err)
+	}
+}

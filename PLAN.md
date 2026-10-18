@@ -336,7 +336,7 @@ DNS 验证分成两种能力，实现方式不同：
 
 **本地文件的实现**（`internal/modules/files`，M1）：部署目标类型 `files.directory`：目录（绝对路径）和放法（每张证书一个以主域名命名的子目录，`*` 写成 `star`；或者直接放在这个目录里）。按 certbot 的文件名写 `cert.pem`、`chain.pem`、`fullchain.pem`、`privkey.pem`（私钥只有所有者可读），每个文件先写到临时文件再改名，读的程序不会读到写了一半的文件；新版本直接覆盖，没有旧版本要删。目录是相对路径、没有写入权限时不自动重试。部署后重载 Web 服务器的命令还没有做，和钩子（5.2）一起做。
 
-**本机证书目录**（来源类型 `files.watch`，在 `files` 模块里）：取进另一个 ACME 客户端在本机续期的证书和私钥，比如 certbot 的 `/etc/letsencrypt`（`live/<名字>/fullchain.pem`、`privkey.pem`，以及 `archive/` 里的历次版本）、acme.sh 的主目录（`<域名>/fullchain.cer`、`<域名>.key`，ECC 证书在 `<域名>_ecc/`）。JEC 只读：在设置的目录里往下找 4 层，读 `.pem`、`.crt`、`.cer`、`.key` 文件（最多 5000 个、每个不超过 1 MiB），同一个目录里每把私钥配上那里的证书，按证书指纹去重；签发时取覆盖证书全部域名、到期最晚的那张。
+**本机证书目录**（来源类型 `files.watch`，在 `files` 模块里）：取进另一个 ACME 客户端在本机续期的证书和私钥，比如 certbot 的 `/etc/letsencrypt`（`live/<名字>/fullchain.pem`、`privkey.pem`，以及 `archive/` 里的历次版本）、acme.sh 的主目录（`<域名>/fullchain.cer`、`<域名>.key`，ECC 证书在 `<域名>_ecc/`）。JEC 只读：在设置的目录里往下找 4 层，读 `.pem`、`.crt`、`.cer`、`.key` 文件（最多 5000 个、每个不超过 1 MiB），同一个目录里每把私钥配上那里的证书，按证书指纹去重；签发时取覆盖证书全部域名、到期最晚的那张。读文件经过 `os.Root`，不跟随指到这个目录外面的链接：certbot 的 `live/` 里是指向同级 `archive/` 的链接，所以要填 `/etc/letsencrypt`，填 `live` 目录时会提示改填上一级。
 - 来源接口多了一种 `contracts.KeySource`（类型标 `ownKey`）：证书自带私钥，证书模块不生成私钥（日志的“私钥”一步写明随证书取来），添加证书时也不选密钥类型。
 - 到续期时间后，文件里还是现在这张（指纹相同或到期不更晚）就返回 `Wait`，签发进入等待，6 小时后再看，直到原工具续期；新证书取进来后照常部署。所以续期窗口要不早于原工具的（certbot 默认到期前 30 天，和 JEC 一样）。
 - 读不了私钥时（certbot、acme.sh 的私钥通常只有属主能读）报出是哪个文件，提示让 JEC 以那个用户运行（`docker-compose.yml` 里 `user: "0:0"`）或者用 `--deploy-hook` 复制一份；目录不存在时提示挂载。测试连接列出找到了哪些证书。用 Docker 时把目录只读挂载进容器，`docker-compose.yml` 里有注释掉的示例。
