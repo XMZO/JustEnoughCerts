@@ -438,6 +438,31 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(script.getByRole('alert')).toHaveText(message('hooks.error.status_output', { status: '1', output: 'no route from notify.test' }))
   expect.soft(await problems(page), 'a script whose test failed').toEqual([])
 
+  // Credentials: the page, a new one, and a provider that takes its keys
+  // from it, whose fields for them then go.
+  await page.goto('./credentials')
+  expect.soft(await problems(page), 'credentials').toEqual([])
+  await page.getByRole('button', { name: label('kernel.credentials.add') }).filter({ visible: true }).first().click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'add a credential').toEqual([])
+  await dialog.getByRole('option', { name: label('credentials.ssh_key.name') }).click()
+  await dialog.getByLabel(label('kernel.providers.field.name')).fill('e2e key')
+  await dialog.getByLabel(label('credentials.ssh_key.private_key')).fill('e2e private key')
+  expect.soft(await problems(page), 'add a credential: an SSH key').toEqual([])
+  await dialog.locator('button[type=submit]').click()
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'e2e key' })).toBeVisible()
+  expect.soft(await problems(page), 'credentials with one').toEqual([])
+  await page.goto('./targets')
+  await page.getByRole('button', { name: label('kernel.providers.target.add') }).filter({ visible: true }).first().click()
+  await dialog.getByRole('option', { name: label('ssh.server.name') }).click()
+  await expect(dialog.getByLabel(label('ssh.field.private_key'))).toBeVisible()
+  await dialog.getByLabel(label('kernel.providers.credential.label')).selectOption({ label: 'e2e key' })
+  await expect(dialog.getByLabel(label('ssh.field.private_key'))).toBeHidden()
+  expect.soft(await problems(page), 'a target with a credential').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
+  await expect(dialog).toBeHidden()
+
   // A certificate from the source: the form, its errors, the issuance.
   await page.goto('./certificates/new')
   await expect(page.locator('#domain-input')).toBeVisible()

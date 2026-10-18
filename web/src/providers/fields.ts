@@ -71,15 +71,49 @@ export function initialValues(type: ProviderType, instance?: Provider, locale?: 
 }
 
 /**
- * settings splits the values of a form into plain settings and secrets.
- * Secrets left empty are not sent, so that an edit keeps the saved ones.
+ * The choices of a credential besides those there are: a new one of the
+ * keys typed in, or keys of the provider's own.
  */
-export function settings(type: ProviderType, values: Record<string, string>): { config: Record<string, string>; secrets: Record<string, string> } {
+export const credentialChoice = { new: 'new', own: 'own' } as const
+
+/**
+ * credentialSettings is what a form sends of its choice of credential:
+ * that the keys become a new one, the one chosen, or none, which an edit
+ * says only to an instance that had one.
+ */
+export function credentialSettings(type: ProviderType, choice: string, instance?: Provider): { credentialId?: number; newCredential?: boolean } {
+  if (!type.credentialKind) return {}
+  switch (choice) {
+    case credentialChoice.new:
+      return { newCredential: true }
+    case credentialChoice.own:
+      return instance?.credentialId ? { credentialId: 0 } : {}
+  }
+  return { credentialId: Number(choice) }
+}
+
+/** initialCredential is the choice of credential a form starts with. */
+export function initialCredential(type: ProviderType, instance?: Provider): string {
+  if (!type.credentialKind) return ''
+  if (!instance) return credentialChoice.new
+  return instance.credentialId ? String(instance.credentialId) : credentialChoice.own
+}
+
+/**
+ * settings splits the values of a form into plain settings and secrets.
+ * Secrets left empty are not sent, so that an edit keeps the saved ones;
+ * the fields a credential fills, skip, are not sent at all.
+ */
+export function settings(
+  type: ProviderType,
+  values: Record<string, string>,
+  skip: string[] = [],
+): { config: Record<string, string>; secrets: Record<string, string> } {
   const config: Record<string, string> = {}
   const secrets: Record<string, string> = {}
   for (const f of type.fields) {
     const v = values[f.key] ?? ''
-    if (!applies(f, values, type.fields)) continue
+    if (!applies(f, values, type.fields) || skip.includes(f.key)) continue
     if (f.secret) {
       if (v.trim()) secrets[f.key] = v
     } else if (v.trim()) {

@@ -11,11 +11,18 @@ export type ProviderField = components['schemas']['Field']
 export type Provider = components['schemas']['InstanceBody']
 export type ProviderKind = ProviderTypeSummary['kind']
 
-/** What a provider's form sends: plain settings, and the secrets typed in. */
+/**
+ * What a provider's form sends: plain settings, and the secrets typed in;
+ * for a type that takes a credential, the credential that fills its fields
+ * (0 for none, on an edit), or that the values of those fields become a new
+ * one.
+ */
 export interface ProviderSettings {
   name: string
   config: Record<string, string>
   secrets: Record<string, string>
+  credentialId?: number
+  newCredential?: boolean
 }
 
 const all = ['providers'] as const
@@ -58,7 +65,9 @@ function useProvidersMutation<V, R>(fn: (vars: V) => Promise<R>) {
   const client = useQueryClient()
   return useMutation({
     mutationFn: fn,
-    onSuccess: () => client.invalidateQueries({ queryKey: [...all, 'list'] }),
+    // The credentials tell which providers use them, and an instance may
+    // keep its keys as a new one.
+    onSuccess: () => Promise.all([client.invalidateQueries({ queryKey: [...all, 'list'] }), client.invalidateQueries({ queryKey: ['credentials'] })]),
   })
 }
 

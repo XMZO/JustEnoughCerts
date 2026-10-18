@@ -74,13 +74,17 @@ Working on the main branch:
   CDN did not take the new one.
 - Everything beyond the kernel is a module, switched on and off on the
   Modules page or left out at build time.
-- Plugins, programs in any language, add deploy targets, notification
-  channels and ways to validate domains without rebuilding JEC
-  ([docs/plugins.md](docs/plugins.md)).
-- The configuration as a YAML file: the providers, the certificates and
-  the renewal defaults, to keep in Git or to take to another JEC. An
-  import shows what it would add and change before it does, and deletes
-  nothing.
+- Plugins, programs in any language, add certificate sources, deploy
+  targets, notification channels and ways to validate domains without
+  rebuilding JEC ([docs/plugins.md](docs/plugins.md)).
+- Credentials: the keys of a cloud account or an SSH key, kept once and
+  shared by the sources, DNS providers and deploy targets that use them,
+  so that a new key is entered in one place; the Credentials page shows
+  which providers use each, and when one last did.
+- The configuration as a YAML file: the credentials, the providers, the
+  certificates and the renewal defaults, to keep in Git or to take to
+  another JEC. An import shows what it would add and change before it
+  does, and deletes nothing.
 - Sign-in with a password and, if you like, the codes of an authenticator
   app (two-factor authentication), or through an OpenID Connect provider
   such as Authelia, Authentik, Keycloak or Google (single sign-on); API tokens for scripts; an audit log of
@@ -89,7 +93,7 @@ Working on the main branch:
 - A web app that installs to a phone's home screen (PWA).
 - One small container image or one static binary, with SQLite.
 
-Planned: the free certificates of Chinese cloud platforms as sources, and more CDNs and panels.
+Planned: a documentation site, and the certificate APIs of more vendors, such as Namecheap's own.
 
 How far each provider is tested, against a real account, the real
 software, an emulator or a fake, and what the vendors ask for, such as

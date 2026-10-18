@@ -1452,6 +1452,29 @@
         "providers": "Providers"
       }
     },
+    "credentials": {
+      "add": "Add a credential",
+      "choose": "Choose the kind of credential",
+      "delete": {
+        "body": "This cannot be undone. The providers that use it must use another first.",
+        "title": "Delete the credential {name}?"
+      },
+      "edit": "Change the credential {name}",
+      "empty": "No credentials yet. Adding a provider can keep its keys as one too.",
+      "field": {
+        "name_help": "A name for you, shown where providers choose their credential."
+      },
+      "foot": "A credential is decrypted only when a provider uses it, and is never logged; an exported configuration holds it only when you ask for the secrets.",
+      "intro": "API keys and SSH keys, kept encrypted in the data directory, which several sources, DNS providers and deploy targets can share.",
+      "last_used": "Last used",
+      "never_used": "Not used yet",
+      "no_kinds": "No provider type takes credentials: switch the modules of clouds or SSH on, on the Modules page.",
+      "pick_first": "Choose a kind of credential first.",
+      "title": "Credentials",
+      "unavailable": "This kind of credential is of no use now: the modules that take it are off.",
+      "unused": "No provider uses it yet",
+      "used_by": "Used by {names}"
+    },
     "error": {
       "credential_in_use": "{names} still use this credential, so it cannot be deleted. Have them use another first.",
       "credential_kind": "No provider type takes this kind of credential: the modules that would are off.",
@@ -1542,6 +1565,16 @@
       "choose": "Providers",
       "choose_other": "Choose another",
       "count": "{count} in all",
+      "credential": {
+        "card": "Keys in the credential {name}",
+        "help_new": "The keys below are kept as a credential named after this provider, which other providers can choose too.",
+        "help_own": "The keys stay with this provider only; no other can use them.",
+        "help_shared": "The keys come from this credential; to change them, change it on the Credentials page.",
+        "label": "Credential",
+        "new": "A new credential: {kind}",
+        "option": "{name} ({hint})",
+        "own": "Not shared, for this provider only"
+      },
       "delete": {
         "body": "Its settings and saved credentials go with it. A provider that certificates use cannot be deleted.",
         "title": "Delete {name}?"

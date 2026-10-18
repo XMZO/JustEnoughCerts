@@ -13,7 +13,7 @@ import {
   type ProviderTypeSummary,
 } from '../api/providers'
 import { useT, type MessageKey } from '../i18n'
-import { initialValues, settings, typeName } from '../providers/fields'
+import { credentialChoice, credentialSettings, initialCredential, initialValues, settings, typeName } from '../providers/fields'
 import JecAlert from './JecAlert.vue'
 import JecButton from './JecButton.vue'
 import JecDialog from './JecDialog.vue'
@@ -73,6 +73,7 @@ const hasTags = computed(() => (types.data.value ?? []).some((s) => s.tags?.leng
 
 const name = ref('')
 const values = ref<Record<string, string>>({})
+const credential = ref('')
 const create = useCreateProvider()
 const update = useUpdateProvider()
 const mutation = computed(() => (props.instance ? update : create))
@@ -103,6 +104,7 @@ watch(
   (full) => {
     if (!full || full.id !== picked.value) return
     values.value = initialValues(full, props.instance, locale.value)
+    credential.value = initialCredential(full, props.instance)
     const n = typeName(full)
     name.value = props.instance?.name ?? n.brand ?? (n.key ? t(n.key) : full.id)
   },
@@ -112,7 +114,13 @@ watch(
 async function submit() {
   const full = type.data.value
   if (!full) return
-  const body = { name: name.value, ...settings(full, values.value) }
+  // A credential chosen fills its fields, which the form then hides.
+  const shared = full.credentialKind && credential.value !== credentialChoice.new && credential.value !== credentialChoice.own
+  const body = {
+    name: name.value,
+    ...settings(full, values.value, shared ? (full.credentialFields ?? []) : []),
+    ...credentialSettings(full, credential.value, props.instance),
+  }
   let saved: Provider
   try {
     saved = props.instance
@@ -205,6 +213,7 @@ async function submit() {
           <ProviderForm
             v-model:name="name"
             v-model:values="values"
+            v-model:credential="credential"
             :id-prefix="uid"
             :type="type.data.value"
             :errors="errors.fields.value"

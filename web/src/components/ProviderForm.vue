@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import { hint, useCredentialKinds, useCredentials } from '../api/credentials'
 import type { ProviderField, ProviderType } from '../api/providers'
 import { useT, type MessageKey } from '../i18n'
-import { applies } from '../providers/fields'
+import { applies, credentialChoice } from '../providers/fields'
 import JecField from './JecField.vue'
 import JecInput from './JecInput.vue'
 import ProviderFieldRow from './ProviderFieldRow.vue'
@@ -11,7 +12,9 @@ import ProviderFieldRow from './ProviderFieldRow.vue'
 // The settings of a provider, built from the fields its type declares
 // (PLAN.md 5.5), so that a new provider needs no code here. The fields
 // that apply to the values so far are shown; advanced ones come last,
-// behind a disclosure.
+// behind a disclosure. A type that takes a credential (PLAN.md 6.1) has
+// the choice of one first: a new one of the keys typed in, one there is,
+// whose fields then go, or keys of the provider's own.
 const props = defineProps<{
   /** Makes the IDs of the inputs unique on the page. */
   idPrefix: string
@@ -23,10 +26,35 @@ const props = defineProps<{
 }>()
 const name = defineModel<string>('name', { required: true })
 const values = defineModel<Record<string, string>>('values', { required: true })
+/** For a type that takes a credential: credentialChoice's new, own, or the ID of one. */
+const credential = defineModel<string>('credential', { default: '' })
 
 const { t } = useT()
 
-const shown = computed(() => props.type.fields.filter((f) => applies(f, values.value, props.type.fields)))
+const takes = computed(() => props.type.credentialKind ?? '')
+const kinds = useCredentialKinds()
+const all = useCredentials()
+const kind = computed(() => kinds.data.value?.find((k) => k.id === takes.value))
+const choices = computed(() =>
+  (all.data.value ?? [])
+    .filter((c) => c.kind === takes.value)
+    .map((c) => ({ value: String(c.id), name: c.name, hint: hint(kind.value, c) })),
+)
+const credentialHint = computed<MessageKey>(() => {
+  switch (credential.value) {
+    case credentialChoice.new:
+      return 'kernel.providers.credential.help_new'
+    case credentialChoice.own:
+      return 'kernel.providers.credential.help_own'
+  }
+  return 'kernel.providers.credential.help_shared'
+})
+// The fields a credential fills are its business once one is chosen.
+const filled = computed(() =>
+  takes.value && credential.value !== credentialChoice.new && credential.value !== credentialChoice.own ? (props.type.credentialFields ?? []) : [],
+)
+
+const shown = computed(() => props.type.fields.filter((f) => !filled.value.includes(f.key) && applies(f, values.value, props.type.fields)))
 const main = computed(() => shown.value.filter((f) => !f.advanced))
 const advanced = computed(() => shown.value.filter((f) => f.advanced))
 
@@ -42,6 +70,20 @@ function set(key: string, value: string) {
   <div class="flex flex-col gap-3">
     <JecField :id="`${idPrefix}-name`" label="kernel.providers.field.name" hint="kernel.providers.field.name_help" :error="errors.name">
       <JecInput :id="`${idPrefix}-name`" v-model="name" :invalid="!!errors.name" autocomplete="off" required />
+    </JecField>
+    <JecField v-if="takes" :id="`${idPrefix}-credential`" label="kernel.providers.credential.label" :hint="credentialHint" :error="errors.credentialId">
+      <select
+        :id="`${idPrefix}-credential`"
+        v-model="credential"
+        :aria-invalid="!!errors.credentialId || undefined"
+        class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink aria-invalid:border-danger-ink max-sm:h-11"
+      >
+        <option :value="credentialChoice.new">{{ t('kernel.providers.credential.new', { kind: kind ? t(kind.name as MessageKey) : takes }) }}</option>
+        <option v-for="c in choices" :key="c.value" :value="c.value" translate="no">
+          {{ c.hint ? t('kernel.providers.credential.option', { name: c.name, hint: c.hint }) : c.name }}
+        </option>
+        <option :value="credentialChoice.own">{{ t('kernel.providers.credential.own') }}</option>
+      </select>
     </JecField>
     <ProviderFieldRow
       v-for="f in main"

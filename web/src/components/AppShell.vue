@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Blocks, Ellipsis, Globe, History, LayoutGrid, LogOut, Menu, Package, ScrollText, Server, Settings, ShieldCheck, X } from '@lucide/vue'
+import { Bell, Blocks, Ellipsis, Globe, History, KeyRound, LayoutGrid, LogOut, Menu, Package, ScrollText, Server, Settings, ShieldCheck, X } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
@@ -34,12 +34,14 @@ const links = computed<Link[]>(() => [
   { to: '/history', label: 'certs.runs.title', icon: History },
 ])
 const tabs = computed<Link[]>(() => [...links.value, { to: '/more', label: 'kernel.shell.more', icon: Ellipsis }])
-// Where providers are configured; on phones, the More tab lists them.
+// Where providers are configured, with the credentials they share; on
+// phones, the More tab lists them.
 const config: Link[] = [
   { to: '/sources', label: 'kernel.providers.source.title', icon: Package },
   { to: '/dns', label: 'kernel.providers.solver.title', icon: Globe },
   { to: '/targets', label: 'kernel.providers.target.title', icon: Server },
   { to: '/notify', label: 'kernel.providers.notifier.title', icon: Bell },
+  { to: '/credentials', label: 'kernel.credentials.title', icon: KeyRound },
 ]
 // JEC itself: the modules, the audit log while its module is on, and the
 // settings.

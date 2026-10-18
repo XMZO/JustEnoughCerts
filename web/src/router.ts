@@ -83,6 +83,12 @@ export const router = createRouter({
           props: { kind: 'solver' },
           meta: { title: 'kernel.providers.solver.title', for: 'app' },
         },
+        {
+          path: 'credentials',
+          name: 'credentials',
+          component: () => import('./pages/CredentialsPage.vue'),
+          meta: { title: 'kernel.credentials.title', for: 'app' },
+        },
         { path: 'modules', name: 'modules', component: () => import('./pages/ModulesPage.vue'), meta: { title: 'kernel.modules.title', for: 'app' } },
         { path: 'audit', name: 'audit', component: () => import('./pages/AuditPage.vue'), meta: { title: 'audit.page.title', for: 'app' } },
         {

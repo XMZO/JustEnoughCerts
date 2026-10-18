@@ -5,6 +5,7 @@ import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { useCertificates } from '../api/certs'
+import { useCredentials } from '../api/credentials'
 import { useManifest } from '../api/manifest'
 import { api, ApiError, networkError, unwrap } from '../api/client'
 import { useApiError } from '../api/errors'
@@ -33,6 +34,7 @@ const page = computed(() => kindPages[props.kind])
 const list = useProviders(() => props.kind)
 const types = useProviderTypes(() => props.kind)
 const certificates = useCertificates()
+const credentials = useCredentials()
 const loadError = useApiError(computed(() => list.error.value))
 
 // The full types of the instances, for the settings their cards show.
@@ -115,6 +117,7 @@ const cards = computed(() =>
       typeLabel: name.key ? t(name.key) : (name.brand ?? (summaryType ? '' : t('kernel.providers.type_gone'))),
       shown: summary(fullType(p.type), p),
       secrets: p.secretKeys.length,
+      credential: p.credentialId ? (credentials.data.value?.find((c) => c.id === p.credentialId)?.name ?? '') : undefined,
       uses,
       events: notifiers.value ? events(p) : '',
       send: sends.data.value?.find((s) => s.notifier === p.id),
@@ -202,7 +205,14 @@ async function confirmDelete() {
             <dd v-else class="m-0 truncate" translate="no" :title="s.value">{{ s.value }}</dd>
           </template>
         </dl>
-        <p class="m-0 text-small text-ink-muted">
+        <p
+          v-if="c.credential !== undefined"
+          class="m-0 truncate text-small text-ink-muted"
+          :title="t('kernel.providers.credential.card', { name: c.credential })"
+        >
+          {{ t('kernel.providers.credential.card', { name: c.credential }) }}
+        </p>
+        <p v-if="c.credential === undefined || c.secrets" class="m-0 text-small text-ink-muted">
           {{ c.secrets ? t('kernel.providers.secrets_saved', { count: c.secrets }) : t('kernel.providers.no_secrets') }}
         </p>
         <template v-if="notifiers">

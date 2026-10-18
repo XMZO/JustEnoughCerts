@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Provider, ProviderType } from '../api/providers'
-import { applies, initialValues, settings, summary, typeName } from './fields'
+import { applies, credentialChoice, credentialSettings, initialCredential, initialValues, settings, summary, typeName } from './fields'
 
 // An ACME-like type: a choice, a field for one choice only, a plain and a
 // secret setting, and an advanced one.
@@ -87,6 +87,39 @@ describe('settings', () => {
 
   it('sends no secret left empty, so that an edit keeps the saved one', () => {
     expect(settings(type, { ca: 'letsencrypt', eab_hmac: '' }).secrets).toEqual({})
+  })
+})
+
+describe('credentials', () => {
+  // A type that takes an AccessKey from a credential.
+  const cloud: ProviderType = {
+    ...type,
+    id: 'aliyun.cdn',
+    kind: 'target',
+    fields: [
+      { key: 'access_key_id', kind: 'text', required: true },
+      { key: 'access_key_secret', kind: 'text', secret: true, required: true },
+      { key: 'domains', kind: 'text' },
+    ],
+    credentialKind: 'aliyun',
+    credentialFields: ['access_key_id', 'access_key_secret'],
+  }
+
+  it('starts with a new credential, the one the instance has, or its own keys', () => {
+    expect(initialCredential(cloud)).toBe(credentialChoice.new)
+    expect(initialCredential(cloud, { ...instance({}), credentialId: 7 })).toBe('7')
+    expect(initialCredential(cloud, instance({}, ['access_key_secret']))).toBe(credentialChoice.own)
+    expect(initialCredential(type)).toBe('')
+  })
+
+  it('sends the choice, and none of the fields a credential chosen fills', () => {
+    expect(credentialSettings(cloud, credentialChoice.new)).toEqual({ newCredential: true })
+    expect(credentialSettings(cloud, '7')).toEqual({ credentialId: 7 })
+    expect(credentialSettings(cloud, credentialChoice.own)).toEqual({})
+    expect(credentialSettings(cloud, credentialChoice.own, { ...instance({}), credentialId: 7 })).toEqual({ credentialId: 0 })
+    expect(credentialSettings(type, '7')).toEqual({})
+    const values = { access_key_id: 'LTAI', access_key_secret: 's3cret', domains: 'a.example.com' }
+    expect(settings(cloud, values, cloud.credentialFields)).toEqual({ config: { domains: 'a.example.com' }, secrets: {} })
   })
 })
 

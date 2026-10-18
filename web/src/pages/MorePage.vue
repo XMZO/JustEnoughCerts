@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Blocks, ChevronRight, Globe, LogOut, Package, ScrollText, Server, Settings } from '@lucide/vue'
+import { Bell, Blocks, ChevronRight, Globe, KeyRound, LogOut, Package, ScrollText, Server, Settings } from '@lucide/vue'
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
@@ -22,6 +22,7 @@ const config = [
   { to: '/dns', label: 'kernel.providers.solver.title', icon: Globe },
   { to: '/targets', label: 'kernel.providers.target.title', icon: Server },
   { to: '/notify', label: 'kernel.providers.notifier.title', icon: Bell },
+  { to: '/credentials', label: 'kernel.credentials.title', icon: KeyRound },
 ] as const
 
 const modulesOn = computed(() => manifest.data.value?.modules.filter((m) => m.required || m.switched).length)
