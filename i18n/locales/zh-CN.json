@@ -504,6 +504,31 @@
       "title": "上传新证书"
     }
   },
+  "dingtalk": {
+    "error": {
+      "api": "钉钉拒绝了这条消息：{message}（{code}）",
+      "network": "连不上钉钉。",
+      "security": "机器人的安全设置拒绝了这条消息：{message}。请核对加签密钥，或把关键词设为 JEC。",
+      "status": "钉钉的回应看不懂（HTTP {status}）。",
+      "throttled": "钉钉限制了发送频率（每个机器人每分钟最多 20 条），稍后再试。",
+      "token": "钉钉找不到这个 Webhook 对应的机器人，可能已被移除。请重新复制 Webhook 地址。",
+      "webhook": "Webhook 地址要以 {prefix} 开头。"
+    },
+    "field": {
+      "secret": "加签密钥",
+      "secret_help": "钉钉要求机器人至少开一项安全设置。推荐“加签”：把 SEC 开头的密钥填在这里。也可以用“自定义关键词”，填 JEC（每条消息都带）。",
+      "webhook": "Webhook 地址",
+      "webhook_help": "在钉钉群里：群设置 → 机器人 → 添加机器人 → 自定义。复制它的 Webhook 地址，以 https://oapi.dingtalk.com/robot/send?access_token= 开头。"
+    },
+    "module": {
+      "description": "通过自定义机器人把通知发到钉钉群。",
+      "name": "钉钉"
+    },
+    "robot": {
+      "description": "用自定义机器人把通知发到钉钉群。",
+      "name": "钉钉群机器人"
+    }
+  },
   "email": {
     "error": {
       "auth": "邮件服务器拒绝登录：{message}（{code}）。请检查用户名和密码（或授权码）。",
@@ -602,6 +627,32 @@
     "test": {
       "edge_ok": "从外网访问 {url} 取到了边缘函数回答的文件，ESA 边缘应答可以用了。",
       "ok": "连接正常：站点 {site} 现在有 {count, plural, other {# 张证书}}。"
+    }
+  },
+  "feishu": {
+    "bot": {
+      "description": "用自定义机器人把通知发到飞书或 Lark 的群。",
+      "name": "飞书群机器人"
+    },
+    "error": {
+      "api": "飞书拒绝了这条消息：{message}（{code}）",
+      "keyword": "消息里没有机器人要求的关键词：请在自定义关键词里加上 JEC。",
+      "network": "连不上飞书。",
+      "sign": "飞书说签名不对。请核对密钥，以及这台服务器的时间。",
+      "status": "飞书的回应看不懂（HTTP {status}）。",
+      "throttled": "飞书限制了发送频率，稍后再试。",
+      "token": "飞书找不到这个 Webhook 对应的机器人，可能已被移除。请重新复制 Webhook 地址。",
+      "webhook": "这不是自定义机器人的 Webhook 地址：应以 https://open.feishu.cn/open-apis/bot/v2/hook/ 开头，Lark 是 https://open.larksuite.com/open-apis/bot/v2/hook/。"
+    },
+    "field": {
+      "secret": "签名校验密钥",
+      "secret_help": "机器人的安全设置里开了“签名校验”时，把密钥填在这里。如果用的是“自定义关键词”，加上 JEC（每条消息都带）。",
+      "webhook": "Webhook 地址",
+      "webhook_help": "在飞书群里：设置 → 群机器人 → 添加机器人 → 自定义机器人。复制它的 Webhook 地址，以 https://open.feishu.cn/open-apis/bot/v2/hook/ 开头（Lark 是 https://open.larksuite.com/…）。"
+    },
+    "module": {
+      "description": "通过自定义机器人把通知发到飞书（或 Lark）群。",
+      "name": "飞书"
     }
   },
   "files": {
@@ -743,7 +794,8 @@
       },
       "field": {
         "locale": "消息语言"
-      }
+      },
+      "tagged_title": "【JEC】{title}"
     },
     "overview": {
       "title": "总览"
@@ -1134,6 +1186,28 @@
     "notify": {
       "description": "把每条通知以 JSON 发到一个 URL，可以接入任何能收 HTTP 请求的系统。",
       "name": "Webhook"
+    }
+  },
+  "wecom": {
+    "error": {
+      "api": "企业微信拒绝了这条消息：{message}（{code}）",
+      "key": "企业微信找不到这个 key 对应的机器人，可能已被移除。请重新复制 Webhook 地址。",
+      "network": "连不上企业微信。",
+      "status": "企业微信的回应看不懂（HTTP {status}）。",
+      "throttled": "企业微信限制了发送频率（每个机器人每分钟最多 20 条），稍后再试。",
+      "webhook": "Webhook 地址要以 {prefix} 开头。"
+    },
+    "field": {
+      "webhook": "Webhook 地址",
+      "webhook_help": "在企业微信群里：群设置 → 群机器人 → 添加机器人。复制它的 Webhook 地址，以 https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key= 开头。有这个地址就能往群里发消息，请妥善保管。"
+    },
+    "module": {
+      "description": "通过群机器人把通知发到企业微信群。",
+      "name": "企业微信"
+    },
+    "robot": {
+      "description": "用群机器人把通知发到企业微信群。",
+      "name": "企业微信群机器人"
     }
   },
   "wellknown": {

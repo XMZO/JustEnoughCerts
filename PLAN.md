@@ -361,7 +361,7 @@ DNS 验证分成两种能力，实现方式不同：
 | 阶段 | 渠道 |
 |---|---|
 | M1 | Telegram、SMTP 邮件、通用 Webhook |
-| M3 | Server酱、Bark、钉钉、飞书、企业微信、ntfy、Gotify |
+| M3 | 钉钉、飞书、企业微信（已完成）；Server酱、Bark、ntfy、Gotify |
 
 **实现**（M1）：
 
@@ -370,6 +370,7 @@ DNS 验证分成两种能力，实现方式不同：
 - **Telegram**（`telegram.bot`）：Bot Token（保密）、Chat ID；高级设置里有代理（http、https、socks5，国内网络连 Telegram 要用）和自建的 Bot API 地址。消息用 HTML 格式，标题加粗。Token 错、找不到聊天、没有权限不重试，429 按 `retry_after` 重试。Token 在 URL 路径里，所以错误信息只保留底层原因，不带 URL。
 - **邮件**（`email.smtp`）：服务器、加密方式（SSL/TLS、STARTTLS、不加密）、端口（留空时按加密方式取 465、587、25）、用户名、密码或授权码、发件人、收件人（逗号分隔）。按服务器提供的方式用 PLAIN 或 LOGIN 登录（net/smtp 没有 LOGIN，自己实现），两者都不会在不加密的连接上发送密码（发往本机除外）。UTF-8 纯文本，quoted-printable 编码。登录失败、收件人被拒、证书不受信任、加密方式和端口对不上都不重试。
 - **Webhook**（`webhook.notify`）：把 `contracts.Note` 原样 POST 成 JSON；签名、请求头、内网限制和重试规则同 Webhook 部署。
+- **群机器人**（M3）：钉钉（`dingtalk.robot`）、飞书（`feishu.bot`，也接受 Lark 国际版的地址）、企业微信（`wecom.robot`）。都填群里机器人的 Webhook 地址（地址里有令牌，保密保存，必须是官方地址的前缀），发纯文本：标题前加“【JEC】”（英文是 `[JEC]`），所以机器人的安全设置可以用关键词 `JEC`。钉钉和飞书还可以填加签密钥：钉钉用密钥对“毫秒时间戳 + 换行 + 密钥”算 HMAC-SHA256，`timestamp`、`sign` 放进 URL；飞书以“秒时间戳 + 换行 + 密钥”为密钥对空内容算 HMAC-SHA256，放进请求体。文字超过上限时在字符之间截断（企业微信 2048 字节，钉钉、飞书 4000 字节）。令牌失效、签名不对、缺关键词等不重试；限流（每个机器人每分钟 20 条左右）一分钟后再试；网络问题和 5xx 照常重试。错误信息不带 URL。
 - 共用的 HTTP 客户端在 `internal/lib/httpx`：超时、单独设置的代理（不读环境变量里的代理），以及“只连公网地址”（第 10 节）。
 
 ### 5.4 阿里云 ESA 目标的注意点（来自实际调研）

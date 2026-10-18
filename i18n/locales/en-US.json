@@ -504,6 +504,31 @@
       "title": "Upload a new certificate"
     }
   },
+  "dingtalk": {
+    "error": {
+      "api": "DingTalk refused the message: {message} ({code})",
+      "network": "Could not reach DingTalk.",
+      "security": "The robot's security settings refused the message: {message}. Check the signing secret, or add the keyword JEC.",
+      "status": "DingTalk's answer made no sense (HTTP {status}).",
+      "throttled": "DingTalk asked to slow down (a robot sends at most 20 messages a minute); trying again later.",
+      "token": "DingTalk has no robot with this webhook: it may have been removed. Copy the webhook again.",
+      "webhook": "The webhook must start with {prefix}"
+    },
+    "field": {
+      "secret": "Signing secret",
+      "secret_help": "DingTalk wants at least one security setting on the robot. Best is Additional Signature: paste its secret, which starts with SEC, here. Or use Custom Keywords with JEC, which every message has.",
+      "webhook": "Webhook",
+      "webhook_help": "In the DingTalk group: Group Settings → Bots → Add Robot → Custom. Copy its webhook, which starts with https://oapi.dingtalk.com/robot/send?access_token="
+    },
+    "module": {
+      "description": "Sends notes to DingTalk groups through custom robots.",
+      "name": "DingTalk"
+    },
+    "robot": {
+      "description": "A custom robot sends the notes to a DingTalk group.",
+      "name": "DingTalk robot"
+    }
+  },
   "email": {
     "error": {
       "auth": "The mail server refused the sign-in: {message} ({code}). Check the username and the password.",
@@ -602,6 +627,32 @@
     "test": {
       "edge_ok": "{url} answered from the internet with the file, from the edge: answering at ESA's edge works.",
       "ok": "Connected: site {site} holds {count, plural, one {# certificate} other {# certificates}}."
+    }
+  },
+  "feishu": {
+    "bot": {
+      "description": "A custom bot sends the notes to a Feishu or Lark group.",
+      "name": "Feishu / Lark bot"
+    },
+    "error": {
+      "api": "Feishu refused the message: {message} ({code})",
+      "keyword": "The message lacks the keyword the bot wants: add JEC to its custom keywords.",
+      "network": "Could not reach Feishu.",
+      "sign": "Feishu rejected the signature. Check the secret, and the clock of this server.",
+      "status": "Feishu's answer made no sense (HTTP {status}).",
+      "throttled": "Feishu asked to slow down; trying again later.",
+      "token": "Feishu has no bot with this webhook: it may have been removed. Copy the webhook again.",
+      "webhook": "This is not the webhook of a custom bot: it starts with https://open.feishu.cn/open-apis/bot/v2/hook/ or, for Lark, https://open.larksuite.com/open-apis/bot/v2/hook/"
+    },
+    "field": {
+      "secret": "Signing secret",
+      "secret_help": "When the bot's security settings turn on signature verification, paste its secret here. With custom keywords instead, add JEC, which every message has.",
+      "webhook": "Webhook",
+      "webhook_help": "In the group: Settings → Bots → Add Bot → Custom Bot. Copy its webhook, which starts with https://open.feishu.cn/open-apis/bot/v2/hook/ (Lark: https://open.larksuite.com/…)."
+    },
+    "module": {
+      "description": "Sends notes to Feishu or Lark groups through custom bots.",
+      "name": "Feishu / Lark"
     }
   },
   "files": {
@@ -743,7 +794,8 @@
       },
       "field": {
         "locale": "Language of the notes"
-      }
+      },
+      "tagged_title": "[JEC] {title}"
     },
     "overview": {
       "title": "Overview"
@@ -1134,6 +1186,28 @@
     "notify": {
       "description": "Posts each note as JSON to a URL, for any system that takes HTTP requests.",
       "name": "Webhook"
+    }
+  },
+  "wecom": {
+    "error": {
+      "api": "WeCom refused the message: {message} ({code})",
+      "key": "WeCom has no robot with this key: it may have been removed. Copy the webhook again.",
+      "network": "Could not reach WeCom.",
+      "status": "WeCom's answer made no sense (HTTP {status}).",
+      "throttled": "WeCom asked to slow down (a robot sends at most 20 messages a minute); trying again later.",
+      "webhook": "The webhook must start with {prefix}"
+    },
+    "field": {
+      "webhook": "Webhook",
+      "webhook_help": "In the WeCom group: its settings → Group Robots → Add. Copy its webhook, which starts with https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key= Anyone who has it can post to the group."
+    },
+    "module": {
+      "description": "Sends notes to WeCom (WeChat Work) groups through group robots.",
+      "name": "WeCom"
+    },
+    "robot": {
+      "description": "A group robot sends the notes to a WeCom group.",
+      "name": "WeCom robot"
     }
   },
   "wellknown": {
