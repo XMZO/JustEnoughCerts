@@ -31,7 +31,7 @@ main 分支上已经可用：
 
 计划中：文档站，以及更多厂商的证书接口（比如 Namecheap 官方 API）。
 
-每个服务商测到了哪一步（真实账号、真实软件、模拟器还是替身），以及各家的使用条件（比如证书要什么套餐）：[docs/providers.zh-CN.md](docs/providers.zh-CN.md)。
+每个服务商测到了哪一步（真实账号、真实软件、模拟器还是替身），以及各家的使用条件（比如证书要什么套餐）：[docs/providers.zh-CN.md](docs/providers.zh-CN.md)。用真实账号一步步试 ESA、ESA 边缘应答和 Namecheap SSL Manager：[docs/trying.zh-CN.md](docs/trying.zh-CN.md)。
 
 ## 快速上手
 

@@ -98,6 +98,8 @@ Planned: a documentation site, and the certificate APIs of more vendors, such as
 How far each provider is tested, against a real account, the real
 software, an emulator or a fake, and what the vendors ask for, such as
 the plans their certificates need: [docs/providers.md](docs/providers.md).
+To try ESA, its edge answers and Namecheap's SSL Manager with real
+accounts, step by step: [docs/trying.md](docs/trying.md).
 
 ## Quick start
 
