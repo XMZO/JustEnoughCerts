@@ -4166,6 +4166,65 @@
           "system"
         ]
       }
+    },
+    "/system/restore": {
+      "post": {
+        "description": "The backup has to be sound, sealed with the master key JEC has now, and of a JEC no later than this one. It waits in the data directory as restore.db until JEC starts again, which then keeps its database as it was beside it. Whatever started JEC, such as Docker, has to start it again.",
+        "operationId": "restore",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "encoding": {
+                "file": {
+                  "contentType": "application/octet-stream"
+                },
+                "password": {
+                  "contentType": "text/plain"
+                }
+              },
+              "schema": {
+                "properties": {
+                  "file": {
+                    "contentEncoding": "binary",
+                    "contentMediaType": "application/octet-stream",
+                    "description": "A backup JEC made",
+                    "format": "binary",
+                    "type": "string"
+                  },
+                  "password": {
+                    "description": "The password of the signed-in account",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file",
+                  "password"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Restore a backup, once the password is confirmed: JEC stops, to start again with it",
+        "tags": [
+          "system"
+        ]
+      }
     }
   },
   "security": [

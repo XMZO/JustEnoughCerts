@@ -28,3 +28,40 @@ export function useBackup() {
     },
   })
 }
+
+/** Sends a backup to restore, once the password is confirmed: JEC then stops, to start again with it. */
+export function useRestore() {
+  return useMutation({
+    mutationFn: (input: { file: File; password: string }) => {
+      const form = new FormData()
+      form.append('file', input.file)
+      form.append('password', input.password)
+      return unwrap(api.POST('/system/restore', { body: form as never, bodySerializer: (body) => body as unknown as FormData }))
+    },
+  })
+}
+
+/**
+ * Waits for JEC to answer again once it stopped to restore a backup: until
+ * its health check fails and then passes, or passes after ten seconds, as
+ * a quick restart may never be seen down. False if it is not back in two
+ * minutes.
+ */
+export async function waitForRestart(): Promise<boolean> {
+  const health = new URL('healthz', document.baseURI).href
+  const up = async () => {
+    try {
+      return (await fetch(health, { cache: 'no-store' })).ok
+    } catch {
+      return false
+    }
+  }
+  const started = Date.now()
+  let down = false
+  while (Date.now() - started < 120_000) {
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    if (!(await up())) down = true
+    else if (down || Date.now() - started > 10_000) return true
+  }
+  return false
+}

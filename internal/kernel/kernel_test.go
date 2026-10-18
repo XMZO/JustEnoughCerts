@@ -7,8 +7,10 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -469,5 +471,106 @@ func TestAudit(t *testing.T) {
 	c.call(http.MethodPost, "/jec/api/v1/session", `{"username": "admin", "password": "wrong horse"}`)
 	if got := took(); len(got) != 0 {
 		t.Errorf("recorded while off: %+v", got)
+	}
+}
+
+// upload posts a multipart form with a file and a password.
+func (c *client) upload(path string, file []byte, password string) (int, string) {
+	c.t.Helper()
+	var body bytes.Buffer
+	w := multipart.NewWriter(&body)
+	part, err := w.CreateFormFile("file", "jec-backup.db")
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	_, _ = part.Write(file)
+	_ = w.WriteField("password", password)
+	_ = w.Close()
+	req, err := http.NewRequestWithContext(c.t.Context(), http.MethodPost, c.srv.URL+path, &body)
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: c.cookie})
+	resp, err := c.srv.Client().Do(req)
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	data, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, string(data)
+}
+
+func TestRestore(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.DataDir = t.TempDir()
+	var logs syncBuffer
+	log := slog.New(slog.NewTextHandler(&logs, nil))
+	app, err := New(t.Context(), cfg, log, []module.Module{notes{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := setupToken.FindStringSubmatch(logs.String())
+	c := &client{t: t, srv: httptest.NewServer(app.Handler())}
+	if status, body := c.call(http.MethodPost, "/api/v1/setup", `{"token": "`+m[1]+`", "username": "admin", "password": "correct horse"}`); status != http.StatusCreated {
+		t.Fatalf("setup = %d %s", status, body)
+	}
+	status, backup := c.call(http.MethodPost, "/api/v1/system/backup", `{"password": "correct horse"}`)
+	if status != http.StatusOK || !strings.HasPrefix(backup, "SQLite format 3") {
+		t.Fatalf("backup = %d", status)
+	}
+	// After the backup, a token comes, which the restore takes away.
+	if status, body := c.call(http.MethodPost, "/api/v1/account/tokens", `{"name": "later", "scope": "read", "password": "correct horse"}`); status != http.StatusCreated {
+		t.Fatalf("token = %d %s", status, body)
+	}
+
+	for _, bad := range []struct {
+		file, password string
+		want           int
+	}{
+		{backup, "wrong horse", http.StatusUnprocessableEntity},
+		{"not a backup at all, just some text that is long enough to read", "correct horse", http.StatusUnprocessableEntity},
+		{backup[:len(backup)/2], "correct horse", http.StatusUnprocessableEntity},
+	} {
+		if status, body := c.upload("/api/v1/system/restore", []byte(bad.file), bad.password); status != bad.want {
+			t.Errorf("restore of %d bytes with %q = %d %s", len(bad.file), bad.password, status, body)
+		}
+	}
+	select {
+	case <-app.Restarting():
+		t.Fatal("a refused backup stops JEC")
+	default:
+	}
+
+	if status, body := c.upload("/api/v1/system/restore", []byte(backup), "correct horse"); status != http.StatusAccepted {
+		t.Fatalf("restore = %d %s", status, body)
+	}
+	select {
+	case <-app.Restarting():
+	case <-time.After(5 * time.Second):
+		t.Fatal("JEC does not stop to restore")
+	}
+	c.srv.Close()
+	if err := app.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Started again, JEC has the backup's data, and keeps what it had.
+	app, err = New(t.Context(), cfg, log, []module.Module{notes{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Close()
+	c = &client{t: t, srv: httptest.NewServer(app.Handler())}
+	defer c.srv.Close()
+	if status, body := c.call(http.MethodPost, "/api/v1/session", `{"username": "admin", "password": "correct horse"}`); status != http.StatusOK {
+		t.Fatalf("sign-in after the restore = %d %s", status, body)
+	}
+	if status, body := c.call(http.MethodGet, "/api/v1/account/tokens", ""); status != http.StatusOK || strings.Contains(body, "later") {
+		t.Errorf("tokens after the restore = %d %s", status, body)
+	}
+	kept, _ := filepath.Glob(filepath.Join(cfg.DataDir, "jec.db.before-restore-*"))
+	if len(kept) == 0 || !strings.Contains(logs.String(), "restored a backup") {
+		t.Errorf("kept %v; log:\n%s", kept, logs.String())
 	}
 }

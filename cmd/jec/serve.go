@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"sync/atomic"
 
 	"github.com/XMZO/JustEnoughCerts/internal/kernel"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/buildinfo"
@@ -30,7 +31,10 @@ func runServe(ctx context.Context, args []string, _, stderr io.Writer) int {
 	}
 	log := newLogger(cfg.Log, stderr)
 	slog.SetDefault(log)
-	if err := serve(ctx, cfg, log); err != nil {
+	if err := serve(ctx, cfg, log); errors.Is(err, errRestart) {
+		log.Warn("stopped to restore a backup: JEC has to start again, which Docker does by itself")
+		return exitRestart
+	} else if err != nil {
 		log.Error("server failed", "err", err)
 		return exitError
 	}
@@ -53,13 +57,31 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	}
 	log.Info("listening", "addr", ln.Addr().String(), "base_url", cfg.BaseURL)
 	app.Start()
+	// A restored backup stops the server for the process to start again.
+	ctx, stop := context.WithCancel(ctx)
+	defer stop()
+	var restart atomic.Bool
+	go func() {
+		select {
+		case <-app.Restarting():
+			restart.Store(true)
+			stop()
+		case <-ctx.Done():
+		}
+	}()
 	err = httpserver.New(cfg, log, app.Handler()).Serve(ctx, ln)
 	// The HTTP server is down, so no request publishes events any more;
 	// Close then waits for the event handlers and jobs still running.
 	err = errors.Join(err, app.Close())
 	log.Info("stopped")
+	if err == nil && restart.Load() {
+		return errRestart
+	}
 	return err
 }
+
+// errRestart is the end of a server that has to start again.
+var errRestart = errors.New("restart")
 
 // newLogger returns the process logger. Timestamps are always UTC, so logs
 // line up across hosts whatever TZ is set to.

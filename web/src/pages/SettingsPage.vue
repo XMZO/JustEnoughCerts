@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Download, KeyRound, KeySquare, ShieldCheck, ShieldOff, Trash2 } from '@lucide/vue'
+import { Check, Download, KeyRound, KeySquare, LoaderCircle, RotateCcw, ShieldCheck, ShieldOff, Trash2 } from '@lucide/vue'
 import { computed, ref, watch, watchEffect } from 'vue'
 
 import {
@@ -16,7 +16,7 @@ import {
 import { saveFile, useCertSettings, useSaveCertSettings, type CertSettingsInput, type KeyType } from '../api/certs'
 import { useApiError } from '../api/errors'
 import { useManifest } from '../api/manifest'
-import { useBackup, useSystem } from '../api/system'
+import { useBackup, useRestore, useSystem, waitForRestart } from '../api/system'
 import { keyText } from '../certs/life'
 import CopyButton from '../components/CopyButton.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -226,6 +226,40 @@ async function submitBackup() {
   }
   saveFile(file.blob, file.name)
   backingUp.value = false
+}
+
+// A backup restored: sent with the password, after which JEC stops and
+// starts again with it; the page waits for it and loads anew.
+const restoring = ref(false)
+const restore = useRestore()
+const restoreError = useApiError(computed(() => restore.error.value))
+const restoreFile = ref<File>()
+const restorePassword = ref('')
+const restoreState = ref<'form' | 'waiting' | 'slow'>('form')
+watch(restoring, (open) => {
+  if (!open || restoreState.value !== 'form') return
+  restoreFile.value = undefined
+  restorePassword.value = ''
+  restore.reset()
+})
+
+function pickBackup(e: Event) {
+  restoreFile.value = (e.target as HTMLInputElement).files?.[0]
+}
+
+async function submitRestore() {
+  if (!restoreFile.value) return
+  try {
+    await restore.mutateAsync({ file: restoreFile.value, password: restorePassword.value })
+  } catch {
+    return // shown above the fields
+  }
+  restoreState.value = 'waiting'
+  if (await waitForRestart()) {
+    location.reload()
+    return
+  }
+  restoreState.value = 'slow'
 }
 
 function pickLocale(e: Event) {
@@ -458,9 +492,14 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           <span class="block font-semibold">{{ t('kernel.settings.backup') }}</span>
           <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.backup_help') }}</span>
         </div>
-        <JecButton size="sm" class="ml-auto flex-none" @click="backingUp = true">
-          <Download class="size-4" aria-hidden="true" />{{ t('kernel.settings.backup_download') }}
-        </JecButton>
+        <div class="ml-auto flex max-w-full min-w-0 flex-wrap justify-end gap-2">
+          <JecButton size="sm" @click="backingUp = true">
+            <Download class="size-4" aria-hidden="true" />{{ t('kernel.settings.backup_download') }}
+          </JecButton>
+          <JecButton size="sm" @click="restoring = true">
+            <RotateCcw class="size-4" aria-hidden="true" />{{ t('kernel.settings.restore') }}
+          </JecButton>
+        </div>
       </div>
       <div :class="row">
         <div class="min-w-0 flex-1">
@@ -595,6 +634,55 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
         :disabled="!tokenForm.name.trim() || !tokenForm.password"
       >
         {{ t('kernel.tokens.create') }}
+      </JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-model:open="restoring" :title="t('kernel.restore.title')" small>
+    <div v-if="restoreState !== 'form'" role="status" class="flex flex-col gap-2">
+      <p class="m-0 inline-flex items-center gap-2">
+        <LoaderCircle v-if="restoreState === 'waiting'" class="size-4 flex-none animate-spin" aria-hidden="true" />{{ t('kernel.restore.waiting') }}
+      </p>
+      <p v-if="restoreState === 'slow'" class="m-0 text-warn-ink">{{ t('kernel.restore.slow') }}</p>
+    </div>
+    <form v-else id="restore-form" class="flex flex-col gap-3" novalidate @submit.prevent="submitRestore">
+      <p class="m-0">{{ t('kernel.restore.intro') }}</p>
+      <p class="m-0 text-small text-ink-muted">{{ t('kernel.restore.restart') }}</p>
+      <JecAlert v-if="restoreError.alert.value" :code="restoreError.alert.value.code" :params="restoreError.alert.value.params" />
+      <JecField id="restore-file" label="kernel.restore.file">
+        <div class="flex min-w-0 items-center gap-2">
+          <!-- A label of the panel's own in place of the browser's button, whose words are the browser's. -->
+          <label
+            for="restore-file"
+            class="inline-flex h-9 flex-none cursor-pointer items-center rounded-md border border-line-strong bg-surface-raised px-3 text-small font-semibold text-ink hover:bg-surface-sunken max-sm:h-11"
+          >
+            {{ t('kernel.restore.choose') }}
+          </label>
+          <input id="restore-file" type="file" accept=".db" class="sr-only" @change="pickBackup" />
+          <span v-if="restoreFile" class="min-w-0 truncate text-small text-ink-muted" translate="no" :title="restoreFile.name">{{ restoreFile.name }}</span>
+        </div>
+      </JecField>
+      <JecField id="restore-password" label="kernel.account.confirm_password" :error="restoreError.fields.value.password">
+        <JecInput
+          id="restore-password"
+          v-model="restorePassword"
+          type="password"
+          autocomplete="current-password"
+          required
+          :invalid="!!restoreError.fields.value.password"
+        />
+      </JecField>
+    </form>
+    <template v-if="restoreState === 'form'" #footer>
+      <JecButton @click="restoring = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton
+        type="submit"
+        form="restore-form"
+        variant="danger"
+        :busy="restore.isPending.value"
+        :disabled="!restoreFile || !restorePassword"
+      >
+        <RotateCcw class="size-4" aria-hidden="true" />{{ t('kernel.restore.submit') }}
       </JecButton>
     </template>
   </JecDialog>

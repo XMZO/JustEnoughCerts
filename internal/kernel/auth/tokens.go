@@ -35,8 +35,11 @@ const (
 	touchEvery = time.Minute
 )
 
-// sessionOnly is the metadata of the operations no token may use.
-const sessionOnly = "sessionOnly"
+// SessionOnly is the metadata of the operations no API token may use:
+// set it to true on an operation that manages the account or JEC itself.
+const SessionOnly = "sessionOnly"
+
+const sessionOnly = SessionOnly
 
 // bearer returns the API token of the request of ctx, if it has one.
 func bearer(ctx huma.Context) (string, bool) {

@@ -5,7 +5,9 @@ package system
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -14,6 +16,8 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/XMZO/JustEnoughCerts/i18n"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 )
@@ -24,6 +28,14 @@ type Options struct {
 	// TrustedProxies and HSTS are those settings, as config has them.
 	TrustedProxies string
 	HSTS           bool
+	// VerifyKey tells whether a database's check value is the master
+	// key's; Versions are the last migration of each owner in this
+	// program. A backup is restored only when both agree with it.
+	VerifyKey func(check []byte) bool
+	Versions  map[string]int64
+	// Restart stops JEC for what started it to start it again, which then
+	// takes in the restored backup; nil leaves JEC running.
+	Restart func()
 	// KeyFromEnv tells that the master key comes from JEC_SECRET_KEY, not
 	// from the key file in DataDir.
 	KeyFromEnv bool
@@ -59,7 +71,8 @@ type backupOutput struct {
 	Body               []byte
 }
 
-// Register adds GET /system and POST /system/backup to a.
+// Register adds GET /system, POST /system/backup and POST /system/restore
+// to a.
 func Register(a huma.API, o Options) {
 	tags := []string{"system"}
 	huma.Register(a, huma.Operation{
@@ -73,6 +86,7 @@ func Register(a huma.API, o Options) {
 		return &struct{ Body RuntimeBody }{Body: info}, nil
 	})
 
+	registerRestore(a, o, tags)
 	huma.Register(a, huma.Operation{
 		OperationID: "backup", Method: http.MethodPost, Path: "/system/backup", Tags: tags,
 		Summary: "Download a copy of the database, once the password is confirmed",
@@ -99,6 +113,78 @@ func Register(a huma.API, o Options) {
 			Body:               data,
 		}, nil
 	})
+}
+
+// maxRestore bounds the backup a restore takes.
+const maxRestore = 1 << 30
+
+type restoreForm struct {
+	File     huma.FormFile `form:"file" required:"true" doc:"A backup JEC made"`
+	Password string        `form:"password" doc:"The password of the signed-in account"`
+}
+
+type restoreInput struct {
+	RawBody huma.MultipartFormFiles[restoreForm]
+}
+
+// registerRestore adds POST /system/restore to a.
+func registerRestore(a huma.API, o Options, tags []string) {
+	huma.Register(a, huma.Operation{
+		OperationID: "restore", Method: http.MethodPost, Path: "/system/restore", Tags: tags,
+		Metadata: map[string]any{auth.SessionOnly: true}, DefaultStatus: http.StatusAccepted,
+		MaxBodyBytes: maxRestore, BodyReadTimeout: 10 * time.Minute,
+		Summary: "Restore a backup, once the password is confirmed: JEC stops, to start again with it",
+		Description: "The backup has to be sound, sealed with the master key JEC has now, and of a JEC no later than this one. " +
+			"It waits in the data directory as " + store.RestoreFile + " until JEC starts again, which then keeps its database " +
+			"as it was beside it. Whatever started JEC, such as Docker, has to start it again.",
+	}, func(ctx context.Context, in *restoreInput) (*struct{}, error) {
+		form := in.RawBody.Data()
+		if err := o.Confirm(ctx, form.Password); err != nil {
+			return nil, err
+		}
+		if err := o.stage(ctx, form.File); err != nil {
+			return nil, err
+		}
+		u, _ := auth.UserFrom(ctx)
+		o.Log.Warn("a backup waits to be restored: JEC stops, to start again with it", "username", u.Username)
+		if o.Restart != nil {
+			// Once this answer is out.
+			time.AfterFunc(time.Second, o.Restart)
+		}
+		return nil, nil
+	})
+}
+
+// stage checks the backup and leaves it in the data directory for the
+// next start.
+func (o Options) stage(ctx context.Context, file huma.FormFile) error {
+	upload := filepath.Join(o.DataDir, store.RestoreFile+".upload")
+	defer func() { _ = os.Remove(upload) }()
+	out, err := os.OpenFile(upload, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		return fmt.Errorf("restore: %w", err)
+	}
+	_, err = io.Copy(out, file)
+	if err = errors.Join(err, out.Close()); err != nil {
+		return fmt.Errorf("restore: %w", err)
+	}
+	err = store.CheckBackup(ctx, upload, o.VerifyKey, o.Versions)
+	var key i18n.Key
+	switch {
+	case errors.Is(err, store.ErrNotBackup):
+		key = i18n.KernelErrorRestoreNotBackup
+	case errors.Is(err, store.ErrOtherKey):
+		key = i18n.KernelErrorRestoreOtherKey
+	case errors.Is(err, store.ErrNewer):
+		key = i18n.KernelErrorRestoreNewer
+	case err != nil:
+		o.Log.Warn("refused a backup to restore", "err", err)
+		key = i18n.KernelErrorRestoreDamaged
+	}
+	if key != "" {
+		return api.NewError(http.StatusUnprocessableEntity, key, nil)
+	}
+	return os.Rename(upload, filepath.Join(o.DataDir, store.RestoreFile))
 }
 
 // backup copies the database as it is now: VACUUM INTO writes a

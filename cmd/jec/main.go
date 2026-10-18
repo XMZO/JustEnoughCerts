@@ -22,6 +22,9 @@ const (
 	exitOK    = 0
 	exitError = 1
 	exitUsage = 2
+	// exitRestart ends a process that has to start again, as to restore a
+	// backup: whatever started it, such as Docker, starts it again.
+	exitRestart = 3
 )
 
 // command is a jec subcommand.

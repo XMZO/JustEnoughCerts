@@ -51,7 +51,15 @@ type App struct {
 
 	stop    context.CancelFunc
 	running sync.WaitGroup
+
+	// restart closes when a backup waits to be restored, for the process
+	// to stop and start again.
+	restart chan struct{}
 }
+
+// Restarting closes when JEC has to stop to start again, as after a backup
+// was staged to be restored.
+func (a *App) Restarting() <-chan struct{} { return a.restart }
 
 // New opens and migrates the store, loads which modules are on and lets
 // every module register its parts.
@@ -59,6 +67,14 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	set, err := module.NewSet(mods...)
 	if err != nil {
 		return nil, err
+	}
+	// A backup restored through the API waits for this start.
+	kept, err := store.ApplyRestore(cfg.DataDir, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	if kept != "" {
+		log.Warn("restored a backup; the database before it is kept", "file", kept)
 	}
 	st, err := store.Open(ctx, cfg.DataDir)
 	if err != nil {
@@ -124,9 +140,16 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	}
 	accounts.Register(a.Kernel())
 	providersapi.Register(a.Kernel(), registry)
+	restart := make(chan struct{})
+	var restartOnce sync.Once
+	versions := map[string]int64{owner: store.LatestVersion(migrations.FS)}
+	for _, m := range set.Modules() {
+		versions[m.Manifest().ID] = store.LatestVersion(m.Migrations())
+	}
 	system.Register(a.Kernel(), system.Options{
 		DataDir: cfg.DataDir, Listen: cfg.Listen, BaseURL: cfg.BaseURL, KeyFromEnv: cfg.SecretKey != "",
 		TrustedProxies: cfg.TrustedProxies, HSTS: cfg.HSTS == "true",
+		VerifyKey: box.Verify, Versions: versions, Restart: func() { restartOnce.Do(func() { close(restart) }) },
 		DB: st.DB(), Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log,
 	})
 	var wellKnown []wellKnownHandler
@@ -175,7 +198,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 			router.Handle(cfg.BasePath(), ui)
 		}
 	}
-	return &App{store: st, modules: set, api: a, handler: router, bus: bus, jobs: sched}, nil
+	return &App{store: st, modules: set, api: a, handler: router, bus: bus, jobs: sched, restart: restart}, nil
 }
 
 // recorder is a module's recorder of operations (module.Registry.Audit).

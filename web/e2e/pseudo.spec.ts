@@ -519,6 +519,15 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'two-factor authentication on').toEqual([])
   await page.locator('#session-days').selectOption('30')
 
+  // Restoring a backup: the dialog, with a file chosen, then let be.
+  await page.getByRole('button', { name: label('kernel.settings.restore') }).click()
+  await expect(dialog).toBeVisible()
+  await dialog.locator('#restore-file').setInputFiles({ name: 'jec-backup-20261018-120000.db', mimeType: 'application/octet-stream', buffer: Buffer.from('SQLite format 3') })
+  await dialog.locator('#restore-password').fill('correct horse')
+  expect.soft(await problems(page), 'restore a backup').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
+  await expect(dialog).toBeHidden()
+
   // API tokens: one made, shown once, then deleted at a second click.
   await page.getByRole('button', { name: label('kernel.settings.tokens_manage') }).click()
   await expect(dialog).toBeVisible()

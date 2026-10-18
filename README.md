@@ -86,8 +86,10 @@ token, so only someone who can read the log can claim the server.
 
 The container runs as user 65532:65532 and keeps everything, the database
 included, in `./data`: back up that directory, or download a backup of the
-database on the Settings page. To restore one, stop JEC and put it in
-`./data` as `jec.db`. To run as the owner of an existing directory
+database on the Settings page, where Restore takes one back: JEC then
+stops and Docker starts it again with it, the database before it kept in
+`./data`. By hand, stop JEC and put the backup in `./data` as `jec.db`.
+To run as the owner of an existing directory
 instead, set `user:` in `docker-compose.yml`.
 
 Private keys and credentials are encrypted in the database with the key in

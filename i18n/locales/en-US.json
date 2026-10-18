@@ -1020,6 +1020,10 @@
       "provider_test": "The test failed for a reason JEC cannot tell; the server's log has more.",
       "provider_type_unknown": "This service is not available. The module it belongs to may be switched off.",
       "provider_untestable": "There is no test for this kind of provider.",
+      "restore_damaged": "The backup is damaged, or was cut short on the way.",
+      "restore_newer": "The backup comes from a later JEC: update JEC first.",
+      "restore_not_backup": "This file is no backup of JEC.",
+      "restore_other_key": "The backup was sealed with another master key. Put back the key of then, JEC_SECRET_KEY or the secret.key file, before restoring it.",
       "setup_done": "JEC is already set up. Sign in instead.",
       "setup_token_invalid": "The setup token is wrong. Copy it again from the server log.",
       "token_invalid": "The API token is not valid: it was deleted, or never was.",
@@ -1138,6 +1142,16 @@
       "type_gone": "Type not available; its module may be off",
       "uses": "{count, plural, =0 {Used by no certificate} one {Used by # certificate} other {Used by # certificates}}"
     },
+    "restore": {
+      "choose": "Choose a file",
+      "file": "Backup file",
+      "intro": "Everything goes back to how the backup has it: certificates, settings, accounts and logs. The data of now stays in the data directory, under another name. The backup needs the master key JEC has now.",
+      "restart": "JEC then stops and starts again. Docker does that for it; when you run JEC some other way, start it again yourself.",
+      "slow": "JEC has not come back yet. If nothing starts it for you, start it again yourself.",
+      "submit": "Restore and restart",
+      "title": "Restore a backup",
+      "waiting": "JEC is starting again with the backup…"
+    },
     "settings": {
       "about": "About",
       "access": "Access",
@@ -1170,6 +1184,7 @@
       "not_set": "Not set",
       "password_changed_at": "Last changed on {date}",
       "password_done": "Password changed. You are signed out everywhere else.",
+      "restore": "Restore",
       "saved": "Saved",
       "secret_key": "Master key",
       "secret_key_env": "The JEC_SECRET_KEY variable",
