@@ -32,14 +32,15 @@ type discovery struct {
 // only, never none, nor HS256, whose key is the client secret.
 var algorithms = []jose.SignatureAlgorithm{jose.RS256, jose.RS384, jose.RS512, jose.PS256, jose.PS384, jose.PS512, jose.ES256, jose.ES384, jose.ES512, jose.EdDSA}
 
-// getJSON fetches url and decodes the JSON it answers into out.
+// getJSON fetches url and decodes the JSON it answers into out. The
+// addresses are the provider's, which people set themselves.
 func getJSON(ctx context.Context, client *http.Client, u string, out any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil) //nolint:gosec // G704: the provider people set
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Accept", "application/json")
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec // G704: the provider people set
 	if err != nil {
 		return err
 	}

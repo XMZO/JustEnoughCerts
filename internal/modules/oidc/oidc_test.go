@@ -125,6 +125,8 @@ type fixture struct {
 	sessions int
 	noAcct   bool
 	now      time.Time
+	// authorize is where sign-ins go at the provider.
+	authorize string
 }
 
 const redirect = "https://jec.example.com/sub/api/v1/oidc/callback"
@@ -146,6 +148,7 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	f := &fixture{t: t, m: m, idp: newIDP(t), now: time.Now()}
+	f.authorize = f.idp.srv.URL + "/authorize?"
 	m.db, m.secrets, m.log, m.client = st.DB(), box.Scope("oidc"), slog.New(slog.DiscardHandler), f.idp.srv.Client()
 	m.now = func() time.Time { return f.now }
 	m.startSession = func(context.Context) (http.Cookie, error) {
@@ -182,7 +185,7 @@ func (f *fixture) login() (state string, cookie *http.Cookie, q url.Values) {
 		f.t.Fatalf("login: %d %s", resp.Code, resp.Body)
 	}
 	u, err := url.Parse(resp.Header().Get("Location"))
-	if err != nil || !strings.HasPrefix(u.String(), f.idp.srv.URL+"/authorize?") {
+	if err != nil || !strings.HasPrefix(u.String(), f.authorize) {
 		f.t.Fatalf("login goes to %s", u)
 	}
 	for _, c := range (&http.Response{Header: resp.Header()}).Cookies() {

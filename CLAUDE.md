@@ -86,7 +86,7 @@
 - M3 的验收测试：`cmd/jec/modules_test.go` 的 `TestEverySwitchOff` 带着全部真实模块启动，在运行中逐个停用、再打开每个可停用的模块，检查其余功能照常；新模块自动覆盖。
 - M3 还完成了：腾讯云免费证书 `tencentcloud.free`（`DNS_AUTO`，腾讯云生成私钥，自带私钥的来源；`CollectRequest.State` 让这类来源也能在等待之间保留状态）。只用替身测过。
 - M4 开始：PWA（`web/public/manifest.webmanifest`，图标由 `go run ./tools/icons` 从 favicon 画出，`make gen` 也会跑，测试核对图标是最新的）。
-- M4 还完成了：OIDC 单点登录（模块 `oidc`，授权码 + PKCE，go-jose 校验 ID token，名单里的人以唯一的账号登录）；内核给模块开了 `module.Registry.StartSession`（为账号建会话），GET 操作在 `Metadata` 里标 `api.Audited` 也会进审计日志。
+- M4 还完成了：OIDC 单点登录（模块 `oidc`，授权码 + PKCE，go-jose 校验 ID token，名单里的人以唯一的账号登录；对着真实的 Dex v2.44.0 验证过，`live_test.go` 靠 `JEC_TEST_OIDC` 等环境变量运行）；内核给模块开了 `module.Registry.StartSession`（为账号建会话），GET 操作在 `Metadata` 里标 `api.Audited` 也会进审计日志。
 - 测试里不要访问界面（`/`）：本机的 `web/dist` 是构建过的，CI 里只有 `.gitkeep`，本机过了 CI 也会失败。
 - 下一步：用真实账号验证阿里云 ESA 部署、ESA 边缘应答和 Namecheap 模块（M1/M2 验收，`PLAN.md` 5.4、5.6 列了要确认的点，包括 Namecheap 给不给 DNS 验证）；M4（`PLAN.md` 11）。
 
