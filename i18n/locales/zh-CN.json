@@ -185,6 +185,44 @@
       "status": "HTTP {status}"
     }
   },
+  "aws": {
+    "acm": {
+      "description": "把每个新版本重新导入到 ACM 里同一张证书上（JEC 自己导入的，或者按 ARN 指定的），使用它的 CloudFront 等服务随之换上新版本。在这些服务里选一次这张证书就行。",
+      "name": "AWS Certificate Manager（ACM）"
+    },
+    "error": {
+      "api": "ACM 拒绝了：{message}（{kind}）",
+      "denied": "AWS 拒绝了：{message}。请检查 IAM 用户的权限。",
+      "keys": "AWS 拒绝了访问密钥：{message}",
+      "network": "连不上 {region} 的 ACM。",
+      "no_certificate": "{region} 的 ACM 里没有证书 {arn}。",
+      "not_imported": "{domain} 这张证书是 ACM 自己签发、自己续期的：请填一张导入证书的 ARN，或者留空。",
+      "region": "不是 AWS 区域：{region}",
+      "status": "ACM 的回应看不懂（HTTP {status}）。"
+    },
+    "field": {
+      "access_key_id": "访问密钥 ID",
+      "certificate_arn": "证书 ARN",
+      "certificate_arn_help": "留空时，JEC 在第一次部署时导入一张自己的证书，之后一直在它上面重新导入。也可以填一张已导入证书的 ARN，改为更新它。",
+      "region": "区域",
+      "region_help": "比如 ap-northeast-1。CloudFront 只用 us-east-1 里的证书。",
+      "secret_access_key": "秘密访问密钥",
+      "secret_access_key_help": "IAM 用户的密钥，要有 acm:ImportCertificate、acm:DescribeCertificate、acm:ListCertificates 和 acm:AddTagsToCertificate 权限。"
+    },
+    "log": {
+      "gone": "JEC 以前导入的证书 {arn} 不在了：导入一张新的，需要在各服务里重新选择",
+      "import": "把证书导入 {region} 的 ACM，名为 {name}",
+      "reimport": "把新版本重新导入到 {arn}"
+    },
+    "module": {
+      "description": "把证书部署到 AWS Certificate Manager（ACM），供 CloudFront、负载均衡等使用 ACM 证书的服务使用。",
+      "name": "亚马逊云科技（AWS）"
+    },
+    "test": {
+      "found": "找到了 {domain} 的证书，{count, plural, =0 {还没有资源在用} other {有 # 个资源在用}}。",
+      "keys": "密钥在 {region} 可用。JEC 会在第一次部署时导入一张自己的证书。"
+    }
+  },
   "baota": {
     "error": {
       "api": "面板拒绝了：{message}",

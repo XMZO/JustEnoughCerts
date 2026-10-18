@@ -185,6 +185,44 @@
       "status": "HTTP {status}"
     }
   },
+  "aws": {
+    "acm": {
+      "description": "Imports each new version over the same certificate of ACM, one JEC imports or one you choose by its ARN, so that CloudFront and the others using it serve the new one. Pick that certificate in them once.",
+      "name": "AWS Certificate Manager"
+    },
+    "error": {
+      "api": "ACM refused: {message} ({kind})",
+      "denied": "AWS refused: {message}. Check the permissions of the IAM user.",
+      "keys": "AWS refused the access keys: {message}",
+      "network": "Could not reach ACM in {region}.",
+      "no_certificate": "ACM in {region} has no certificate {arn}.",
+      "not_imported": "The certificate for {domain} is one ACM issues and renews itself: enter the ARN of an imported certificate, or leave it empty.",
+      "region": "Not an AWS region: {region}",
+      "status": "The answer of ACM made no sense (HTTP {status})."
+    },
+    "field": {
+      "access_key_id": "Access key ID",
+      "certificate_arn": "Certificate ARN",
+      "certificate_arn_help": "Leave it empty for JEC to import a certificate of its own at the first deployment and keep importing over it. Or enter the ARN of an imported certificate to update.",
+      "region": "Region",
+      "region_help": "Such as eu-central-1. CloudFront takes its certificates from us-east-1 alone.",
+      "secret_access_key": "Secret access key",
+      "secret_access_key_help": "Of an IAM user allowed acm:ImportCertificate, acm:DescribeCertificate, acm:ListCertificates and acm:AddTagsToCertificate."
+    },
+    "log": {
+      "gone": "The certificate {arn} that JEC imported before is gone: importing a new one, to pick in the services again",
+      "import": "Importing the certificate to ACM in {region}, as {name}",
+      "reimport": "Importing the new version over {arn}"
+    },
+    "module": {
+      "description": "Deploys certificates to AWS Certificate Manager, for CloudFront, load balancers and the other services that take its certificates.",
+      "name": "Amazon Web Services"
+    },
+    "test": {
+      "found": "Found the certificate for {domain}, used by {count, plural, =0 {nothing yet} one {# resource} other {# resources}}.",
+      "keys": "The keys work in {region}. JEC imports a certificate of its own at the first deployment."
+    }
+  },
   "baota": {
     "error": {
       "api": "The panel refused: {message}",
