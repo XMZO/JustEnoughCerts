@@ -1,7 +1,7 @@
 # Providers and how far they are tested
 
 Every source, validation, target and notifier of JEC, and what it was
-tested against. The tests that need a server run in CI where the server
+tested against; at the end, what the vendors ask for. The tests that need a server run in CI where the server
 does; the others, live tests, run against throwaway containers when
 their environment variables are set (see each module's `live_test.go`).
 
@@ -89,3 +89,38 @@ Reports of what works with a real account, or does not, are welcome.
 | `pushover.user` | Pushover | Fake |
 | `hooks.script` | A script of yours, run by the built-in shell | Real scripts |
 | `plugins.*` | Plugins | Real programs |
+
+## What the vendors ask for
+
+Some sources and targets work only on the vendor's terms. Where a CA
+speaks ACME, with External Account Binding when it asks for an account,
+prefer that, or upload its certificates by hand: the vendors' own
+interfaces are optional modules.
+
+- **Namecheap SSL Manager** (`namecheap.ssl_manager`, experimental): for
+  certificates bought from Namecheap directly. Each is activated, or
+  reissued, in Namecheap's panel with Server-side automation, which gives
+  a one-time token valid for 24 hours. Single-domain certificates only,
+  validated by a file on the website.
+- **Namecheap's own API** (not in JEC yet): open to accounts with 20
+  domains, a balance of $50, or $50 spent in the last two years, and only
+  from IPv4 addresses on the account's allowlist.
+- **Alibaba Cloud's personal test certificates** (`aliyun.apply`): DigiCert
+  DV for three months, 20 a year, on the China site only; claim them in
+  the console of the Certificate Management Service first. Other DV
+  resource plans work the same way.
+- **Tencent Cloud's free certificates** (`tencentcloud.free`): TrustAsia DV
+  for three months, one domain each and no wildcards, for domains in the
+  DNSPod of the same account, which validates them by itself; an account
+  gets a limited number of them.
+- **Alibaba Cloud ESA** (`esa.site`): the free plan holds two custom
+  certificates a site, so JEC removes the one it replaces after deploying.
+  Answers at the edge (`esa.edge`) need a plan with Functions and Pages,
+  and Edge KV.
+- **Cloudflare custom certificates** (`cloudflare.custom`): Business and
+  Enterprise plans only.
+- **UPYUN** (`upyun.cdn`, experimental): signs in to the console with the
+  account's password, which an account with two-step verification cannot
+  do.
+- **Synology DSM** (`synology.dsm`): an administrator's account; with
+  two-step verification, its secret, from which JEC makes the codes.

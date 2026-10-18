@@ -30,7 +30,7 @@ main 分支上已经可用：
 
 计划中：国内云平台的免费证书作为来源，以及更多 CDN 和面板。
 
-每个服务商测到了哪一步（真实账号、真实软件、模拟器还是替身）：[docs/providers.zh-CN.md](docs/providers.zh-CN.md)。
+每个服务商测到了哪一步（真实账号、真实软件、模拟器还是替身），以及各家的使用条件（比如证书要什么套餐）：[docs/providers.zh-CN.md](docs/providers.zh-CN.md)。
 
 ## 快速上手
 

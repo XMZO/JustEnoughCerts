@@ -92,7 +92,8 @@ Working on the main branch:
 Planned: the free certificates of Chinese cloud platforms as sources, and more CDNs and panels.
 
 How far each provider is tested, against a real account, the real
-software, an emulator or a fake: [docs/providers.md](docs/providers.md).
+software, an emulator or a fake, and what the vendors ask for, such as
+the plans their certificates need: [docs/providers.md](docs/providers.md).
 
 ## Quick start
 
