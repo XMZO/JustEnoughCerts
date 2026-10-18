@@ -50,8 +50,9 @@ Working on the main branch:
   Information, as before a revocation; failures are retried with a
   growing delay.
 - Notifications through Telegram, email (SMTP), webhooks, the group
-  robots of DingTalk, Feishu (Lark) and WeCom, ServerChan, Bark, ntfy and
-  Gotify, each in the language you choose for it.
+  robots of DingTalk, Feishu (Lark) and WeCom, ServerChan, Bark, ntfy,
+  Gotify, Discord, Slack (and Mattermost or Rocket.Chat) and Pushover,
+  each in the language you choose for it.
 - A history of every issuance, renewal and deployment, with its full log.
 - Online checks: JEC connects to each domain as a browser does and tells
   you when one still serves the old certificate after a renewal, as when a

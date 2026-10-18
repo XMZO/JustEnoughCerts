@@ -747,6 +747,26 @@
       "name": "钉钉群机器人"
     }
   },
+  "discord": {
+    "error": {
+      "api": "Discord 拒绝了消息：{message}（HTTP {status}）",
+      "network": "连不上 Discord。",
+      "url": "不是 Discord Webhook 地址：它以 https://discord.com/api/webhooks/ 开头。",
+      "webhook": "Discord 拒绝了这个 Webhook，它可能已被删除：{message}"
+    },
+    "field": {
+      "url": "Webhook 地址",
+      "url_help": "频道设置 → 整合 → Webhook → 新 Webhook → 复制 Webhook 网址。"
+    },
+    "module": {
+      "description": "通过 Webhook 通知 Discord 频道。",
+      "name": "Discord"
+    },
+    "webhook": {
+      "description": "把每条通知发到 Webhook 所在的频道，按事件着色，并附上 JEC 里对应页面的链接。",
+      "name": "Discord Webhook"
+    }
+  },
   "docker": {
     "action": {
       "none": "什么都不做",
@@ -1719,6 +1739,30 @@
       "ok": "JEC 用这个令牌能访问节点 {node}。"
     }
   },
+  "pushover": {
+    "error": {
+      "api": "Pushover 拒绝了消息：{message}（HTTP {status}）",
+      "keys": "Pushover 拒绝了令牌或用户密钥：{message}",
+      "network": "连不上 Pushover。",
+      "status": "Pushover 的回应看不懂（HTTP {status}）。"
+    },
+    "field": {
+      "device": "设备",
+      "device_help": "只推送到这台设备时填它的名字；留空推送到全部设备。",
+      "token": "应用令牌",
+      "token_help": "在 pushover.net 上为 JEC 创建一个应用后得到。",
+      "user": "用户或群组密钥",
+      "user_help": "在 Pushover 控制台的最上方。"
+    },
+    "module": {
+      "description": "通过 Pushover 推送通知到手机和电脑。",
+      "name": "Pushover"
+    },
+    "user": {
+      "description": "把每条通知推送到用户或群组的设备上，需要处理的用高优先级；点开就是 JEC 里对应的页面。",
+      "name": "Pushover"
+    }
+  },
   "qiniu": {
     "cdn": {
       "description": "把每个新版本上传到七牛云的 SSL 证书，并设置到加速域名上；没开 HTTPS 的域名会顺便开启。",
@@ -1777,6 +1821,29 @@
     "sendkey": {
       "description": "用 Server酱（Turbo 版或 Server酱³）的 SendKey 推送通知。",
       "name": "Server酱"
+    }
+  },
+  "slack": {
+    "error": {
+      "api": "消息被拒绝了：{reason}（HTTP {status}）",
+      "network": "连不上 {host}。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "url": "Webhook 地址不对：要以 https:// 开头。",
+      "webhook": "Webhook 被拒绝了，比如它已被删除，或者频道已归档：{reason}"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "Mattermost 或 Rocket.Chat 在本机或内网时打开。",
+      "url": "Webhook 地址",
+      "url_help": "在 Slack 里开启了 Incoming Webhooks 的应用里取得，比如 https://hooks.slack.com/services/…；Mattermost 在 集成 → Incoming Webhooks 里。"
+    },
+    "module": {
+      "description": "通过 incoming webhook 通知 Slack、Mattermost 或 Rocket.Chat 的频道。",
+      "name": "Slack"
+    },
+    "webhook": {
+      "description": "把每条通知发到 incoming webhook 所在的频道，附上 JEC 里对应页面的链接。Mattermost 和 Rocket.Chat 的 incoming webhook 也一样能用。",
+      "name": "Slack Webhook"
     }
   },
   "ssh": {

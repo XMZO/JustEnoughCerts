@@ -395,6 +395,7 @@ DNS 验证分成两种能力，实现方式不同：
 |---|---|
 | M1 | Telegram、SMTP 邮件、通用 Webhook |
 | M3 | 钉钉、飞书、企业微信、Server酱、Bark、ntfy、Gotify（已完成） |
+| M3 之外 | Discord、Slack（Mattermost、Rocket.Chat 的 incoming webhook 也能用）、Pushover（已完成） |
 
 **实现**（M1）：
 
@@ -409,6 +410,10 @@ DNS 验证分成两种能力，实现方式不同：
   - **Server酱**（`serverchan.sendkey`）：SendKey（保密），按开头区分 Turbo 版（`https://sctapi.ftqq.com/<SendKey>.send`）和 Server酱³（`sctp<uid>t…`，发到 `https://<uid>.push.ft07.com/send/<SendKey>.send`）。标题最多 32 个字，超出时截断，完整标题放进正文；卡片摘要（`short`）是正文第一行；正文是 Markdown，每行一段，链接以外的格式字符都转义。Turbo 加 `noip=1`，不显示调用方 IP；Server酱³ 加标签 `JEC`。SendKey 不对不重试；429（这个 IP 一天内调用太多）按退避重试。
   - **ntfy**（`ntfy.topic`）：服务器（默认 `https://ntfy.sh`）、主题（保密：在 ntfy.sh 上知道主题名就能订阅）、访问令牌（可选，`Authorization: Bearer`）。JSON 发到服务器根路径；签发失败、部署失败、快到期、线上还是旧证书用高优先级（4）和 `warning` 标签，签发、部署成功用 `white_check_mark` 标签；有链接时点通知打开对应页面；正文超过 4000 字节时截断（超过 4096 字节 ntfy 会把消息变成附件）。401、403 不重试，429 按 `Retry-After` 或退避重试。
   - **Gotify**（`gotify.app`）：服务器、应用令牌（保密，放在 `X-Gotify-Key` 头里）。POST `/message`，纯文本；需要处理的事件优先级 8（安卓 App 弹横幅），其他是 5；有链接时点通知打开对应页面。令牌不对不重试。
+  - **Discord**（`discord.webhook`）：Webhook 地址（保密），只认 Discord 自己的域名和 `/api/webhooks/` 路径，令牌不会被发到别处。发一个 embed：主题作标题（256 字以内）并链接到 JEC 的页面，正文（4096 字以内），颜色取设计系统的填充色：失败红、快到期和线上还是旧证书黄、成功绿；带 `?wait=true` 让 Discord 回答失败原因，`allowed_mentions` 为空，不会 @ 任何人。Webhook 被删（401、403、404）不重试，429 按 `retry_after` 等。
+  - **Slack**（`slack.webhook`）：incoming webhook 地址（保密，必须 https），Mattermost、Rocket.Chat 接受同样的格式，所以不限域名，内网要打开“允许内网地址”。发纯文本（三家的标记语法不同）：主题、空行、正文、链接，转义 `&`、`<`、`>`，3000 字以内。Slack 用纯文本说明原因（如 `invalid_token`、`channel_is_archived`）：403、404、410 不重试，429 按 `Retry-After` 等。
+  - **Pushover**（`pushover.user`）：应用令牌和用户（或群组）密钥（都保密），可选只推送到某台设备。表单发到 `api.pushover.net`：主题作标题、正文作消息（250、1024 字以内），需要处理的事件用高优先级（1），有链接时点开就是 JEC 的页面。令牌或密钥不对（回答里 `token`/`user` 为 `invalid`）不重试，额度用完（429）稍后重试。
+  - 这三种只用替身测过。
   - 能自建的三种（Bark、ntfy、Gotify）都有“允许内网地址”开关（默认关，同 Webhook），都不跟随跳转（跳转会把 POST 变成 GET，还可能把令牌带到别处），遇到跳转时报出跳转到的地址。
 - 共用的 HTTP 客户端在 `internal/lib/httpx`：超时、单独设置的代理（不读环境变量里的代理），以及“只连公网地址”（第 10 节）。
 

@@ -68,6 +68,7 @@
 - 本机证书目录（来源类型 `files.watch`，`PLAN.md` 5.3.3）：取进 certbot、acme.sh 在本机续期的证书和私钥，只读；来源接口多了 `contracts.KeySource`（类型标 `ownKey`，不生成私钥、不选密钥类型），文件里还是旧证书时等待 6 小时再看。M1 的导入就此做完（PEM、PFX/P12 上传，读目录）。
 - ACME 续期信息（ARI，RFC 9773，`PLAN.md` 5.5）：`contracts.RenewalAdvisor`，任务 `certs.renewal_info` 存 CA 建议的窗口和窗口里随机选的时间（`certs_versions` 的 `renewal_*` 列），续期按计划和建议中较早的那个；版本记下签发它的来源（`source_provider`），续期订单只在同一来源时带 `replaces`，被拒就去掉重下。
 - 安全响应头（`PLAN.md` 10）：`internal/kernel/httpserver` 给每个回答加 CSP 等，界面的 `web.go` 不再自己设；HSTS 靠 `JEC_HSTS=true` 打开。客户端地址由 `internal/kernel/clientip` 定（`JEC_TRUSTED_PROXIES` 列出可信的反向代理，才读 `X-Forwarded-For`），登录锁定按它算。伪语言测试遇到 CSP 拦截就失败，界面不能用内联脚本、内联样式和 `eval`。
+- 通知渠道又加了 Discord（`discord.webhook`）、Slack（`slack.webhook`，Mattermost、Rocket.Chat 也能用）、Pushover（`pushover.user`），只用替身测过。
 - API 令牌（`internal/kernel/auth/tokens.go`，`PLAN.md` 10）：`Authorization: Bearer jec_…`，只读或读写；管理账号的接口在注册时带 `Metadata: {sessionOnly: true}`，令牌不能用，新加这类接口也要标上；`jec reset-password` 删掉全部令牌。
 - 审计日志（模块 `audit`，`PLAN.md` 10）：内核中间件把每个 GET、HEAD 以外的接口调用交给 `module.Registry.Audit` 的记录者（会话检查之后，所以没有会话被拒的不记）；页面 `/audit` 仿签发记录。新增改动类接口时，在 `web/src/pages/AuditPage.vue` 的 `operations` 里给它起个名字（`audit.op.*`），否则显示方法和路径。
 - 线上巡检（模块 `monitor`，`PLAN.md` 4.7）：连每个域名的 443 端口核对线上证书，部署 2 分钟后、平时每 6 小时查；当前版本生效 30 分钟后还是旧证书就发 `certificate.served_old`（通知默认打开）；证书事件带了指纹，`certificates.announce` 让证书模块把全部证书报一遍（`certificate.current`）。界面：证书详情的“线上检查”、列表的“需要处理”。

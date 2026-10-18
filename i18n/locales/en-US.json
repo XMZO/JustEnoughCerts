@@ -747,6 +747,26 @@
       "name": "DingTalk robot"
     }
   },
+  "discord": {
+    "error": {
+      "api": "Discord refused the message: {message} (HTTP {status})",
+      "network": "Could not reach Discord.",
+      "url": "Not the URL of a Discord webhook: it starts with https://discord.com/api/webhooks/.",
+      "webhook": "Discord refused the webhook, which may be deleted: {message}"
+    },
+    "field": {
+      "url": "Webhook URL",
+      "url_help": "Channel settings → Integrations → Webhooks → New Webhook → Copy Webhook URL."
+    },
+    "module": {
+      "description": "Notifies a Discord channel through a webhook.",
+      "name": "Discord"
+    },
+    "webhook": {
+      "description": "Posts each note to the channel of a webhook, colored by what happened, with a link to the page in JEC.",
+      "name": "Discord webhook"
+    }
+  },
   "docker": {
     "action": {
       "none": "Nothing",
@@ -1719,6 +1739,30 @@
       "ok": "JEC can reach the node {node} with the token."
     }
   },
+  "pushover": {
+    "error": {
+      "api": "Pushover refused the message: {message} (HTTP {status})",
+      "keys": "Pushover refused the token or the user key: {message}",
+      "network": "Could not reach Pushover.",
+      "status": "The answer of Pushover made no sense (HTTP {status})."
+    },
+    "field": {
+      "device": "Device",
+      "device_help": "The name of one device to push to; leave empty for all.",
+      "token": "Application token",
+      "token_help": "Of an application you create for JEC on pushover.net.",
+      "user": "User or group key",
+      "user_help": "Shown at the top of your Pushover dashboard."
+    },
+    "module": {
+      "description": "Pushes notes to phones and computers through Pushover.",
+      "name": "Pushover"
+    },
+    "user": {
+      "description": "Pushes each note to the devices of a user or a group, with high priority for what needs attention; tapping it opens the page in JEC.",
+      "name": "Pushover"
+    }
+  },
   "qiniu": {
     "cdn": {
       "description": "Uploads each new version to the SSL certificates of Qiniu Cloud and sets it on the accelerated domains, turning HTTPS on where it is off.",
@@ -1777,6 +1821,29 @@
     "sendkey": {
       "description": "Pushes notes through a SendKey of ServerChan Turbo or ServerChan³.",
       "name": "ServerChan"
+    }
+  },
+  "slack": {
+    "error": {
+      "api": "The message was refused: {reason} (HTTP {status})",
+      "network": "Could not reach {host}.",
+      "private": "{host} is a private address. To reach it, turn on “Allow private addresses” in the advanced settings.",
+      "url": "Not a webhook URL: it starts with https://.",
+      "webhook": "The webhook was refused, as when it was removed or its channel archived: {reason}"
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "For a Mattermost or Rocket.Chat on this machine or on your network.",
+      "url": "Webhook URL",
+      "url_help": "From an app with Incoming Webhooks in Slack, such as https://hooks.slack.com/services/…; or from Integrations → Incoming Webhooks in Mattermost."
+    },
+    "module": {
+      "description": "Notifies a channel of Slack, Mattermost or Rocket.Chat through an incoming webhook.",
+      "name": "Slack"
+    },
+    "webhook": {
+      "description": "Posts each note to the channel of an incoming webhook, with a link to the page in JEC. Mattermost and Rocket.Chat take the same webhooks.",
+      "name": "Slack webhook"
     }
   },
   "ssh": {
