@@ -4,16 +4,12 @@ import (
 	"bytes"
 	"cmp"
 	"context"
-	"crypto"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1" //nolint:gosec // G505: the API names keys by the SHA-1 of their modulus
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -129,6 +125,18 @@ func (o *order) wait() error {
 	return &contracts.Wait{State: state, After: poll}
 }
 
+// keep marks err, the failure of an attempt, with the order as far as it
+// got, so that the next attempt goes on from there, looking at the vendor
+// again.
+func (o *order) keep(err error) error {
+	o.Fingerprint = ""
+	state, merr := json.Marshal(o)
+	if merr != nil {
+		return err
+	}
+	return contracts.KeepState(err, state)
+}
+
 // note logs line once for what the look found, which seen names.
 func (o *order) note(log func(contracts.LogLine), seen string, line contracts.LogLine) {
 	if o.Seen != seen {
@@ -184,7 +192,7 @@ func (s *sslManager) Issue(ctx context.Context, req contracts.IssueRequest) ([]*
 	for range 3 { // a CSR moves the certificate on to its validation at once
 		cert, err := s.current(ctx, sess, domain, &o)
 		if err != nil {
-			return nil, err
+			return nil, o.keep(err)
 		}
 		if cert == nil {
 			o.note(log, "none", contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.NamecheapLogNone, Params: map[string]any{"domain": domain}})
@@ -193,7 +201,7 @@ func (s *sslManager) Issue(ctx context.Context, req contracts.IssueRequest) ([]*
 		switch cert.State {
 		case stateAwaitingCSR:
 			if err := s.request(ctx, sess, cert, req, domain, &o, log); err != nil {
-				return nil, err
+				return nil, o.keep(err)
 			}
 			continue
 		case stateAwaitingChallenges:
@@ -202,7 +210,7 @@ func (s *sslManager) Issue(ctx context.Context, req contracts.IssueRequest) ([]*
 				return nil, o.wait()
 			}
 			if err := s.validate(ctx, sess, cert, req, domain, &o, log); err != nil {
-				return nil, err
+				return nil, o.keep(err)
 			}
 			return nil, o.wait()
 		case stateIssued:
@@ -211,11 +219,15 @@ func (s *sslManager) Issue(ctx context.Context, req contracts.IssueRequest) ([]*
 				o.note(log, "issued:"+cert.ID, contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.NamecheapLogNext, Params: map[string]any{"domain": domain}})
 				return nil, o.wait()
 			}
-			return chain, err
+			if err != nil {
+				return nil, o.keep(err)
+			}
+			return chain, nil
+		// The certificate is spent: a later issuance looks for another.
 		case stateRevoked:
-			return nil, retry.Permanent(&contracts.Problem{Key: i18n.NamecheapErrorRevoked, Params: map[string]any{"domain": domain}})
+			return nil, contracts.Restart(retry.Permanent(&contracts.Problem{Key: i18n.NamecheapErrorRevoked, Params: map[string]any{"domain": domain}}))
 		case stateFailed:
-			return nil, retry.Permanent(&contracts.Problem{Key: i18n.NamecheapErrorOrderFailed, Params: map[string]any{"domain": domain}})
+			return nil, contracts.Restart(retry.Permanent(&contracts.Problem{Key: i18n.NamecheapErrorOrderFailed, Params: map[string]any{"domain": domain}}))
 		default:
 			o.note(log, "state:"+cert.State, contracts.LogLine{Level: contracts.Info, Step: contracts.StepValidate, Key: i18n.NamecheapLogState, Params: map[string]any{"state": cert.State}})
 			return nil, o.wait()
@@ -249,7 +261,7 @@ func (s *sslManager) current(ctx context.Context, sess *session, domain string, 
 
 // request sends the CSR of req.Key for cert.
 func (s *sslManager) request(ctx context.Context, sess *session, cert *certificate, req contracts.IssueRequest, domain string, o *order, log func(contracts.LogLine)) error {
-	csr, err := makeCSR(req.Key, domain)
+	csr, err := cryptox.CSR(req.Key, []string{domain})
 	if err != nil {
 		return retry.Permanent(err)
 	}
@@ -259,17 +271,6 @@ func (s *sslManager) request(ctx context.Context, sess *session, cert *certifica
 	}
 	*o = order{Cert: cert.ID, Fingerprint: o.Fingerprint, Looked: o.Looked}
 	return nil
-}
-
-// makeCSR makes the CSR of key for domain, in PEM form.
-func makeCSR(key crypto.Signer, domain string) ([]byte, error) {
-	der, err := x509.CreateCertificateRequest(rand.Reader, &x509.CertificateRequest{
-		Subject: pkix.Name{CommonName: domain}, DNSNames: []string{domain},
-	}, key)
-	if err != nil {
-		return nil, err
-	}
-	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: der}), nil
 }
 
 // validate answers cert's challenges with the certificate's solver: over

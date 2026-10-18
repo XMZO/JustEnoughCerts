@@ -4,12 +4,8 @@ import (
 	"bytes"
 	"cmp"
 	"context"
-	"crypto"
-	"crypto/rand"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"io"
 	"net/http"
@@ -146,6 +142,16 @@ func (o *applied) wait() error {
 	return &contracts.Wait{State: state, After: applyPoll}
 }
 
+// keep marks err, the failure of an attempt, with the order as far as it
+// got, so that the next attempt goes on with it rather than apply again.
+func (o *applied) keep(err error) error {
+	state, merr := json.Marshal(o)
+	if merr != nil {
+		return err
+	}
+	return contracts.KeepState(err, state)
+}
+
 // note logs line once for what the look found, which seen names.
 func (o *applied) note(log func(contracts.LogLine), seen string, line contracts.LogLine) {
 	if o.Seen != seen {
@@ -198,16 +204,20 @@ func (a *applier) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x50
 			// The order is gone, as one deleted in the console: apply anew.
 			return nil, contracts.Restart(&contracts.Problem{Key: i18n.AliyunErrorApplyGone, Params: map[string]any{"order": o.Order}, Err: err})
 		}
-		return nil, explainRPC(err, a.endpoint, noneAbsent)
+		return nil, o.keep(explainRPC(err, a.endpoint, noneAbsent))
 	}
 	switch st.Type {
 	case "domain_verify":
 		if err := a.validate(ctx, req, st, &o, log); err != nil {
-			return nil, err
+			return nil, o.keep(err)
 		}
 		return nil, o.wait()
 	case "certificate":
-		return a.download(ctx, req, st, &o, log)
+		chain, err := a.download(ctx, req, st, &o, log)
+		if err != nil {
+			return nil, o.keep(err)
+		}
+		return chain, nil
 	case "verify_fail":
 		a.refused(ctx, req, &o, log)
 		return nil, contracts.Restart(retry.Permanent(&contracts.Problem{Key: i18n.AliyunErrorApplyRefused, Params: map[string]any{"order": o.Order}}))
@@ -222,7 +232,7 @@ func (a *applier) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x50
 // apply sends the CSR of req.Key for the domains, with the validation the
 // solver does: of DNS records or over HTTP.
 func (a *applier) apply(ctx context.Context, req contracts.IssueRequest, o *applied, log func(contracts.LogLine)) error {
-	csr, err := makeCSR(req.Key, req.Domains)
+	csr, err := cryptox.CSR(req.Key, req.Domains)
 	if err != nil {
 		return retry.Permanent(err)
 	}
@@ -247,18 +257,6 @@ func (a *applier) apply(ctx context.Context, req contracts.IssueRequest, o *appl
 	}
 	*o = applied{Order: string(out.OrderID)}
 	return nil
-}
-
-// makeCSR makes the CSR of key for domains, the first the common name, in
-// PEM form.
-func makeCSR(key crypto.Signer, domains []string) ([]byte, error) {
-	der, err := x509.CreateCertificateRequest(rand.Reader, &x509.CertificateRequest{
-		Subject: pkix.Name{CommonName: domains[0]}, DNSNames: domains,
-	}, key)
-	if err != nil {
-		return nil, err
-	}
-	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: der}), nil
 }
 
 // validate puts the validation of the order in place, unless an earlier

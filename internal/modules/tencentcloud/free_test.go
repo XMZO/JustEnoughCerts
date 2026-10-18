@@ -108,6 +108,22 @@ func TestFreeFailures(t *testing.T) {
 	}
 }
 
+// An attempt that fails after it applied keeps the order: the next one
+// goes on with it, and does not apply again.
+func TestFreeKeepsOrder(t *testing.T) {
+	api := &fakeAPI{applied: map[string]*certStatus{}}
+	f := openFree(t, api, map[string]string{})
+	api.statusFail = errors.New("connection reset")
+	_, _, _, err := attempt(t, f, nil)
+	if err == nil || retry.IsPermanent(err) {
+		t.Fatalf("a failed look: %v", err)
+	}
+	api.statusFail = nil
+	if _, w, _, err := attempt(t, f, contracts.KeptState(err)); err != nil || w == nil || len(api.appliedAs) != 1 {
+		t.Errorf("the attempt after: %v, applied %v", err, api.appliedAs)
+	}
+}
+
 func TestSDKFree(t *testing.T) {
 	var got []map[string]any
 	var actions []string

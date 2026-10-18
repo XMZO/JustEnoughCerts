@@ -121,11 +121,15 @@ type zone struct {
 	records map[contracts.Record]string
 	removed []string
 	lag     bool
+	fail    error
 }
 
 func (z *zone) AddRecord(_ context.Context, r contracts.Record) (string, error) {
 	z.mu.Lock()
 	defer z.mu.Unlock()
+	if z.fail != nil {
+		return "", z.fail
+	}
 	ref := "rec-" + strconv.Itoa(len(z.records)+len(z.removed)+1)
 	z.records[r] = ref
 	return ref, nil
@@ -392,6 +396,24 @@ func TestApplyFailures(t *testing.T) {
 	f.orders.answer = func(rpcCall) (any, error) { return nil, apiError("InvalidAccessKeyId.NotFound", 404) }
 	if _, _, err := f.attempt(nil, false); problemKey(err) != i18n.AliyunErrorAuth || !retry.IsPermanent(err) {
 		t.Errorf("refused key: %v", err)
+	}
+}
+
+// An attempt that fails after it applied keeps the order: the next one
+// goes on with it, and does not apply again.
+func TestApplyKeepsOrder(t *testing.T) {
+	f := newApplyFixture(t, map[string]string{})
+	f.zone.fail = errors.New("quota")
+	_, _, err := f.attempt(nil, false)
+	if problemKey(err) != i18n.AliyunErrorApplyAdd || retry.IsPermanent(err) {
+		t.Fatalf("a refused record: %v", err)
+	}
+	f.zone.fail = nil
+	if _, w, err := f.attempt(contracts.KeptState(err), false); err != nil || w == nil {
+		t.Fatalf("the attempt after: %v", err)
+	}
+	if n := len(f.orders.called("CreateCertificateForPackageRequest")); n != 1 || len(f.zone.records) != 1 {
+		t.Errorf("applied %d times, records %v", n, f.zone.records)
 	}
 }
 

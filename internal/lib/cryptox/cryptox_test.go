@@ -272,6 +272,28 @@ func TestNewBundle(t *testing.T) {
 	}
 }
 
+func TestCSR(t *testing.T) {
+	key := newECKey(t)
+	data, err := CSR(key, []string{"example.com", "*.example.com"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	block, rest := pem.Decode(data)
+	if block == nil || block.Type != "CERTIFICATE REQUEST" || len(rest) != 0 {
+		t.Fatalf("PEM %q", data)
+	}
+	csr, err := x509.ParseCertificateRequest(block.Bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := csr.CheckSignature(); err != nil {
+		t.Error(err)
+	}
+	if csr.Subject.CommonName != "example.com" || strings.Join(csr.DNSNames, " ") != "example.com *.example.com" || !key.PublicKey.Equal(csr.PublicKey) {
+		t.Errorf("CSR of %s for %v", csr.Subject, csr.DNSNames)
+	}
+}
+
 func TestEncodeKeyTraditional(t *testing.T) {
 	_, edKey, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {

@@ -177,7 +177,7 @@ stateDiagram-v2
 **实现**（`internal/modules/certs` 的 `issue.go`，M1）：
 
 - **签发记录**存在 `certs_issuances`：原因（`first` 新加的证书或还没有版本、`renewal` 续期、`manual` 手动）、状态（`pending` 等待下一次尝试、`running`、`waiting` 等来源处理、`done`、`failed` 不再自动重试）、尝试次数、下次尝试时间、最近一次失败的原因（消息 key 和参数）。一张证书同时最多一条未结束的签发（唯一索引），重复点“立即签发”返回同一条；在等重试或等来源的会立即再试。
-- **等待来源**（M2，厂商来源的通用框架）：来源返回 `contracts.Wait`（它要保留的状态，和多久后再问，限 1 分钟到 24 小时）时，签发进入 `waiting`：不算失败，到时间再问来源，仍算同一次尝试，日志也接着写。私钥在签发的第一次尝试时生成，加密保存，这次签发的每次尝试都用它；来源的状态也加密保存，下次交还给来源。签发成功后两者都删掉。彻底失败时，来源的状态不为空（订单还在来源那里，之后可能签出）就都留着，下一次签发接过来继续（日志第一行说明），否则删掉私钥。自带私钥的来源（`contracts.KeySource`）也一样：它返回的 `Wait` 带的状态加密保存，下次放在 `CollectRequest.State` 里交还。来源用 `contracts.Restart` 标出订单已经作废（比如 CA 拒绝了它，或者在厂商那里被删了）时，失败或重试都不留私钥和状态，从头再来。进度页里，前面的尝试做过、这次已经越过的步骤算完成。
+- **等待来源**（M2，厂商来源的通用框架）：来源返回 `contracts.Wait`（它要保留的状态，和多久后再问，限 1 分钟到 24 小时）时，签发进入 `waiting`：不算失败，到时间再问来源，仍算同一次尝试，日志也接着写。私钥在签发的第一次尝试时生成，加密保存，这次签发的每次尝试都用它；来源的状态也加密保存，下次交还给来源。签发成功后两者都删掉。彻底失败时，来源的状态不为空（订单还在来源那里，之后可能签出）就都留着，下一次签发接过来继续（日志第一行说明），否则删掉私钥。自带私钥的来源（`contracts.KeySource`）也一样：它返回的 `Wait` 带的状态加密保存，下次放在 `CollectRequest.State` 里交还。来源用 `contracts.Restart` 标出订单已经作废（比如 CA 拒绝了它，或者在厂商那里被删了）时，失败或重试都不留私钥和状态，从头再来。尝试中途失败但已经有了进展（比如交了 CSR、验证文件放了一半）时，来源用 `contracts.KeepState` 给错误带上新的状态，失败或重试时存下它代替原来的，下一次接着做。进度页里，前面的尝试做过、这次已经越过的步骤算完成。
 - **日志**逐行存在 `certs_issuance_log`：级别、所属步骤、消息 key 和参数、原文细节（如 CA 的报错，只在完整日志里显示）。步骤是 `contracts.Steps`：生成私钥、下单、添加验证记录、等待验证、清理验证记录、下载证书；进度页按最后一次尝试的日志判断每一步的状态。图里的中间状态没有逐步持久化：lego 的 `Obtain` 一次完成下单到下载，ACME 订单不能从中途接着做，而重新下单是安全的。
 - **执行**：`certs.issue` 任务运行到期的签发，同时最多 2 个，有新签发时立即被唤醒；它不会和自己重叠，所以开始时仍是 `running` 的签发一定是 JEC 停止时被打断的，记一行日志后重新开始。每次尝试最多 30 分钟。删除证书会中止它正在进行的签发，不发失败通知。签发成功时，新版本、签发记录和 `certificate.issued` 事件在同一个事务里写入。
 - **失败重试**：退避从 10 分钟起，每次翻倍，最长 12 小时，按对方要求的 `Retry-After` 推迟（最多 24 小时）；最多 8 次，约一天。`retry.Permanent` 标记的错误（缺少 EAB、CA 拒绝为这些域名签发、要求用户先去 CA 网站操作）不再自动重试。每次失败都发 `certificate.issue_failed`，带上第几次、原因和下次尝试时间（不再重试时为空）。
@@ -336,10 +336,10 @@ type Target interface {
 
 - `domain_verify`：证书选的是能加任意记录的 DNS 服务商（或手动添加）时用 DNS 验证：`RecordDomain` 是控制台里的主机记录（如 www.example.com 的 `_dnsauth.www`），由 `dnscheck.RecordName` 转成完整域名，加上后等权威 DNS 查得到；选的是网站目录类的验证方式时用文件验证：`Uri` 放在 `/.well-known/pki-validation/` 下，从外网按 CA 的方式（HTTP、不跟随跳转）取一次核对，取不到只记警告。CA 自己会来查，不用报告。
 - `process`：CA 审核中，接着等；`certificate`：取回证书（和这次签发的私钥配对），删掉验证文件和记录（手动加的提示用户删）。
-- `verify_fail`：用 `DeleteCertificateRequest` 删掉订单（删掉的订单退回额度），报错并标 `contracts.Restart`，下一次签发重新申请；订单在阿里云找不到了（比如在控制台删了），或者订单的验证方式和证书现在选的对不上，也标 `contracts.Restart`。
+- `verify_fail`：用 `DeleteCertificateRequest` 删掉订单（删掉的订单退回额度），报错并标 `contracts.Restart`，下一次签发重新申请；订单在阿里云找不到了（比如在控制台删了），或者订单的验证方式和证书现在选的对不上，也标 `contracts.Restart`。下单之后某一步失败（查不到状态、加不上记录、下载出错）时用 `contracts.KeepState` 留下订单号，重试接着这一单，不会再耗一张额度。
 - 测试连接用 `DescribePackageState` 报出资源包里这个规格有几张、已经申请了几张。联系人（姓名、手机、邮箱）可以在高级设置里填，留空时用控制台里最新的联系人。RAM 权限 `yundun-cert:CreateCertificateForPackageRequest`、`DescribeCertificateState`、`DeleteCertificateRequest`、`DescribePackageState`。只用替身 API 测过，还没有对真实账号验证。
 - 阿里云的新版“证书实例”接口（`UpdateInstance` 设置 `GenerateCsrMethod=upload` 和 `Csr`、`ApplyCertificate`、`GetInstanceDetail` 的 `DomainValidationList`）也能用自己的 CSR，但文档没说个人测试证书走不走它，先用文档明确支持个人测试证书的资源包接口。
-- 腾讯云免费证书（来源类型 `tencentcloud.free`，已实现）：`ApplyCertificate`（TrustAsia DV，3 个月，一个域名，不能是通配符）由腾讯云生成私钥（RSA 2048 或 ECDSA P-256，在设置里选），不收 CSR，所以是“自带私钥”的来源；`KeySource` 为此也能在等待之间保留状态（`CollectRequest.State`，证书模块像对普通来源一样加密保存）。目前只用 `DNS_AUTO`：域名要托管在同一账号的 DNSPod，由腾讯云自己加验证记录、签好后删掉（`DeleteDnsAutoRecord`），不用选验证方式。之后每 2 分钟看一次 `DescribeCertificate`：审核中时调一次 `CompleteCertificate` 让 CA 立即去查；已通过就用 `DownloadCertificate` 的 ZIP 取回（同 `tencentcloud.fetch`）；审核失败、已过期、已取消、已吊销、已退款或找不到时标 `contracts.Restart`，下一次签发重新申请。额度用完（`FailedOperation.ExceedsFreeLimit` 等）不重试。用 `DNS`、`FILE` 并经证书的验证方式放记录或文件，要再给自带私钥的来源接上验证方式，以后需要再做。只用替身测过。
+- 腾讯云免费证书（来源类型 `tencentcloud.free`，已实现）：`ApplyCertificate`（TrustAsia DV，3 个月，一个域名，不能是通配符）由腾讯云生成私钥（RSA 2048 或 ECDSA P-256，在设置里选），不收 CSR，所以是“自带私钥”的来源；`KeySource` 为此也能在等待之间保留状态（`CollectRequest.State`，证书模块像对普通来源一样加密保存）。目前只用 `DNS_AUTO`：域名要托管在同一账号的 DNSPod，由腾讯云自己加验证记录、签好后删掉（`DeleteDnsAutoRecord`），不用选验证方式。之后每 2 分钟看一次 `DescribeCertificate`：审核中时调一次 `CompleteCertificate` 让 CA 立即去查；已通过就用 `DownloadCertificate` 的 ZIP 取回（同 `tencentcloud.fetch`）；审核失败、已过期、已取消、已吊销、已退款或找不到时标 `contracts.Restart`，下一次签发重新申请；申请之后查状态或下载失败时用 `contracts.KeepState` 留下证书 ID，重试不会再申请一张。额度用完（`FailedOperation.ExceedsFreeLimit` 等）不重试。用 `DNS`、`FILE` 并经证书的验证方式放记录或文件，要再给自带私钥的来源接上验证方式，以后需要再做。只用替身测过。
 
 #### 5.3.2 DNS 服务商（域名验证）
 
@@ -575,7 +575,8 @@ DNS 验证分成两种能力，实现方式不同：
   - `Awaiting CSR`：用这次签发的私钥做 CSR（只有 CN 和 SAN，就是主域名），提交；只签 RSA，别的密钥类型直接报错。
   - `Awaiting Challenges Installation`：CSR 不是这次签发交的就只记日志、等着（要在面板重签）。否则把每个 HTTP 验证的文件交给证书选的网站目录类验证方式放好（还放 `installed.txt`、`installed.b64.json` 两个标记文件），从外网取一次核对（取不到只记警告，可能是 JEC 看到的和 CA 不一样），再报告已放好。DNS 验证（5.3.2 ②）：证书选的是能加任意记录的 DNS 服务商或手动添加时，加上每条记录（`recordName` 由 `dnscheck.RecordName` 转成完整域名：在主域名的可注册域名下就照用，`@` 是域名本身，以域名在可注册域名下的那几段结尾的当作控制台里的主机记录，如 www.example.com 的 `_dnsauth.www`，其余当作相对于域名的名字，所以记录不会加到别的域名下；只加 TXT 和 CNAME），等域名的权威 DNS 服务器都查得到再报告已放好，没查到就 5 分钟后再看（这时不管 fingerprint 变没变）。Namecheap 给的验证和证书选的验证方式对不上（比如给了 DNS 但选的是网站目录）、只有 Email 验证时报错。
   - `Certificate Issued`：模数的 SHA-1 不是这次签发的私钥的，就是以前那张，等 Namecheap 准备下一张；是的话下载证书和中间证书，确认和私钥配对，删掉验证文件和 JEC 加的验证记录（标记文件留着；手动加的记录在日志里提示用户自己删），调 `confirmInstallation`（安装标识 `jec-<序列号>`，取回证书时就报告，不等部署完），交给证书模块，照常部署到 ESA 等目标、删掉旧证书。
-  - `Order Failed`、`Certificate Revoked`：报错，不再自动重试；其他状态记一次日志，接着等。
+  - `Order Failed`、`Certificate Revoked`：报错，不再自动重试，并标 `contracts.Restart`，下一次签发不再接着这张证书；其他状态记一次日志，接着等。
+  - 交了 CSR 之后某一步失败（比如放验证文件失败），用 `contracts.KeepState` 留下这时的状态，下一次尝试还认得这张证书，不会当成别人的。
 - 下一张证书什么时候来由 Namecheap 决定：进入续期窗口后签发就一直等，直到 Namecheap 准备好下一张。
 - 测试用假的 Namecheap 服务器（`internal/modules/namecheap/vendor_test.go`）走完注册、交 CSR、放验证文件、签出、下载、刷新令牌。不运行官方的程序；协议写在模块的注释和本节。
 

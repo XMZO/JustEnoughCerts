@@ -803,6 +803,43 @@ func TestIssueRestart(t *testing.T) {
 	}
 }
 
+func TestIssueKeepsState(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+
+	// The attempt placed an order before it failed: the next one goes on
+	// with it.
+	f.failWith(contracts.KeepState(errors.New("timeout"), []byte("order")))
+	f.run()
+	is := f.certificate(c.ID).Issuance
+	if key, state := f.sealed(is.ID); is.State != "pending" || !key || !state {
+		t.Fatalf("retry %+v keeps key %v, state %v", is, key, state)
+	}
+	calls := f.vendor()
+	f.now = *is.NextAt
+	f.run()
+	if c = f.certificate(c.ID); c.State != "ok" || len(*calls) != 1 || string((*calls)[0].State) != "order" {
+		t.Fatalf("after the retry: %+v, %d calls", c, len(*calls))
+	}
+
+	// Failing for good, the issuance keeps the key with the order, for the
+	// next issuance; a restart keeps neither.
+	f.call(f.api.Post("/certificates/"+strconv.FormatInt(c.ID, 10)+"/issue"), http.StatusAccepted, nil)
+	f.failWith(contracts.KeepState(retry.Permanent(errors.New("refused")), []byte("order")))
+	f.run()
+	is = f.certificate(c.ID).Issuance
+	if key, state := f.sealed(is.ID); is.State != "failed" || !key || !state {
+		t.Errorf("failed %+v keeps key %v, state %v", is, key, state)
+	}
+	f.call(f.api.Post("/certificates/"+strconv.FormatInt(c.ID, 10)+"/issue"), http.StatusAccepted, nil)
+	f.failWith(contracts.Restart(contracts.KeepState(retry.Permanent(errors.New("refused")), []byte("order"))))
+	f.run()
+	is = f.certificate(c.ID).Issuance
+	if key, state := f.sealed(is.ID); is.State != "failed" || key || state {
+		t.Errorf("restarted %+v keeps key %v, state %v", is, key, state)
+	}
+}
+
 func TestIssueFailureDropsKey(t *testing.T) {
 	f := newFixture(t)
 	c := f.issueNew("example.com")

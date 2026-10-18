@@ -105,6 +105,16 @@ func (o *freeOrder) wait() error {
 	return &contracts.Wait{State: state, After: freePoll}
 }
 
+// keep marks err, the failure of an attempt, with the order as far as it
+// got, so that the next attempt goes on with it rather than apply again.
+func (o *freeOrder) keep(err error) error {
+	state, merr := json.Marshal(o)
+	if merr != nil {
+		return err
+	}
+	return contracts.KeepState(err, state)
+}
+
 // Collect applies for the certificate unless an earlier attempt did,
 // waits while the CA validates and reviews it, and takes it in once
 // issued. An order the CA refused, or one gone, makes the next issuance
@@ -135,11 +145,15 @@ func (f *freeCerts) Collect(ctx context.Context, req contracts.CollectRequest) (
 	case errorCode(err) == "FailedOperation.CertificateNotFound":
 		return nil, contracts.Restart(&contracts.Problem{Key: i18n.TencentcloudErrorFreeGone, Params: map[string]any{"id": o.Cert}, Err: err})
 	case err != nil:
-		return nil, explain(err, f.endpoint)
+		return nil, o.keep(explain(err, f.endpoint))
 	}
 	switch st.Status {
 	case statusIssued:
-		return f.download(ctx, o.Cert, req.Domains, log)
+		got, err := f.download(ctx, o.Cert, req.Domains, log)
+		if err != nil {
+			return nil, o.keep(err)
+		}
+		return got, nil
 	case statusRefused:
 		return nil, contracts.Restart(retry.Permanent(&contracts.Problem{Key: i18n.TencentcloudErrorFreeRefused,
 			Params: map[string]any{"id": o.Cert, "reason": st.Message}}))

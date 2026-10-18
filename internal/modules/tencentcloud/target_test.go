@@ -38,10 +38,11 @@ type fakeAPI struct {
 	archives map[string][]byte
 	// applied are the free certificates applied for, by ID, with their
 	// statuses; completed those the CA was asked to check now.
-	applied   map[string]*certStatus
-	appliedAs []string // domain and algorithm of each
-	completed []string
-	applyFail error
+	applied    map[string]*certStatus
+	appliedAs  []string // domain and algorithm of each
+	completed  []string
+	applyFail  error
+	statusFail error
 }
 
 func (f *fakeAPI) upload(_ context.Context, alias, chain, key string) (string, error) {
@@ -112,6 +113,9 @@ func (f *fakeAPI) apply(_ context.Context, domain, algo string) (string, error) 
 }
 
 func (f *fakeAPI) status(_ context.Context, id string) (certStatus, error) {
+	if f.statusFail != nil {
+		return certStatus{}, f.statusFail
+	}
 	st, ok := f.applied[id]
 	if !ok {
 		return certStatus{}, &tcerr.TencentCloudSDKError{Code: "FailedOperation.CertificateNotFound"}

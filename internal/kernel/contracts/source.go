@@ -179,6 +179,35 @@ func IsRestart(err error) bool {
 	return errors.As(err, &r)
 }
 
+// KeepState marks the error of an attempt that got somewhere before it
+// failed, as an order the vendor took: the issuance fails or retries as
+// err says, and keeps state in place of what the source kept before, as
+// after a Wait. Restart wins over it. It returns nil for a nil err.
+func KeepState(err error, state []byte) error {
+	if err == nil {
+		return nil
+	}
+	return &keptError{err, state}
+}
+
+type keptError struct {
+	err   error
+	state []byte
+}
+
+func (e *keptError) Error() string { return e.err.Error() }
+func (e *keptError) Unwrap() error { return e.err }
+
+// KeptState returns the state that err, or an error it wraps, was marked
+// with by KeepState, and nil when it was not.
+func KeptState(err error) []byte {
+	var k *keptError
+	if errors.As(err, &k) {
+		return k.state
+	}
+	return nil
+}
+
 // Problem is an error a provider can explain: a message key with its
 // arguments, which the UI shows in the viewer's language, and the error
 // behind it for the full log.

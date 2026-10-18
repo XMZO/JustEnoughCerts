@@ -608,7 +608,7 @@ func (s *service) fail(ctx context.Context, c *claimed, cause error, log *taskLo
 
 	now := s.now()
 	final, next := nextAttempt(c.attempt, cause, now)
-	recorded, err := s.recordFailure(ctx, c, msg, now, next, contracts.IsRestart(cause))
+	recorded, err := s.recordFailure(ctx, c, msg, now, next, contracts.IsRestart(cause), contracts.KeptState(cause))
 	if err != nil {
 		s.log.Error("record failed issuance", "issuance", c.id, "err", err)
 	}
@@ -626,9 +626,10 @@ func (s *service) fail(ctx context.Context, c *claimed, cause error, log *taskLo
 // recordFailure stores how an attempt failed, with the time of the next
 // one, zero when none follows, and publishes certificate.issue_failed;
 // with restart, it drops the key and what the source kept, so that the
-// next attempt, or the next issuance, starts afresh. It reports false when
-// the issuance is gone, as its certificate was deleted.
-func (s *service) recordFailure(ctx context.Context, c *claimed, msg contracts.Message, now, next time.Time, restart bool) (bool, error) {
+// next attempt, or the next issuance, starts afresh, and otherwise keeps
+// state, when the source gave one, in place of what it kept before. It
+// reports false when the issuance is gone, as its certificate was deleted.
+func (s *service) recordFailure(ctx context.Context, c *claimed, msg contracts.Message, now, next time.Time, restart bool, state []byte) (bool, error) {
 	params := ""
 	if len(msg.Params) > 0 {
 		b, _ := json.Marshal(msg.Params)
@@ -639,6 +640,13 @@ func (s *service) recordFailure(ctx context.Context, c *claimed, msg contracts.M
 		return false, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if state != nil && !restart {
+		// First, so that a final failure keeps the key with it.
+		if _, err := tx.ExecContext(ctx, "UPDATE certs_issuances SET sealed_state = ? WHERE id = ?",
+			s.secrets.Seal(state, stateContext(c.certificateID)), c.id); err != nil {
+			return false, err
+		}
+	}
 	var res sql.Result
 	if next.IsZero() {
 		// The key stays only with an order the source may still fill.

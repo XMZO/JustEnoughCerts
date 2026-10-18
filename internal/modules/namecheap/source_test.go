@@ -230,11 +230,11 @@ func TestIssueFailures(t *testing.T) {
 	}
 
 	f.vendor.add("c1", "example.com", stateFailed, nil)
-	if _, _, err := f.issue(key, nil); problemKey(err) != i18n.NamecheapErrorOrderFailed || !retry.IsPermanent(err) {
+	if _, _, err := f.issue(key, nil); problemKey(err) != i18n.NamecheapErrorOrderFailed || !retry.IsPermanent(err) || !contracts.IsRestart(err) {
 		t.Errorf("failed order: %v", err)
 	}
 	f.vendor.add("c2", "example.com", stateRevoked, nil)
-	if _, _, err := f.issue(key, nil); problemKey(err) != i18n.NamecheapErrorRevoked || !retry.IsPermanent(err) {
+	if _, _, err := f.issue(key, nil); problemKey(err) != i18n.NamecheapErrorRevoked || !retry.IsPermanent(err) || !contracts.IsRestart(err) {
 		t.Errorf("revoked: %v", err)
 	}
 
@@ -403,8 +403,20 @@ func TestIssueDNSFailures(t *testing.T) {
 	// The provider refuses the record: why, if it says, else that it did.
 	next(&dnsRecord{RecordName: "_abc123", RecordType: "TXT", RecordValue: "v"})
 	z.with(func() { z.fail = errors.New("quota") })
-	if _, _, err := f.attempt(contracts.IssueRequest{Key: key, Records: z}); problemKey(err) != i18n.NamecheapErrorAddRecord || retry.IsPermanent(err) {
+	_, _, err := f.attempt(contracts.IssueRequest{Key: key, Records: z})
+	if problemKey(err) != i18n.NamecheapErrorAddRecord || retry.IsPermanent(err) {
 		t.Errorf("a refused record: %v", err)
+	}
+	// The next attempt goes on with the certificate the CSR went to.
+	kept := contracts.KeptState(err)
+	var o order
+	if err := json.Unmarshal(kept, &o); err != nil || o.Cert != "c"+strconv.Itoa(certs) {
+		t.Errorf("kept %s", kept)
+	}
+	z.with(func() { z.fail = nil })
+	notOurs := f.count(i18n.NamecheapLogNotOurs)
+	if _, w, err := f.attempt(contracts.IssueRequest{Key: key, Records: z, State: kept}); err != nil || w == nil || f.count(i18n.NamecheapLogNotOurs) != notOurs {
+		t.Errorf("the attempt after: %v %v", w, err)
 	}
 	next(&dnsRecord{RecordName: "_abc123", RecordType: "TXT", RecordValue: "v"})
 	z.with(func() { z.fail = retry.Permanent(&contracts.Problem{Key: "test.denied"}) })

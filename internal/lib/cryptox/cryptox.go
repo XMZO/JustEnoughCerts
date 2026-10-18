@@ -13,6 +13,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
@@ -285,6 +286,21 @@ func Names(c *x509.Certificate) []string {
 		names = append(names, c.Subject.CommonName)
 	}
 	return names
+}
+
+// CSR makes the certificate request of key for domains, the first its
+// common name, in PEM form, as the CAs and vendors that take a CSR want it.
+func CSR(key crypto.Signer, domains []string) ([]byte, error) {
+	if len(domains) == 0 {
+		return nil, errors.New("cryptox: a CSR for no domain")
+	}
+	der, err := x509.CreateCertificateRequest(rand.Reader, &x509.CertificateRequest{
+		Subject: pkix.Name{CommonName: domains[0]}, DNSNames: domains,
+	}, key)
+	if err != nil {
+		return nil, err
+	}
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: der}), nil
 }
 
 // Covers tells whether names hold each of domains, as the certs module
