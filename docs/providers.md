@@ -43,6 +43,7 @@ Reports of what works with a real account, or does not, are welcome.
 | `esa.site` | Alibaba Cloud ESA | Fake, with Alibaba Cloud's SDK |
 | `aliyun.cdn`, `aliyun.dcdn` | Alibaba Cloud CDN and DCDN | Fake |
 | `aliyun.cas` | Alibaba Cloud Certificate Management Service | Fake |
+| `aliyun.oss` | Custom domains of Alibaba Cloud OSS buckets | Fake |
 | `aliyun.clb` | Alibaba Cloud CLB load balancers | Fake |
 | `huaweicloud.cdn` | Huawei Cloud CDN | Fake |
 | `cloudflare.custom` | Cloudflare custom certificates | Fake |

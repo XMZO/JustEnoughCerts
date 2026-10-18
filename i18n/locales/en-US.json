@@ -99,6 +99,8 @@
     "error": {
       "api": "Alibaba Cloud returned the error {code}. The full log says why.",
       "auth": "Alibaba Cloud refused the AccessKey, or it lacks the permissions needed.",
+      "bucket": "There is no bucket {bucket} in region {region}.",
+      "cname": "The bucket {bucket} has no custom domain {domain}. Bind it in the console first.",
       "domain": "This account has no accelerated domain {domain}, or it does not have HTTPS. Check the domain, and the product: CDN and DCDN are apart.",
       "listener": "The load balancer {id} has no HTTPS listener on port {port}.",
       "load_balancer": "This account has no load balancer {id} in region {region}.",
@@ -106,13 +108,16 @@
       "no_domains": "Enter the accelerated domains to test them; deployments use the certificate's own when there are none.",
       "no_extension": "The listener on port {port} has no additional certificate for {domain}. Add one in the console first.",
       "no_listeners": "The load balancer {id} has no HTTPS listener.",
+      "oss_name": "The bucket {bucket} or the region {region} is not written as OSS writes them.",
       "port": "The listener port {port} is not a port number.",
       "throttled": "Alibaba Cloud refused for now: too many requests. JEC tries again later."
     },
     "field": {
       "access_key_id": "AccessKey ID",
       "access_key_secret": "AccessKey secret",
+      "bucket": "Bucket",
       "cas_secret_help": "Best from a RAM user granted yundun-cert:ListUserCertificateOrder, yundun-cert:UploadUserCertificate and yundun-cert:DeleteUserCertificate only.",
+      "cas_site_help": "The site of the account, where Certificate Management Service keeps the certificate first.",
       "cdn_secret_help": "Best from a RAM user granted cdn:SetCdnDomainSSLCertificate and cdn:DescribeDomainCertificateInfo only. Alibaba Cloud keeps the uploaded certificates in its Certificate Management Service: should it refuse, grant that service's permissions too.",
       "clb_domain": "Domain of an additional certificate",
       "clb_domain_help": "To update the listeners' additional certificate of this domain instead of their default certificate.",
@@ -125,6 +130,10 @@
       "listener_port": "Listener port",
       "listener_port_help": "Left empty, every HTTPS listener of the load balancer.",
       "load_balancer": "Load balancer ID",
+      "oss_domain": "Custom domain",
+      "oss_domain_help": "A domain bound to the bucket in the console already.",
+      "oss_region_help": "The ID of the bucket's region, such as cn-hangzhou: what follows oss- in its endpoint.",
+      "oss_secret_help": "Best from a RAM user granted only oss:ListCname and oss:PutCname on the bucket, with yundun-cert:ListUserCertificateOrder, yundun-cert:UploadUserCertificate, yundun-cert:GetUserCertificateDetail and yundun-cert:DeleteUserCertificate.",
       "region": "Region",
       "region_help": "The ID of the load balancer's region, such as cn-hangzhou or cn-shanghai.",
       "site": "Site"
@@ -139,11 +148,17 @@
       "clb_upload": "Uploading {name} to CLB",
       "deleted": "Deleted the certificate {id} uploaded before",
       "kept": "Could not delete the certificate {id} ({code}), which may still be in use; a later deployment tries again",
+      "oss_current": "{domain} has this certificate already",
+      "oss_set": "Setting the certificate on {domain} of the bucket {bucket}",
       "set": "Setting the certificate on {domain}"
     },
     "module": {
-      "description": "Deploys certificates to Alibaba Cloud CDN and DCDN, to Certificate Management Service, and to CLB load balancers.",
+      "description": "Deploys certificates to Alibaba Cloud CDN and DCDN, to Certificate Management Service, to custom domains of OSS buckets, and to CLB load balancers.",
       "name": "Alibaba Cloud"
+    },
+    "oss": {
+      "description": "Uploads each new certificate to Certificate Management Service and sets it on a custom domain of an OSS bucket; deletes those JEC uploaded before.",
+      "name": "Alibaba Cloud OSS custom domain"
     },
     "site": {
       "china": "China (cas.aliyuncs.com)",
@@ -152,7 +167,8 @@
     "test": {
       "cas_ok": "Signed in. Certificate Management Service has {count, plural, one {# uploaded certificate} other {# uploaded certificates}}.",
       "clb_ok": "Found the load balancer {name}, with {count, plural, one {# HTTPS listener} other {# HTTPS listeners}}.",
-      "ok": "Found the accelerated domains {domains}."
+      "ok": "Found the accelerated domains {domains}.",
+      "oss_ok": "The bucket {bucket} has the custom domain {domain}."
     }
   },
   "audit": {

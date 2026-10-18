@@ -130,6 +130,11 @@ func (c *fakeCAS) answer(call rpcCall) (any, error) {
 		id := strconv.Itoa(c.next)
 		c.certs[id] = call.query["Name"]
 		return map[string]any{"CertId": json.Number(id)}, nil
+	case "GetUserCertificateDetail":
+		if c.certs[call.query["CertId"]] == "" {
+			return nil, apiError("NotFound", 404)
+		}
+		return map[string]any{"CertIdentifier": call.query["CertId"] + "-cn-hangzhou"}, nil
 	case "DeleteUserCertificate":
 		id := call.query["CertId"]
 		switch {
