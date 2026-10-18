@@ -584,7 +584,7 @@ func (s *service) fail(ctx context.Context, c *claimed, cause error, log *taskLo
 
 	now := s.now()
 	final, next := nextAttempt(c.attempt, cause, now)
-	recorded, err := s.recordFailure(ctx, c, msg, now, next)
+	recorded, err := s.recordFailure(ctx, c, msg, now, next, contracts.IsRestart(cause))
 	if err != nil {
 		s.log.Error("record failed issuance", "issuance", c.id, "err", err)
 	}
@@ -600,9 +600,11 @@ func (s *service) fail(ctx context.Context, c *claimed, cause error, log *taskLo
 }
 
 // recordFailure stores how an attempt failed, with the time of the next
-// one, zero when none follows, and publishes certificate.issue_failed. It
-// reports false when the issuance is gone, as its certificate was deleted.
-func (s *service) recordFailure(ctx context.Context, c *claimed, msg contracts.Message, now, next time.Time) (bool, error) {
+// one, zero when none follows, and publishes certificate.issue_failed;
+// with restart, it drops the key and what the source kept, so that the
+// next attempt, or the next issuance, starts afresh. It reports false when
+// the issuance is gone, as its certificate was deleted.
+func (s *service) recordFailure(ctx context.Context, c *claimed, msg contracts.Message, now, next time.Time, restart bool) (bool, error) {
 	params := ""
 	if len(msg.Params) > 0 {
 		b, _ := json.Marshal(msg.Params)
@@ -630,6 +632,12 @@ func (s *service) recordFailure(ctx context.Context, c *claimed, msg contracts.M
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
 		return false, nil
+	}
+	if restart {
+		// The order is spent: what the source kept goes, with the key.
+		if _, err := tx.ExecContext(ctx, "UPDATE certs_issuances SET sealed_key = NULL, sealed_state = NULL WHERE id = ?", c.id); err != nil {
+			return false, err
+		}
 	}
 	cert, err := s.load(ctx, tx, c.certificateID)
 	if err != nil {

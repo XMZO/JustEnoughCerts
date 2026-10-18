@@ -17,6 +17,7 @@ JEC 的每种证书来源、验证方式、部署目标和通知渠道，以及�
 | `namecheap.ssl_manager` | Namecheap SSL Manager（实验） | 替身，照着它的客户端 |
 | `files.watch` | 本机另一个客户端续期的证书 | 文件系统 |
 | `aliyun.fetch` | 阿里云数字证书管理服务签发的证书 | 替身 |
+| `aliyun.apply` | 向阿里云申请证书（默认个人测试证书） | 替身 |
 | `tencentcloud.fetch` | 腾讯云 SSL 证书服务签发的证书 | 替身，HTTP 层经 SDK 的客户端 |
 | 上传 | PEM、PFX/P12 | 单元测试 |
 

@@ -177,7 +177,7 @@ stateDiagram-v2
 **实现**（`internal/modules/certs` 的 `issue.go`，M1）：
 
 - **签发记录**存在 `certs_issuances`：原因（`first` 新加的证书或还没有版本、`renewal` 续期、`manual` 手动）、状态（`pending` 等待下一次尝试、`running`、`waiting` 等来源处理、`done`、`failed` 不再自动重试）、尝试次数、下次尝试时间、最近一次失败的原因（消息 key 和参数）。一张证书同时最多一条未结束的签发（唯一索引），重复点“立即签发”返回同一条；在等重试或等来源的会立即再试。
-- **等待来源**（M2，厂商来源的通用框架）：来源返回 `contracts.Wait`（它要保留的状态，和多久后再问，限 1 分钟到 24 小时）时，签发进入 `waiting`：不算失败，到时间再问来源，仍算同一次尝试，日志也接着写。私钥在签发的第一次尝试时生成，加密保存，这次签发的每次尝试都用它；来源的状态也加密保存，下次交还给来源。签发成功后两者都删掉。彻底失败时，来源的状态不为空（订单还在来源那里，之后可能签出）就都留着，下一次签发接过来继续（日志第一行说明），否则删掉私钥。进度页里，前面的尝试做过、这次已经越过的步骤算完成。
+- **等待来源**（M2，厂商来源的通用框架）：来源返回 `contracts.Wait`（它要保留的状态，和多久后再问，限 1 分钟到 24 小时）时，签发进入 `waiting`：不算失败，到时间再问来源，仍算同一次尝试，日志也接着写。私钥在签发的第一次尝试时生成，加密保存，这次签发的每次尝试都用它；来源的状态也加密保存，下次交还给来源。签发成功后两者都删掉。彻底失败时，来源的状态不为空（订单还在来源那里，之后可能签出）就都留着，下一次签发接过来继续（日志第一行说明），否则删掉私钥。来源用 `contracts.Restart` 标出订单已经作废（比如 CA 拒绝了它，或者在厂商那里被删了）时，失败或重试都不留私钥和状态，从头再来。进度页里，前面的尝试做过、这次已经越过的步骤算完成。
 - **日志**逐行存在 `certs_issuance_log`：级别、所属步骤、消息 key 和参数、原文细节（如 CA 的报错，只在完整日志里显示）。步骤是 `contracts.Steps`：生成私钥、下单、添加验证记录、等待验证、清理验证记录、下载证书；进度页按最后一次尝试的日志判断每一步的状态。图里的中间状态没有逐步持久化：lego 的 `Obtain` 一次完成下单到下载，ACME 订单不能从中途接着做，而重新下单是安全的。
 - **执行**：`certs.issue` 任务运行到期的签发，同时最多 2 个，有新签发时立即被唤醒；它不会和自己重叠，所以开始时仍是 `running` 的签发一定是 JEC 停止时被打断的，记一行日志后重新开始。每次尝试最多 30 分钟。删除证书会中止它正在进行的签发，不发失败通知。签发成功时，新版本、签发记录和 `certificate.issued` 事件在同一个事务里写入。
 - **失败重试**：退避从 10 分钟起，每次翻倍，最长 12 小时，按对方要求的 `Retry-After` 推迟（最多 24 小时）；最多 8 次，约一天。`retry.Permanent` 标记的错误（缺少 EAB、CA 拒绝为这些域名签发、要求用户先去 CA 网站操作）不再自动重试。每次失败都发 `certificate.issue_failed`，带上第几次、原因和下次尝试时间（不再重试时为空）。
@@ -321,7 +321,7 @@ type Target interface {
 | **通用：ACME 商业证书** | Sectigo、DigiCert、GlobalSign、HARICA、TrustAsia（亚洲诚信）等提供 ACME 的 CA，以及经销商提供的 ACME（如 Namecheap，官方计划 2026 年 11–12 月上线） | 自定义 ACME 地址 + EAB，**任何支持 ACME 的 CA 都能接**，逐家验证后列入兼容表 | M1 |
 | **通用：手动上传 / 导入** | 任何 CA 的证书（PEM / PFX）；扫描 acme.sh、certbot 的目录 | 只读导入，避免和原工具冲突。PEM 和 PFX/P12 上传已实现（`cryptox.ParsePFX` 用 `go-pkcs12`，旧的 3DES/RC2 和 OpenSSL 3 的 AES 都能读）；读目录做成了来源类型 `files.watch`（见 5.3.3 的“本机证书目录”），不只导入一次，原工具续期后新证书也会取进来 | M1 |
 | 厂商自动化工具（实验性模块） | **Namecheap SSL Manager**（Namecheap 给直客的服务器端自动化工具，后端 `externalautossl.service.spaceship.com`） | JEC 扮演它的客户端：一次性令牌注册，自己生成私钥和 CSR，HTTP 文件验证，取回每一张 200 天的证书。非公开接口，默认关闭，界面标注“可能随时失效”；见 5.6 | M2 |
-| 厂商专有 API（可选模块） | 阿里云数字证书管理服务、腾讯云 SSL 证书 | 云 API：取回控制台签发的证书（已实现，见下）、申请免费证书 | M3 |
+| 厂商专有 API（可选模块） | 阿里云数字证书管理服务、腾讯云 SSL 证书 | 云 API：取回控制台签发的证书、向阿里云申请证书（都已实现，见下）；腾讯云免费证书由腾讯云生成私钥，以后再做 | M3 |
 | 厂商专有 API（可选模块） | ZeroSSL REST API、GoGetSSL、TheSSLStore、DigiCert CertCentral 等 | 各自的 API，按需求排期 | 以后 |
 | 厂商专有 API（可选模块） | Namecheap 官方 API（`ssl.reissue` / `ssl.getInfo` / `ssl.activate`，CNAME 验证） | 开通门槛高（账号里有 20 个域名，或余额 / 近两年消费满 $50），还要设 IPv4 白名单；有需要再做 | 以后 |
 | 实验性 | Spaceship 卖的证书：后端域名同属 Spaceship，可能能用同一套接口（未核实） | 同 Namecheap SSL Manager | 以后 |
@@ -331,6 +331,15 @@ type Target interface {
 - 阿里云：`ListUserCertificateOrder`（`OrderType=CERT`，`Keyword` 是主域名，不带状态时只列有效证书；`Upload` 为真的跳过；同一天结束时取 ID 大的）、`GetUserCertificateDetail`（`Cert`、`Key`）。RAM 权限 `yundun-cert:ListUserCertificateOrder`、`yundun-cert:GetUserCertificateDetail`。
 - 腾讯云：`DescribeCertificates`（`SearchKey` 是主域名，`CertificateType=SVR`、`CertificateStatus=[1]`、`FilterSource=buy`；`AllowDownload` 为假的跳过）、`DownloadCertificate`（控制台下载的那个 ZIP，每种 Web 服务器一个目录：JEC 读出其中所有 PEM 文件，找和证书配对、覆盖全部域名的私钥，证书链也从中拼出）。CAM 权限 `DescribeCertificates`、`DownloadCertificate`。
 - 都只用替身 API 测过，还没有对真实账号验证。
+
+**向阿里云申请证书（M3，已实现）**：来源类型 `aliyun.apply`，用数字证书管理服务的证书资源包申请，规格（`ProductCode`，高级设置）默认 `digicert-free-1-free`，即个人测试证书（DigiCert DV，3 个月，每年 20 张，只在中国站，要先在控制台领取额度）；买了其他 DV 资源包的也能用。私钥由 JEC 生成，阿里云只拿到 CSR（`CreateCertificateForPackageRequest` 的 `Csr`，放在表单里），所以是普通的来源，走 4.3 的“等待来源”，每 2 分钟看一次订单（`DescribeCertificateState`）：
+
+- `domain_verify`：证书选的是能加任意记录的 DNS 服务商（或手动添加）时用 DNS 验证：`RecordDomain` 是控制台里的主机记录（如 www.example.com 的 `_dnsauth.www`），由 `dnscheck.RecordName` 转成完整域名，加上后等权威 DNS 查得到；选的是网站目录类的验证方式时用文件验证：`Uri` 放在 `/.well-known/pki-validation/` 下，从外网按 CA 的方式（HTTP、不跟随跳转）取一次核对，取不到只记警告。CA 自己会来查，不用报告。
+- `process`：CA 审核中，接着等；`certificate`：取回证书（和这次签发的私钥配对），删掉验证文件和记录（手动加的提示用户删）。
+- `verify_fail`：用 `DeleteCertificateRequest` 删掉订单（删掉的订单退回额度），报错并标 `contracts.Restart`，下一次签发重新申请；订单在阿里云找不到了（比如在控制台删了），或者订单的验证方式和证书现在选的对不上，也标 `contracts.Restart`。
+- 测试连接用 `DescribePackageState` 报出资源包里这个规格有几张、已经申请了几张。联系人（姓名、手机、邮箱）可以在高级设置里填，留空时用控制台里最新的联系人。RAM 权限 `yundun-cert:CreateCertificateForPackageRequest`、`DescribeCertificateState`、`DeleteCertificateRequest`、`DescribePackageState`。只用替身 API 测过，还没有对真实账号验证。
+- 阿里云的新版“证书实例”接口（`UpdateInstance` 设置 `GenerateCsrMethod=upload` 和 `Csr`、`ApplyCertificate`、`GetInstanceDetail` 的 `DomainValidationList`）也能用自己的 CSR，但文档没说个人测试证书走不走它，先用文档明确支持个人测试证书的资源包接口。
+- 腾讯云的免费证书（`ApplyCertificate`，TrustAsia DV，3 个月）由腾讯云生成私钥，不收 CSR，要做成带验证的“自带私钥”来源；域名在同一账号的 DNSPod 时可以用 `DNS_AUTO` 由腾讯云自己加验证记录。以后再做。
 
 #### 5.3.2 DNS 服务商（域名验证）
 
@@ -925,7 +934,7 @@ JustEnoughCerts/
 | **M0 骨架** | 仓库、CI、发布流水线、`scratch` 镜像、体积检查；内核与模块注册表、模块脚手架；**i18n 模块和全部门禁**（从第一行界面文字开始就不允许硬编码）；空的前端、登录和初始化向导（中英文）；SQLite（含驱动选型实测） | 打一个 `v0.0.1` 标签，能自动产出全部二进制和镜像，`docker compose up` 能打开中英文登录页，i18n 门禁和体积检查在 CI 里生效 |
 | **M1 最小可用** | 证书模块、状态机、调度器；手动上传和导入；ACME（任意 CA + EAB）+ lego 的 221 家 DNS；阿里云 ESA、本地文件、SSH、Webhook 部署；Telegram、邮件、Webhook 通知；总览和证书页 | 用免费证书完整跑通“签发 → 部署到 ESA → 删除旧证书 → 到期自动续” |
 | **M2 厂商来源与付费证书** | 厂商来源的通用框架（提交后等 CA 审核，跨多次检查才取回证书，等待期间加密保存私钥）；第一个实现是 Namecheap SSL Manager（实验性，JEC 扮演它的客户端，见 5.6）；HTTP 文件验证（写到源站的网站目录、经 SSH 写到远程服务器，或由 JEC 自己应答）；导入已有的付费证书；逐家验证商业 CA 的 ACME + EAB（含 Namecheap ACME 上线后） | 第 1 节的验收场景全自动跑通一个周期 |
-| **M3 扩展** | 国内云平台证书来源（取回签发的证书已完成）；DNS 记录管理层（任意记录增删，5.3.2 ②）和手动验证（都已完成）；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子、YAML 导入导出（都已完成）；线上巡检（已完成） | 不改核心代码，写一个外部插件接入新平台；停用任意模块后其余功能正常 |
+| **M3 扩展** | 国内云平台证书来源（取回签发的证书、向阿里云申请证书已完成）；DNS 记录管理层（任意记录增删，5.3.2 ②）和手动验证（都已完成）；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子、YAML 导入导出（都已完成）；线上巡检（已完成） | 不改核心代码，写一个外部插件接入新平台；停用任意模块后其余功能正常 |
 | **M4 打磨** | 两步验证、审计日志（都已提前完成）、OIDC、PWA、文档站、翻译指南、服务商兼容表（已有 `docs/providers.md`：每个服务商测到了哪一步） | 发布 `v1.0.0` |
 | **以后** | Namecheap 官方 API、Spaceship 的 SSL Manager、其他厂商证书 API、更多语言（社区贡献）、多用户和角色、PostgreSQL、私有 CA | 按需求排期 |
 

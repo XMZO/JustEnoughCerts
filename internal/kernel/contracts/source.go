@@ -152,6 +152,30 @@ type Wait struct {
 
 func (w *Wait) Error() string { return "the certificate is not ready yet" }
 
+// Restart marks the error of a Source whose order is spent, as one the CA
+// refused or one deleted at the vendor: the issuance fails as err says,
+// or retries if err allows, but starts afresh either way, with a new key
+// and none of the State the source kept, nor will a later issuance take
+// it over. It returns nil for a nil err.
+func Restart(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &restartError{err}
+}
+
+type restartError struct{ err error }
+
+func (e *restartError) Error() string { return e.err.Error() }
+func (e *restartError) Unwrap() error { return e.err }
+
+// IsRestart reports whether err or an error it wraps was marked by
+// Restart.
+func IsRestart(err error) bool {
+	var r *restartError
+	return errors.As(err, &r)
+}
+
 // Problem is an error a provider can explain: a message key with its
 // arguments, which the UI shows in the viewer's language, and the error
 // behind it for the full log.

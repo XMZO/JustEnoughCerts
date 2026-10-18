@@ -23,6 +23,7 @@ Reports of what works with a real account, or does not, are welcome.
 | `namecheap.ssl_manager` | Namecheap SSL Manager (experimental) | Fake, after its client |
 | `files.watch` | Certificates another client renews on this machine | The file system |
 | `aliyun.fetch` | Certificates Alibaba Cloud's Certificate Management Service issued | Fake |
+| `aliyun.apply` | Certificates applied for at Alibaba Cloud, its personal test ones by default | Fake |
 | `tencentcloud.fetch` | Certificates Tencent Cloud's SSL Certificates issued | Fake, at the HTTP level through the SDK's client |
 | Upload | PEM, PFX/P12 | Unit tests |
 

@@ -80,6 +80,10 @@
     }
   },
   "aliyun": {
+    "apply": {
+      "description": "Applies for certificates out of the resource plans of Alibaba Cloud's Certificate Management Service, by default the free personal test certificates (DigiCert DV, three months, twenty a year, China site only). JEC makes the key, and Alibaba Cloud only gets the CSR; domains are validated through a file on the website or a DNS record. Claim the personal test certificates in Alibaba Cloud's console first.",
+      "name": "Certificates applied for at Alibaba Cloud"
+    },
     "cas": {
       "description": "Uploads each new certificate to Certificate Management Service, from where Alibaba Cloud's products, such as ALB, OSS and WAF, take it; deletes those JEC uploaded before.",
       "name": "Alibaba Cloud Certificate Management Service"
@@ -98,6 +102,14 @@
     },
     "error": {
       "api": "Alibaba Cloud returned the error {code}. The full log says why.",
+      "apply_add": "Could not add the validation record {name}. Check the settings of the DNS provider.",
+      "apply_bad": "The certificate Alibaba Cloud issued (order {order}) cannot be read, or does not match this issuance's key.",
+      "apply_file": "Alibaba Cloud asks for a validation file outside /.well-known/, which JEC does not put: {path}",
+      "apply_gone": "Alibaba Cloud does not know order {order}, which may have been deleted in its console. JEC applies anew.",
+      "apply_method": "The order asks for validation by {method}, which the certificate's validation method no longer does. JEC applies anew at the next issuance.",
+      "apply_put": "Could not put the validation file of {domain} in place. Check the settings of the validation method.",
+      "apply_record": "JEC cannot add the validation record Alibaba Cloud asks for ({type} {name}): it adds TXT and CNAME records under the domain only.",
+      "apply_refused": "The certificate authority refused order {order}, as when the validation failed. JEC deleted the order, which gives its quota back, and applies anew at the next issuance.",
       "auth": "Alibaba Cloud refused the AccessKey, or it lacks the permissions needed.",
       "bucket": "There is no bucket {bucket} in region {region}.",
       "cname": "The bucket {bucket} has no custom domain {domain}. Bind it in the console first.",
@@ -122,6 +134,13 @@
     "field": {
       "access_key_id": "AccessKey ID",
       "access_key_secret": "AccessKey secret",
+      "apply_contact_help": "Left empty, the newest contact in Certificate Management Service. The certificate authority may call or write to check.",
+      "apply_email": "Contact email",
+      "apply_phone": "Contact phone",
+      "apply_product": "Certificate product",
+      "apply_product_help": "The product code of the resource plan, digicert-free-1-free by default: the personal test certificates. Other DV products, such as geotrust-dv-1-starter, need their resource plan bought first.",
+      "apply_secret_help": "Best from a RAM user granted yundun-cert:CreateCertificateForPackageRequest, yundun-cert:DescribeCertificateState, yundun-cert:DeleteCertificateRequest and yundun-cert:DescribePackageState only.",
+      "apply_username": "Contact name",
       "bucket": "Bucket",
       "cas_secret_help": "Best from a RAM user granted yundun-cert:ListUserCertificateOrder, yundun-cert:UploadUserCertificate and yundun-cert:DeleteUserCertificate only.",
       "cas_site_help": "The site of the account, where Certificate Management Service keeps the certificate first.",
@@ -148,6 +167,20 @@
       "site": "Site"
     },
     "log": {
+      "apply_file": "Putting the validation file {path} on {domain}",
+      "apply_file_left": "Could not remove the validation file {path} from {domain}; you can remove it from the website",
+      "apply_issued": "Alibaba Cloud issued the certificate (order {order})",
+      "apply_kept": "Could not delete the refused order {order}: delete it in Alibaba Cloud's console to have its quota back",
+      "apply_not_served": "{url} does not serve the validation file from here, so the CA may not get it either: it follows no redirects. Check the CDN and the website.",
+      "apply_order": "Applying for the certificate of {domains} with {product}",
+      "apply_record": "The validation record to add: the {type} record {name}, with the value {value}",
+      "apply_record_left": "The {type} record {name} is no longer needed; you can remove it at the DNS provider",
+      "apply_record_wait": "The authoritative DNS servers of the domain do not answer the validation record {name} yet; checking again later",
+      "apply_remove_file": "Removing the validation file {path} from {domain}",
+      "apply_remove_record": "Removing the validation record: the {type} record {name}",
+      "apply_review": "The certificate authority is reviewing the order",
+      "apply_state": "State of the order at Alibaba Cloud: {state}",
+      "apply_validate": "The validation is in place; waiting for the certificate authority to check it",
       "cas_found": "Certificate Management Service has {name} already",
       "cas_upload": "Uploading {name} to Certificate Management Service",
       "clb_current": "The listener on port {port} has this certificate already",
@@ -166,7 +199,7 @@
       "set": "Setting the certificate on {domain}"
     },
     "module": {
-      "description": "Deploys certificates to Alibaba Cloud CDN and DCDN, to Certificate Management Service, to custom domains of OSS buckets, and to CLB load balancers; takes in the certificates Certificate Management Service issued, too.",
+      "description": "Deploys certificates to Alibaba Cloud CDN and DCDN, to Certificate Management Service, to custom domains of OSS buckets, and to CLB load balancers; applies for certificates at Certificate Management Service, or takes in those it issued, too.",
       "name": "Alibaba Cloud"
     },
     "oss": {
@@ -178,6 +211,7 @@
       "intl": "International (cas.ap-southeast-1.aliyuncs.com)"
     },
     "test": {
+      "apply_ok": "Connected to Alibaba Cloud: the resource plans hold {total, plural, one {# certificate} other {# certificates}} of {product}, {used} applied for.",
       "cas_ok": "Signed in. Certificate Management Service has {count, plural, one {# uploaded certificate} other {# uploaded certificates}}.",
       "clb_ok": "Found the load balancer {name}, with {count, plural, one {# HTTPS listener} other {# HTTPS listeners}}.",
       "fetch_ok": "Connected to Alibaba Cloud's Certificate Management Service; {count, plural, one {# certificate} other {# certificates}} in sight.",

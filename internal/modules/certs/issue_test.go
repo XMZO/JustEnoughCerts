@@ -762,6 +762,47 @@ func TestIssueTakesOver(t *testing.T) {
 	}
 }
 
+func TestIssueRestart(t *testing.T) {
+	f := newFixture(t)
+	f.vendor(time.Hour)
+	c := f.issueNew("example.com")
+	f.run()
+
+	// The source finds its order spent: the issuance fails, and keeps
+	// neither the key nor the order.
+	f.failWith(contracts.Restart(retry.Permanent(&contracts.Problem{Key: i18n.AcmeErrorEabRequired})))
+	f.now = *f.certificate(c.ID).Issuance.NextAt
+	f.run()
+	old := f.certificate(c.ID).Issuance
+	if key, state := f.sealed(old.ID); old.State != "failed" || key || state {
+		t.Fatalf("issuance %+v keeps key %v, state %v", old, key, state)
+	}
+
+	// The next issuance starts afresh.
+	calls := f.vendor()
+	f.call(f.api.Post("/certificates/"+strconv.FormatInt(c.ID, 10)+"/issue"), http.StatusAccepted, nil)
+	f.run()
+	c = f.certificate(c.ID)
+	if c.State != "ok" || len(*calls) != 1 || (*calls)[0].State != nil {
+		t.Fatalf("after the restart: %+v, %d calls", c, len(*calls))
+	}
+	if keys := logKeys(f.issuanceDetail(c.Issuance.ID)); slices.Contains(keys, i18n.CertsLogTakeOver) || !slices.Contains(keys, i18n.CertsLogKey) {
+		t.Errorf("log %v", keys)
+	}
+
+	// A restart that may be retried retries afresh, with a new key.
+	f.vendor(time.Hour)
+	f.call(f.api.Post("/certificates/"+strconv.FormatInt(c.ID, 10)+"/issue"), http.StatusAccepted, nil)
+	f.run()
+	f.failWith(contracts.Restart(errors.New("the order is gone")))
+	f.now = *f.certificate(c.ID).Issuance.NextAt
+	f.run()
+	is := f.certificate(c.ID).Issuance
+	if key, state := f.sealed(is.ID); is.State != "pending" || key || state {
+		t.Errorf("retry %+v keeps key %v, state %v", is, key, state)
+	}
+}
+
 func TestIssueFailureDropsKey(t *testing.T) {
 	f := newFixture(t)
 	c := f.issueNew("example.com")

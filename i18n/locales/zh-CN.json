@@ -80,6 +80,10 @@
     }
   },
   "aliyun": {
+    "apply": {
+      "description": "用阿里云数字证书管理服务的证书资源包申请证书，默认是免费的个人测试证书（DigiCert DV，3 个月，每年 20 张，只在中国站）。私钥由 JEC 生成，阿里云只拿到 CSR；域名验证用网站文件或 DNS 记录。账号要先在阿里云领取个人测试证书的额度。",
+      "name": "向阿里云申请证书"
+    },
     "cas": {
       "description": "把每张新证书上传到数字证书管理服务，阿里云的产品（比如 ALB、OSS、WAF）可以从那里取用；删除 JEC 以前上传的。",
       "name": "阿里云数字证书管理服务"
@@ -98,6 +102,14 @@
     },
     "error": {
       "api": "阿里云返回了错误 {code}，完整日志里有原因。",
+      "apply_add": "没能添加验证记录 {name}。请检查 DNS 服务商的设置。",
+      "apply_bad": "阿里云签发的证书（订单 {order}）读不出来，或者和这次签发的私钥对不上。",
+      "apply_file": "阿里云要放的验证文件不在 /.well-known/ 下，JEC 不会放：{path}",
+      "apply_gone": "阿里云上找不到订单 {order}，可能已在控制台删除。JEC 会重新申请。",
+      "apply_method": "订单要用 {method} 验证，和这张证书现在选的验证方式对不上。下次签发时会重新申请。",
+      "apply_put": "没能为 {domain} 放验证文件。请检查验证方式的设置。",
+      "apply_record": "JEC 加不了阿里云要求的验证记录（{type} {name}）：只加域名下的 TXT 和 CNAME 记录。",
+      "apply_refused": "证书颁发机构没有通过订单 {order}（比如验证没通过）。JEC 已删除这个订单，额度会退回；下次签发时重新申请。",
       "auth": "阿里云不认这个 AccessKey，或者它缺少需要的权限。",
       "bucket": "{region} 地域没有存储空间 {bucket}。",
       "cname": "存储空间 {bucket} 没有绑定自定义域名 {domain}，请先在控制台绑定。",
@@ -122,6 +134,13 @@
     "field": {
       "access_key_id": "AccessKey ID",
       "access_key_secret": "AccessKey Secret",
+      "apply_contact_help": "留空时用数字证书管理服务里最新的联系人。证书颁发机构可能打电话或发邮件核实。",
+      "apply_email": "联系人邮箱",
+      "apply_phone": "联系人手机号",
+      "apply_product": "证书规格",
+      "apply_product_help": "资源包的规格代码（ProductCode），默认 digicert-free-1-free，也就是个人测试证书。其他 DV 规格（如 geotrust-dv-1-starter）要先购买对应的资源包。",
+      "apply_secret_help": "最好用只授予 yundun-cert:CreateCertificateForPackageRequest、yundun-cert:DescribeCertificateState、yundun-cert:DeleteCertificateRequest 和 yundun-cert:DescribePackageState 权限的 RAM 用户。",
+      "apply_username": "联系人姓名",
       "bucket": "存储空间（Bucket）",
       "cas_secret_help": "最好用只授予 yundun-cert:ListUserCertificateOrder、yundun-cert:UploadUserCertificate 和 yundun-cert:DeleteUserCertificate 权限的 RAM 用户。",
       "cas_site_help": "账号所在的站点，证书会先存进那里的数字证书管理服务。",
@@ -148,6 +167,20 @@
       "site": "站点"
     },
     "log": {
+      "apply_file": "在 {domain} 放验证文件 {path}",
+      "apply_file_left": "没能删除 {domain} 的验证文件 {path}，可以到网站上手动删除",
+      "apply_issued": "阿里云已签发证书（订单 {order}）",
+      "apply_kept": "没能删除被拒的订单 {order}：到阿里云控制台删除后，额度会退回",
+      "apply_not_served": "从这里访问 {url} 拿不到验证文件，证书颁发机构可能也拿不到：它不跟随跳转。请检查 CDN 和网站的设置。",
+      "apply_order": "用 {product} 申请 {domains} 的证书",
+      "apply_record": "要添加的验证记录：{type} 记录 {name}，值为 {value}",
+      "apply_record_left": "{type} 记录 {name} 已经用不到了，可以到 DNS 服务商那里删除",
+      "apply_record_wait": "还没从域名的权威 DNS 服务器查到验证记录 {name}，稍后再查",
+      "apply_remove_file": "删除 {domain} 的验证文件 {path}",
+      "apply_remove_record": "删除验证记录：{type} 记录 {name}",
+      "apply_review": "证书颁发机构正在审核",
+      "apply_state": "阿里云上的订单状态：{state}",
+      "apply_validate": "验证已就绪，等证书颁发机构来查",
       "cas_found": "数字证书管理服务里已有 {name}",
       "cas_upload": "上传 {name} 到数字证书管理服务",
       "clb_current": "{port} 端口的监听已经在用这张证书",
@@ -166,7 +199,7 @@
       "set": "给 {domain} 设置证书"
     },
     "module": {
-      "description": "把证书部署到阿里云 CDN 和全站加速（DCDN）、数字证书管理服务、OSS 存储空间的自定义域名和传统型负载均衡（CLB），也能取回数字证书管理服务签发的证书。",
+      "description": "把证书部署到阿里云 CDN 和全站加速（DCDN）、数字证书管理服务、OSS 存储空间的自定义域名和传统型负载均衡（CLB）；也能向数字证书管理服务申请证书，或取回它签发的证书。",
       "name": "阿里云"
     },
     "oss": {
@@ -178,6 +211,7 @@
       "intl": "国际站（cas.ap-southeast-1.aliyuncs.com）"
     },
     "test": {
+      "apply_ok": "已连上阿里云：资源包里的 {product} 共 {total, plural, other {# 张}}，已申请 {used} 张。",
       "cas_ok": "登录成功。数字证书管理服务里有 {count, plural, other {# 张}}上传的证书。",
       "clb_ok": "找到了负载均衡 {name}，有 {count, plural, other {# 个}} HTTPS 监听。",
       "fetch_ok": "已连上阿里云数字证书管理服务，能看到 {count, plural, other {# 张证书}}。",
