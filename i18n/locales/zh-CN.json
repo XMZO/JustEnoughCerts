@@ -1595,6 +1595,65 @@
       "shared": "所有域名都用这个目录"
     }
   },
+  "synology": {
+    "dsm": {
+      "description": "每个新版本替换 NAS 上的一张证书（JEC 自己添加的，或者按描述指定的那张），DSM 随之重启它的网页服务。在 DSM 里给服务绑定一次这张证书就行。",
+      "name": "群晖 DSM"
+    },
+    "error": {
+      "admin": "这个账户不是管理员：只有管理员能管理证书。",
+      "api": "DSM 拒绝了（错误 {code}）。",
+      "blocked": "登录失败次数过多，DSM 封锁了 JEC 连接的地址：请在 控制面板 → 安全性 → 保护 里解除封锁。",
+      "credentials": "DSM 拒绝了用户名或密码。",
+      "disabled": "DSM 说这个账户已停用。",
+      "expired": "这个账户的密码已过期或者必须修改：请登录 DSM 修改。",
+      "fingerprint": "不是 SHA-256 指纹：{fingerprint}",
+      "network": "连不上 {host}。",
+      "otp": "DSM 拒绝了两步验证码。请核对密钥，以及这台服务器的时间（验证码随时间变化）。",
+      "otp_enforced": "DSM 要求这个账户使用两步验证：请先为它设置两步验证，再填写密钥。",
+      "otp_needed": "这个账户开了两步验证：请填写两步验证密钥。",
+      "otp_secret": "不是两步验证密钥：密钥由字母 A 到 Z 和数字 2 到 7 组成。",
+      "pin": "DSM 证书的指纹和填写的不一样。如果 DSM 换了证书，请核对新指纹后重新填写。",
+      "plain": "{host} 在公网上，用 http:// 会让私钥以明文经过公网。请用 DSM 的 https:// 地址。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "session": "DSM 结束了会话（错误 {code}），JEC 稍后重试。",
+      "sign_in": "DSM 拒绝登录（错误 {code}）。",
+      "status": "DSM 的回应看不懂（HTTP {status}）。请检查地址：要填登录 DSM 的那个地址。",
+      "unverified": "JEC 验证不了 DSM 的证书（DSM 用自己生成的证书时就会这样）。请核对它的 SHA-256 指纹是 {fingerprint}，然后填进高级设置里的“DSM 证书指纹”。",
+      "url": "DSM 地址不对：{url}"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "NAS 在本机或内网、用 https:// 访问时打开。",
+      "default": "设为默认证书",
+      "default_help": "没有单独绑定证书的服务用默认证书。已经是默认证书的会一直保持默认。",
+      "description": "证书描述",
+      "description_help": "要替换 NAS 上已有的证书，填它的描述（控制面板 → 安全性 → 证书 里显示的）。留空时 JEC 在第一次部署时添加一张，之后一直更新这一张。",
+      "fingerprint": "DSM 证书指纹",
+      "fingerprint_help": "DSM 用它自己生成的证书时填写：这张证书的 SHA-256 指纹，测试连接会给出。JEC 只信任这张证书。",
+      "otp_secret": "两步验证密钥",
+      "otp_secret_help": "账户开了两步验证时才填：设置两步验证时 DSM 在二维码旁边显示的密钥。JEC 用它生成验证码，所以这台服务器的时间要准。",
+      "password": "密码",
+      "url": "DSM 地址",
+      "url_help": "比如 https://192.168.1.2:5001。http://（端口 5000）只能连本机或内网，因为私钥会以明文传输。",
+      "username": "用户名",
+      "username_help": "要是 administrators 群组里的账户：只有管理员能管理证书。"
+    },
+    "log": {
+      "add": "添加证书 {name}",
+      "replace": "替换证书 {certificate}",
+      "restart": "DSM 正在重启网页服务以使用新证书"
+    },
+    "module": {
+      "description": "通过 DSM 的 Web API 更新群晖 NAS 上的一张证书，绑定这张证书的服务随之更新。",
+      "name": "群晖 DSM"
+    },
+    "test": {
+      "found": "找到了证书 {certificate}。",
+      "list": "登录成功。JEC 会在第一次部署时添加一张证书；要改为替换 NAS 上已有的一张，填它的描述：{certificates}",
+      "new": "登录成功。NAS 上没有描述为“{description}”的证书：JEC 会在第一次部署时添加。"
+    }
+  },
   "telegram": {
     "bot": {
       "description": "用 @BotFather 创建的机器人发消息，可以发给个人、群或频道。",

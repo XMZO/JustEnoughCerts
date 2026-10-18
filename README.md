@@ -38,10 +38,10 @@ Working on the main branch:
 - Deployment of each new certificate to Alibaba Cloud ESA (removing the one
   it replaces), to Alibaba Cloud CDN and DCDN, and through Tencent Cloud's
   SSL Certificates to its CDN, EdgeOne, CLB and more; to websites of BaoTa
-  (aaPanel) and 1Panel, to Nginx Proxy Manager, and to Proxmox VE nodes;
-  to local directories and to servers over SSH, each with a command
-  afterwards, such as reloading nginx; into Docker containers, which are
-  then signaled to reload, or restarted; and to webhooks.
+  (aaPanel) and 1Panel, to Nginx Proxy Manager, Synology DSM and Proxmox
+  VE nodes; to local directories and to servers over SSH, each with a
+  command afterwards, such as reloading nginx; into Docker containers,
+  which are then signaled to reload, or restarted; and to webhooks.
 - Renewal once a certificate enters its renewal window, at the time of
   day set on the Settings page (02:00 by default), or at once with a week
   or less left; failures are retried with a growing delay.

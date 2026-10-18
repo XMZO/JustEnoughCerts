@@ -1595,6 +1595,65 @@
       "shared": "This directory serves every domain"
     }
   },
+  "synology": {
+    "dsm": {
+      "description": "Replaces a certificate of the NAS with each new version, one JEC adds or one you name by its description, and DSM restarts its web server for it. Bind the services to that certificate once, in DSM.",
+      "name": "Synology DSM"
+    },
+    "error": {
+      "admin": "The account is no administrator: only administrators can manage certificates.",
+      "api": "DSM refused (error {code}).",
+      "blocked": "DSM blocked the address JEC connects from, after failed sign-ins: unblock it in Control Panel → Security → Protection.",
+      "credentials": "DSM refused the username or password.",
+      "disabled": "DSM says this account is disabled.",
+      "expired": "The password of this account has expired or has to be changed: sign in to DSM to change it.",
+      "fingerprint": "Not a SHA-256 fingerprint: {fingerprint}",
+      "network": "Could not reach {host}.",
+      "otp": "DSM refused the two-factor code. Check the secret key, and the clock of this server, as the codes go with the time.",
+      "otp_enforced": "DSM requires two-factor authentication for this account: set it up for the account, then enter its secret key.",
+      "otp_needed": "This account has two-factor authentication: enter its secret key.",
+      "otp_secret": "Not a two-factor secret key: such a key is made of the letters A to Z and the digits 2 to 7.",
+      "pin": "The certificate of DSM does not have the fingerprint entered. If DSM changed its certificate, check the new fingerprint and enter it.",
+      "plain": "{host} is on the public internet, where http:// would carry the private key in the clear. Use the https:// address of DSM.",
+      "private": "{host} is a private address. To reach it, turn on “Allow private addresses” in the advanced settings.",
+      "session": "DSM ended the session (error {code}). JEC tries again later.",
+      "sign_in": "DSM refused to sign in (error {code}).",
+      "status": "The answer of DSM made no sense (HTTP {status}). Check the address: that of the page where you sign in to DSM.",
+      "unverified": "JEC cannot verify the certificate of DSM, as with one of its own making. Check that its SHA-256 fingerprint is {fingerprint}, then enter it under DSM certificate fingerprint in the advanced settings.",
+      "url": "Not a DSM address: {url}"
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "For a NAS on this machine or on your network, over https://.",
+      "default": "Make it the default certificate",
+      "default_help": "DSM uses the default certificate for the services not bound to another one. A certificate that is the default already stays so.",
+      "description": "Certificate description",
+      "description_help": "To replace a certificate of the NAS, enter its description, as Control Panel → Security → Certificate shows it. Leave it empty for JEC to add one at the first deployment and keep updating that one.",
+      "fingerprint": "DSM certificate fingerprint",
+      "fingerprint_help": "For DSM with a certificate of its own making: its SHA-256 fingerprint, which the connection test gives. JEC then trusts that certificate only.",
+      "otp_secret": "Two-factor secret key",
+      "otp_secret_help": "Only for an account with two-factor authentication: the key DSM shows beside the QR code when you set it up. JEC makes the codes from it, so keep the clock of this server right.",
+      "password": "Password",
+      "url": "DSM address",
+      "url_help": "Such as https://192.168.1.2:5001. Plain http:// (port 5000) reaches this machine or your network only, as the private key would cross the internet in the clear.",
+      "username": "Username",
+      "username_help": "Of an account in the administrators group: only administrators can manage certificates."
+    },
+    "log": {
+      "add": "Adding the certificate {name}",
+      "replace": "Replacing the certificate {certificate}",
+      "restart": "DSM restarts its web server to serve it"
+    },
+    "module": {
+      "description": "Keeps a certificate of a Synology NAS up to date through the Web API of DSM, and with it the services bound to it.",
+      "name": "Synology DSM"
+    },
+    "test": {
+      "found": "Found the certificate {certificate}.",
+      "list": "Signed in. JEC adds a certificate at the first deployment; to replace one of the NAS instead, enter its description: {certificates}",
+      "new": "Signed in. The NAS has no certificate described “{description}”: JEC adds it at the first deployment."
+    }
+  },
   "telegram": {
     "bot": {
       "description": "A bot made with @BotFather sends the notes to a person, a group or a channel.",
