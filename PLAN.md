@@ -365,12 +365,12 @@ DNS 验证分成两种能力，实现方式不同：
 
 **实现**（M1）：
 
-- **分发**（`internal/modules/notify`）：订阅 `certificate.issue_failed`、`deploy_failed`、`expiring`、`served_old`（线上巡检发现网站上还是旧证书，4.7）、`issued`、`deployed`；对每个想要这个事件的通知渠道（类型为 notifier 的 Provider 实例），按渠道设置的语言渲染一条消息（`contracts.Note`：标题、正文、JEC 里对应页面的链接，以及事件的原始数据），交给渠道发送。链接要设置了 `JEC_BASE_URL` 才有。每种渠道的设置最后都有同样两组（`contracts.NotifierFields`）：消息语言（字段类型 `locale`，表单默认填当前界面语言）和每种事件一个开关，默认只开签发失败、部署失败、快到期。
+- **分发**（`internal/modules/notify`）：订阅 `certificate.issue_failed`、`deploy_failed`、`expiring`、`served_old`（线上巡检发现网站上还是旧证书，4.7）、`issued`、`deployed`；对每个想要这个事件的通知渠道（类型为 notifier 的 Provider 实例），按渠道设置的语言渲染一条消息（`contracts.Note`：标题、正文、主题（标题前加“【JEC】”，英文是 `[JEC]`，给邮箱、群聊这类很多来源混在一起的地方用）、JEC 里对应页面的链接，以及事件的原始数据），交给渠道发送。链接要设置了 `JEC_BASE_URL` 才有。每种渠道的设置最后都有同样两组（`contracts.NotifierFields`）：消息语言（字段类型 `locale`，表单默认填当前界面语言）和每种事件一个开关，默认只开签发失败、部署失败、快到期。
 - **发送记录**在 `notify_sends`（事件 × 渠道，保留 30 天）：同一事件再次投递时跳过已经发出的渠道；可能自己恢复的失败（网络、服务端 5xx、限流）让事件总线退避重试，恢复不了的（Token 错、被拒收）直接记为失败。超过 3 天的事件不再发。`GET /api/v1/notify/sends` 返回每个渠道最近一次发送；`POST /api/v1/notify/notifiers/{id}/test` 立即用渠道的语言发一条测试消息，失败时返回渠道自己的错误信息（502）。
 - **Telegram**（`telegram.bot`）：Bot Token（保密）、Chat ID；高级设置里有代理（http、https、socks5，国内网络连 Telegram 要用）和自建的 Bot API 地址。消息用 HTML 格式，标题加粗。Token 错、找不到聊天、没有权限不重试，429 按 `retry_after` 重试。Token 在 URL 路径里，所以错误信息只保留底层原因，不带 URL。
-- **邮件**（`email.smtp`）：服务器、加密方式（SSL/TLS、STARTTLS、不加密）、端口（留空时按加密方式取 465、587、25）、用户名、密码或授权码、发件人、收件人（逗号分隔）。按服务器提供的方式用 PLAIN 或 LOGIN 登录（net/smtp 没有 LOGIN，自己实现），两者都不会在不加密的连接上发送密码（发往本机除外）。UTF-8 纯文本，quoted-printable 编码。登录失败、收件人被拒、证书不受信任、加密方式和端口对不上都不重试。
+- **邮件**（`email.smtp`）：服务器、加密方式（SSL/TLS、STARTTLS、不加密）、端口（留空时按加密方式取 465、587、25）、用户名、密码或授权码、发件人、收件人（逗号分隔）。按服务器提供的方式用 PLAIN 或 LOGIN 登录（net/smtp 没有 LOGIN，自己实现），两者都不会在不加密的连接上发送密码（发往本机除外）。邮件标题用消息的主题。UTF-8 纯文本，quoted-printable 编码。登录失败、收件人被拒、证书不受信任、加密方式和端口对不上都不重试。
 - **Webhook**（`webhook.notify`）：把 `contracts.Note` 原样 POST 成 JSON；签名、请求头、内网限制和重试规则同 Webhook 部署。
-- **群机器人**（M3）：钉钉（`dingtalk.robot`）、飞书（`feishu.bot`，也接受 Lark 国际版的地址）、企业微信（`wecom.robot`）。都填群里机器人的 Webhook 地址（地址里有令牌，保密保存，必须是官方地址的前缀），发纯文本：标题前加“【JEC】”（英文是 `[JEC]`），所以机器人的安全设置可以用关键词 `JEC`。钉钉和飞书还可以填加签密钥：钉钉用密钥对“毫秒时间戳 + 换行 + 密钥”算 HMAC-SHA256，`timestamp`、`sign` 放进 URL；飞书以“秒时间戳 + 换行 + 密钥”为密钥对空内容算 HMAC-SHA256，放进请求体。文字超过上限时在字符之间截断（企业微信 2048 字节，钉钉、飞书 4000 字节）。令牌失效、签名不对、缺关键词等不重试；限流（每个机器人每分钟 20 条左右）一分钟后再试；网络问题和 5xx 照常重试。错误信息不带 URL。
+- **群机器人**（M3）：钉钉（`dingtalk.robot`）、飞书（`feishu.bot`，也接受 Lark 国际版的地址）、企业微信（`wecom.robot`）。都填群里机器人的 Webhook 地址（地址里有令牌，保密保存，必须是官方地址的前缀），发纯文本：主题加正文，主题里有 `JEC`，所以机器人的安全设置可以用关键词 `JEC`。钉钉和飞书还可以填加签密钥：钉钉用密钥对“毫秒时间戳 + 换行 + 密钥”算 HMAC-SHA256，`timestamp`、`sign` 放进 URL；飞书以“秒时间戳 + 换行 + 密钥”为密钥对空内容算 HMAC-SHA256，放进请求体。文字超过上限时在字符之间截断（企业微信 2048 字节，钉钉、飞书 4000 字节）。令牌失效、签名不对、缺关键词等不重试；限流（每个机器人每分钟 20 条左右）一分钟后再试；网络问题和 5xx 照常重试。错误信息不带 URL。
 - 共用的 HTTP 客户端在 `internal/lib/httpx`：超时、单独设置的代理（不读环境变量里的代理），以及“只连公网地址”（第 10 节）。
 
 ### 5.4 阿里云 ESA 目标的注意点（来自实际调研）

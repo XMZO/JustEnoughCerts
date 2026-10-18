@@ -211,6 +211,11 @@ func (w writer) retry(at time.Time) string {
 	return w.text(i18n.NotifyNoteRetry, i18n.Args{"time": at.In(w.s.zone).Format("2006-01-02 15:04 MST")})
 }
 
+// subject is title marked as JEC's.
+func (w writer) subject(title string) string {
+	return w.text(i18n.NotifyNoteSubject, i18n.Args{"title": title})
+}
+
 func (w writer) day(t time.Time) string { return t.In(w.s.zone).Format("2006-01-02") }
 
 // note writes the note about ev in the language tag.
@@ -272,15 +277,17 @@ func (s *service) note(ctx context.Context, tag language.Tag, ev events.Event, d
 		lines = append(lines, w.text(i18n.NotifyNoteLink, i18n.Args{"url": n.Link}))
 	}
 	n.Text = strings.Join(lines, "\n")
+	n.Subject = w.subject(n.Title)
 	return n
 }
 
 // testNote is the note a test sends.
 func (s *service) testNote(tag language.Tag) contracts.Note {
 	w := writer{s: s, tag: tag}
+	title := w.text(i18n.NotifyTestTitle, nil)
 	return contracts.Note{
 		Event: contracts.NoteTest, Time: s.now().UTC(),
-		Title: w.text(i18n.NotifyTestTitle, nil), Text: w.text(i18n.NotifyTestText, nil),
+		Title: title, Subject: w.subject(title), Text: w.text(i18n.NotifyTestText, nil),
 	}
 }
 

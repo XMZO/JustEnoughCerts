@@ -2,6 +2,7 @@ package email
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
@@ -107,7 +108,7 @@ func (m *mailer) message(n contracts.Note, from *mail.Address, to []*mail.Addres
 		list = append(list, a.String())
 	}
 	header("To", strings.Join(list, ", "))
-	header("Subject", mime.QEncoding.Encode("utf-8", n.Title))
+	header("Subject", mime.QEncoding.Encode("utf-8", cmp.Or(n.Subject, n.Title)))
 	header("Date", m.now().Format(time.RFC1123Z))
 	id := make([]byte, 12)
 	_, _ = rand.Read(id)

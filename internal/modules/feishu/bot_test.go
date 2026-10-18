@@ -45,7 +45,7 @@ func open(t *testing.T, m *Module, config, secrets map[string]string) *bot {
 	return p.(*bot)
 }
 
-var note = contracts.Note{Event: contracts.CertificateIssueFailed, Title: "example.com failed", Text: "line 1\nline 2"}
+var note = contracts.Note{Event: contracts.CertificateIssueFailed, Title: "example.com failed", Subject: "[JEC] example.com failed", Text: "line 1\nline 2"}
 
 // message is what the bot sends.
 type message struct {
@@ -71,7 +71,7 @@ func TestNotify(t *testing.T) {
 		_, _ = io.WriteString(w, `{"code":0,"data":{},"msg":"success"}`)
 	})
 
-	b := open(t, m, map[string]string{contracts.NoteLocale: "en-US"}, map[string]string{"webhook": " " + m.bases[0] + token + " "})
+	b := open(t, m, nil, map[string]string{"webhook": " " + m.bases[0] + token + " "})
 	if err := b.Notify(t.Context(), note); err != nil {
 		t.Fatal(err)
 	}
@@ -84,16 +84,13 @@ func TestNotify(t *testing.T) {
 
 	// Signed, to Lark: HMAC-SHA256 of nothing, keyed by the time in seconds
 	// and the secret.
-	b = open(t, m, map[string]string{contracts.NoteLocale: "zh-CN"}, map[string]string{"webhook": m.bases[1] + token, "secret": secret})
+	b = open(t, m, nil, map[string]string{"webhook": m.bases[1] + token, "secret": secret})
 	if err := b.Notify(t.Context(), note); err != nil {
 		t.Fatal(err)
 	}
 	want := base64.StdEncoding.EncodeToString(hmac.New(sha256.New, []byte("1700000000\n"+secret)).Sum(nil))
 	if path != "/lark/hook/"+token || got.Timestamp == nil || *got.Timestamp != "1700000000" || got.Sign == nil || *got.Sign != want {
 		t.Errorf("sent %s %+v, want sign %s", path, got, want)
-	}
-	if prefix := string(rune(0x3010)) + "JEC" + string(rune(0x3011)) + "example.com failed"; !strings.HasPrefix(got.Content.Text, prefix) {
-		t.Errorf("text %q", got.Content.Text)
 	}
 }
 

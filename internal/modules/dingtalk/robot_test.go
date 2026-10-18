@@ -47,7 +47,7 @@ func open(t *testing.T, m *Module, config, secrets map[string]string) *robot {
 	return p.(*robot)
 }
 
-var note = contracts.Note{Event: contracts.CertificateIssueFailed, Title: "example.com failed", Text: "line 1\nline 2"}
+var note = contracts.Note{Event: contracts.CertificateIssueFailed, Title: "example.com failed", Subject: "[JEC] example.com failed", Text: "line 1\nline 2"}
 
 func TestNotify(t *testing.T) {
 	var query url.Values
@@ -69,7 +69,7 @@ func TestNotify(t *testing.T) {
 	})
 	webhook := m.base + "?access_token=" + token
 
-	r := open(t, m, map[string]string{contracts.NoteLocale: "en-US"}, map[string]string{"webhook": " " + webhook + " "})
+	r := open(t, m, nil, map[string]string{"webhook": " " + webhook + " "})
 	if err := r.Notify(t.Context(), note); err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestNotify(t *testing.T) {
 	}
 
 	// Signed: the time in milliseconds and the secret, keyed by the secret.
-	r = open(t, m, map[string]string{contracts.NoteLocale: "zh-CN"}, map[string]string{"webhook": webhook, "secret": secret})
+	r = open(t, m, nil, map[string]string{"webhook": webhook, "secret": secret})
 	if err := r.Notify(t.Context(), note); err != nil {
 		t.Fatal(err)
 	}
@@ -92,10 +92,6 @@ func TestNotify(t *testing.T) {
 	mac.Write([]byte("1700000000123\n" + secret))
 	if want := base64.StdEncoding.EncodeToString(mac.Sum(nil)); query.Get("access_token") != token || query.Get("timestamp") != "1700000000123" || query.Get("sign") != want {
 		t.Errorf("query %v, want sign %s", query, want)
-	}
-	// The title is tagged in the language of the channel.
-	if prefix := string(rune(0x3010)) + "JEC" + string(rune(0x3011)) + "example.com failed"; !strings.HasPrefix(got.Text.Content, prefix) {
-		t.Errorf("content %q", got.Text.Content)
 	}
 }
 
@@ -164,11 +160,12 @@ func TestNotifyNetwork(t *testing.T) {
 
 func TestContent(t *testing.T) {
 	long := contracts.Note{Title: "t", Text: strings.Repeat("ab"+string(rune(0x4e2d)), 2000)}
-	text := content(i18n.BaseLocale, long)
+	text := content(long)
 	if len(text) > maxContent || len(text) < maxContent-3 || !utf8.ValidString(text) {
 		t.Errorf("%d bytes, valid %v", len(text), utf8.ValidString(text))
 	}
-	if got := content(i18n.BaseLocale, contracts.Note{Title: "t"}); got != "[JEC] t" {
-		t.Errorf("no text: %q", got)
+	// A note without a subject, nor text.
+	if got := content(contracts.Note{Title: "t"}); got != "t" {
+		t.Errorf("only a title: %q", got)
 	}
 }

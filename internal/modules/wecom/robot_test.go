@@ -38,7 +38,7 @@ func open(t *testing.T, m *Module, config, secrets map[string]string) *robot {
 	return p.(*robot)
 }
 
-var note = contracts.Note{Event: contracts.CertificateIssueFailed, Title: "example.com failed", Text: "line 1\nline 2"}
+var note = contracts.Note{Event: contracts.CertificateIssueFailed, Title: "example.com failed", Subject: "[JEC] example.com failed", Text: "line 1\nline 2"}
 
 func TestNotify(t *testing.T) {
 	var got struct {
@@ -57,7 +57,7 @@ func TestNotify(t *testing.T) {
 		_, _ = io.WriteString(w, `{"errcode":0,"errmsg":"ok"}`)
 	})
 
-	r := open(t, m, map[string]string{contracts.NoteLocale: "en-US"}, map[string]string{"webhook": " " + m.base + "?key=" + key + " "})
+	r := open(t, m, nil, map[string]string{"webhook": " " + m.base + "?key=" + key + " "})
 	if err := r.Notify(t.Context(), note); err != nil {
 		t.Fatal(err)
 	}

@@ -2,6 +2,7 @@ package wecom
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,8 +11,6 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
-
-	"golang.org/x/text/language"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
@@ -40,30 +39,24 @@ func robotType() providers.Type {
 type robot struct {
 	m       *Module
 	webhook string
-	tag     language.Tag
 }
 
 var _ contracts.Notifier = (*robot)(nil)
 
 func (m *Module) factory(_ context.Context, in providers.Instance) (any, error) {
-	tag, err := language.Parse(in.Config[contracts.NoteLocale])
-	if err != nil {
-		tag = i18n.BaseLocale
-	}
-	return &robot{m: m, webhook: strings.TrimSpace(in.Value("webhook")), tag: tag}, nil
+	return &robot{m: m, webhook: strings.TrimSpace(in.Value("webhook"))}, nil
 }
 
 // Close has nothing to release: the client is the module's.
 func (*robot) Close() error { return nil }
 
-// Notify sends n as a text message: its title, tagged with JEC, then its
-// text.
+// Notify sends n as a text message: its subject, then its text.
 func (r *robot) Notify(ctx context.Context, n contracts.Note) error {
 	prefix := r.m.base + "?"
 	if !strings.HasPrefix(r.webhook, prefix) {
 		return retry.Permanent(&contracts.Problem{Key: i18n.WecomErrorWebhook, Params: map[string]any{"prefix": prefix}})
 	}
-	body, err := json.Marshal(map[string]any{"msgtype": "text", "text": map[string]string{"content": content(r.tag, n)}})
+	body, err := json.Marshal(map[string]any{"msgtype": "text", "text": map[string]string{"content": content(n)}})
 	if err != nil {
 		return retry.Permanent(err)
 	}
@@ -114,26 +107,13 @@ func explain(code int, message string) error {
 	return retry.Permanent(&contracts.Problem{Key: i18n.WecomErrorApi, Params: map[string]any{"code": code, "message": message}})
 }
 
-// content is the text of the message about n, in language tag.
-func content(tag language.Tag, n contracts.Note) string {
-	text := tagged(tag, n.Title)
+// content is the text of the message about n: its subject, then its text.
+func content(n contracts.Note) string {
+	text := cmp.Or(n.Subject, n.Title)
 	if n.Text != "" {
 		text += "\n\n" + n.Text
 	}
 	return truncate(text, maxContent)
-}
-
-// tagged is title marked as JEC's.
-func tagged(tag language.Tag, title string) string {
-	cat, err := i18n.Default()
-	if err != nil {
-		return title
-	}
-	text, err := cat.Format(tag, i18n.KernelNotifyTaggedTitle, i18n.Args{"title": title})
-	if err != nil {
-		return title
-	}
-	return text
 }
 
 // truncate cuts s to n bytes at most, between characters.

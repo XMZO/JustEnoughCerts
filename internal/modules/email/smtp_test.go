@@ -193,7 +193,7 @@ func open(t *testing.T, s *server, roots *x509.CertPool, config map[string]strin
 	return m
 }
 
-var note = contracts.Note{Event: contracts.CertificateIssueFailed, Title: "Could not issue example.com, über", Text: "Line one.\nDetails: https://jec.example.com/certificates/3"}
+var note = contracts.Note{Event: contracts.CertificateIssueFailed, Title: "Could not issue example.com, über", Subject: "[JEC] Could not issue example.com, über", Text: "Line one.\nDetails: https://jec.example.com/certificates/3"}
 
 func TestSend(t *testing.T) {
 	for _, c := range []struct {
@@ -221,7 +221,7 @@ func TestSend(t *testing.T) {
 		subject, _ := new(mime.WordDecoder).DecodeHeader(msg.Header.Get("Subject"))
 		to, _ := msg.Header.AddressList("To")
 		body, _ := io.ReadAll(msg.Body)
-		if subject != note.Title || len(to) != 2 || to[1].Name != "Ops" || msg.Header.Get("X-JEC-Event") != note.Event ||
+		if subject != note.Subject || len(to) != 2 || to[1].Name != "Ops" || msg.Header.Get("X-JEC-Event") != note.Event ||
 			msg.Header.Get("Date") != "Sat, 17 Oct 2026 08:00:00 +0000" || !strings.Contains(string(body), "Details: https://jec.example.com/certificates/3") {
 			t.Errorf("%s: %v\n%s", c.name, msg.Header, body)
 		}

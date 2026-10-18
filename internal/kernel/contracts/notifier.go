@@ -21,6 +21,9 @@ type Note struct {
 	// Title says what happened in a line; Text says more, in lines.
 	Title string `json:"title"`
 	Text  string `json:"text"`
+	// Subject is Title marked as JEC's, for where the notes of many senders
+	// meet, such as a mailbox or a group chat.
+	Subject string `json:"subject"`
 	// Link is the page about it in JEC; empty when JEC does not know the
 	// URL it is reached at.
 	Link string    `json:"link,omitempty"`

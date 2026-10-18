@@ -794,8 +794,7 @@
       },
       "field": {
         "locale": "Language of the notes"
-      },
-      "tagged_title": "[JEC] {title}"
+      }
     },
     "overview": {
       "title": "Overview"
@@ -1045,13 +1044,14 @@
       "retry": "JEC tries again at {time}.",
       "served_old": "The certificate it serves ends on {served}, the version in use on {current}: the target, such as a CDN, may not have taken the new one.",
       "served_old_title": "{domain} still serves the old certificate",
+      "subject": "[JEC] {title}",
       "target_gone": "a deleted target",
       "valid_until": "Valid until {date}."
     },
     "test": {
       "sent": "The test is on its way.",
       "text": "If this reached you, the channel is set up right.",
-      "title": "A test note from JEC"
+      "title": "A test note"
     }
   },
   "ssh": {

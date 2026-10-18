@@ -67,7 +67,7 @@
 - 设置页 `/settings`（按设计稿，改动立即保存）：语言、续期默认值（证书模块的 `certs_settings`，`GET`/`PUT /api/v1/certs/settings`：提前几天、每天检查时间、默认密钥类型）、账号和安全（改密码 `PUT /api/v1/account/password`，其他地方的登录随之退出）、面板访问和数据（内核的 `internal/kernel/system`：`GET /api/v1/system`；下载备份 `POST /api/v1/system/backup`，要密码，`VACUUM INTO` 出副本）、关于（清单接口带了构建日期和平台）。续期改为进入续期窗口后在每天检查时间开始（默认 02:00，服务器时区），只剩一周或更少时立即开始；证书接口带 `renewAt`。两步验证、登录有效期、在界面里恢复备份还没做。
 - 本机证书目录（来源类型 `files.watch`，`PLAN.md` 5.3.3）：取进 certbot、acme.sh 在本机续期的证书和私钥，只读；来源接口多了 `contracts.KeySource`（类型标 `ownKey`，不生成私钥、不选密钥类型），文件里还是旧证书时等待 6 小时再看。M1 的导入就此做完（PEM、PFX/P12 上传，读目录）。
 - 线上巡检（模块 `monitor`，`PLAN.md` 4.7）：连每个域名的 443 端口核对线上证书，部署 2 分钟后、平时每 6 小时查；当前版本生效 30 分钟后还是旧证书就发 `certificate.served_old`（通知默认打开）；证书事件带了指纹，`certificates.announce` 让证书模块把全部证书报一遍（`certificate.current`）。界面：证书详情的“线上检查”、列表的“需要处理”。
-- M3 开始：群机器人通知渠道 `dingtalk`、`feishu`（也接受 Lark）、`wecom`（`PLAN.md` 5.3.4）：标题前加“【JEC】”，机器人可以用关键词 `JEC`；钉钉、飞书支持加签。下一批：Bark、Server酱、ntfy、Gotify。
+- M3 开始：群机器人通知渠道 `dingtalk`、`feishu`（也接受 Lark）、`wecom`（`PLAN.md` 5.3.4）：发消息的主题（`contracts.Note.Subject`，分发模块生成，标题前加“【JEC】”，邮件标题也用它），机器人可以用关键词 `JEC`；钉钉、飞书支持加签。下一批：Bark、Server酱、ntfy、Gotify。
 - 下一步：用真实账号验证阿里云 ESA 部署、ESA 边缘应答和 Namecheap 模块（M1/M2 验收，`PLAN.md` 5.4、5.6 列了要确认的点）；DNS 验证（要先确认 Namecheap 给不给 DNS 验证，还要能加 CNAME 记录）。
 
 ## 工程约定

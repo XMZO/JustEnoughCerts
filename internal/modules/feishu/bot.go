@@ -2,6 +2,7 @@ package feishu
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -15,8 +16,6 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
-
-	"golang.org/x/text/language"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
@@ -50,29 +49,24 @@ type bot struct {
 	m       *Module
 	webhook string
 	secret  string
-	tag     language.Tag
 }
 
 var _ contracts.Notifier = (*bot)(nil)
 
 func (m *Module) factory(_ context.Context, in providers.Instance) (any, error) {
-	tag, err := language.Parse(in.Config[contracts.NoteLocale])
-	if err != nil {
-		tag = i18n.BaseLocale
-	}
-	return &bot{m: m, webhook: strings.TrimSpace(in.Value("webhook")), secret: strings.TrimSpace(in.Value("secret")), tag: tag}, nil
+	return &bot{m: m, webhook: strings.TrimSpace(in.Value("webhook")), secret: strings.TrimSpace(in.Value("secret"))}, nil
 }
 
 // Close has nothing to release: the client is the module's.
 func (*bot) Close() error { return nil }
 
-// Notify sends n as a text message: its title, tagged with JEC so that a
-// bot that wants a keyword gets one, then its text.
+// Notify sends n as a text message: its subject, which has JEC in it for a
+// bot that wants a keyword, then its text.
 func (b *bot) Notify(ctx context.Context, n contracts.Note) error {
 	if !slices.ContainsFunc(b.m.bases, func(base string) bool { return strings.HasPrefix(b.webhook, base) && len(b.webhook) > len(base) }) {
 		return retry.Permanent(&contracts.Problem{Key: i18n.FeishuErrorWebhook})
 	}
-	msg := map[string]any{"msg_type": "text", "content": map[string]string{"text": content(b.tag, n)}}
+	msg := map[string]any{"msg_type": "text", "content": map[string]string{"text": content(n)}}
 	if b.secret != "" {
 		// Feishu's signature: HMAC-SHA256 of nothing, keyed by the time in
 		// seconds and the secret, in Base64, in the body.
@@ -141,26 +135,13 @@ func explain(code int, message string) error {
 	return retry.Permanent(&contracts.Problem{Key: i18n.FeishuErrorApi, Params: map[string]any{"code": code, "message": message}})
 }
 
-// content is the text of the message about n, in language tag.
-func content(tag language.Tag, n contracts.Note) string {
-	text := tagged(tag, n.Title)
+// content is the text of the message about n: its subject, then its text.
+func content(n contracts.Note) string {
+	text := cmp.Or(n.Subject, n.Title)
 	if n.Text != "" {
 		text += "\n\n" + n.Text
 	}
 	return truncate(text, maxContent)
-}
-
-// tagged is title marked as JEC's.
-func tagged(tag language.Tag, title string) string {
-	cat, err := i18n.Default()
-	if err != nil {
-		return title
-	}
-	text, err := cat.Format(tag, i18n.KernelNotifyTaggedTitle, i18n.Args{"title": title})
-	if err != nil {
-		return title
-	}
-	return text
 }
 
 // truncate cuts s to n bytes at most, between characters.

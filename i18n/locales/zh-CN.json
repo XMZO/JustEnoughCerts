@@ -794,8 +794,7 @@
       },
       "field": {
         "locale": "消息语言"
-      },
-      "tagged_title": "【JEC】{title}"
+      }
     },
     "overview": {
       "title": "总览"
@@ -1045,13 +1044,14 @@
       "retry": "JEC 会在 {time} 再试一次。",
       "served_old": "线上的证书 {served} 到期，JEC 里的当前版本 {current} 到期：部署的目标（比如 CDN）可能还没换上新证书。",
       "served_old_title": "{domain} 上还是旧证书",
+      "subject": "【JEC】{title}",
       "target_gone": "已删除的部署目标",
       "valid_until": "有效期到 {date}。"
     },
     "test": {
       "sent": "测试通知已发出，请查收。",
       "text": "能收到这条消息，说明这个通知渠道设置正确。",
-      "title": "JEC 测试通知"
+      "title": "测试通知"
     }
   },
   "ssh": {

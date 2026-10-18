@@ -146,6 +146,7 @@ func TestNotes(t *testing.T) {
 	want := issueFailed + "\nJEC tries again at 2026-10-17 08:20 UTC.\nThe certificate also covers www.example.com.\n" +
 		"Details: https://jec.example.com/certificates/3/issuances/9"
 	if n.Event != contracts.CertificateIssueFailed || n.Title != "Could not issue the certificate for example.com" || n.Text != want ||
+		n.Subject != "[JEC] Could not issue the certificate for example.com" ||
 		n.Link != "https://jec.example.com/certificates/3/issuances/9" || !n.Time.Equal(start) || !strings.Contains(string(n.Data), `"issuance"`) {
 		t.Errorf("note %+v", n)
 	}
@@ -267,7 +268,8 @@ func TestTestAPI(t *testing.T) {
 		t.Fatalf("test: %d %s", resp.Code, resp.Body)
 	}
 	title, _ := f.svc.cat.Format(language.MustParse("zh-CN"), i18n.NotifyTestTitle, nil)
-	if got := f.notes(ok); len(got) != 1 || got[0].Event != contracts.NoteTest || got[0].Title != title || got[0].Link != "" {
+	subject, _ := f.svc.cat.Format(language.MustParse("zh-CN"), i18n.NotifyNoteSubject, i18n.Args{"title": title})
+	if got := f.notes(ok); len(got) != 1 || got[0].Event != contracts.NoteTest || got[0].Title != title || got[0].Subject != subject || got[0].Link != "" {
 		t.Errorf("test notes %+v", got)
 	}
 
