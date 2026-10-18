@@ -17,8 +17,27 @@ function label(key: string): string {
   return pseudoize(String(text))
 }
 
+// violations are what the browser refused under the server's
+// Content-Security-Policy, which the UI must keep to.
+let violations: string[] = []
+
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('jec.pseudo', '1'))
+  violations = []
+  // The browser's own reports of violations do not reach the console
+  // events, so the page tells of them.
+  page.on('console', (msg) => {
+    if (msg.type() === 'error' && msg.text().startsWith('CSP violation:')) {
+      violations.push(msg.text())
+    }
+  })
+  await page.addInitScript(() => {
+    document.addEventListener('securitypolicyviolation', (e) => console.error(`CSP violation: ${e.violatedDirective} ${e.blockedURI}`))
+    localStorage.setItem('jec.pseudo', '1')
+  })
+})
+
+test.afterEach(() => {
+  expect(violations, 'violations of the Content-Security-Policy').toEqual([])
 })
 
 /** problems lists text without markers and text that does not fit. */

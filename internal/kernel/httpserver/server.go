@@ -43,7 +43,37 @@ func New(cfg config.Config, log *slog.Logger, app http.Handler) *Server {
 		r.HandleFunc(p, health)
 	}
 	r.Handle("/*", app)
-	return &Server{handler: r, log: log}
+	return &Server{handler: secure(r, cfg.HSTS == "true"), log: log}
+}
+
+// headers are the security headers of every answer (PLAN.md 10): the UI
+// loads nothing from elsewhere and runs no inline script, its only images
+// of data are the QR codes of two-factor authentication, and no other site
+// may frame it, sniff types in it or learn where its links come from.
+var headers = map[string]string{
+	"Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; " +
+		"connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+	"X-Content-Type-Options":       "nosniff",
+	"X-Frame-Options":              "DENY",
+	"Referrer-Policy":              "same-origin",
+	"Cross-Origin-Opener-Policy":   "same-origin",
+	"Cross-Origin-Resource-Policy": "same-origin",
+}
+
+// secure sets the security headers on every answer of next, and with hsts
+// Strict-Transport-Security, which browsers heed over HTTPS only, for a
+// year.
+func secure(next http.Handler, hsts bool) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		for k, v := range headers {
+			h.Set(k, v)
+		}
+		if hsts {
+			h.Set("Strict-Transport-Security", "max-age=31536000")
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // Handler returns the root HTTP handler.

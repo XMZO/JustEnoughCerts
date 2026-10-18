@@ -129,10 +129,14 @@ the config file, an environment variable and a command-line flag.
 | `-data-dir` | `JEC_DATA_DIR` | | `data` (`/data` in the image) |
 | `-listen` | `JEC_LISTEN` | `listen` | `:8080` |
 | `-base-url` | `JEC_BASE_URL` | `base_url` | the address the server sees |
+| `-hsts` | `JEC_HSTS` | `hsts` | `false` |
 | `-log-level` | `JEC_LOG_LEVEL` | `log.level` | `info` |
 | `-log-format` | `JEC_LOG_FORMAT` | `log.format` | `text` (or `json`) |
 | `-config` | `JEC_CONFIG` | | `<data-dir>/config.yaml`, if it exists |
 | | `JEC_SECRET_KEY` | | `<data-dir>/secret.key` |
+
+Set `JEC_HSTS` to `true` only when the panel is reached over HTTPS alone:
+browsers then refuse plain HTTP to it for a year.
 
 `JEC_SECRET_KEY` is base64 of 32 random bytes, as from
 `openssl rand -base64 32`. It can only come from the environment, and JEC

@@ -20,6 +20,9 @@ services:
       # reverse proxy or under a sub-path. With https the session cookie is
       # sent over HTTPS only.
       # JEC_BASE_URL: "https://certs.example.com"
+      # Only when the panel is reached over HTTPS alone: browsers then refuse
+      # plain HTTP to it for a year.
+      # JEC_HSTS: "true"
     volumes:
       - ./data:/data
       # For the source "certificates on this machine": the directory certbot

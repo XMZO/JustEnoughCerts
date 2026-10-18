@@ -34,6 +34,10 @@ type Config struct {
 	// differs from what the server sees: behind a reverse proxy, or under a
 	// sub-path. Empty means the server is reached directly at its root.
 	BaseURL string `yaml:"base_url"`
+	// HSTS is "true" for answers to say Strict-Transport-Security: browsers
+	// then reach the panel over HTTPS alone for a year, so it is only for a
+	// panel never served over plain HTTP. "false" by default.
+	HSTS string `yaml:"hsts"`
 	// Log configures the process log.
 	Log Log `yaml:"log"`
 	// SecretKey is the master key sealing the stored secrets, base64 of 32
@@ -58,6 +62,7 @@ func Defaults() Config {
 	return Config{
 		DataDir: "data",
 		Listen:  ":8080",
+		HSTS:    "false",
 		Log:     Log{Level: "info", Format: "text"},
 	}
 }
@@ -90,6 +95,7 @@ var settings = []setting{
 	{"data-dir", "JEC_DATA_DIR", "directory for the database, keys and logs", func(c *Config) *string { return &c.DataDir }},
 	{"listen", "JEC_LISTEN", "TCP address to serve HTTP on", func(c *Config) *string { return &c.Listen }},
 	{"base-url", "JEC_BASE_URL", "URL users open in the browser, if it differs from what the server sees", func(c *Config) *string { return &c.BaseURL }},
+	{"hsts", "JEC_HSTS", "true to send Strict-Transport-Security, when the panel is reached over HTTPS alone", func(c *Config) *string { return &c.HSTS }},
 	{"log-level", "JEC_LOG_LEVEL", "log level: debug, info, warn or error", func(c *Config) *string { return &c.Log.Level }},
 	{"log-format", "JEC_LOG_FORMAT", "log format: text or json", func(c *Config) *string { return &c.Log.Format }},
 }
@@ -208,6 +214,11 @@ func (c *Config) normalize() error {
 		if c.BaseURL, err = normalizeBaseURL(c.BaseURL); err != nil {
 			return err
 		}
+	}
+
+	c.HSTS = strings.ToLower(c.HSTS)
+	if c.HSTS != "true" && c.HSTS != "false" {
+		return fmt.Errorf("hsts %q: want true or false", c.HSTS)
 	}
 
 	if _, err := c.Log.SlogLevel(); err != nil {

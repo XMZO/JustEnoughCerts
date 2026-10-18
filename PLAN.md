@@ -790,6 +790,8 @@ services:
 - **API 令牌**：可以按权限范围生成，用于 CLI 和自动化。
 - **审计日志**：谁在什么时候改了什么、下载了哪个私钥。
 - **安全响应头**：CSP、HSTS（由用户选择是否开启）等。
+  - 实现在 `internal/kernel/httpserver`，每个回答都带（界面、接口、`/.well-known/`、健康检查）：CSP 只允许自己的脚本、样式和接口，图片另外允许 `data:`（两步验证的二维码），不许别的网站把面板嵌进框架；还有 `X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`、`Referrer-Policy: same-origin`、`Cross-Origin-Opener-Policy` 和 `Cross-Origin-Resource-Policy: same-origin`。界面没有内联脚本和样式，也不用 `eval`。HSTS 要自己打开（`JEC_HSTS=true`，有效期一年）：打开后浏览器一年内只肯用 HTTPS 访问面板，所以默认关。
+  - 伪语言测试监听 `securitypolicyviolation`，界面有任何内容被 CSP 拦下就失败（试过：去掉 `data:` 时二维码那一步会失败）。
 - **备份**：下载备份和下载私钥一样要先输密码，日志记下是谁；备份里的私钥和凭据由主密钥加密，主密钥不在备份里，要另外保存。
 - **公开的 `/.well-known/`**：只回答验证方式放进去的文件（JEC 自己应答），不需要登录；文件只能在 `/.well-known/` 下，内容本来就是要给 CA 公开看的。从外网核对验证文件时不校验证书（5.3.2 ④），这样的客户端只用来取公开的验证文件，不发送任何东西。
 - **部署到别人平台上的代码**：ESA 边缘应答的函数代码（5.4）经 OSS 上传时一律走 HTTPS，不管接口给的地址是不是 http。

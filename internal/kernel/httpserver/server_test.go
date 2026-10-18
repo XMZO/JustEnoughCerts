@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -53,6 +54,30 @@ func TestHealth(t *testing.T) {
 		if tt.want == http.StatusOK && tt.method == http.MethodGet && string(body) != "ok\n" {
 			t.Errorf("%s %s body = %q", tt.method, tt.path, body)
 		}
+	}
+}
+
+func TestSecurityHeaders(t *testing.T) {
+	for _, hsts := range []string{"false", "true"} {
+		cfg := config.Defaults()
+		cfg.HSTS = hsts
+		srv := httptest.NewServer(New(cfg, discard, teapot).Handler())
+		for _, path := range []string{"/healthz", "/", "/api/v1/manifest"} {
+			resp, err := srv.Client().Get(srv.URL + path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = resp.Body.Close()
+			h := resp.Header
+			if !strings.Contains(h.Get("Content-Security-Policy"), "frame-ancestors 'none'") || h.Get("X-Content-Type-Options") != "nosniff" ||
+				h.Get("X-Frame-Options") != "DENY" || h.Get("Referrer-Policy") != "same-origin" {
+				t.Errorf("%s: headers %v", path, h)
+			}
+			if got := h.Get("Strict-Transport-Security"); (got != "") != (hsts == "true") {
+				t.Errorf("hsts %s, %s: %q", hsts, path, got)
+			}
+		}
+		srv.Close()
 	}
 }
 

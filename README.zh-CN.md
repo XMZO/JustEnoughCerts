@@ -74,10 +74,13 @@ tar -xzf jec_<版本>_linux_amd64.tar.gz
 | `-data-dir` | `JEC_DATA_DIR` | | `data`（镜像里是 `/data`） |
 | `-listen` | `JEC_LISTEN` | `listen` | `:8080` |
 | `-base-url` | `JEC_BASE_URL` | `base_url` | 服务端看到的地址 |
+| `-hsts` | `JEC_HSTS` | `hsts` | `false` |
 | `-log-level` | `JEC_LOG_LEVEL` | `log.level` | `info` |
 | `-log-format` | `JEC_LOG_FORMAT` | `log.format` | `text`（或 `json`） |
 | `-config` | `JEC_CONFIG` | | `<data-dir>/config.yaml`（存在时） |
 | | `JEC_SECRET_KEY` | | `<data-dir>/secret.key` |
+
+只有面板始终经 HTTPS 访问时才把 `JEC_HSTS` 设为 `true`：设置后浏览器一年内都不肯再用 HTTP 打开它。
 
 `JEC_SECRET_KEY` 是 32 个随机字节的 base64，可以用 `openssl rand -base64 32` 生成。它只能通过环境变量传入；如果和加密数据库时用的密钥不一致，JEC 会拒绝启动。
 

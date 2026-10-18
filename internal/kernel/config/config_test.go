@@ -38,7 +38,7 @@ func TestDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := Config{DataDir: dir, Listen: ":8080", Log: Log{Level: "info", Format: "text"}}
+	want := Config{DataDir: dir, Listen: ":8080", HSTS: "false", Log: Log{Level: "info", Format: "text"}}
 	if cfg != want {
 		t.Errorf("got %+v, want %+v", cfg, want)
 	}
@@ -157,6 +157,7 @@ func TestInvalidValues(t *testing.T) {
 		"base URL user":         {"--base-url", "https://u:p@example.com"},
 		"log level":             {"--log-level", "loud"},
 		"log format":            {"--log-format", "xml"},
+		"hsts":                  {"--hsts", "yes"},
 		"empty data dir":        {"--data-dir", ""},
 	}
 	for name, args := range tests {

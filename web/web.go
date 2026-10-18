@@ -37,10 +37,6 @@ func Handler(base string) (http.Handler, error) {
 	return NewHandler(sub, base)
 }
 
-// csp allows nothing but the app's own scripts, styles and API.
-const csp = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; " +
-	"connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
-
 // encodings are the precompressed variants, best first, by file suffix.
 var encodings = []struct{ name, suffix string }{{"br", ".br"}, {"gzip", ".gz"}}
 
@@ -146,10 +142,9 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	// The security headers, the Content-Security-Policy among them, are the
+	// server's, for every answer (internal/kernel/httpserver).
 	hdr := w.Header()
-	hdr.Set("X-Content-Type-Options", "nosniff")
-	hdr.Set("Referrer-Policy", "same-origin")
-
 	f, found := h.files[p]
 	switch {
 	case found && p != "index.html":
@@ -161,8 +156,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case path.Ext(p) == "" || p == "index.html":
 		f = h.index // a route of the UI
 		hdr.Set("Cache-Control", "no-cache")
-		hdr.Set("Content-Security-Policy", csp)
-		hdr.Set("X-Frame-Options", "DENY")
 	default:
 		http.NotFound(w, r)
 		return

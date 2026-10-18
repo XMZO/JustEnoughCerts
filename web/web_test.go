@@ -45,8 +45,7 @@ func TestServe(t *testing.T) {
 		if rec.Code != http.StatusOK || !strings.Contains(body, `<base href="/jec/">`) || rec.Header().Get("Content-Encoding") != "" {
 			t.Errorf("GET %s = %d %q, encoding %q", p, rec.Code, body, rec.Header().Get("Content-Encoding"))
 		}
-		if rec.Header().Get("Content-Security-Policy") == "" || rec.Header().Get("Cache-Control") != "no-cache" ||
-			rec.Header().Get("Content-Type") != "text/html; charset=utf-8" {
+		if rec.Header().Get("Cache-Control") != "no-cache" || rec.Header().Get("Content-Type") != "text/html; charset=utf-8" {
 			t.Errorf("GET %s headers = %v", p, rec.Header())
 		}
 	}
