@@ -113,6 +113,47 @@
       "ok": "Found the accelerated domains {domains}."
     }
   },
+  "baota": {
+    "error": {
+      "api": "The panel refused: {message}",
+      "fingerprint": "Not a SHA-256 fingerprint: {fingerprint}",
+      "ip": "The panel did not let JEC in ({message}). Add the address JEC connects from to the allowlist of the API.",
+      "network": "Could not reach {host}.",
+      "pin": "The panel's certificate does not have the fingerprint entered. If the panel changed its certificate, check the new fingerprint and enter it.",
+      "plain": "{host} is on the public internet, where http:// would carry the private key in the clear. Use the panel's https:// address.",
+      "private": "{host} is a private address. To reach it, turn on “Allow private addresses” in the advanced settings.",
+      "sites": "Enter the websites to deploy to.",
+      "status": "The panel's answer made no sense (HTTP {status}). Check its address, and that its API is on.",
+      "unverified": "JEC cannot verify the panel's certificate, as with one of the panel's own making. Check that its SHA-256 fingerprint is {fingerprint}, then enter it under Panel certificate fingerprint in the advanced settings.",
+      "url": "Not a panel address: {url}"
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "For a panel on this machine or on your network, over https://.",
+      "api_key": "API key",
+      "api_key_help": "Panel Settings → API: turn the API on, copy its key, and add the address JEC connects from to the allowlist.",
+      "fingerprint": "Panel certificate fingerprint",
+      "fingerprint_help": "For a panel with a certificate of its own making: its SHA-256 fingerprint, which the connection test gives. JEC then trusts that certificate only.",
+      "sites": "Websites",
+      "sites_help": "Their names, as the panel's list of websites shows them, separated by commas.",
+      "url": "Panel address",
+      "url_help": "Such as https://203.0.113.5:8888, without the security entrance. Plain http:// reaches this machine or your network only, as the private key would cross the internet in the clear."
+    },
+    "log": {
+      "site": "Setting the certificate on {site}"
+    },
+    "module": {
+      "description": "Sets certificates on websites of a BaoTa panel, aaPanel abroad, through its API.",
+      "name": "BaoTa (aaPanel)"
+    },
+    "site": {
+      "description": "Sets each new certificate on websites of the panel, which serves it at once.",
+      "name": "BaoTa panel websites"
+    },
+    "test": {
+      "ok": "JEC can reach the panel at {host}, which accepts the API key."
+    }
+  },
   "bark": {
     "device": {
       "description": "Pushes notes to an iPhone with the Bark app, by its device key.",
@@ -1267,6 +1308,57 @@
     "topic": {
       "description": "Every phone and browser subscribed to the topic gets the notes.",
       "name": "ntfy"
+    }
+  },
+  "onepanel": {
+    "api": {
+      "v1": "1Panel v1",
+      "v2": "1Panel v2"
+    },
+    "certificate": {
+      "description": "Replaces the content of a certificate of the panel with each new version; the websites that use it serve the new one.",
+      "name": "1Panel certificate"
+    },
+    "error": {
+      "api": "The panel refused: {message} ({code})",
+      "certificate_id": "Not a certificate ID: {id}",
+      "certificate_missing": "Enter the ID of the panel's certificate to keep up to date.",
+      "fingerprint": "Not a SHA-256 fingerprint: {fingerprint}",
+      "key": "The panel refused: check the API key, the allowlist of addresses, and the clock of this server, as requests are signed with the time.",
+      "network": "Could not reach {host}.",
+      "no_certificate": "The panel has no certificate {id}. It has: {certificates}",
+      "no_certificates": "The panel has no certificates yet: upload or apply for one in Websites → Certificates, set it on the websites, then enter its ID.",
+      "pin": "The panel's certificate does not have the fingerprint entered. If the panel changed its certificate, check the new fingerprint and enter it.",
+      "plain": "{host} is on the public internet, where http:// would carry the private key in the clear. Use the panel's https:// address.",
+      "private": "{host} is a private address. To reach it, turn on “Allow private addresses” in the advanced settings.",
+      "status": "The panel's answer made no sense (HTTP {status}). Check its address, and that its API is on.",
+      "unverified": "JEC cannot verify the panel's certificate, as with one of the panel's own making. Check that its SHA-256 fingerprint is {fingerprint}, then enter it under Panel certificate fingerprint in the advanced settings.",
+      "url": "Not a panel address: {url}",
+      "version": "The panel has no such API (HTTP 404): check the panel version, v1 or v2, and its address."
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "For a panel on this machine or on your network, over https://.",
+      "api_key": "API key",
+      "api_key_help": "Panel Settings → API: turn it on, copy the key, and add the address JEC connects from to the allowlist.",
+      "api_version": "Panel version",
+      "certificate": "Certificate ID",
+      "certificate_help": "The certificate of the panel to keep up to date: upload or apply for one in Websites → Certificates, and set it on the websites first. The connection test lists the panel's certificates with their IDs.",
+      "fingerprint": "Panel certificate fingerprint",
+      "fingerprint_help": "For a panel with a certificate of its own making: its SHA-256 fingerprint, which the connection test gives. JEC then trusts that certificate only.",
+      "url": "Panel address",
+      "url_help": "Such as https://203.0.113.5:10086, without the security entrance. Plain http:// reaches this machine or your network only, as the private key would cross the internet in the clear."
+    },
+    "log": {
+      "upload": "Replacing the content of the certificate {certificate}"
+    },
+    "module": {
+      "description": "Keeps a certificate of a 1Panel up to date through its API, and with it the websites that use it.",
+      "name": "1Panel"
+    },
+    "test": {
+      "list": "The panel's certificates: {certificates}. Enter the ID of the one to keep up to date.",
+      "ok": "Found the certificate {certificate}."
     }
   },
   "plugins": {

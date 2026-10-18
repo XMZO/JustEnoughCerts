@@ -6,7 +6,10 @@ package httpx
 
 import (
 	"cmp"
+	"crypto/sha256"
+	"crypto/subtle"
 	"crypto/tls"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
@@ -14,6 +17,7 @@ import (
 	"net/netip"
 	"net/url"
 	"slices"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -34,25 +38,42 @@ type Options struct {
 	// the expired certificate being replaced. It is for checking the public
 	// files of validations, never for sending anything.
 	SkipVerify bool
+	// PrivateOnly refuses to connect to an address on the public internet:
+	// for plain HTTP that carries secrets, which must not cross it.
+	PrivateOnly bool
+	// Pin trusts the server whose certificate has this SHA-256 fingerprint,
+	// in hex with colons or without, in place of the usual checks: for a
+	// server people set up with a certificate of its own making, such as a
+	// panel, as SSH trusts a host key. Fingerprint tells it from the error
+	// of a connection that did not pin it.
+	Pin string
 }
 
 // Errors of Client and of the requests it makes.
 var (
 	ErrProxy     = errors.New("httpx: the proxy must be an http, https or socks5 URL")
 	ErrNotPublic = errors.New("httpx: the address is not on the public internet")
+	ErrPublic    = errors.New("httpx: the address is on the public internet")
+	ErrPin       = errors.New("httpx: the certificate does not have the fingerprint trusted")
 )
 
 // Client returns a client with o.
 func Client(o Options) (*http.Client, error) {
 	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
-	if o.PublicOnly {
+	if o.PublicOnly && o.PrivateOnly {
+		return nil, errors.New("httpx: PublicOnly and PrivateOnly leave no address")
+	}
+	if o.PublicOnly || o.PrivateOnly {
 		dialer.Control = func(_, address string, _ syscall.RawConn) error {
 			ap, err := netip.ParseAddrPort(address)
 			if err != nil {
 				return err
 			}
-			if !Public(ap.Addr()) {
+			switch public := Public(ap.Addr()); {
+			case o.PublicOnly && !public:
 				return fmt.Errorf("%w: %s", ErrNotPublic, ap.Addr())
+			case o.PrivateOnly && public:
+				return fmt.Errorf("%w: %s", ErrPublic, ap.Addr())
 			}
 			return nil
 		}
@@ -64,8 +85,28 @@ func Client(o Options) (*http.Client, error) {
 		MaxIdleConns:        4,
 		IdleConnTimeout:     30 * time.Second,
 	}
-	if o.SkipVerify {
+	switch {
+	case o.SkipVerify:
 		t.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // fetches public files as a CA does; see Options.SkipVerify
+	case o.Pin != "":
+		pin, err := hex.DecodeString(strings.NewReplacer(":", "", " ", "").Replace(o.Pin))
+		if err != nil || len(pin) != sha256.Size {
+			return nil, fmt.Errorf("httpx: %q is no SHA-256 fingerprint", o.Pin)
+		}
+		t.TLSClientConfig = &tls.Config{
+			// The pin is the check: VerifyConnection compares it.
+			InsecureSkipVerify: true, //nolint:gosec // the certificate is checked against the pinned fingerprint
+			VerifyConnection: func(cs tls.ConnectionState) error {
+				if len(cs.PeerCertificates) == 0 {
+					return ErrPin
+				}
+				sum := sha256.Sum256(cs.PeerCertificates[0].Raw)
+				if subtle.ConstantTimeCompare(sum[:], pin) != 1 {
+					return fmt.Errorf("%w: it has %s", ErrPin, format(sum[:]))
+				}
+				return nil
+			},
+		}
 	}
 	if o.Proxy != "" {
 		if o.PublicOnly {
@@ -107,6 +148,28 @@ func Public(a netip.Addr) bool {
 		}
 	}
 	return true
+}
+
+// Fingerprint returns the SHA-256 fingerprint of the certificate a server
+// presented that could not be verified, for people to check and pin, as
+// Options.Pin takes it.
+func Fingerprint(err error) (string, bool) {
+	var v *tls.CertificateVerificationError
+	if !errors.As(err, &v) || len(v.UnverifiedCertificates) == 0 {
+		return "", false
+	}
+	sum := sha256.Sum256(v.UnverifiedCertificates[0].Raw)
+	return format(sum[:]), true
+}
+
+// format writes a fingerprint as browsers show it: hex pairs in capitals,
+// between colons.
+func format(sum []byte) string {
+	pairs := make([]string, len(sum))
+	for i, b := range sum {
+		pairs[i] = fmt.Sprintf("%02X", b)
+	}
+	return strings.Join(pairs, ":")
 }
 
 // Cause returns err without the URL that an *url.Error adds, which may

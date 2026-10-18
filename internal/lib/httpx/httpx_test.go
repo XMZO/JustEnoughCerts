@@ -1,6 +1,8 @@
 package httpx
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -91,4 +93,78 @@ func TestSkipVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = resp.Body.Close()
+}
+
+// A server whose certificate no CA signed is trusted by its fingerprint, as
+// the error of a connection that did not pin it tells.
+func TestPin(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	defer srv.Close()
+
+	c, err := Client(Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.Get(srv.URL)
+	if err == nil {
+		_ = resp.Body.Close()
+		t.Fatal("a certificate of no known CA was accepted")
+	}
+	fp, ok := Fingerprint(err)
+	sum := sha256.Sum256(srv.Certificate().Raw)
+	if want := strings.ToUpper(hex.EncodeToString(sum[:])); !ok || strings.ReplaceAll(fp, ":", "") != want || len(fp) != 95 {
+		t.Fatalf("fingerprint %q %v, want %s", fp, ok, want)
+	}
+
+	for _, pin := range []string{fp, strings.ToLower(strings.ReplaceAll(fp, ":", ""))} {
+		c, err = Client(Options{Pin: pin})
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err = c.Get(srv.URL)
+		if err != nil {
+			t.Fatalf("pinned %s: %v", pin, err)
+		}
+		_ = resp.Body.Close()
+	}
+
+	other := strings.Repeat("AB:", 31) + "AB"
+	c, err = Client(Options{Pin: other})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err = c.Get(srv.URL)
+	if err == nil {
+		_ = resp.Body.Close()
+	}
+	if !errors.Is(err, ErrPin) || !strings.Contains(err.Error(), fp) {
+		t.Errorf("another fingerprint: %v", err)
+	}
+	if _, err := Client(Options{Pin: "not hex"}); err == nil {
+		t.Error("a pin that is no fingerprint")
+	}
+}
+
+func TestPrivateOnly(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	defer srv.Close()
+	c, err := Client(Options{PrivateOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.Get(srv.URL)
+	if err != nil {
+		t.Fatalf("a loopback address: %v", err)
+	}
+	_ = resp.Body.Close()
+	resp, err = c.Get("http://93.184.215.14:9/")
+	if err == nil {
+		_ = resp.Body.Close()
+	}
+	if !errors.Is(err, ErrPublic) {
+		t.Errorf("a public address: %v", err)
+	}
+	if _, err := Client(Options{PrivateOnly: true, PublicOnly: true}); err == nil {
+		t.Error("both PrivateOnly and PublicOnly")
+	}
 }

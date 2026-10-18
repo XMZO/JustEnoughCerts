@@ -351,7 +351,7 @@ DNS 验证分成两种能力，实现方式不同：
 | 负载均衡 / 证书库 | 阿里云 SLB / ALB、阿里云证书服务、腾讯云 CLB、腾讯云 SSL 证书（已完成，经它更新 CDN、EdgeOne、CLB 等）、AWS ACM | M3 |
 | 对象存储 | 阿里云 OSS、腾讯云 COS 的自定义域名 HTTPS | M3 |
 | 服务器 | 本地文件 + 执行命令（nginx、caddy、haproxy 等）；SSH / SFTP 上传 + 远程命令；Docker 容器（通过挂载的 Docker API 发信号或重启，不需要 docker 命令行）；Kubernetes Secret | M1（本地、SSH）/ M3（Docker 已完成） |
-| 面板与应用 | 1Panel、宝塔、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Caddy 管理 API | M3 |
+| 面板与应用 | 1Panel、宝塔（已完成）、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Caddy 管理 API | M3 |
 | 通用 | Webhook、外部插件 | M1 |
 
 **本地文件的实现**（`internal/modules/files`，M1）：部署目标类型 `files.directory`：目录（绝对路径）和放法（每张证书一个以主域名命名的子目录，`*` 写成 `star`；或者直接放在这个目录里）。按 certbot 的文件名写 `cert.pem`、`chain.pem`、`fullchain.pem`、`privkey.pem`（私钥只有所有者可读），每个文件先写到临时文件再改名，读的程序不会读到写了一半的文件；新版本直接覆盖，没有旧版本要删。目录是相对路径、没有写入权限时不自动重试。写好后可以执行一段命令（比如 `systemctl reload nginx`）：用内嵌的 shell 解释器（`mvdan.cc/sh`，POSIX sh 和 Bash 的写法都认）在证书目录里执行，最多 5 分钟；环境变量是 JEC 自己的环境去掉 `JEC_` 开头的设置（比如主密钥），加上 `JEC_CERT_DIR`、`JEC_CERT_FILE`、`JEC_CHAIN_FILE`、`JEC_FULLCHAIN_FILE`、`JEC_KEY_FILE`、`JEC_DOMAIN`、`JEC_DOMAINS`、`JEC_CERTIFICATE_ID`、`JEC_NOT_AFTER`，以及 certbot 部署钩子用的 `RENEWED_LINEAGE`、`RENEWED_DOMAINS`，现成的 certbot 钩子脚本可以直接用。输出的最后 4000 字节记进部署日志；退出码不是 0、语法不对、超时都不自动重试。测试连接只检查命令的语法，不执行。容器镜像里除了 JEC 没有别的程序，所以这主要给原生二进制部署用。
@@ -362,6 +362,12 @@ DNS 验证分成两种能力，实现方式不同：
 - 读不了私钥时（certbot、acme.sh 的私钥通常只有属主能读）报出是哪个文件，提示让 JEC 以那个用户运行（`docker-compose.yml` 里 `user: "0:0"`）或者用 `--deploy-hook` 复制一份；目录不存在时提示挂载。测试连接列出找到了哪些证书。用 Docker 时把目录只读挂载进容器，`docker-compose.yml` 里有注释掉的示例。
 
 **SSH 的实现**（`internal/modules/ssh`，M1）：部署目标类型 `ssh.server`：主机、端口、用户名、私钥（OpenSSH 或 PEM，可以带口令）或密码、主机公钥、远程目录（绝对路径）和放法（同本地文件），以及写入后执行的命令。用已有依赖里的 `golang.org/x/crypto/ssh`，不用 SFTP：每个文件用一条 `cat > 临时文件` 命令写入（私钥在 `umask 077` 下写），四个都写好后用一条命令一起改名，再执行设置的命令（比如 `systemctl reload nginx`），它的输出记进部署日志。所以服务器要有 POSIX shell，Linux 和 BSD 都有。主机公钥一定核对：可以填 `SHA256:` 开头的指纹，或 known_hosts 里的那一行；留空时第一次部署会失败，错误信息给出服务器出示的指纹，让人核对后填进去。登录被拒、主机公钥不对、写不进去、命令退出码不是 0 都不自动重试，网络问题照常重试。
+
+**面板的实现**（模块 `baota`、`onepanel`，M3，接口用法参考 certimate 里验证过的实现）：
+
+- 宝塔（`baota.site`，国际版 aaPanel 同样适用）：面板地址、接口密钥、网站名（逗号分隔）。对每个网站 `POST /site?action=SetSSL`（表单：`type=0`、`siteName`、`key` 私钥、`csr` 证书链），两个网站之间隔 3 秒，让面板重载 Web 服务器；签名是 `request_time` 和 `request_token = md5(时间 + md5(密钥))`，回答 `{"status": false, "msg": …}` 时失败，消息里有 IP 的提示加白名单。测试连接调 `/system?action=GetSystemTotal`。
+- 1Panel（`onepanel.certificate`）：面板地址、API 接口密钥、面板版本（v2 默认，v1 可选，决定 `/api/v2` 或 `/api/v1`）、证书 ID。每个新版本用 `POST …/websites/ssl/upload`（`sslID` 为设置的证书，`type=paste`，保留原来的描述）原地替换面板里那张证书的内容，用它的网站随之换上新证书；签名头 `1Panel-Token = md5("1panel" + 密钥 + 时间)`、`1Panel-Timestamp`，回答的 `code` 不是 2xx 时失败。测试连接列出面板里的证书和 ID（`…/websites/ssl/search`），方便填写。
+- 两者都是：私钥会经过面板接口，所以 `http://` 只能连内网（`httpx` 的 `PrivateOnly`，连接时检查地址）；`https://` 默认只连公网，内网要打开“允许内网地址”；面板用自签名证书时，测试连接报出它的 SHA-256 指纹，填进“面板证书指纹”后只信任这张证书（`httpx` 的 `Pin`），和 SSH 核对主机公钥一样。不跟随跳转。只用替身面板测过，还没有对真实面板验证。
 
 **腾讯云的实现**（`internal/modules/tencentcloud`，M3）：部署目标类型 `tencentcloud.ssl`：SecretId、SecretKey，要更新的资源类型（`cdn`、`teo`、`clb`、`waf`、`live`、`ddos`、`apigateway`、`vod`、`tke`、`tcb`、`tse`、`cos`，逗号分隔，默认 `cdn`），首次替换的证书 ID，删除被替换的证书（默认开），地域（给 clb 等要地域的类型），站点（中国站 `ssl.tencentcloudapi.com` 或国际站）。每个新版本先 `UploadCertificate`（`Repeatable=false`：同一张证书已经在时返回它的 ID，重试不会重复上传），再用 `UpdateCertificateInstance` 一键更新：旧证书是上一个版本（第一次是设置的首次替换证书），腾讯云把绑定旧证书的资源都换成新证书；这个接口是异步的，任务 ID 为 0 时每 3 秒再调一次，最多 2 分钟。没有旧证书时只上传，日志提示去控制台部署一次。删除只针对更早的版本：正在被替换的那张下次部署时再删，删不掉只记警告。测试连接调 `DescribeCertificates`。用 SDK 的通用客户端（TC3 签名），不引入 SSL 服务的 SDK。只用替身 API 测过，还没有对真实账号验证。
 
@@ -779,6 +785,7 @@ services:
 - **部署到别人平台上的代码**：ESA 边缘应答的函数代码（5.4）经 OSS 上传时一律走 HTTPS，不管接口给的地址是不是 http。
 - **Webhook 防 SSRF**：默认禁止请求内网地址，可配置白名单。
   - 实现：`internal/lib/httpx` 在建立连接时检查实际要连的地址，回环、私有、链路本地、组播、运营商级 NAT（100.64.0.0/10）、内嵌 IPv4 的 IPv6 前缀等都算内网，所以跳转和 DNS 重绑定也绕不过去；Webhook 不跟随跳转。白名单做成了每个 Webhook 的“允许内网地址”开关，接收方在本机或内网时打开。
+  - 面板类目标（宝塔、1Panel）反过来：用 `http://` 时只连内网（`PrivateOnly`），因为私钥不能明文经过公网；自签名的 HTTPS 按证书指纹信任（`Pin`），不提供“跳过证书校验”。
 - **Docker API**：只有用户主动挂载 `docker.sock` 并在界面里开启后才会使用，且只允许对指定容器发信号或重启。
 - **模块权限**：每个模块声明自己需要的权限点，停用的模块不暴露任何 API。
 - **最小权限**：文档里给每个云平台提供最小权限策略模板。

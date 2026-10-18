@@ -113,6 +113,47 @@
       "ok": "找到了加速域名 {domains}。"
     }
   },
+  "baota": {
+    "error": {
+      "api": "面板拒绝了：{message}",
+      "fingerprint": "不是 SHA-256 指纹：{fingerprint}",
+      "ip": "面板拒绝了 JEC 的请求（{message}）。请把 JEC 连过去的 IP 加进 API 接口的白名单。",
+      "network": "连不上 {host}。",
+      "pin": "面板证书的指纹和填写的不一样。如果面板换了证书，请核对新指纹后重新填写。",
+      "plain": "{host} 在公网上，用 http:// 会让私钥以明文经过公网。请用面板的 https:// 地址。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "sites": "请填写要部署的网站。",
+      "status": "面板的回应看不懂（HTTP {status}），请检查面板地址，以及 API 接口是否开启。",
+      "unverified": "JEC 验证不了面板的证书（面板用自签名证书时就会这样）。请核对它的 SHA-256 指纹是 {fingerprint}，然后填进高级设置里的“面板证书指纹”。",
+      "url": "面板地址不对：{url}"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "面板在本机或内网、用 https:// 访问时打开。",
+      "api_key": "接口密钥",
+      "api_key_help": "面板设置 → API 接口：开启后复制接口密钥，并把 JEC 连过去的 IP 加进白名单。",
+      "fingerprint": "面板证书指纹",
+      "fingerprint_help": "面板用自签名证书时填写：它的 SHA-256 指纹，测试连接会给出。JEC 只信任这张证书。",
+      "sites": "网站",
+      "sites_help": "网站名（宝塔网站列表里显示的名字），多个用逗号分隔。",
+      "url": "面板地址",
+      "url_help": "比如 https://203.0.113.5:8888，不用带安全入口。http:// 只能连本机或内网，因为私钥会以明文传输。"
+    },
+    "log": {
+      "site": "给网站 {site} 设置证书"
+    },
+    "module": {
+      "description": "通过宝塔面板（国际版 aaPanel）的 API 给网站设置证书。",
+      "name": "宝塔面板"
+    },
+    "site": {
+      "description": "把每张新证书设置到面板的网站上，面板随即生效。",
+      "name": "宝塔面板网站"
+    },
+    "test": {
+      "ok": "JEC 能访问 {host} 上的面板，面板接受了接口密钥。"
+    }
+  },
   "bark": {
     "device": {
       "description": "用 Bark App 的设备 Key 把通知推送到 iPhone。",
@@ -1267,6 +1308,57 @@
     "topic": {
       "description": "订阅了这个主题的手机和浏览器都能收到通知。",
       "name": "ntfy"
+    }
+  },
+  "onepanel": {
+    "api": {
+      "v1": "1Panel v1",
+      "v2": "1Panel v2"
+    },
+    "certificate": {
+      "description": "用每张新证书替换面板里一张证书的内容，用这张证书的网站随之换上新证书。",
+      "name": "1Panel 证书"
+    },
+    "error": {
+      "api": "面板拒绝了：{message}（{code}）",
+      "certificate_id": "不是证书 ID：{id}",
+      "certificate_missing": "请填写要更新的面板证书的 ID。",
+      "fingerprint": "不是 SHA-256 指纹：{fingerprint}",
+      "key": "面板拒绝了：请核对 API 接口密钥、IP 白名单和这台服务器的时间（请求按时间签名）。",
+      "network": "连不上 {host}。",
+      "no_certificate": "面板里没有证书 {id}。现有的证书：{certificates}",
+      "no_certificates": "面板里还没有证书：请先在 网站 → 证书 里上传或申请一张，在网站上启用，再填上它的 ID。",
+      "pin": "面板证书的指纹和填写的不一样。如果面板换了证书，请核对新指纹后重新填写。",
+      "plain": "{host} 在公网上，用 http:// 会让私钥以明文经过公网。请用面板的 https:// 地址。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "status": "面板的回应看不懂（HTTP {status}），请检查面板地址，以及 API 接口是否开启。",
+      "unverified": "JEC 验证不了面板的证书（面板用自签名证书时就会这样）。请核对它的 SHA-256 指纹是 {fingerprint}，然后填进高级设置里的“面板证书指纹”。",
+      "url": "面板地址不对：{url}",
+      "version": "面板没有这个接口（HTTP 404）：请核对面板版本（v1 还是 v2）和面板地址。"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "面板在本机或内网、用 https:// 访问时打开。",
+      "api_key": "API 接口密钥",
+      "api_key_help": "面板设置 → API 接口：开启后复制接口密钥，并把 JEC 连过去的 IP 加进白名单。",
+      "api_version": "面板版本",
+      "certificate": "证书 ID",
+      "certificate_help": "要更新的面板证书：先在 网站 → 证书 里上传或申请一张，并在网站上启用。测试连接会列出面板里的证书和它们的 ID。",
+      "fingerprint": "面板证书指纹",
+      "fingerprint_help": "面板用自签名证书时填写：它的 SHA-256 指纹，测试连接会给出。JEC 只信任这张证书。",
+      "url": "面板地址",
+      "url_help": "比如 https://203.0.113.5:10086，不用带安全入口。http:// 只能连本机或内网，因为私钥会以明文传输。"
+    },
+    "log": {
+      "upload": "替换证书 {certificate} 的内容"
+    },
+    "module": {
+      "description": "通过 1Panel 的 API 更新面板里的证书，用它的网站随之更新。",
+      "name": "1Panel"
+    },
+    "test": {
+      "list": "面板里的证书：{certificates}。请填上要更新的那张的 ID。",
+      "ok": "找到了证书 {certificate}。"
     }
   },
   "plugins": {
