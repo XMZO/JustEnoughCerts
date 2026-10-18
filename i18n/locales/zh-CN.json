@@ -1811,9 +1811,17 @@
     }
   },
   "lego": {
+    "error": {
+      "test": "DNS 服务商拒绝了请求：{message}",
+      "test_settings": "这些设置测不了：JEC 只用 API 密钥测试，比如 ECS 实例角色就不行。"
+    },
     "module": {
       "description": "借助 lego，在 221 家 DNS 服务商添加 TXT 记录，完成域名验证。",
       "name": "DNS 服务商（lego）"
+    },
+    "test": {
+      "domains": "连接正常：这个账号能管理 {count, plural, other {# 个域名}}，比如 {domains}。",
+      "none": "连接正常，但这个账号下还没有域名。"
     }
   },
   "manual": {

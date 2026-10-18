@@ -63,6 +63,28 @@ func openHuawei(settings map[string]string) (API, error) {
 	return &huawei{zones: c.ListPublicZones, create: c.CreateRecordSet, remove: c.DeleteRecordSet, ttl: seconds}, nil
 }
 
+// Domains lists the public zones of the account.
+func (h *huawei) Domains(context.Context) ([]string, int, error) {
+	limit := int32(listed)
+	res, err := h.zones(&model.ListPublicZonesRequest{Limit: &limit})
+	if err != nil {
+		return nil, 0, fmt.Errorf("dnsrecord: Huawei Cloud zones: %w", err)
+	}
+	var names []string
+	if res.Zones != nil {
+		for _, z := range *res.Zones {
+			if z.Name != nil {
+				names = append(names, strings.TrimSuffix(*z.Name, "."))
+			}
+		}
+	}
+	total := len(names)
+	if res.Metadata != nil && res.Metadata.TotalCount != nil {
+		total = max(total, int(*res.Metadata.TotalCount))
+	}
+	return names, total, nil
+}
+
 func (h *huawei) Add(ctx context.Context, r Record) (string, error) {
 	if err := valid(r); err != nil {
 		return "", err

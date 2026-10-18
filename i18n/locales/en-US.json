@@ -1811,9 +1811,17 @@
     }
   },
   "lego": {
+    "error": {
+      "test": "The DNS provider refused: {message}",
+      "test_settings": "These settings cannot be tested: JEC tests API keys only, not an ECS instance role, say."
+    },
     "module": {
       "description": "Proves control of a domain by adding a TXT record at any of 221 DNS providers, through lego.",
       "name": "DNS providers (lego)"
+    },
+    "test": {
+      "domains": "Connected: the account manages {count, plural, one {# domain} other {# domains}}, such as {domains}.",
+      "none": "Connected, but the account has no domains yet."
     }
   },
   "manual": {

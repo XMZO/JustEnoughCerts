@@ -87,6 +87,25 @@ func (a *aliyun) Add(ctx context.Context, r Record) (string, error) {
 	return out.RecordID, nil
 }
 
+func (a *aliyun) Domains(ctx context.Context) ([]string, int, error) {
+	var out struct {
+		TotalCount int `json:"TotalCount"`
+		Domains    struct {
+			Domain []struct {
+				DomainName string `json:"DomainName"`
+			} `json:"Domain"`
+		} `json:"Domains"`
+	}
+	if err := a.call(ctx, "DescribeDomains", map[string]string{"PageSize": strconv.Itoa(listed)}, &out); err != nil {
+		return nil, 0, err
+	}
+	names := make([]string, 0, len(out.Domains.Domain))
+	for _, d := range out.Domains.Domain {
+		names = append(names, d.DomainName)
+	}
+	return names, max(out.TotalCount, len(names)), nil
+}
+
 func (a *aliyun) Remove(ctx context.Context, _ Record, id string) error {
 	return a.call(ctx, "DeleteDomainRecord", map[string]string{"RecordId": id}, nil)
 }

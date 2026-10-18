@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -232,4 +234,71 @@ func TestHuawei(t *testing.T) {
 	if !strings.Contains(rec.reqs[0].Header.Get("Authorization"), "Access=AK") {
 		t.Errorf("headers %v", rec.reqs[0].Header)
 	}
+}
+
+// Each provider lists the domains of the account, the first few by name
+// and all by number, as a test of the keys.
+func TestDomains(t *testing.T) {
+	serve := func(answer func(r *http.Request) string) *httptest.Server {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, answer(r))
+		}))
+		t.Cleanup(srv.Close)
+		return srv
+	}
+	check := func(code string, settings map[string]string, names []string, total int) {
+		t.Helper()
+		api, err := Open(code, settings)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, n, err := api.Domains(t.Context())
+		if err != nil || !slices.Equal(got, names) || n != total {
+			t.Errorf("%s: %v %d %v", code, got, n, err)
+		}
+	}
+
+	tc := serve(func(r *http.Request) string {
+		var params map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&params)
+		if r.Header.Get("X-TC-Action") != "DescribeDomainList" || params["Limit"] != float64(listed) {
+			t.Errorf("DNSPod: %s %v", r.Header.Get("X-TC-Action"), params)
+		}
+		return `{"Response":{"DomainCountInfo":{"AllTotal":3},"DomainList":[{"Name":"example.com"},{"Name":"example.org"}],"RequestId":"r"}}`
+	})
+	oldTC, oldScheme := tencentEndpoint, tencentScheme
+	tencentEndpoint, tencentScheme = strings.TrimPrefix(tc.URL, "http://"), "HTTP"
+	t.Cleanup(func() { tencentEndpoint, tencentScheme = oldTC, oldScheme })
+	check("tencentcloud", map[string]string{"TENCENTCLOUD_SECRET_ID": "AKID1", "TENCENTCLOUD_SECRET_KEY": "k"}, []string{"example.com", "example.org"}, 3)
+
+	ali := serve(func(r *http.Request) string {
+		_ = r.ParseForm()
+		if r.Header.Get("x-acs-action") != "DescribeDomains" || r.Form.Get("PageSize") != strconv.Itoa(listed) {
+			t.Errorf("alidns: %s %v", r.Header.Get("x-acs-action"), r.Form)
+		}
+		return `{"RequestId":"r","TotalCount":1,"Domains":{"Domain":[{"DomainName":"example.com"}]}}`
+	})
+	oldAli, oldProtocol := aliyunEndpoint, aliyunProtocol
+	aliyunEndpoint, aliyunProtocol = strings.TrimPrefix(ali.URL, "http://"), "HTTP"
+	t.Cleanup(func() { aliyunEndpoint, aliyunProtocol = oldAli, oldProtocol })
+	check("alidns", map[string]string{"ALICLOUD_ACCESS_KEY": "LTAI1", "ALICLOUD_SECRET_KEY": "s"}, []string{"example.com"}, 1)
+
+	cf := serve(func(r *http.Request) string {
+		if r.URL.Path != "/zones" || r.URL.Query().Get("per_page") != strconv.Itoa(listed) || r.Header.Get("Authorization") != "Bearer zone" {
+			t.Errorf("Cloudflare: %s %s", r.URL, r.Header.Get("Authorization"))
+		}
+		return `{"success":true,"result":[{"name":"example.com"}],"result_info":{"total_count":7}}`
+	})
+	check("cloudflare", map[string]string{"CF_DNS_API_TOKEN": "dns", "CF_ZONE_API_TOKEN": "zone", "CLOUDFLARE_BASE_URL": cf.URL}, []string{"example.com"}, 7)
+
+	hw := serve(func(r *http.Request) string {
+		if r.URL.Path != "/v2/zones" || r.URL.Query().Get("limit") != strconv.Itoa(listed) {
+			t.Errorf("Huawei Cloud: %s", r.URL)
+		}
+		return `{"zones":[{"id":"z1","name":"example.com."}],"metadata":{"total_count":1}}`
+	})
+	huaweiEndpoint, huaweiProject = hw.URL, "p1"
+	t.Cleanup(func() { huaweiEndpoint, huaweiProject = "", "" })
+	check("huaweicloud", map[string]string{"HUAWEICLOUD_ACCESS_KEY_ID": "AK", "HUAWEICLOUD_SECRET_ACCESS_KEY": "SK", "HUAWEICLOUD_REGION": "cn-south-1"}, []string{"example.com"}, 1)
 }

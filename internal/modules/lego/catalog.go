@@ -75,8 +75,10 @@ func providerType(p catalogProvider) providers.Type {
 		ID: "lego." + p.Code, Kind: providers.Solver,
 		Brand: p.Name, Doc: p.Description, URL: p.URL,
 		Fields: []providers.Field{},
-		// JEC adds records of any type through some providers itself.
-		Records: slices.Contains(dnsrecord.Codes, p.Code),
+		// JEC adds records of any type through some providers itself, and
+		// tests their keys by the domains they list.
+		Records:  slices.Contains(dnsrecord.Codes, p.Code),
+		Testable: slices.Contains(dnsrecord.Codes, p.Code),
 	}
 	switch {
 	case slices.Contains(china, p.Code):

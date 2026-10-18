@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/children"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
@@ -109,6 +110,16 @@ func TestRecords(t *testing.T) {
 	}
 	if _, err := rs.AddRecord(t.Context(), contracts.Record{Name: "_x.example.com", Type: "TXT", Value: "v"}); !errors.Is(err, dnsrecord.ErrUnsupported) {
 		t.Errorf("without credentials: %v", err)
+	}
+
+	// Their keys can be tested, by the domains the provider lists; those
+	// of an ECS role, say, cannot.
+	if !providerType(provider(t, "tencentcloud")).Testable || providerType(provider(t, "httpreq")).Testable {
+		t.Error("tests for the wrong providers")
+	}
+	var p *contracts.Problem
+	if _, err := rs.(contracts.Tester).Test(t.Context()); !errors.As(err, &p) || p.Key != i18n.LegoErrorTestSettings {
+		t.Errorf("a test without credentials: %v", err)
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
@@ -68,17 +69,24 @@ func openCloudflare(settings map[string]string) (API, error) {
 // call sends a request to path, with body as JSON unless nil, and decodes
 // the result into out unless nil.
 func (c *cloudflare) call(ctx context.Context, auth func(*http.Request), method, path string, body, out any) error {
+	_, err := c.send(ctx, auth, method, path, body, out)
+	return err
+}
+
+// send is call, and returns how many results there are in all, as the
+// information of a listing says.
+func (c *cloudflare) send(ctx context.Context, auth func(*http.Request), method, path string, body, out any) (int, error) {
 	var r io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		r = bytes.NewReader(b)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, c.base+path, r)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	auth(req)
 	if body != nil {
@@ -86,7 +94,7 @@ func (c *cloudflare) call(ctx context.Context, auth func(*http.Request), method,
 	}
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("dnsrecord: Cloudflare: %w", httpx.Cause(err))
+		return 0, fmt.Errorf("dnsrecord: Cloudflare: %w", httpx.Cause(err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 	var env struct {
@@ -95,23 +103,42 @@ func (c *cloudflare) call(ctx context.Context, auth func(*http.Request), method,
 			Code    int    `json:"code"`
 			Message string `json:"message"`
 		} `json:"errors"`
-		Result json.RawMessage `json:"result"`
+		Result     json.RawMessage `json:"result"`
+		ResultInfo struct {
+			TotalCount int `json:"total_count"`
+		} `json:"result_info"`
 	}
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return fmt.Errorf("dnsrecord: Cloudflare: %w", err)
+		return 0, fmt.Errorf("dnsrecord: Cloudflare: %w", err)
 	}
 	if json.Unmarshal(data, &env) != nil || !env.Success || resp.StatusCode >= 300 {
 		msg := http.StatusText(resp.StatusCode)
 		if len(env.Errors) > 0 {
 			msg = fmt.Sprintf("[%d] %s", env.Errors[0].Code, env.Errors[0].Message)
 		}
-		return fmt.Errorf("dnsrecord: Cloudflare %s %s: HTTP %d: %s", method, path, resp.StatusCode, msg)
+		return 0, fmt.Errorf("dnsrecord: Cloudflare %s %s: HTTP %d: %s", method, path, resp.StatusCode, msg)
 	}
 	if out == nil {
-		return nil
+		return env.ResultInfo.TotalCount, nil
 	}
-	return json.Unmarshal(env.Result, out)
+	return env.ResultInfo.TotalCount, json.Unmarshal(env.Result, out)
+}
+
+// Domains lists the zones the token sees.
+func (c *cloudflare) Domains(ctx context.Context) ([]string, int, error) {
+	var zones []struct {
+		Name string `json:"name"`
+	}
+	total, err := c.send(ctx, c.zone, http.MethodGet, "/zones?per_page="+strconv.Itoa(listed), nil, &zones)
+	if err != nil {
+		return nil, 0, err
+	}
+	names := make([]string, 0, len(zones))
+	for _, z := range zones {
+		names = append(names, z.Name)
+	}
+	return names, max(total, len(names)), nil
 }
 
 func (c *cloudflare) Add(ctx context.Context, r Record) (string, error) {

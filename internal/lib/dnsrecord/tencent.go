@@ -95,6 +95,25 @@ func (t *tencent) Remove(ctx context.Context, _ Record, id string) error {
 	return t.call(ctx, "DeleteRecord", map[string]any{"Domain": zone, "RecordId": n}, nil)
 }
 
+func (t *tencent) Domains(ctx context.Context) ([]string, int, error) {
+	var out struct {
+		DomainCountInfo struct {
+			AllTotal int `json:"AllTotal"`
+		} `json:"DomainCountInfo"`
+		DomainList []struct {
+			Name string `json:"Name"`
+		} `json:"DomainList"`
+	}
+	if err := t.call(ctx, "DescribeDomainList", map[string]any{"Limit": listed}, &out); err != nil {
+		return nil, 0, err
+	}
+	names := make([]string, 0, len(out.DomainList))
+	for _, d := range out.DomainList {
+		names = append(names, d.Name)
+	}
+	return names, max(out.DomainCountInfo.AllTotal, len(names)), nil
+}
+
 // cutLast splits s around the last sep.
 func cutLast(s, sep string) (before, after string, ok bool) {
 	for i := len(s) - len(sep); i >= 0; i-- {

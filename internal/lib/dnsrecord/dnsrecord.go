@@ -31,7 +31,14 @@ type API interface {
 	// Add adds r and returns what Remove needs to remove it.
 	Add(ctx context.Context, r Record) (id string, err error)
 	Remove(ctx context.Context, r Record, id string) error
+	// Domains lists the first few domains the provider manages for the
+	// account, with how many there are, as a test of the keys that
+	// changes nothing.
+	Domains(ctx context.Context) (names []string, total int, err error)
 }
+
+// listed is how many domains Domains lists at most.
+const listed = 20
 
 // Codes are the codes of lego's providers JEC adds records of any type
 // through.

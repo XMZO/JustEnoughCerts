@@ -355,6 +355,7 @@ DNS 验证分成两种能力，实现方式不同：
 
 - 接口是 `contracts.RecordSolver`：`AddRecord` 加一条 TXT 或 CNAME 记录（完整域名），返回删除时要用的标识，来源把它存在签发的状态里，跨多次检查；`RemoveRecord` 删掉。验证类型标 `records` 表示它的实例也能加任意记录；来源类型在 `challenges` 里写 `record` 表示它要这种记录（Namecheap SSL Manager 是 `http` 和 `record`）。添加证书时只列出合用的验证方式，接口也会核对（`providers.Type.Takes`）；添加 DNS 服务商时可以按“任意记录”筛选。
 - 实现在 `internal/lib/dnsrecord`，没有用 libdns：lego 已经带了这些服务商的 SDK，直接用它们，这一层连同 Namecheap 的 DNS 验证只让程序大了约 0.1 MiB；引入 libdns 等于每家再多一套客户端。设置沿用 lego 的变量名，同一个 DNS 服务商实例两种验证都能用（lego 模块里这几家的验证方式同时是 `RecordSolver`）。首批四家：腾讯云 DNSPod（API 3.0 的 `CreateRecord`、`DeleteRecord`，线路“默认”）、阿里云 DNS（`AddDomainRecord`、`DeleteDomainRecord`）、Cloudflare（v4 接口，API 令牌或全局密钥）、华为云 DNS（官方 SDK，TXT 的值加引号）。记录所在的区按 SOA 查出。其余服务商按需求补。只用替身 API 测过。
+- 这四家的验证类型能“测试连接”（`dnsrecord.API.Domains`）：列出账号下的域名和总数（DNSPod `DescribeDomainList`、阿里云 `DescribeDomains`、Cloudflare `GET /zones`、华为云 `ListPublicZones`），什么都不改；设计稿 DNS 页上的“连接正常，能管理 N 个域名”就是它。其余 lego 服务商没有通用的只读调用，不能测试。
 - 记录什么时候生效由来源判断：`internal/lib/dnscheck` 直接问区的每台权威 DNS 服务器（不经过递归解析的缓存），答复了的服务器都有这条记录才算生效；它还把厂商给的记录名转成完整域名（`RecordName`，见 5.6）。这个包只依赖 DNS 库，用它的来源不会带上各家 SDK。
 - 外部插件的 DNS 验证方式在描述里标 `records`，就能经 `dns_add_record`、`dns_remove_record` 两个动作添加和删除任意记录（`docs/plugins.md`），其余服务商也能这样接入。
 - 补不到的服务商用**手动模式**（模块 `manual`，验证类型 `manual.dns`）：签发日志列出每条要加的记录（ACME 来源给所有 DNS 验证都记这一行），用户在 DNS 服务商那里添加，JEC 查权威 DNS，查到就继续，不用点“已添加”。ACME 最多等设置的分钟数（默认 20，最多 25，在一次尝试 30 分钟的时限内）；厂商来源跨多次检查一直等。每次续期都要重新添加，签发失败的通知会提醒；手动加的记录由用户自己删，日志会提示。
