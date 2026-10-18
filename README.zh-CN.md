@@ -13,7 +13,7 @@ Just Enough Certs（JEC）是自托管的 SSL/TLS 证书管理面板：从你购
 
 main 分支上已经可用：
 
-- 从任意 ACME CA（支持 External Account Binding）获取证书，或者手动上传（PEM，或者 PFX/P12 文件），或者连同私钥取进 certbot、acme.sh 在本机续期的证书。
+- 从任意 ACME CA（支持 External Account Binding）获取证书，或者手动上传（PEM，或者 PFX/P12 文件），或者连同私钥取进 certbot、acme.sh 在本机续期的证书，以及阿里云、腾讯云的证书服务签发的证书。
 - 由 JEC 扮演 Namecheap SSL Manager 的客户端，自动取得在 Namecheap 买的付费证书（如 PositiveSSL）。实验性功能，默认关闭；还没有用真实账号试过。
 - 域名验证：在 [lego](https://github.com/go-acme/lego) 支持的 221 家 DNS 服务商添加记录（其他服务商可以手动添加；Namecheap 等厂商要的任意 TXT、CNAME 记录，能在腾讯云 DNSPod、阿里云 DNS、Cloudflare、华为云 DNS 自动添加），或者走 HTTP：把文件放进网站目录（本机或经 SSH），或者让网站的反向代理或 CDN 把 `/.well-known/` 转给 JEC，由 JEC 自己应答；网站在阿里云 ESA 上时，还可以由 JEC 部署的边缘函数从边缘 KV 直接应答，不经过源站。
 - 每张新证书自动部署到阿里云 ESA（并删掉被替换的旧证书）、阿里云 CDN 和全站加速（DCDN）、阿里云数字证书管理服务、OSS 存储空间的自定义域名和传统型负载均衡（CLB）、华为云 CDN、七牛云 CDN、Cloudflare 自定义证书、经腾讯云 SSL 证书服务更新到腾讯云 CDN、EdgeOne、CLB 等资源，经 AWS Certificate Manager 更新到 CloudFront 和负载均衡，宝塔面板和 1Panel 的网站、Nginx Proxy Manager、群晖 DSM、Proxmox VE 节点，本地目录和 SSH 服务器（写完都可以执行一条命令，比如重载 nginx）、Docker 容器（放好后发信号让它重载，或者重启它）、Kubernetes 的 TLS Secret 和 Webhook（发 JEC 的 JSON，或者按你写的格式）。

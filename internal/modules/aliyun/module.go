@@ -3,7 +3,9 @@
 // certificate is set on the accelerated domains, as acme.sh's ali_cdn and
 // ali_dcdn hooks do; the Certificate Management Service, where it is
 // uploaded for the other products; the custom domains of OSS buckets; and
-// CLB, the Classic Load Balancer. ESA has a module of its own.
+// CLB, the Classic Load Balancer. ESA has a module of its own. The
+// certificates the Certificate Management Service issues are a source
+// too.
 package aliyun
 
 import (
@@ -38,7 +40,8 @@ func (*Module) Manifest() module.Manifest {
 func (*Module) Migrations() fs.FS { return nil }
 
 // Register adds the CDN, DCDN, Certificate Management Service, OSS and
-// CLB types.
+// CLB types, and the source of the certificates the Certificate
+// Management Service issued.
 func (m *Module) Register(r *module.Registry) error {
 	for _, svc := range []service{cdn, dcdn} {
 		if err := r.Providers.Add(svc.providerType(), m.factory(svc)); err != nil {
@@ -51,5 +54,8 @@ func (m *Module) Register(r *module.Registry) error {
 	if err := r.Providers.Add(ossType(), m.ossFactory); err != nil {
 		return err
 	}
-	return r.Providers.Add(clbType(), m.clbFactory)
+	if err := r.Providers.Add(clbType(), m.clbFactory); err != nil {
+		return err
+	}
+	return r.Providers.Add(fetchType(), m.fetchFactory)
 }

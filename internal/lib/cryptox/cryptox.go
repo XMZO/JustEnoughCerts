@@ -17,7 +17,9 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
+	"strings"
 )
 
 // Errors of ParseBundle, for callers to tell the user what is wrong.
@@ -283,6 +285,17 @@ func Names(c *x509.Certificate) []string {
 		names = append(names, c.Subject.CommonName)
 	}
 	return names
+}
+
+// Covers tells whether names hold each of domains, as the certs module
+// checks them: one by one, wildcards as they are, letter case aside.
+func Covers(names, domains []string) bool {
+	for _, d := range domains {
+		if !slices.ContainsFunc(names, func(n string) bool { return strings.EqualFold(n, d) }) {
+			return false
+		}
+	}
+	return len(domains) > 0
 }
 
 // KeyTypes are the types of key GenerateKey makes, as KeyType names them.

@@ -102,6 +102,9 @@
       "bucket": "There is no bucket {bucket} in region {region}.",
       "cname": "The bucket {bucket} has no custom domain {domain}. Bind it in the console first.",
       "domain": "This account has no accelerated domain {domain}, or it does not have HTTPS. Check the domain, and the product: CDN and DCDN are apart.",
+      "fetch_bad": "Certificate {id} from Alibaba Cloud cannot be read, or does not match its key.",
+      "fetch_no_key": "Alibaba Cloud does not hold the key of certificate {id}, applied for with a CSR of one's own. Reissue it there with a CSR Alibaba Cloud makes.",
+      "fetch_none": "Alibaba Cloud's Certificate Management Service has no valid certificate covering {domains}, uploaded ones aside. Get one there first, and check the domains.",
       "listener": "The load balancer {id} has no HTTPS listener on port {port}.",
       "load_balancer": "This account has no load balancer {id} in region {region}.",
       "network": "Could not reach {endpoint}.",
@@ -111,6 +114,10 @@
       "oss_name": "The bucket {bucket} or the region {region} is not written as OSS writes them.",
       "port": "The listener port {port} is not a port number.",
       "throttled": "Alibaba Cloud refused for now: too many requests. JEC tries again later."
+    },
+    "fetch": {
+      "description": "Takes in the certificates, with their keys, that Alibaba Cloud's Certificate Management Service issued: bought ones or personal test ones, whose key Alibaba Cloud made. Once one is due, renew or reissue it there, and JEC takes the new one in and deploys it. Certificates uploaded to Alibaba Cloud do not count.",
+      "name": "Certificates issued at Alibaba Cloud"
     },
     "field": {
       "access_key_id": "AccessKey ID",
@@ -127,6 +134,8 @@
       "delete_old_help": "Once a new certificate is in place, deletes those JEC uploaded before; one still in use stays until a later deployment.",
       "domains": "Accelerated domains",
       "domains_help": "Separated by commas. Left empty, the certificate's own domains, but for wildcards. Old certificates stay in the Certificate Management Service, where you may delete them.",
+      "fetch_secret_help": "Best from a RAM user granted yundun-cert:ListUserCertificateOrder and yundun-cert:GetUserCertificateDetail only.",
+      "fetch_site_help": "The site that holds the certificates.",
       "listener_port": "Listener port",
       "listener_port_help": "Left empty, every HTTPS listener of the load balancer.",
       "load_balancer": "Load balancer ID",
@@ -147,13 +156,17 @@
       "clb_listener": "Setting the certificate on the listener on port {port}",
       "clb_upload": "Uploading {name} to CLB",
       "deleted": "Deleted the certificate {id} uploaded before",
+      "fetch_found": "Took in certificate {id}, valid until {date}",
+      "fetch_look": "Looking in Alibaba Cloud's Certificate Management Service for the certificate of {domains}",
+      "fetch_no_chain": "Certificate {id} came without its intermediate certificates: some clients do not trust a website that serves it alone",
+      "fetch_same": "Alibaba Cloud's newest certificate of {domains} (ID {id}) is still the one in use: renew or reissue it there, and JEC takes the new one in. Looking again in {hours, plural, one {# hour} other {# hours}}",
       "kept": "Could not delete the certificate {id} ({code}), which may still be in use; a later deployment tries again",
       "oss_current": "{domain} has this certificate already",
       "oss_set": "Setting the certificate on {domain} of the bucket {bucket}",
       "set": "Setting the certificate on {domain}"
     },
     "module": {
-      "description": "Deploys certificates to Alibaba Cloud CDN and DCDN, to Certificate Management Service, to custom domains of OSS buckets, and to CLB load balancers.",
+      "description": "Deploys certificates to Alibaba Cloud CDN and DCDN, to Certificate Management Service, to custom domains of OSS buckets, and to CLB load balancers; takes in the certificates Certificate Management Service issued, too.",
       "name": "Alibaba Cloud"
     },
     "oss": {
@@ -167,6 +180,7 @@
     "test": {
       "cas_ok": "Signed in. Certificate Management Service has {count, plural, one {# uploaded certificate} other {# uploaded certificates}}.",
       "clb_ok": "Found the load balancer {name}, with {count, plural, one {# HTTPS listener} other {# HTTPS listeners}}.",
+      "fetch_ok": "Connected to Alibaba Cloud's Certificate Management Service; {count, plural, one {# certificate} other {# certificates}} in sight.",
       "ok": "Found the accelerated domains {domains}.",
       "oss_ok": "The bucket {bucket} has the custom domain {domain}."
     }
@@ -2223,15 +2237,23 @@
     "error": {
       "api": "Tencent Cloud returned the error {code}. The full log says why; a certificate to replace that is deployed to no resource cannot be replaced.",
       "auth": "Tencent Cloud refused the SecretId and SecretKey, or they lack the permissions needed.",
+      "fetch_bad": "Certificate {id} downloaded from Tencent Cloud cannot be read, its key has a password, or it does not match its key.",
+      "fetch_no_key": "Tencent Cloud does not hold the key of certificate {id}, applied for with a CSR of one's own. Apply again there with a CSR Tencent Cloud makes.",
+      "fetch_none": "Tencent Cloud's SSL Certificates has no valid certificate covering {domains} that may be downloaded, uploaded ones aside. Get one there first, and check the domains.",
       "network": "Could not reach {endpoint}.",
       "resource": "SSL Certificates updates no resources of the type {resource}. It updates: {types}",
       "resources": "Enter the types of resource to update.",
       "throttled": "Tencent Cloud refused for now: too many requests. JEC tries again later.",
       "update_slow": "Tencent Cloud did not start updating the resources in time; JEC tries again later."
     },
+    "fetch": {
+      "description": "Takes in the certificates, with their keys, that Tencent Cloud's SSL Certificates issued: bought ones or free ones, whose key Tencent Cloud made. Once one is due, renew it there or apply for the next free one, and JEC takes the new one in and deploys it. Certificates uploaded to Tencent Cloud do not count.",
+      "name": "Certificates issued at Tencent Cloud"
+    },
     "field": {
       "delete_old": "Delete the replaced certificates",
       "delete_old_help": "Only those JEC uploaded, once a later version replaced them.",
+      "fetch_secret_key_help": "Best from a CAM user granted DescribeCertificates and DownloadCertificate of SSL Certificates only.",
       "regions": "Regions",
       "regions_help": "For clb, waf, apigateway, tke, tcb, tse and cos: regions separated by commas, such as ap-guangzhou, ap-shanghai. Left empty, Tencent Cloud picks.",
       "replace": "Certificate to replace first",
@@ -2246,6 +2268,10 @@
     "log": {
       "delete_failed": "Could not delete {id}; the next deployment tries again.",
       "deleted": "Deleted {id}",
+      "fetch_found": "Took in certificate {id}, valid until {date}",
+      "fetch_look": "Looking in Tencent Cloud's SSL Certificates for the certificate of {domains}",
+      "fetch_no_chain": "Certificate {id} came without its intermediate certificates: some clients do not trust a website that serves it alone",
+      "fetch_same": "Tencent Cloud's newest certificate of {domains} (ID {id}) is still the one in use: renew it there or apply for the next free one, and JEC takes the new one in. Looking again in {hours, plural, one {# hour} other {# hours}}",
       "no_old": "No certificate to replace: deploy {id} to the resources in the SSL Certificates console once, and the next versions replace it.",
       "update": "Replacing {old} with {id} on {resources}",
       "updating": "Tencent Cloud is updating the resources (task {record}).",
@@ -2253,7 +2279,7 @@
       "uploaded": "Uploaded as {id}"
     },
     "module": {
-      "description": "Deploys certificates through Tencent Cloud's SSL Certificates service, to CDN, EdgeOne, CLB and the other resources it updates.",
+      "description": "Deploys certificates through Tencent Cloud's SSL Certificates service, to CDN, EdgeOne, CLB and the other resources it updates; takes in the certificates the service issued, too.",
       "name": "Tencent Cloud"
     },
     "site": {
@@ -2265,6 +2291,7 @@
       "name": "Tencent Cloud (SSL Certificates)"
     },
     "test": {
+      "fetch_ok": "Connected to Tencent Cloud's SSL Certificates; {count, plural, one {# certificate} other {# certificates}} in sight.",
       "ok": "JEC can reach SSL Certificates: the account has {count, plural, one {# certificate} other {# certificates}}."
     }
   },

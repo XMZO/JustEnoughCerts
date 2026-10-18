@@ -22,6 +22,8 @@ Reports of what works with a real account, or does not, are welcome.
 | `acme.account` | Any ACME CA, with External Account Binding | Emulator: Pebble, in CI |
 | `namecheap.ssl_manager` | Namecheap SSL Manager (experimental) | Fake, after its client |
 | `files.watch` | Certificates another client renews on this machine | The file system |
+| `aliyun.fetch` | Certificates Alibaba Cloud's Certificate Management Service issued | Fake |
+| `tencentcloud.fetch` | Certificates Tencent Cloud's SSL Certificates issued | Fake, at the HTTP level through the SDK's client |
 | Upload | PEM, PFX/P12 | Unit tests |
 
 ## Domain validation

@@ -31,6 +31,10 @@ type fakeAPI struct {
 	removed []string
 	fail    error
 	busy    []string // certificates still deployed, which cannot go
+	// listed are the certificates Tencent Cloud issued, and archives
+	// their downloads by ID.
+	listed   []issuedCert
+	archives map[string][]byte
 }
 
 func (f *fakeAPI) upload(_ context.Context, alias, chain, key string) (string, error) {
@@ -76,6 +80,18 @@ func (f *fakeAPI) count(context.Context) (int, error) {
 		return 0, f.fail
 	}
 	return len(f.certs), nil
+}
+
+func (f *fakeAPI) issued(context.Context, string) ([]issuedCert, error) {
+	return f.listed, f.fail
+}
+
+func (f *fakeAPI) download(_ context.Context, id string) ([]byte, error) {
+	data, ok := f.archives[id]
+	if !ok {
+		return nil, &tcerr.TencentCloudSDKError{Code: "FailedOperation.CertificateNotFound"}
+	}
+	return data, nil
 }
 
 func open(t *testing.T, api *fakeAPI, config map[string]string) *target {

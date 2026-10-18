@@ -2,6 +2,7 @@ package tencentcloud
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -40,6 +41,22 @@ type sslAPI interface {
 	remove(ctx context.Context, id string) error
 	// count returns how many certificates the account has.
 	count(ctx context.Context) (int, error)
+	// issued lists the valid certificates Tencent Cloud issued, not those
+	// uploaded there, whose domains match keyword.
+	issued(ctx context.Context, keyword string) ([]issuedCert, error)
+	// download returns the ZIP archive of a certificate, as the console
+	// downloads it.
+	download(ctx context.Context, id string) ([]byte, error)
+}
+
+// issuedCert is a certificate Tencent Cloud issued, as its list shows it.
+type issuedCert struct {
+	ID    string
+	Names []string // its domains
+	End   string   // when it ends, as YYYY-MM-DD hh:mm:ss in Beijing time
+	// Download tells whether the key and the certificate may be
+	// downloaded.
+	Download bool
 }
 
 // sdk is sslAPI over the common client of Tencent Cloud's SDK, which signs
@@ -137,6 +154,60 @@ func (s *sdk) count(ctx context.Context) (int, error) {
 	err := s.call(ctx, "DescribeCertificates", map[string]any{"Limit": 1}, &out)
 	return out.TotalCount, err
 }
+
+func (s *sdk) issued(ctx context.Context, keyword string) ([]issuedCert, error) {
+	var all []issuedCert
+	for offset := 0; offset < maxListed; offset += 100 {
+		var out struct {
+			TotalCount   int `json:"TotalCount"`
+			Certificates []struct {
+				CertificateID  string   `json:"CertificateId"`
+				Domain         string   `json:"Domain"`
+				SubjectAltName []string `json:"SubjectAltName"`
+				CertEndTime    string   `json:"CertEndTime"`
+				AllowDownload  *bool    `json:"AllowDownload"`
+			} `json:"Certificates"`
+		}
+		err := s.call(ctx, "DescribeCertificates", map[string]any{
+			"SearchKey": keyword, "CertificateType": "SVR", "CertificateStatus": []int{statusIssued},
+			"FilterSource": "buy", "Offset": offset, "Limit": 100,
+		}, &out)
+		if err != nil {
+			return nil, err
+		}
+		for _, c := range out.Certificates {
+			all = append(all, issuedCert{
+				ID: c.CertificateID, Names: append([]string{c.Domain}, c.SubjectAltName...), End: c.CertEndTime,
+				Download: c.AllowDownload == nil || *c.AllowDownload,
+			})
+		}
+		if len(out.Certificates) < 100 || offset+100 >= out.TotalCount {
+			break
+		}
+	}
+	return all, nil
+}
+
+func (s *sdk) download(ctx context.Context, id string) ([]byte, error) {
+	var out struct {
+		Content string `json:"Content"`
+	}
+	if err := s.call(ctx, "DownloadCertificate", map[string]any{"CertificateId": id}, &out); err != nil {
+		return nil, err
+	}
+	data, err := base64.StdEncoding.DecodeString(out.Content)
+	if err != nil {
+		return nil, fmt.Errorf("tencentcloud: DownloadCertificate: %w", err)
+	}
+	return data, nil
+}
+
+// statusIssued is the status of an issued certificate, and maxListed
+// bounds the certificates JEC lists.
+const (
+	statusIssued = 1
+	maxListed    = 1000
+)
 
 // errorCode returns the code of an error of the API, such as
 // AuthFailure.SecretIdNotFound, or "" for another error.

@@ -2,7 +2,7 @@
 // through its SSL Certificates service: each new certificate is uploaded
 // there, and replaces the one it follows on every resource that one is
 // deployed to, CDN, EdgeOne, CLB and the others the service updates in one
-// go.
+// go. The certificates the service issues are a source too.
 package tencentcloud
 
 import (
@@ -34,7 +34,11 @@ func (*Module) Manifest() module.Manifest {
 // Migrations returns nil: the module keeps nothing of its own.
 func (*Module) Migrations() fs.FS { return nil }
 
-// Register adds the SSL type.
+// Register adds the SSL type, and the source of the certificates SSL
+// Certificates issued.
 func (m *Module) Register(r *module.Registry) error {
-	return r.Providers.Add(sslType(), m.factory)
+	if err := r.Providers.Add(sslType(), m.factory); err != nil {
+		return err
+	}
+	return r.Providers.Add(fetchType(), m.fetchFactory)
 }

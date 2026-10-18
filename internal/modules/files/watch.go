@@ -85,7 +85,7 @@ func (w *watcher) Collect(_ context.Context, req contracts.CollectRequest) (*con
 	}
 	var best *found
 	for i, c := range s.certs {
-		if covers(cryptox.Names(c.Leaf), req.Domains) && (best == nil || c.Leaf.NotAfter.After(best.Leaf.NotAfter)) {
+		if cryptox.Covers(cryptox.Names(c.Leaf), req.Domains) && (best == nil || c.Leaf.NotAfter.After(best.Leaf.NotAfter)) {
 			best = &s.certs[i]
 		}
 	}
@@ -126,17 +126,6 @@ func (w *watcher) Test(context.Context) (contracts.Message, error) {
 	slices.Sort(names)
 	return contracts.Message{Key: i18n.FilesTestWatchOk,
 		Params: map[string]any{"directory": w.dir, "count": len(names), "domains": strings.Join(names, ", ")}}, nil
-}
-
-// covers tells whether names hold each of domains, as the certs module
-// checks them: one by one, wildcards as they are, letter case aside.
-func covers(names, domains []string) bool {
-	for _, d := range domains {
-		if !slices.ContainsFunc(names, func(n string) bool { return strings.EqualFold(n, d) }) {
-			return false
-		}
-	}
-	return len(domains) > 0
 }
 
 func (w *watcher) denied(name string) error {

@@ -321,10 +321,16 @@ type Target interface {
 | **通用：ACME 商业证书** | Sectigo、DigiCert、GlobalSign、HARICA、TrustAsia（亚洲诚信）等提供 ACME 的 CA，以及经销商提供的 ACME（如 Namecheap，官方计划 2026 年 11–12 月上线） | 自定义 ACME 地址 + EAB，**任何支持 ACME 的 CA 都能接**，逐家验证后列入兼容表 | M1 |
 | **通用：手动上传 / 导入** | 任何 CA 的证书（PEM / PFX）；扫描 acme.sh、certbot 的目录 | 只读导入，避免和原工具冲突。PEM 和 PFX/P12 上传已实现（`cryptox.ParsePFX` 用 `go-pkcs12`，旧的 3DES/RC2 和 OpenSSL 3 的 AES 都能读）；读目录做成了来源类型 `files.watch`（见 5.3.3 的“本机证书目录”），不只导入一次，原工具续期后新证书也会取进来 | M1 |
 | 厂商自动化工具（实验性模块） | **Namecheap SSL Manager**（Namecheap 给直客的服务器端自动化工具，后端 `externalautossl.service.spaceship.com`） | JEC 扮演它的客户端：一次性令牌注册，自己生成私钥和 CSR，HTTP 文件验证，取回每一张 200 天的证书。非公开接口，默认关闭，界面标注“可能随时失效”；见 5.6 | M2 |
-| 厂商专有 API（可选模块） | 阿里云数字证书管理服务、腾讯云 SSL 证书 | 云 API：申请免费证书、拉取已购证书 | M3 |
+| 厂商专有 API（可选模块） | 阿里云数字证书管理服务、腾讯云 SSL 证书 | 云 API：取回控制台签发的证书（已实现，见下）、申请免费证书 | M3 |
 | 厂商专有 API（可选模块） | ZeroSSL REST API、GoGetSSL、TheSSLStore、DigiCert CertCentral 等 | 各自的 API，按需求排期 | 以后 |
 | 厂商专有 API（可选模块） | Namecheap 官方 API（`ssl.reissue` / `ssl.getInfo` / `ssl.activate`，CNAME 验证） | 开通门槛高（账号里有 20 个域名，或余额 / 近两年消费满 $50），还要设 IPv4 白名单；有需要再做 | 以后 |
 | 实验性 | Spaceship 卖的证书：后端域名同属 Spaceship，可能能用同一套接口（未核实） | 同 Namecheap SSL Manager | 以后 |
+
+**阿里云、腾讯云签发的证书（M3，已实现）**：来源类型 `aliyun.fetch`、`tencentcloud.fetch`（分别在 `aliyun`、`tencentcloud` 模块里）是自带私钥的来源（`contracts.KeySource`，和本机证书目录一样）：取回在云平台控制台申请、购买或续费的证书，私钥要由云平台生成（申请时上传自己 CSR 的拿不到私钥，报错提示重新签发）。上传到云平台的证书不算，JEC 自己部署上去的也在那里。按主域名搜索，取覆盖证书全部域名、还有效、结束得最晚的一张；和正在用的是同一张或更旧时，6 小时后再看；同一天结束但不是同一张（重新签发的）时取进来。证书没带中间证书时日志里警告。
+
+- 阿里云：`ListUserCertificateOrder`（`OrderType=CERT`，`Keyword` 是主域名，不带状态时只列有效证书；`Upload` 为真的跳过；同一天结束时取 ID 大的）、`GetUserCertificateDetail`（`Cert`、`Key`）。RAM 权限 `yundun-cert:ListUserCertificateOrder`、`yundun-cert:GetUserCertificateDetail`。
+- 腾讯云：`DescribeCertificates`（`SearchKey` 是主域名，`CertificateType=SVR`、`CertificateStatus=[1]`、`FilterSource=buy`；`AllowDownload` 为假的跳过）、`DownloadCertificate`（控制台下载的那个 ZIP，每种 Web 服务器一个目录：JEC 读出其中所有 PEM 文件，找和证书配对、覆盖全部域名的私钥，证书链也从中拼出）。CAM 权限 `DescribeCertificates`、`DownloadCertificate`。
+- 都只用替身 API 测过，还没有对真实账号验证。
 
 #### 5.3.2 DNS 服务商（域名验证）
 
@@ -919,7 +925,7 @@ JustEnoughCerts/
 | **M0 骨架** | 仓库、CI、发布流水线、`scratch` 镜像、体积检查；内核与模块注册表、模块脚手架；**i18n 模块和全部门禁**（从第一行界面文字开始就不允许硬编码）；空的前端、登录和初始化向导（中英文）；SQLite（含驱动选型实测） | 打一个 `v0.0.1` 标签，能自动产出全部二进制和镜像，`docker compose up` 能打开中英文登录页，i18n 门禁和体积检查在 CI 里生效 |
 | **M1 最小可用** | 证书模块、状态机、调度器；手动上传和导入；ACME（任意 CA + EAB）+ lego 的 221 家 DNS；阿里云 ESA、本地文件、SSH、Webhook 部署；Telegram、邮件、Webhook 通知；总览和证书页 | 用免费证书完整跑通“签发 → 部署到 ESA → 删除旧证书 → 到期自动续” |
 | **M2 厂商来源与付费证书** | 厂商来源的通用框架（提交后等 CA 审核，跨多次检查才取回证书，等待期间加密保存私钥）；第一个实现是 Namecheap SSL Manager（实验性，JEC 扮演它的客户端，见 5.6）；HTTP 文件验证（写到源站的网站目录、经 SSH 写到远程服务器，或由 JEC 自己应答）；导入已有的付费证书；逐家验证商业 CA 的 ACME + EAB（含 Namecheap ACME 上线后） | 第 1 节的验收场景全自动跑通一个周期 |
-| **M3 扩展** | 国内云平台证书来源；DNS 记录管理层（任意记录增删，5.3.2 ②）和手动验证（都已完成）；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子、YAML 导入导出（都已完成）；线上巡检（已完成） | 不改核心代码，写一个外部插件接入新平台；停用任意模块后其余功能正常 |
+| **M3 扩展** | 国内云平台证书来源（取回签发的证书已完成）；DNS 记录管理层（任意记录增删，5.3.2 ②）和手动验证（都已完成）；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子、YAML 导入导出（都已完成）；线上巡检（已完成） | 不改核心代码，写一个外部插件接入新平台；停用任意模块后其余功能正常 |
 | **M4 打磨** | 两步验证、审计日志（都已提前完成）、OIDC、PWA、文档站、翻译指南、服务商兼容表（已有 `docs/providers.md`：每个服务商测到了哪一步） | 发布 `v1.0.0` |
 | **以后** | Namecheap 官方 API、Spaceship 的 SSL Manager、其他厂商证书 API、更多语言（社区贡献）、多用户和角色、PostgreSQL、私有 CA | 按需求排期 |
 
