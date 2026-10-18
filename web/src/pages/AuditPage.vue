@@ -40,6 +40,9 @@ const operations: Partial<Record<string, MessageKey>> = {
   'two-factor-enable': 'audit.op.two_factor_enable',
   'two-factor-disable': 'audit.op.two_factor_disable',
   backup: 'audit.op.backup',
+  'config-export-secrets': 'audit.op.config_export_secrets',
+  'config-check': 'audit.op.config_check',
+  'config-import': 'audit.op.config_import',
   'switch-module': 'audit.op.switch_module',
   'providers-create': 'audit.op.providers_create',
   'providers-update': 'audit.op.providers_update',
@@ -59,8 +62,9 @@ const operations: Partial<Record<string, MessageKey>> = {
   'tokens-create': 'audit.op.tokens_create',
   'tokens-delete': 'audit.op.tokens_delete',
 }
-// The operations that hand out secrets: private keys and backups.
-const secret = new Set(['certs-download', 'backup'])
+// The operations that hand out secrets: private keys, backups and the
+// configuration with its secrets.
+const secret = new Set(['certs-download', 'backup', 'config-export-secrets'])
 const raw = (e: AuditEntry) => `${e.method} ${e.path}`
 const label = (e: AuditEntry) => {
   const key = operations[e.operation]

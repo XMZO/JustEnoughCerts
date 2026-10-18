@@ -139,6 +139,9 @@
       "certs_update": "修改证书设置",
       "certs_upload": "上传新版本",
       "change_password": "修改密码",
+      "config_check": "检查配置文件",
+      "config_export_secrets": "导出配置（含密钥）",
+      "config_import": "导入配置文件",
       "monitor_check": "立即线上检查",
       "notify_test": "发送测试通知",
       "providers_create": "添加服务商",
@@ -395,6 +398,18 @@
       "next": "下次续期",
       "source": "来源",
       "state": "状态"
+    },
+    "config": {
+      "error": {
+        "ambiguous": "有不止一张证书是这些域名，请在各自的页面上修改。",
+        "no_source": "JEC 里没有这张证书，文件里也没有写签发它的来源（上传的证书就是这样）：请在这里添加。",
+        "source_kept": "证书来源仍是 {name}：证书添加后不能换来源。要换来源，请重新添加这张证书。",
+        "uploaded_kept": "这张证书是上传的，会保持不变：要让来源签发它，请重新添加。"
+      },
+      "section": {
+        "certificates": "证书",
+        "renewal": "续期默认值"
+      }
     },
     "defaults": {
       "check_time": "每天检查时间",
@@ -1084,6 +1099,42 @@
       "name": "Just Enough Certs",
       "tagline": "刚好够用的证书，让网站一直是绿锁。"
     },
+    "config": {
+      "action": {
+        "add": "新增",
+        "change": "修改",
+        "keep": "不变",
+        "skip": "跳过"
+      },
+      "apply": "导入",
+      "choose": "选择文件",
+      "error": {
+        "ambiguous": "有不止一个叫 {name}，请先给它们改成不同的名字。",
+        "duplicate": "文件里还有一项也叫 {name}。",
+        "empty": "文件是空的。",
+        "module_off": "这一部分所属的模块已停用，请先在“模块”页打开。",
+        "no_provider": "没有叫 {name} 的{kind, select, source {证书来源} solver {验证方式} target {部署目标} notifier {通知渠道} other {服务商}}。",
+        "no_version": "文件缺少版本号（开头的 version: 1）。它是 JEC 的配置文件吗？",
+        "other_type": "{name} 已经是 {type} 类型，不能改成别的类型。",
+        "section": "第 {line} 行：JEC 没有 {name} 这一部分，它可能属于这个版本的 JEC 没有带的模块。",
+        "type": "这里没有 {type} 这种类型：不认识，或者它所属的模块已停用。",
+        "unreadable": "这个文件不能作为 JEC 的配置读取：{error}",
+        "version": "文件的格式是第 {version} 版，来自更新的 JEC；这个 JEC 只能读第 {supported} 版。请先升级 JEC。"
+      },
+      "errors": "有 {count, plural, other {# 个问题}}，不能导入。请改好文件后重新选择。",
+      "file": "文件",
+      "import_intro": "选择 JEC 导出的、或者你自己写的 YAML 文件。JEC 会先列出要做的改动；文件里没有的密钥保持不变。",
+      "import_title": "导入配置文件",
+      "nothing": "文件里的内容和 JEC 现在的一样，没有要改的。",
+      "problem": {
+        "error": "错误",
+        "warning": "注意"
+      },
+      "secrets_intro": "除了设置，文件里还有服务商的密码、令牌和密钥，都是明文。请妥善保存，不要放进 Git。",
+      "section": {
+        "providers": "服务商"
+      }
+    },
     "error": {
       "cross_origin": "这个请求来自其他网站，已被拦截。",
       "field_required": "请填写这一项。",
@@ -1246,6 +1297,12 @@
       "base_url_help": "通知里的链接用这个地址，由 JEC_BASE_URL 设置",
       "build": "构建",
       "change_password": "修改密码",
+      "config": "配置文件",
+      "config_export": "导出",
+      "config_export_secrets": "导出（含密钥）",
+      "config_help": "把证书、证书来源、验证方式、部署目标、通知和续期默认值导出为 YAML，可以放进 Git，也可以导入另一个 JEC。导入只会新增和修改，不会删除。",
+      "config_import": "导入",
+      "config_imported": "已导入。",
       "current_password": "当前密码",
       "data": "数据和备份",
       "data_dir": "数据目录",

@@ -2,6 +2,7 @@ package certs
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"slices"
@@ -37,9 +38,12 @@ const (
 
 // settings returns the module's settings, with the defaults of those not
 // set.
-func (s *service) settings(ctx context.Context) (Settings, error) {
+func (s *service) settings(ctx context.Context) (Settings, error) { return settingsFrom(ctx, s.db) }
+
+// settingsFrom returns the settings as q, such as a transaction, has them.
+func settingsFrom(ctx context.Context, q querier) (Settings, error) {
 	st := defaults
-	rows, err := s.db.QueryContext(ctx, "SELECT key, value FROM certs_settings")
+	rows, err := q.QueryContext(ctx, "SELECT key, value FROM certs_settings")
 	if err != nil {
 		return st, err
 	}
@@ -73,6 +77,14 @@ func (s *service) saveSettings(ctx context.Context, st Settings) error {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := saveSettingsTx(ctx, tx, st); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// saveSettingsTx stores st in tx.
+func saveSettingsTx(ctx context.Context, tx *sql.Tx, st Settings) error {
 	for key, value := range map[string]string{
 		settingRenewBeforeDays: strconv.Itoa(st.RenewBeforeDays),
 		settingKeyType:         st.KeyType,
@@ -84,7 +96,7 @@ func (s *service) saveSettings(ctx context.Context, st Settings) error {
 			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 // parseClock reads a time of day, HH:MM, as minutes after midnight.

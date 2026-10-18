@@ -18,6 +18,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/configfile"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
@@ -111,6 +112,10 @@ type Registry struct {
 	// Those turned away for want of a session are not recorded. It runs
 	// while the module is enabled, before the answer goes out.
 	Audit func(record func(context.Context, Request))
+	// Config takes a section the module keeps in the configuration file
+	// that people export and import as YAML (PLAN.md 11), such as the
+	// certificates. It fails when the section's key is taken.
+	Config func(configfile.Section) error
 }
 
 // Request is an operation of the API that may have changed something, as

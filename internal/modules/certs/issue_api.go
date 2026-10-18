@@ -275,27 +275,41 @@ func (s *service) addIssued(ctx context.Context, in *IssueRequest) (int64, error
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	now := s.now().UnixMilli()
-	domainsJSON, _ := json.Marshal(domains)
-	solver := sql.NullInt64{Int64: in.SolverProvider, Valid: in.SolverProvider != 0}
-	var id int64
-	err = tx.QueryRowContext(ctx,
-		`INSERT INTO certs_certificates (domains, source, source_provider, solver_provider, key_type, renew_before_days, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-		string(domainsJSON), sourceProvider, in.SourceProvider, solver, keyType, renewBefore, now, now).Scan(&id)
+	id, err := s.insertIssued(ctx, tx, Certificate{
+		Domains: domains, SourceProvider: in.SourceProvider, SolverProvider: in.SolverProvider,
+		KeyType: keyType, RenewBeforeDays: renewBefore, Targets: targets,
+	})
 	if err != nil {
-		return 0, err
-	}
-	if err := s.setTargets(ctx, tx, &Certificate{ID: id}, targets); err != nil {
-		return 0, err
-	}
-	if _, err := s.startIssuance(ctx, tx, id, reasonFirst); err != nil {
 		return 0, err
 	}
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
 	s.issuing.kick()
+	return id, nil
+}
+
+// insertIssued adds c, checked already, as a certificate from its source
+// provider, with its first issuance, in tx; the runner is to be woken
+// once tx is committed.
+func (s *service) insertIssued(ctx context.Context, tx *sql.Tx, c Certificate) (int64, error) {
+	now := s.now().UnixMilli()
+	domainsJSON, _ := json.Marshal(c.Domains)
+	solver := sql.NullInt64{Int64: c.SolverProvider, Valid: c.SolverProvider != 0}
+	var id int64
+	err := tx.QueryRowContext(ctx,
+		`INSERT INTO certs_certificates (domains, source, source_provider, solver_provider, key_type, renew_before_days, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+		string(domainsJSON), sourceProvider, c.SourceProvider, solver, c.KeyType, c.RenewBeforeDays, now, now).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+	if err := s.setTargets(ctx, tx, &Certificate{ID: id}, c.Targets); err != nil {
+		return 0, err
+	}
+	if _, err := s.startIssuance(ctx, tx, id, reasonFirst); err != nil {
+		return 0, err
+	}
 	return id, nil
 }
 

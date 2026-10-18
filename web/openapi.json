@@ -772,6 +772,20 @@
         ],
         "type": "object"
       },
+      "ExportInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "description": "The password of the signed-in account",
+            "maxLength": 1024,
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "type": "object"
+      },
       "Field": {
         "additionalProperties": false,
         "properties": {
@@ -843,6 +857,20 @@
         "required": [
           "location",
           "code"
+        ],
+        "type": "object"
+      },
+      "FileInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "file": {
+            "description": "The YAML file",
+            "maxLength": 1048576,
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
         ],
         "type": "object"
       },
@@ -1072,6 +1100,33 @@
         "required": [
           "domains",
           "sourceProvider"
+        ],
+        "type": "object"
+      },
+      "Item": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "add",
+              "change",
+              "keep",
+              "skip"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "problems": {
+            "items": {
+              "$ref": "#/components/schemas/Problem"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "action"
         ],
         "type": "object"
       },
@@ -1388,6 +1443,29 @@
         ],
         "type": "object"
       },
+      "Problem": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "warning": {
+            "description": "Warnings tell of what the import leaves as it is; other problems stop it",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "key"
+        ],
+        "type": "object"
+      },
       "RenewalBody": {
         "additionalProperties": false,
         "properties": {
@@ -1407,6 +1485,33 @@
         "required": [
           "start",
           "end"
+        ],
+        "type": "object"
+      },
+      "Report": {
+        "additionalProperties": false,
+        "properties": {
+          "applied": {
+            "description": "Whether the changes were made, or only shown",
+            "type": "boolean"
+          },
+          "errors": {
+            "description": "How many problems stop the import",
+            "format": "int64",
+            "type": "integer"
+          },
+          "sections": {
+            "description": "The sections the file has, in its order",
+            "items": {
+              "$ref": "#/components/schemas/SectionReport"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "sections",
+          "errors",
+          "applied"
         ],
         "type": "object"
       },
@@ -1564,6 +1669,29 @@
           "listen",
           "secretKey",
           "hsts"
+        ],
+        "type": "object"
+      },
+      "SectionReport": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            },
+            "type": "array"
+          },
+          "key": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "items"
         ],
         "type": "object"
       },
@@ -3269,6 +3397,197 @@
         "summary": "Change the defaults of new certificates and the time renewals start",
         "tags": [
           "certs"
+        ]
+      }
+    },
+    "/config": {
+      "get": {
+        "description": "The providers, the certificates and the settings of the modules that are on; an import of the file keeps the secrets JEC has.",
+        "operationId": "config-export",
+        "responses": {
+          "200": {
+            "content": {
+              "application/yaml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The configuration file",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Export the configuration as YAML, without secrets",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/config/check": {
+      "post": {
+        "description": "A file that cannot be read answers 422.",
+        "operationId": "config-check",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Report"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Tell what importing a configuration file would change, changing nothing",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/config/export": {
+      "post": {
+        "operationId": "config-export-secrets",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/yaml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The configuration file",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Export the configuration as YAML with the secrets of the providers, once the password is confirmed",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/config/import": {
+      "post": {
+        "description": "Adds what JEC lacks and changes what it has, by name; deletes nothing. Nothing changes while an entry has an error: the report tells, and applied is false. A file that cannot be read answers 422.",
+        "operationId": "config-import",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Report"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Import a configuration file",
+        "tags": [
+          "config"
         ]
       }
     },

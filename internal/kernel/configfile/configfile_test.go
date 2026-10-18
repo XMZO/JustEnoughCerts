@@ -1,0 +1,449 @@
+package configfile_test
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"maps"
+	"strings"
+	"sync"
+	"testing"
+
+	"go.yaml.in/yaml/v3"
+
+	"github.com/XMZO/JustEnoughCerts/i18n"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/configfile"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
+)
+
+type fixture struct {
+	t   *testing.T
+	db  *sql.DB
+	reg *providers.Registry
+	cfg *configfile.Registry
+
+	mu  sync.Mutex
+	off map[string]bool // modules that are off
+}
+
+// The types of the fixture: a DNS provider with a secret and a field that
+// depends on another, and a CDN.
+var (
+	dnsType = providers.Type{ID: "dns.api", Kind: providers.Solver, Brand: "DNS API", Fields: []providers.Field{
+		{Key: "token", Kind: providers.Text, Secret: true, Required: true},
+		{Key: "ttl", Kind: providers.Number, Default: "60"},
+		{Key: "mode", Kind: providers.Select, Default: "public", Options: []providers.Option{{Value: "public", Label: "dns.mode.public"}, {Value: "own", Label: "dns.mode.own"}}},
+		{Key: "server", Kind: providers.URL, Required: true, When: &providers.When{Key: "mode", Value: "own"}},
+	}}
+	cdnType = providers.Type{ID: "cdn.site", Kind: providers.Target, Brand: "CDN", Fields: []providers.Field{
+		{Key: "site", Kind: providers.Text, Required: true},
+	}}
+	edgeType = providers.Type{ID: "cdn.edge", Kind: providers.Target, Brand: "Edge"}
+)
+
+// note is an entry of the section "notes" of module "notes", which names
+// a target, and keeps its entries in a table of its own.
+type note struct {
+	Name   string `yaml:"name"`
+	Target string `yaml:"target"`
+}
+
+func newFixture(t *testing.T) *fixture {
+	t.Helper()
+	dir := t.TempDir()
+	st, err := store.Open(t.Context(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	if _, err := st.Migrate(t.Context(), "kernel", migrations.FS); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.DB().ExecContext(t.Context(), "CREATE TABLE notes (name TEXT NOT NULL, target INTEGER NOT NULL)"); err != nil {
+		t.Fatal(err)
+	}
+	box, _, err := secrets.Load(dir, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := &fixture{t: t, db: st.DB(), off: map[string]bool{}}
+	enabled := func(m string) bool {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		return !f.off[m]
+	}
+	f.reg = providers.New(f.db, box.Scope("kernel"), enabled)
+	open := func(context.Context, providers.Instance) (any, error) { return struct{}{}, nil }
+	if err := f.reg.Scope("dns").Add(dnsType, open); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.reg.Scope("cdn").Add(cdnType, open); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.reg.Scope("cdn").Add(edgeType, open); err != nil {
+		t.Fatal(err)
+	}
+	f.reg.Seal()
+	f.cfg = configfile.New(f.db, f.reg, enabled)
+	err = f.cfg.Add("notes", configfile.Section{
+		Key: "notes", Title: "notes.config.title", New: func() any { return new([]note) },
+		Export: f.exportNotes, Import: f.importNotes,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return f
+}
+
+func (f *fixture) exportNotes(ctx context.Context, _ configfile.Export) (any, error) {
+	rows, err := f.db.QueryContext(ctx, "SELECT n.name, p.name FROM notes n JOIN kernel_providers p ON p.id = n.target ORDER BY n.rowid")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []note{}
+	for rows.Next() {
+		var n note
+		if err := rows.Scan(&n.Name, &n.Target); err != nil {
+			return nil, err
+		}
+		out = append(out, n)
+	}
+	return &out, rows.Err()
+}
+
+func (f *fixture) importNotes(ctx context.Context, tx *sql.Tx, v any, in *configfile.Import) (func(), error) {
+	added := false
+	for _, n := range *v.(*[]note) {
+		p, problem := in.Provider(providers.Target, n.Target)
+		if problem != nil {
+			problem.Field = "target"
+			in.Report(configfile.Item{Name: n.Name, Action: configfile.Skip, Problems: []configfile.Problem{*problem}})
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, "INSERT INTO notes (name, target) VALUES (?, ?)", n.Name, p.ID); err != nil {
+			return nil, err
+		}
+		added = true
+		in.Report(configfile.Item{Name: n.Name, Action: configfile.Add})
+	}
+	return func() {
+		if added {
+			f.mu.Lock()
+			f.off["woken"] = true // only to tell that after ran
+			f.mu.Unlock()
+		}
+	}, nil
+}
+
+func (f *fixture) create(typ, name string, config, secrets map[string]string) int64 {
+	f.t.Helper()
+	id, err := f.reg.Create(f.t.Context(), typ, name, config, secrets)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return id
+}
+
+func (f *fixture) load(id int64) providers.Instance {
+	f.t.Helper()
+	in, err := f.reg.Load(f.t.Context(), id)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return in
+}
+
+func (f *fixture) count(table string) int {
+	f.t.Helper()
+	var n int
+	if err := f.db.QueryRowContext(f.t.Context(), "SELECT count(*) FROM "+table).Scan(&n); err != nil {
+		f.t.Fatal(err)
+	}
+	return n
+}
+
+func (f *fixture) importFile(file string, apply bool) *configfile.Report {
+	f.t.Helper()
+	rep, err := f.cfg.Import(f.t.Context(), []byte(file), apply)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return rep
+}
+
+// actions lists the action of each item of a section, by name.
+func actions(rep *configfile.Report, section string) map[string]configfile.Action {
+	out := map[string]configfile.Action{}
+	for _, s := range rep.Sections {
+		if s.Key == section {
+			for _, it := range s.Items {
+				out[it.Name] = it.Action
+			}
+		}
+	}
+	return out
+}
+
+// problems lists the problems of the items of a report, as
+// "section/name/field: key".
+func problems(rep *configfile.Report) []string {
+	var out []string
+	for _, s := range rep.Sections {
+		for _, it := range s.Items {
+			for _, p := range it.Problems {
+				out = append(out, s.Key+"/"+it.Name+"/"+p.Field+": "+string(p.Key))
+			}
+		}
+	}
+	return out
+}
+
+func TestExport(t *testing.T) {
+	f := newFixture(t)
+	cdn := f.create("cdn.site", "Main site", map[string]string{"site": "example.com"}, nil)
+	f.create("dns.api", "DNS", map[string]string{"ttl": "120"}, map[string]string{"token": "s3cret"})
+	if _, err := f.db.ExecContext(t.Context(), "INSERT INTO notes (name, target) VALUES ('first', ?)", cdn); err != nil {
+		t.Fatal(err)
+	}
+
+	type file struct {
+		Version   int `yaml:"version"`
+		Providers []struct {
+			Name    string            `yaml:"name"`
+			Type    string            `yaml:"type"`
+			Config  map[string]string `yaml:"config"`
+			Secrets map[string]string `yaml:"secrets"`
+		} `yaml:"providers"`
+		Notes []note `yaml:"notes"`
+	}
+	for _, secrets := range []bool{false, true} {
+		data, err := f.cfg.Export(t.Context(), configfile.Export{Secrets: secrets})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got file
+		if err := yaml.Unmarshal(data, &got); err != nil {
+			t.Fatalf("%s: %v", data, err)
+		}
+		// The solver comes first, as the pages list the kinds.
+		if got.Version != configfile.Version || len(got.Providers) != 2 || got.Providers[0].Name != "DNS" || got.Providers[0].Type != "dns.api" ||
+			!maps.Equal(got.Providers[0].Config, map[string]string{"ttl": "120", "mode": "public"}) || got.Providers[1].Name != "Main site" ||
+			len(got.Notes) != 1 || got.Notes[0] != (note{"first", "Main site"}) {
+			t.Errorf("exported\n%s", data)
+		}
+		if (got.Providers[0].Secrets["token"] == "s3cret") != secrets || strings.Contains(string(data), "s3cret") != secrets {
+			t.Errorf("secrets %v: exported\n%s", secrets, data)
+		}
+	}
+
+	// A module that is off leaves its section out.
+	f.off["notes"] = true
+	if data, err := f.cfg.Export(t.Context(), configfile.Export{}); err != nil || strings.Contains(string(data), "notes:") {
+		t.Errorf("with notes off: %s, %v", data, err)
+	}
+}
+
+func TestRoundTrip(t *testing.T) {
+	f := newFixture(t)
+	cdn := f.create("cdn.site", "Main site", map[string]string{"site": "example.com"}, nil)
+	f.create("dns.api", "DNS", map[string]string{"mode": "own", "server": "https://dns.example.com"}, map[string]string{"token": "s3cret"})
+	if _, err := f.db.ExecContext(t.Context(), "INSERT INTO notes (name, target) VALUES ('first', ?)", cdn); err != nil {
+		t.Fatal(err)
+	}
+	data, err := f.cfg.Export(t.Context(), configfile.Export{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The providers are the same, without their secrets; the note comes
+	// again, as the section adds whatever it gets.
+	rep := f.importFile(string(data), false)
+	if rep.Errors != 0 || rep.Applied || !maps.Equal(actions(rep, "providers"), map[string]configfile.Action{"DNS": configfile.Keep, "Main site": configfile.Keep}) {
+		t.Errorf("report %+v", rep)
+	}
+	if f.count("notes") != 1 {
+		t.Error("a dry run added a note")
+	}
+}
+
+func TestImportAdds(t *testing.T) {
+	f := newFixture(t)
+	file := `version: 1
+providers:
+  - name: DNS
+    type: dns.api
+    config:
+      ttl: 300
+    secrets:
+      token: t0ken
+  - name: Main site
+    type: cdn.site
+    config:
+      site: example.com
+notes:
+  - name: first
+    target: Main site
+`
+	rep := f.importFile(file, false)
+	if rep.Errors != 0 || rep.Applied || !maps.Equal(actions(rep, "providers"), map[string]configfile.Action{"DNS": configfile.Add, "Main site": configfile.Add}) ||
+		!maps.Equal(actions(rep, "notes"), map[string]configfile.Action{"first": configfile.Add}) || len(rep.Sections) != 2 || rep.Sections[1].Title != "notes.config.title" {
+		t.Fatalf("report %+v", rep)
+	}
+	if f.count("kernel_providers") != 0 || f.count("notes") != 0 || f.off["woken"] {
+		t.Fatal("a dry run made changes")
+	}
+
+	rep = f.importFile(file, true)
+	if !rep.Applied || rep.Errors != 0 || !f.off["woken"] {
+		t.Fatalf("report %+v", rep)
+	}
+	list, err := f.reg.List(t.Context(), "")
+	if err != nil || len(list) != 2 {
+		t.Fatalf("%+v, %v", list, err)
+	}
+	dns := f.load(list[0].ID)
+	if dns.Name != "DNS" || !maps.Equal(dns.Config, map[string]string{"ttl": "300", "mode": "public"}) || dns.Secrets["token"] != "t0ken" {
+		t.Errorf("added %+v", dns)
+	}
+	var target int64
+	if err := f.db.QueryRowContext(t.Context(), "SELECT target FROM notes WHERE name = 'first'").Scan(&target); err != nil || target != list[1].ID {
+		t.Errorf("the note names %d, %v", target, err)
+	}
+}
+
+func TestImportChanges(t *testing.T) {
+	f := newFixture(t)
+	id := f.create("dns.api", "DNS", map[string]string{"ttl": "120"}, map[string]string{"token": "old"})
+	same := f.create("cdn.site", "Main site", map[string]string{"site": "example.com"}, nil)
+
+	// Secrets the file leaves out stay; the plain settings are the file's.
+	rep := f.importFile(`version: 1
+providers:
+  - {name: DNS, type: dns.api, config: {mode: own, server: "https://dns.example.com"}}
+  - {name: Main site, type: cdn.site, config: {site: example.com}}
+`, true)
+	if !rep.Applied || !maps.Equal(actions(rep, "providers"), map[string]configfile.Action{"DNS": configfile.Change, "Main site": configfile.Keep}) {
+		t.Fatalf("report %+v", rep)
+	}
+	got := f.load(id)
+	if !maps.Equal(got.Config, map[string]string{"ttl": "60", "mode": "own", "server": "https://dns.example.com"}) || got.Secrets["token"] != "old" {
+		t.Errorf("changed to %+v", got)
+	}
+	if f.load(same).Config["site"] != "example.com" {
+		t.Error("the CDN changed")
+	}
+
+	// Secrets the file has replace those JEC has; empty ones do not.
+	f.importFile("version: 1\nproviders:\n  - {name: DNS, type: dns.api, config: {}, secrets: {token: new}}\n", true)
+	if got := f.load(id); got.Secrets["token"] != "new" || got.Config["mode"] != "public" {
+		t.Errorf("changed to %+v", got)
+	}
+	rep = f.importFile("version: 1\nproviders:\n  - {name: DNS, type: dns.api, secrets: {token: \"\"}}\n", true)
+	if got := f.load(id); got.Secrets["token"] != "new" || actions(rep, "providers")["DNS"] != configfile.Keep {
+		t.Errorf("an empty secret: %+v, %+v", got, rep)
+	}
+}
+
+func TestImportProblems(t *testing.T) {
+	f := newFixture(t)
+	f.create("cdn.site", "Twin", map[string]string{"site": "a.example.com"}, nil)
+	f.create("cdn.site", "Twin", map[string]string{"site": "b.example.com"}, nil)
+	f.create("dns.api", "Taken", nil, map[string]string{"token": "t"})
+	rep := f.importFile(`version: 1
+providers:
+  - {name: "", type: cdn.site, config: {site: x}}
+  - {name: Gone, type: gone.type}
+  - {name: New DNS, type: dns.api, config: {ttl: soon}}
+  - {name: Twin, type: cdn.site, config: {site: c.example.com}}
+  - {name: Taken, type: cdn.site, config: {site: d.example.com}}
+  - {name: Site, type: cdn.site, config: {site: e.example.com}}
+  - {name: Site, type: cdn.site, config: {site: f.example.com}}
+notes:
+  - {name: twin, target: Twin}
+  - {name: nowhere, target: Nowhere}
+  - {name: site, target: Site}
+`, true)
+	want := []string{
+		"providers//name: " + string(i18n.KernelErrorInvalidField),
+		"providers/Gone/type: " + string(i18n.KernelConfigErrorType),
+		"providers/New DNS/config.ttl: " + string(i18n.KernelErrorInvalidField),
+		"providers/New DNS/secrets.token: " + string(i18n.KernelErrorFieldRequired),
+		"providers/Twin/name: " + string(i18n.KernelConfigErrorAmbiguous),
+		"providers/Site/name: " + string(i18n.KernelConfigErrorDuplicate),
+		"notes/twin/target: " + string(i18n.KernelConfigErrorAmbiguous),
+		"notes/nowhere/target: " + string(i18n.KernelConfigErrorNoProvider),
+	}
+	got := problems(rep)
+	if strings.Join(got, "\n") != strings.Join(want, "\n") || rep.Errors != len(want) || rep.Applied {
+		t.Errorf("problems:\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+	// Taken is a DNS provider, and a CDN may have the same name; with
+	// errors elsewhere, nothing is added.
+	if a := actions(rep, "providers"); a["Taken"] != configfile.Add || a["Site"] != configfile.Skip {
+		t.Errorf("actions %v", a)
+	}
+	if f.count("kernel_providers") != 3 || f.count("notes") != 0 {
+		t.Error("an import with errors made changes")
+	}
+}
+
+func TestImportOtherType(t *testing.T) {
+	f := newFixture(t)
+	f.create("cdn.site", "Site", map[string]string{"site": "a.example.com"}, nil)
+	rep := f.importFile("version: 1\nproviders:\n  - {name: Site, type: cdn.edge}\n", true)
+	if p := problems(rep); len(p) != 1 || p[0] != "providers/Site/type: "+string(i18n.KernelConfigErrorOtherType) || rep.Applied {
+		t.Errorf("a target of another type: %v", p)
+	}
+}
+
+func TestSectionOff(t *testing.T) {
+	f := newFixture(t)
+	f.create("cdn.site", "Site", map[string]string{"site": "a.example.com"}, nil)
+	f.off["notes"] = true
+	rep := f.importFile("version: 1\nnotes:\n  - {name: a, target: Site}\n", true)
+	if p := problems(rep); len(p) != 1 || p[0] != "notes//: "+string(i18n.KernelConfigErrorModuleOff) || rep.Applied || f.count("notes") != 0 {
+		t.Errorf("a section of a module that is off: %v", p)
+	}
+	// A type of a module that is off is not there either.
+	f.off["cdn"] = true
+	rep = f.importFile("version: 1\nproviders:\n  - {name: Site, type: cdn.site, config: {site: a.example.com}}\n", false)
+	if p := problems(rep); len(p) != 1 || p[0] != "providers/Site/type: "+string(i18n.KernelConfigErrorType) {
+		t.Errorf("a type of a module that is off: %v", p)
+	}
+}
+
+func TestFileErrors(t *testing.T) {
+	f := newFixture(t)
+	for file, key := range map[string]i18n.Key{
+		"":                                   i18n.KernelConfigErrorEmpty,
+		"providers: []\n":                    i18n.KernelConfigErrorNoVersion,
+		"version: 2\n":                       i18n.KernelConfigErrorVersion,
+		"version: 1\nunknown: 1\n":           i18n.KernelConfigErrorSection,
+		"version: 1\nnotes:\n  - {nme: a}\n": i18n.KernelConfigErrorUnreadable,
+		"version: [\n":                       i18n.KernelConfigErrorUnreadable,
+	} {
+		_, err := f.cfg.Import(t.Context(), []byte(file), true)
+		if fe, ok := errors.AsType[*configfile.FileError](err); !ok || fe.Key != key {
+			t.Errorf("%q: %v", file, err)
+		}
+	}
+}
+
+func TestAdd(t *testing.T) {
+	f := newFixture(t)
+	s := configfile.Section{Key: "notes", New: func() any { return new([]note) }, Export: f.exportNotes, Import: f.importNotes}
+	if err := f.cfg.Add("other", s); err == nil {
+		t.Error("two sections with one key")
+	}
+	s.Key = "providers"
+	if err := f.cfg.Add("other", s); err == nil {
+		t.Error("a section with the kernel's key")
+	}
+	s.Key, s.New = "list", func() any { return []note{} }
+	if err := f.cfg.Add("other", s); err == nil {
+		t.Error("a section that is not a pointer")
+	}
+}

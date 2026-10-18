@@ -367,6 +367,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export the configuration as YAML, without secrets
+         * @description The providers, the certificates and the settings of the modules that are on; an import of the file keeps the secrets JEC has.
+         */
+        get: operations["config-export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/config/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tell what importing a configuration file would change, changing nothing
+         * @description A file that cannot be read answers 422.
+         */
+        post: operations["config-check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/config/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Export the configuration as YAML with the secrets of the providers, once the password is confirmed */
+        post: operations["config-export-secrets"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/config/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import a configuration file
+         * @description Adds what JEC lacks and changes what it has, by name; deletes nothing. Nothing changes while an entry has an error: the report tells, and applied is false. A file that cannot be read answers 422.
+         */
+        post: operations["config-import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/manifest": {
         parameters: {
             query?: never;
@@ -1005,6 +1082,10 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        ExportInputBody: {
+            /** @description The password of the signed-in account */
+            password: string;
+        };
         Field: {
             advanced?: boolean;
             default?: string;
@@ -1024,6 +1105,10 @@ export interface components {
             code: string;
             /** @description Where in the request, e.g. body.domains[1] */
             location: string;
+        };
+        FileInputBody: {
+            /** @description The YAML file */
+            file: string;
         };
         InstanceBody: {
             config: {
@@ -1121,6 +1206,12 @@ export interface components {
             sourceProvider: number;
             /** @description The target provider instances to deploy each version to, in order */
             targets?: number[];
+        };
+        Item: {
+            /** @enum {string} */
+            action: "add" | "change" | "keep" | "skip";
+            name?: string;
+            problems?: components["schemas"]["Problem"][];
         };
         ListOutputBody: {
             providers: components["schemas"]["InstanceBody"][];
@@ -1224,6 +1315,15 @@ export interface components {
             dir: string;
             plugins: components["schemas"]["PluginBody"][];
         };
+        Problem: {
+            field?: string;
+            key: string;
+            params?: {
+                [key: string]: unknown;
+            };
+            /** @description Warnings tell of what the import leaves as it is; other problems stop it */
+            warning?: boolean;
+        };
         RenewalBody: {
             /** Format: date-time */
             end: string;
@@ -1231,6 +1331,17 @@ export interface components {
             explanationUrl?: string;
             /** Format: date-time */
             start: string;
+        };
+        Report: {
+            /** @description Whether the changes were made, or only shown */
+            applied: boolean;
+            /**
+             * Format: int64
+             * @description How many problems stop the import
+             */
+            errors: number;
+            /** @description The sections the file has, in its order */
+            sections: components["schemas"]["SectionReport"][];
         };
         RunBody: {
             /**
@@ -1302,6 +1413,11 @@ export interface components {
             secretKey: "env" | "file";
             /** @description The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES */
             trustedProxies?: string;
+        };
+        SectionReport: {
+            items: components["schemas"]["Item"][];
+            key: string;
+            title: string;
         };
         SendBody: {
             /** Format: date-time */
@@ -2313,6 +2429,140 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CertSettingsBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "config-export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The configuration file */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    "Content-Disposition"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/yaml": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "config-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FileInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "config-export-secrets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportInputBody"];
+            };
+        };
+        responses: {
+            /** @description The configuration file */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    "Content-Disposition"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/yaml": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "config-import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FileInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
                 };
             };
             /** @description Error */

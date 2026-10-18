@@ -139,6 +139,9 @@
       "certs_update": "Change a certificate",
       "certs_upload": "Upload a new version",
       "change_password": "Change the password",
+      "config_check": "Check a configuration file",
+      "config_export_secrets": "Export the configuration with secrets",
+      "config_import": "Import a configuration file",
       "monitor_check": "Check a certificate online",
       "notify_test": "Send a test notification",
       "providers_create": "Add a provider",
@@ -395,6 +398,18 @@
       "next": "Next renewal",
       "source": "Source",
       "state": "Status"
+    },
+    "config": {
+      "error": {
+        "ambiguous": "More than one certificate has these domains: change them on their own pages.",
+        "no_source": "JEC has no such certificate, and the file names no source to issue it from, as for one that was uploaded: add it here.",
+        "source_kept": "The source stays {name}: a certificate keeps the source it was added with. To change it, add the certificate again.",
+        "uploaded_kept": "This certificate was uploaded, and stays so: to have it issued by a source, add it again."
+      },
+      "section": {
+        "certificates": "Certificates",
+        "renewal": "Renewal defaults"
+      }
     },
     "defaults": {
       "check_time": "Daily check time",
@@ -1084,6 +1099,42 @@
       "name": "Just Enough Certs",
       "tagline": "Just enough certs to keep your site green."
     },
+    "config": {
+      "action": {
+        "add": "New",
+        "change": "Changed",
+        "keep": "Unchanged",
+        "skip": "Skipped"
+      },
+      "apply": "Import",
+      "choose": "Choose a file",
+      "error": {
+        "ambiguous": "More than one is called {name}. Give them names of their own first.",
+        "duplicate": "The file has another entry called {name}.",
+        "empty": "The file is empty.",
+        "module_off": "The module of this section is off. Turn it on on the Modules page first.",
+        "no_provider": "There is no {kind, select, source {certificate source} solver {validation method} target {deploy target} notifier {notification channel} other {provider}} called {name}.",
+        "no_version": "The file lacks its version, version: 1 at the top. Is it a configuration of JEC?",
+        "other_type": "{name} is of type {type} already, which it cannot change.",
+        "section": "Line {line}: JEC has no section {name}. It may belong to a module this build of JEC lacks.",
+        "type": "There is no provider type {type} here: it is unknown, or its module is off.",
+        "unreadable": "The file cannot be read as a configuration of JEC: {error}",
+        "version": "The file is of format {version}, from a later JEC; this one reads format {supported}. Update JEC first."
+      },
+      "errors": "{count, plural, one {# problem stops} other {# problems stop}} the import. Fix the file, then choose it again.",
+      "file": "File",
+      "import_intro": "Choose a YAML file that JEC exported, or one you wrote. JEC first lists what it would change; secrets the file leaves out stay as they are.",
+      "import_title": "Import a configuration file",
+      "nothing": "JEC has all of it as the file says: there is nothing to change.",
+      "problem": {
+        "error": "Error",
+        "warning": "Note"
+      },
+      "secrets_intro": "Besides the settings, the file holds the passwords, tokens and keys of the providers, as plain text. Keep it safe, and out of Git.",
+      "section": {
+        "providers": "Providers"
+      }
+    },
     "error": {
       "cross_origin": "The request came from another site and was blocked.",
       "field_required": "Fill in this field.",
@@ -1246,6 +1297,12 @@
       "base_url_help": "Links in notifications use it. JEC_BASE_URL sets it.",
       "build": "Build",
       "change_password": "Change password",
+      "config": "Configuration file",
+      "config_export": "Export",
+      "config_export_secrets": "Export with secrets",
+      "config_help": "Certificates, sources, validations, targets, notifications and renewal defaults as YAML: to keep in Git, or to take to another JEC. An import adds and changes; it deletes nothing.",
+      "config_import": "Import",
+      "config_imported": "Imported.",
       "current_password": "Current password",
       "data": "Data and backups",
       "data_dir": "Data directory",

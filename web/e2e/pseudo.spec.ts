@@ -537,6 +537,38 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect((await download).suggestedFilename()).toMatch(/^jec-backup-\d{8}-\d{6}\.db$/)
   await expect(page.locator('dialog[open]')).toHaveCount(0)
 
+  // The configuration as YAML: exported, and with its secrets once the
+  // password is confirmed; imported, first a file with problems, then one
+  // that changes a default.
+  const exported = page.waitForEvent('download')
+  await page.getByRole('button', { name: label('kernel.settings.config_export'), exact: true }).click()
+  const config = readFileSync(await (await exported).path(), 'utf8')
+  expect(config).toMatch(/^version: 1\n/)
+  await page.getByRole('button', { name: label('kernel.settings.config_export_secrets') }).click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'export the configuration with secrets').toEqual([])
+  await dialog.locator('#config-export-password').fill('correct horse')
+  const withSecrets = page.waitForEvent('download')
+  await dialog.locator('button[type=submit]').click()
+  expect((await withSecrets).suggestedFilename()).toMatch(/^jec-config-\d{8}-\d{6}\.yaml$/)
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  await page.getByRole('button', { name: label('kernel.settings.config_import') }).click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'import a configuration').toEqual([])
+  const broken = 'version: 1\nrenewal:\n  check_time: "25:00"\ncertificates:\n  - {domains: [new.example.com], source: Nowhere, targets: [Nowhere]}\n  - {domains: [nosource.example.com]}\n'
+  await dialog.locator('#config-file').setInputFiles({ name: 'broken.yaml', mimeType: 'application/yaml', buffer: Buffer.from(broken) })
+  await expect(dialog.getByText(label('kernel.config.action.skip')).first()).toBeVisible()
+  await expect(dialog.getByRole('button', { name: label('kernel.config.apply') })).toBeDisabled()
+  expect.soft(await problems(page), 'import a configuration with problems').toEqual([])
+  const changed = config.replace(/check_time: "?\d\d:\d\d"?/, 'check_time: "04:15"')
+  await dialog.locator('#config-file').setInputFiles({ name: 'jec-config.yaml', mimeType: 'application/yaml', buffer: Buffer.from(changed) })
+  await expect(dialog.getByText(label('kernel.config.action.change')).first()).toBeVisible()
+  expect.soft(await problems(page), 'import a configuration: what it changes').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.config.apply') }).click()
+  await expect(page.getByRole('status').filter({ hasText: label('kernel.settings.config_imported') })).toBeVisible()
+  await expect(page.locator('#checkTime')).toHaveValue('04:15')
+  expect.soft(await problems(page), 'configuration imported').toEqual([])
+
   // Two-factor authentication, on with a code of the new key, which the
   // test reckons as an authenticator app does.
   await page.getByRole('button', { name: label('kernel.settings.two_factor_turn_on') }).click()

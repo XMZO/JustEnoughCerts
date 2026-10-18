@@ -23,10 +23,11 @@ main 分支上已经可用：
 - 线上巡检：像浏览器一样连到每个域名，续期后如果线上还是旧证书（比如 CDN 没换上新的），会通知你。
 - 内核之外的一切都是模块，可以在“模块”页开关，也可以在编译时去掉。
 - 用任何语言写的插件可以加上部署目标、通知渠道和域名验证方式，不用重新编译 JEC（[docs/plugins.zh-CN.md](docs/plugins.zh-CN.md)）。
+- 配置可以导出为 YAML 文件（服务商、证书和续期默认值），放进 Git，或者导入另一个 JEC；导入前先列出要新增和修改的内容，不会删除任何东西。
 - 用密码登录，也可以开启两步验证，再输入验证器 App 里的验证码；给脚本用的 API 令牌；审计日志记下通过面板做过的事，是谁、从哪里做的；严格的安全响应头。
 - 一个很小的容器镜像，或者一个静态二进制文件，数据存在 SQLite 里。
 
-计划中：厂商验证需要的任意 DNS 记录、钩子，以及更多 CDN 和面板。
+计划中：厂商验证需要的任意 DNS 记录，以及更多 CDN 和面板。
 
 每个服务商测到了哪一步（真实账号、真实软件、模拟器还是替身）：[docs/providers.zh-CN.md](docs/providers.zh-CN.md)。
 
@@ -76,6 +77,42 @@ curl -H "Authorization: Bearer jec_..." https://certs.example.com/api/v1/certs/c
 ```
 
 任何令牌都不能修改密码、两步验证和令牌。
+
+### 用 YAML 导出和导入配置
+
+设置 → 数据和备份 → 配置文件，可以把服务商、证书和续期默认值导出为 YAML，也可以导入这样的文件，用来把配置放进 Git，或者搬到另一个 JEC。它不是 `config.yaml`（那是服务器自己的运行设置）。证书按名称引用服务商：
+
+```yaml
+version: 1
+providers:
+  - name: Let's Encrypt
+    type: acme.account
+    config:
+      ca: letsencrypt
+      email: me@example.com
+  - name: DNSPod
+    type: lego.tencentcloud
+    secrets:
+      TENCENTCLOUD_SECRET_ID: AKID...
+      TENCENTCLOUD_SECRET_KEY: ...
+  - name: ESA
+    type: esa.site
+    config:
+      region: cn-hangzhou
+      access_key_id: LTAI...
+      site: example.com
+renewal:
+  renew_before_days: 30
+  check_time: "02:00"
+  key_type: rsa-2048
+certificates:
+  - domains: [example.com, "*.example.com"]
+    source: Let's Encrypt
+    solver: DNSPod
+    targets: [ESA]
+```
+
+导入会新增 JEC 没有的、修改已有的：服务商按种类和名称对应，证书按域名对应。导入不删除任何东西；文件里没有的密钥保持不变（新增的服务商要在文件里写上自己的密钥），证书的来源也不会变。JEC 会先列出文件要做的改动，任何一项有错误就什么都不改。导出默认不含密钥，要包含需要输入密码。接口也一样：`GET /api/v1/config`，`POST /api/v1/config/check` 查看文件会改什么，`POST /api/v1/config/import` 导入。
 
 ## 配置
 

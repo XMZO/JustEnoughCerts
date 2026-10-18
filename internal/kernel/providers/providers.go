@@ -549,19 +549,24 @@ var localeTags = sync.OnceValue(func() []string {
 
 // Create stores a new instance of type typ.
 func (r *Registry) Create(ctx context.Context, typ, name string, config, secrets map[string]string) (int64, error) {
-	e := r.available(typ)
-	if e == nil {
-		return 0, ErrUnavailable
-	}
-	config, secrets = cloneMap(config), cloneMap(secrets)
-	if err := validate(e.Type, config, secrets); err != nil {
-		return 0, err
-	}
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
 	defer func() { _ = tx.Rollback() }()
+	id, err := r.CreateTx(ctx, tx, typ, name, config, secrets)
+	if err != nil {
+		return 0, err
+	}
+	return id, tx.Commit()
+}
+
+// CreateTx stores a new instance of type typ in tx, as Create does.
+func (r *Registry) CreateTx(ctx context.Context, tx *sql.Tx, typ, name string, config, secrets map[string]string) (int64, error) {
+	config, secrets, err := r.Normalize(typ, config, secrets)
+	if err != nil {
+		return 0, err
+	}
 	now := r.now().UnixMilli()
 	plain, _ := json.Marshal(config)
 	var id int64
@@ -574,7 +579,22 @@ func (r *Registry) Create(ctx context.Context, typ, name string, config, secrets
 	if err := r.sealSecrets(ctx, tx, id, secrets); err != nil {
 		return 0, err
 	}
-	return id, tx.Commit()
+	return id, nil
+}
+
+// Normalize checks config and secrets against the fields of type typ and
+// returns them as an instance would keep them: with the defaults filled
+// in, and without empty values. The maps given stay as they are.
+func (r *Registry) Normalize(typ string, config, secrets map[string]string) (map[string]string, map[string]string, error) {
+	e := r.available(typ)
+	if e == nil {
+		return nil, nil, ErrUnavailable
+	}
+	config, secrets = cloneMap(config), cloneMap(secrets)
+	if err := validate(e.Type, config, secrets); err != nil {
+		return nil, nil, err
+	}
+	return config, secrets, nil
 }
 
 func (r *Registry) sealSecrets(ctx context.Context, tx *sql.Tx, id int64, secrets map[string]string) error {
@@ -592,8 +612,16 @@ func (r *Registry) Update(ctx context.Context, id int64, name *string, config, s
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := r.UpdateTx(ctx, tx, id, name, config, secrets); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// UpdateTx changes instance id in tx, as Update does.
+func (r *Registry) UpdateTx(ctx context.Context, tx *sql.Tx, id int64, name *string, config, secrets map[string]string) error {
 	var s stored
-	err = tx.QueryRowContext(ctx, "SELECT id, type, name, config, secrets, created_at, updated_at FROM kernel_providers WHERE id = ?", id).
+	err := tx.QueryRowContext(ctx, "SELECT id, type, name, config, secrets, created_at, updated_at FROM kernel_providers WHERE id = ?", id).
 		Scan(&s.id, &s.typ, &s.name, &s.config, &s.secrets, &s.created, &s.updated)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound
@@ -626,11 +654,13 @@ func (r *Registry) Update(ctx context.Context, id int64, name *string, config, s
 		in.Name, string(plain), r.now().UnixMilli(), id); err != nil {
 		return err
 	}
-	if err := r.sealSecrets(ctx, tx, id, in.Secrets); err != nil {
-		return err
-	}
-	return tx.Commit()
+	return r.sealSecrets(ctx, tx, id, in.Secrets)
 }
+
+// Load returns instance id with its secrets opened, for the kernel to
+// write them out where a person asked for them, as into a configuration
+// file.
+func (r *Registry) Load(ctx context.Context, id int64) (Instance, error) { return r.load(ctx, id) }
 
 // Delete removes instance id, unless a module still uses it.
 func (r *Registry) Delete(ctx context.Context, id int64) error {

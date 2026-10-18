@@ -1,6 +1,23 @@
 <script setup lang="ts">
-import { Check, Download, KeyRound, KeySquare, LoaderCircle, RotateCcw, ShieldCheck, ShieldOff, Trash2 } from '@lucide/vue'
-import { computed, ref, watch, watchEffect } from 'vue'
+import {
+  Ban,
+  Check,
+  Download,
+  Equal,
+  KeyRound,
+  KeySquare,
+  LoaderCircle,
+  OctagonX,
+  Pencil,
+  Plus,
+  RotateCcw,
+  ShieldCheck,
+  ShieldOff,
+  Trash2,
+  TriangleAlert,
+  Upload,
+} from '@lucide/vue'
+import { computed, ref, watch, watchEffect, type Component } from 'vue'
 
 import {
   useChangePassword,
@@ -14,6 +31,7 @@ import {
   useUpdateAccount,
 } from '../api/account'
 import { saveFile, useCertSettings, useSaveCertSettings, type CertSettingsInput, type KeyType } from '../api/certs'
+import { useExportConfig, useImportConfig, type ConfigItem, type ConfigReport } from '../api/config'
 import { useApiError } from '../api/errors'
 import { useManifest } from '../api/manifest'
 import { useBackup, useRestore, useSystem, waitForRestart } from '../api/system'
@@ -25,7 +43,7 @@ import JecDialog from '../components/JecDialog.vue'
 import JecField from '../components/JecField.vue'
 import JecInput from '../components/JecInput.vue'
 import PageHeader from '../components/PageHeader.vue'
-import { locales, setLocale, useT, type Locale } from '../i18n'
+import { locales, setLocale, useT, type Locale, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
 
 // The settings (docs/design/boards/Settings and SettingsMobile), each saved
@@ -261,6 +279,95 @@ async function submitRestore() {
   }
   restoreState.value = 'slow'
 }
+
+// The configuration as a YAML file (PLAN.md 11): exported, with the
+// secrets once the password is confirmed; or imported once a dry run of
+// the file showed what it would change.
+const exportConfig = useExportConfig()
+const exportError = useApiError(computed(() => exportConfig.error.value))
+const exportingSecrets = ref(false)
+const exportPassword = ref('')
+watch(exportingSecrets, (open) => {
+  if (!open) return
+  exportPassword.value = ''
+  exportConfig.reset()
+})
+
+async function downloadConfig(password?: string): Promise<boolean> {
+  let file
+  try {
+    file = await exportConfig.mutateAsync(password)
+  } catch {
+    return false // shown in the row, or by the field
+  }
+  saveFile(file.blob, file.name)
+  return true
+}
+
+async function submitExportSecrets() {
+  if (await downloadConfig(exportPassword.value)) exportingSecrets.value = false
+}
+
+const importing = ref(false)
+const importConfig = useImportConfig()
+const importError = useApiError(computed(() => importConfig.error.value))
+const configFile = ref<{ name: string; text: string }>()
+const report = ref<ConfigReport>()
+const imported = ref(false)
+watch(importing, (open) => {
+  if (!open) return
+  configFile.value = undefined
+  report.value = undefined
+  imported.value = false
+  importConfig.reset()
+})
+
+async function pickConfig(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = '' // so that the same file, once fixed, can be chosen again
+  if (!file) return
+  configFile.value = { name: file.name, text: await file.text() }
+  report.value = undefined
+  try {
+    report.value = await importConfig.mutateAsync({ file: configFile.value.text, apply: false })
+  } catch {
+    // shown above the report
+  }
+}
+
+const changes = computed(() => report.value?.sections.some((s) => s.items.some((i) => i.action === 'add' || i.action === 'change')) ?? false)
+
+async function applyConfig() {
+  if (!configFile.value) return
+  try {
+    report.value = await importConfig.mutateAsync({ file: configFile.value.text, apply: true })
+  } catch {
+    return // shown above the report
+  }
+  if (report.value.applied) {
+    importing.value = false
+    imported.value = true
+    // The form keeps what it showed: it shows the defaults as imported.
+    const st = (await settings.refetch()).data
+    if (st) form.value = { renewBeforeDays: st.renewBeforeDays, keyType: st.keyType, checkTime: st.checkTime }
+  }
+}
+
+// How each action looks: an icon and a word, never color alone.
+const actionLooks: Record<ConfigItem['action'], { icon: Component; cls: string; text: MessageKey }> = {
+  add: { icon: Plus, cls: 'bg-ok-soft text-ok-ink', text: 'kernel.config.action.add' },
+  change: { icon: Pencil, cls: 'bg-info-soft text-info-ink', text: 'kernel.config.action.change' },
+  keep: { icon: Equal, cls: 'bg-surface-sunken text-ink-muted', text: 'kernel.config.action.keep' },
+  skip: { icon: Ban, cls: 'bg-warn-soft text-warn-ink', text: 'kernel.config.action.skip' },
+}
+const problemText = (p: NonNullable<ConfigItem['problems']>[number]) => t(p.key as MessageKey, (p.params ?? {}) as Params)
+// Entries that stay as they are take a line together; the others, a box
+// each, with their problems.
+type ReportSection = ConfigReport['sections'][number]
+const unchanged = (i: ConfigItem) => i.action === 'keep' && !i.problems?.length
+const listed = (s: ReportSection) => s.items.filter((i) => !unchanged(i))
+const kept = (s: ReportSection) => s.items.filter(unchanged)
 
 function pickLocale(e: Event) {
   void setLocale((e.target as HTMLSelectElement).value as Locale)
@@ -501,6 +608,30 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           </JecButton>
         </div>
       </div>
+      <div :class="[row, 'flex-wrap']">
+        <div class="min-w-0 flex-[1_1_12rem]">
+          <span class="block font-semibold">{{ t('kernel.settings.config') }}</span>
+          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.config_help') }}</span>
+          <span v-if="imported" role="status" class="mt-1 block text-small font-semibold text-ok-ink">{{ t('kernel.settings.config_imported') }}</span>
+          <JecAlert
+            v-if="exportError.alert.value && !exportingSecrets"
+            class="mt-2"
+            :code="exportError.alert.value.code"
+            :params="exportError.alert.value.params"
+          />
+        </div>
+        <div class="ml-auto flex max-w-full min-w-0 flex-wrap justify-end gap-2">
+          <JecButton size="sm" :busy="exportConfig.isPending.value && !exportingSecrets" @click="downloadConfig()">
+            <Download class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_export') }}
+          </JecButton>
+          <JecButton size="sm" @click="exportingSecrets = true">
+            <KeyRound class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_export_secrets') }}
+          </JecButton>
+          <JecButton size="sm" @click="importing = true">
+            <Upload class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_import') }}
+          </JecButton>
+        </div>
+      </div>
       <div :class="row">
         <div class="min-w-0 flex-1">
           <span class="block font-semibold">{{ t('kernel.settings.secret_key') }}</span>
@@ -561,6 +692,104 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
       <JecButton @click="backingUp = false">{{ t('kernel.action.cancel') }}</JecButton>
       <JecButton type="submit" form="backup-form" variant="primary" :busy="backup.isPending.value" :disabled="!backupPassword">
         <Download class="size-4" aria-hidden="true" />{{ t('kernel.settings.backup_download') }}
+      </JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-model:open="exportingSecrets" :title="t('kernel.settings.config_export_secrets')" small>
+    <form id="config-export-form" class="flex flex-col gap-3" novalidate @submit.prevent="submitExportSecrets">
+      <p class="m-0">{{ t('kernel.config.secrets_intro') }}</p>
+      <JecAlert v-if="exportError.alert.value" :code="exportError.alert.value.code" :params="exportError.alert.value.params" />
+      <JecField id="config-export-password" label="kernel.account.confirm_password" :error="exportError.fields.value.password">
+        <JecInput
+          id="config-export-password"
+          v-model="exportPassword"
+          type="password"
+          autocomplete="current-password"
+          required
+          :invalid="!!exportError.fields.value.password"
+        />
+      </JecField>
+    </form>
+    <template #footer>
+      <JecButton @click="exportingSecrets = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton type="submit" form="config-export-form" variant="primary" :busy="exportConfig.isPending.value" :disabled="!exportPassword">
+        <Download class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_export') }}
+      </JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-model:open="importing" :title="t('kernel.config.import_title')">
+    <div class="flex flex-col gap-3">
+      <p class="m-0">{{ t('kernel.config.import_intro') }}</p>
+      <JecField id="config-file" label="kernel.config.file">
+        <div class="flex min-w-0 items-center gap-2">
+          <!-- A label of the panel's own in place of the browser's button, whose words are the browser's. -->
+          <label
+            for="config-file"
+            class="inline-flex h-9 flex-none cursor-pointer items-center rounded-md border border-line-strong bg-surface-raised px-3 text-small font-semibold text-ink hover:bg-surface-sunken max-sm:h-11"
+          >
+            {{ t('kernel.config.choose') }}
+          </label>
+          <input id="config-file" type="file" accept=".yaml,.yml,application/yaml,text/yaml" class="sr-only" @change="pickConfig" />
+          <span v-if="configFile" class="min-w-0 truncate text-small text-ink-muted" translate="no" :title="configFile.name">{{ configFile.name }}</span>
+        </div>
+      </JecField>
+      <JecAlert v-if="importError.alert.value" :code="importError.alert.value.code" :params="importError.alert.value.params" />
+      <template v-if="report">
+        <p v-if="report.errors" class="m-0 inline-flex items-start gap-1.5 font-semibold text-danger-ink">
+          <OctagonX class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ t('kernel.config.errors', { count: report.errors }) }}
+        </p>
+        <p v-else-if="!changes" class="m-0 text-ink-muted">{{ t('kernel.config.nothing') }}</p>
+        <section v-for="s in report.sections" :key="s.key" :aria-labelledby="`config-${s.key}`" class="flex flex-col gap-1.5">
+          <h3 :id="`config-${s.key}`" class="m-0 text-small font-semibold text-ink-muted">{{ t(s.title as MessageKey) }}</h3>
+          <p v-if="kept(s).length" class="m-0 flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1">
+            <span
+              :class="[
+                'inline-flex h-[22px] flex-none items-center gap-1 rounded-sm pr-2 pl-1.5 text-caption font-semibold whitespace-nowrap',
+                actionLooks.keep.cls,
+              ]"
+            >
+              <component :is="actionLooks.keep.icon" class="size-3.5 flex-none" aria-hidden="true" />{{ t(actionLooks.keep.text) }}
+            </span>
+            <span v-if="kept(s).some((i) => i.name)" class="min-w-0 pt-px text-small text-ink-muted [overflow-wrap:anywhere]" translate="no">{{
+              intl.list(kept(s).flatMap((i) => (i.name ? [i.name] : [])))
+            }}</span>
+          </p>
+          <ul v-if="listed(s).length" class="m-0 flex list-none flex-col gap-1.5 p-0">
+            <li v-for="(it, i) in listed(s)" :key="i" class="flex min-w-0 flex-col gap-1 rounded-md border border-line px-3 py-2">
+              <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <span
+                  :class="[
+                    'inline-flex h-[22px] flex-none items-center gap-1 rounded-sm pr-2 pl-1.5 text-caption font-semibold whitespace-nowrap',
+                    actionLooks[it.action].cls,
+                  ]"
+                >
+                  <component :is="actionLooks[it.action].icon" class="size-3.5 flex-none" aria-hidden="true" />{{ t(actionLooks[it.action].text) }}
+                </span>
+                <span v-if="it.name" class="min-w-0 font-semibold [overflow-wrap:anywhere]" translate="no">{{ it.name }}</span>
+              </div>
+              <p
+                v-for="(p, j) in it.problems ?? []"
+                :key="j"
+                :class="['m-0 flex min-w-0 items-start gap-1.5 text-small', p.warning ? 'text-warn-ink' : 'text-danger-ink']"
+              >
+                <component :is="p.warning ? TriangleAlert : OctagonX" class="mt-0.5 size-4 flex-none" aria-hidden="true" />
+                <span class="min-w-0 [overflow-wrap:anywhere]">
+                  <span class="font-semibold">{{ t(p.warning ? 'kernel.config.problem.warning' : 'kernel.config.problem.error') }}</span>
+                  <code v-if="p.field" class="mx-1 font-mono">{{ p.field }}</code>
+                  {{ ' ' }}{{ problemText(p) }}
+                </span>
+              </p>
+            </li>
+          </ul>
+        </section>
+      </template>
+    </div>
+    <template #footer>
+      <JecButton @click="importing = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton variant="primary" :busy="importConfig.isPending.value" :disabled="!report || report.errors > 0 || !changes" @click="applyConfig">
+        <Upload class="size-4" aria-hidden="true" />{{ t('kernel.config.apply') }}
       </JecButton>
     </template>
   </JecDialog>

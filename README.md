@@ -65,13 +65,17 @@ Working on the main branch:
 - Plugins, programs in any language, add deploy targets, notification
   channels and ways to validate domains without rebuilding JEC
   ([docs/plugins.md](docs/plugins.md)).
+- The configuration as a YAML file: the providers, the certificates and
+  the renewal defaults, to keep in Git or to take to another JEC. An
+  import shows what it would add and change before it does, and deletes
+  nothing.
 - Sign-in with a password and, if you like, the codes of an authenticator
   app (two-factor authentication); API tokens for scripts; an audit log of
   what was done through the panel, by whom and from where; strict security
   headers.
 - One small container image or one static binary, with SQLite.
 
-Planned: records of any type for the DNS validations of vendors, hooks, and more CDNs and panels.
+Planned: records of any type for the DNS validations of vendors, and more CDNs and panels.
 
 How far each provider is tested, against a real account, the real
 software, an emulator or a fake: [docs/providers.md](docs/providers.md).
@@ -147,6 +151,53 @@ curl -H "Authorization: Bearer jec_..." https://certs.example.com/api/v1/certs/c
 ```
 
 No token changes the password, two-factor authentication or the tokens.
+
+### The configuration as YAML
+
+Settings → Data and backups → Configuration file exports the providers,
+the certificates and the renewal defaults as YAML, and imports such a
+file, to keep the configuration in Git or to take it to another JEC.
+This is not `config.yaml`, which holds how the server runs. Certificates
+name their providers by name:
+
+```yaml
+version: 1
+providers:
+  - name: Let's Encrypt
+    type: acme.account
+    config:
+      ca: letsencrypt
+      email: me@example.com
+  - name: DNSPod
+    type: lego.tencentcloud
+    secrets:
+      TENCENTCLOUD_SECRET_ID: AKID...
+      TENCENTCLOUD_SECRET_KEY: ...
+  - name: ESA
+    type: esa.site
+    config:
+      region: cn-hangzhou
+      access_key_id: LTAI...
+      site: example.com
+renewal:
+  renew_before_days: 30
+  check_time: "02:00"
+  key_type: rsa-2048
+certificates:
+  - domains: [example.com, "*.example.com"]
+    source: Let's Encrypt
+    solver: DNSPod
+    targets: [ESA]
+```
+
+An import adds what JEC lacks and changes what it has: providers found
+by their kind and name, certificates by their domains. It deletes
+nothing; secrets the file leaves out stay as they are (a provider it adds
+needs its own), and a certificate keeps its source. JEC first lists what the file would change, and changes
+nothing while an entry has an error. An export leaves the secrets out
+unless you ask for them, with your password. The same goes through the
+API: `GET /api/v1/config`, `POST /api/v1/config/check` to see what a file
+would change, and `POST /api/v1/config/import`.
 
 ## Configuration
 

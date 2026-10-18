@@ -24,6 +24,8 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/buildinfo"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/clientip"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/config"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/configfile"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/configfile/configfileapi"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
@@ -152,6 +154,8 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		VerifyKey: box.Verify, Versions: versions, Restart: func() { restartOnce.Do(func() { close(restart) }) },
 		DB: st.DB(), Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log,
 	})
+	cfgFile := configfile.New(st.DB(), registry, enabled)
+	configfileapi.Register(a.Kernel(), cfgFile, configfileapi.Options{Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log})
 	var wellKnown []wellKnownHandler
 	for _, m := range set.Modules() {
 		id := m.Manifest().ID
@@ -172,6 +176,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 			Audit: func(record func(context.Context, module.Request)) {
 				recorders = append(recorders, recorder{module: id, record: record})
 			},
+			Config: func(s configfile.Section) error { return cfgFile.Add(id, s) },
 		}
 		if err := m.Register(r); err != nil {
 			return nil, fmt.Errorf("module %s: %w", id, err)

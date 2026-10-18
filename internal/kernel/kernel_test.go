@@ -3,6 +3,7 @@ package kernel
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"io"
 	"io/fs"
@@ -23,6 +24,7 @@ import (
 
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/config"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/configfile"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
 )
@@ -572,5 +574,102 @@ func TestRestore(t *testing.T) {
 	kept, _ := filepath.Glob(filepath.Join(cfg.DataDir, "jec.db.before-restore-*"))
 	if len(kept) == 0 || !strings.Contains(logs.String(), "restored a backup") {
 		t.Errorf("kept %v; log:\n%s", kept, logs.String())
+	}
+}
+
+// keeper is a module with a section of the configuration file: a color it
+// keeps in a table.
+type keeper struct{}
+
+func (keeper) Manifest() module.Manifest {
+	return module.Manifest{ID: "keeper", Category: module.Feature, Name: "keeper.module.name", Description: "keeper.module.description"}
+}
+
+func (keeper) Migrations() fs.FS {
+	return fstest.MapFS{"00001_keeper.sql": {Data: []byte("-- +goose Up\nCREATE TABLE keeper_color (color TEXT NOT NULL) STRICT;\nINSERT INTO keeper_color VALUES ('red');\n")}}
+}
+
+type keeperEntry struct {
+	Color string `yaml:"color"`
+}
+
+func (keeper) Register(r *module.Registry) error {
+	return r.Config(configfile.Section{
+		Key: "keeper", Title: "keeper.config.title", New: func() any { return new(keeperEntry) },
+		Export: func(ctx context.Context, _ configfile.Export) (any, error) {
+			e := &keeperEntry{}
+			return e, r.DB.QueryRowContext(ctx, "SELECT color FROM keeper_color").Scan(&e.Color)
+		},
+		Import: func(ctx context.Context, tx *sql.Tx, v any, in *configfile.Import) (func(), error) {
+			var had string
+			if err := tx.QueryRowContext(ctx, "SELECT color FROM keeper_color").Scan(&had); err != nil {
+				return nil, err
+			}
+			color := v.(*keeperEntry).Color
+			if color == had {
+				in.Report(configfile.Item{Action: configfile.Keep})
+				return nil, nil
+			}
+			_, err := tx.ExecContext(ctx, "UPDATE keeper_color SET color = ?", color)
+			in.Report(configfile.Item{Action: configfile.Change})
+			return nil, err
+		},
+	})
+}
+
+func TestConfigFile(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.DataDir = t.TempDir()
+	var logs syncBuffer
+	app, err := New(t.Context(), cfg, slog.New(slog.NewTextHandler(&logs, nil)), []module.Module{keeper{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Close()
+	m := setupToken.FindStringSubmatch(logs.String())
+	if m == nil {
+		t.Fatal("no setup token in the log")
+	}
+	c := &client{t: t, srv: httptest.NewServer(app.Handler())}
+	defer c.srv.Close()
+	if status, body := c.call(http.MethodPost, "/api/v1/setup", `{"token": "`+m[1]+`", "username": "admin", "password": "correct horse"}`); status != http.StatusCreated {
+		t.Fatalf("setup = %d %s", status, body)
+	}
+
+	status, file := c.call(http.MethodGet, "/api/v1/config", "")
+	if status != http.StatusOK || !strings.HasPrefix(file, "version: 1\n") || !strings.Contains(file, "keeper:\n  color: red\n") {
+		t.Fatalf("export = %d\n%s", status, file)
+	}
+	importFile := func(file string, apply bool) (int, string) {
+		body, _ := json.Marshal(map[string]any{"file": file})
+		if !apply {
+			return c.call(http.MethodPost, "/api/v1/config/check", string(body))
+		}
+		return c.call(http.MethodPost, "/api/v1/config/import", string(body))
+	}
+	var rep configfile.Report
+	status, body := importFile(strings.Replace(file, "red", "blue", 1), false)
+	if err := json.Unmarshal([]byte(body), &rep); status != http.StatusOK || err != nil || rep.Applied || rep.Sections[0].Items[0].Action != configfile.Change {
+		t.Errorf("check = %d %s", status, body)
+	}
+	if _, file := c.call(http.MethodGet, "/api/v1/config", ""); !strings.Contains(file, "color: red") {
+		t.Errorf("after the check:\n%s", file)
+	}
+	status, body = importFile(strings.Replace(file, "red", "blue", 1), true)
+	if err := json.Unmarshal([]byte(body), &rep); status != http.StatusOK || err != nil || !rep.Applied || len(rep.Sections) != 1 ||
+		rep.Sections[0].Key != "keeper" || rep.Sections[0].Items[0].Action != configfile.Change {
+		t.Errorf("import = %d %s", status, body)
+	}
+	if _, file := c.call(http.MethodGet, "/api/v1/config", ""); !strings.Contains(file, "color: blue") {
+		t.Errorf("after the import:\n%s", file)
+	}
+	if status, body := importFile("version: 9\n", false); status != http.StatusUnprocessableEntity || !strings.Contains(body, `"kernel.config.error.version"`) {
+		t.Errorf("a later version = %d %s", status, body)
+	}
+	if status, body := c.call(http.MethodPost, "/api/v1/config/export", `{"password": "wrong"}`); status != http.StatusUnprocessableEntity {
+		t.Errorf("export with a wrong password = %d %s", status, body)
+	}
+	if status, body := c.call(http.MethodPost, "/api/v1/config/export", `{"password": "correct horse"}`); status != http.StatusOK || !strings.Contains(body, "keeper:") {
+		t.Errorf("export with secrets = %d %s", status, body)
 	}
 }

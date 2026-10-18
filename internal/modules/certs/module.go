@@ -62,6 +62,11 @@ func (m *Module) Register(r *module.Registry) error {
 	s.deploying.trigger = func() { r.Jobs.Trigger("deploy") }
 	registerAPI(r.API, s, r.ConfirmPassword)
 	r.Providers.UsedBy(s.usesProvider)
+	for _, sec := range s.configSections() {
+		if err := r.Config(sec); err != nil {
+			return err
+		}
+	}
 	if err := r.Events.Subscribe(events.Subscription{Name: "announce", Types: []string{contracts.CertificatesAnnounce}, Handler: s.announce}); err != nil {
 		return err
 	}
