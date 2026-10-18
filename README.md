@@ -37,7 +37,7 @@ Working on the main branch:
 - Deployment of each new certificate to Alibaba Cloud ESA (removing the one
   it replaces), to Alibaba Cloud CDN and DCDN, and through Tencent Cloud's
   SSL Certificates to its CDN, EdgeOne, CLB and more; to websites of BaoTa
-  (aaPanel) and 1Panel; to local directories and
+  (aaPanel) and 1Panel, and to Proxmox VE nodes; to local directories and
   to servers over SSH, each with a command afterwards, such as reloading
   nginx; into Docker containers, which are then signaled to reload, or
   restarted; and to webhooks.

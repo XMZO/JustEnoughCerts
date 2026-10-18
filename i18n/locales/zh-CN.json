@@ -1395,6 +1395,51 @@
       "ok": "{plugin}：{message}"
     }
   },
+  "proxmox": {
+    "error": {
+      "api": "Proxmox VE 拒绝了：{reason}（HTTP {status}）",
+      "fingerprint": "不是 SHA-256 指纹：{fingerprint}",
+      "network": "连不上 {host}。",
+      "node": "不是节点名：{node}",
+      "permission": "这个 API 令牌没有权限修改 {node} 的证书：它需要 /nodes/{node} 上的 Sys.Modify 权限。",
+      "pin": "节点证书的指纹和填写的不一样。JEC 部署了自己的证书（浏览器信任的）以后，请清空这个指纹。",
+      "plain": "{host} 在公网上，用 http:// 会让私钥以明文经过公网。请用 https://。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "token": "Proxmox VE 不认这个 API 令牌：请核对令牌 ID 和密钥。",
+      "unverified": "JEC 验证不了节点的证书（用 Proxmox VE 自己生成的证书时就会这样）。请核对它的 SHA-256 指纹是 {fingerprint}，然后填进高级设置里的“节点证书指纹”。",
+      "url": "地址不对：{url}"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "节点在本机或内网时打开，大多数情况都是这样。",
+      "fingerprint": "节点证书指纹",
+      "fingerprint_help": "节点用 Proxmox VE 自己生成的证书时填写：它的 SHA-256 指纹，测试连接会给出。JEC 只信任这张证书；部署了 JEC 的证书以后，就不用再填了。",
+      "node": "节点名",
+      "node_help": "数据中心列表里显示的节点名，比如 pve。",
+      "restart": "重启网页服务",
+      "restart_help": "重启 pveproxy，让新证书立即生效；打开着的网页界面会重新连接。",
+      "token_id": "API 令牌 ID",
+      "token_id_help": "比如 root@pam!jec，在 数据中心 → 权限 → API 令牌 里创建。令牌需要 /nodes/<节点> 上的 Sys.Modify 权限：给它授权，或者创建时不勾选“特权分离”。",
+      "token_secret": "API 令牌密钥",
+      "url": "地址",
+      "url_help": "节点（或者集群里任一节点）的地址，比如 https://192.168.1.2:8006。"
+    },
+    "log": {
+      "restart": "{node} 正在重启网页服务",
+      "upload": "把证书设为 {node} 的自定义证书"
+    },
+    "module": {
+      "description": "通过 Proxmox VE 的 API 把证书设为节点的自定义证书。",
+      "name": "Proxmox VE"
+    },
+    "node": {
+      "description": "把每张新证书设为节点的自定义证书，节点的网页界面和 API 随之使用它。",
+      "name": "Proxmox VE 节点"
+    },
+    "test": {
+      "ok": "JEC 用这个令牌能访问节点 {node}。"
+    }
+  },
   "serverchan": {
     "error": {
       "api": "Server酱 拒绝了这条消息：{message}（{code}）",

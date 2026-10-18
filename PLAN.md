@@ -351,7 +351,7 @@ DNS 验证分成两种能力，实现方式不同：
 | 负载均衡 / 证书库 | 阿里云 SLB / ALB、阿里云证书服务、腾讯云 CLB、腾讯云 SSL 证书（已完成，经它更新 CDN、EdgeOne、CLB 等）、AWS ACM | M3 |
 | 对象存储 | 阿里云 OSS、腾讯云 COS 的自定义域名 HTTPS | M3 |
 | 服务器 | 本地文件 + 执行命令（nginx、caddy、haproxy 等）；SSH / SFTP 上传 + 远程命令；Docker 容器（通过挂载的 Docker API 发信号或重启，不需要 docker 命令行）；Kubernetes Secret | M1（本地、SSH）/ M3（Docker 已完成） |
-| 面板与应用 | 1Panel、宝塔（已完成）、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Caddy 管理 API | M3 |
+| 面板与应用 | 1Panel、宝塔、Proxmox VE（已完成）、Nginx Proxy Manager、群晖 DSM、Caddy 管理 API | M3 |
 | 通用 | Webhook、外部插件 | M1 |
 
 **本地文件的实现**（`internal/modules/files`，M1）：部署目标类型 `files.directory`：目录（绝对路径）和放法（每张证书一个以主域名命名的子目录，`*` 写成 `star`；或者直接放在这个目录里）。按 certbot 的文件名写 `cert.pem`、`chain.pem`、`fullchain.pem`、`privkey.pem`（私钥只有所有者可读），每个文件先写到临时文件再改名，读的程序不会读到写了一半的文件；新版本直接覆盖，没有旧版本要删。目录是相对路径、没有写入权限时不自动重试。写好后可以执行一段命令（比如 `systemctl reload nginx`）：用内嵌的 shell 解释器（`mvdan.cc/sh`，POSIX sh 和 Bash 的写法都认）在证书目录里执行，最多 5 分钟；环境变量是 JEC 自己的环境去掉 `JEC_` 开头的设置（比如主密钥），加上 `JEC_CERT_DIR`、`JEC_CERT_FILE`、`JEC_CHAIN_FILE`、`JEC_FULLCHAIN_FILE`、`JEC_KEY_FILE`、`JEC_DOMAIN`、`JEC_DOMAINS`、`JEC_CERTIFICATE_ID`、`JEC_NOT_AFTER`，以及 certbot 部署钩子用的 `RENEWED_LINEAGE`、`RENEWED_DOMAINS`，现成的 certbot 钩子脚本可以直接用。输出的最后 4000 字节记进部署日志；退出码不是 0、语法不对、超时都不自动重试。测试连接只检查命令的语法，不执行。容器镜像里除了 JEC 没有别的程序，所以这主要给原生二进制部署用。
@@ -368,6 +368,8 @@ DNS 验证分成两种能力，实现方式不同：
 - 宝塔（`baota.site`，国际版 aaPanel 同样适用）：面板地址、接口密钥、网站名（逗号分隔）。对每个网站 `POST /site?action=SetSSL`（表单：`type=0`、`siteName`、`key` 私钥、`csr` 证书链），两个网站之间隔 3 秒，让面板重载 Web 服务器；签名是 `request_time` 和 `request_token = md5(时间 + md5(密钥))`，回答 `{"status": false, "msg": …}` 时失败，消息里有 IP 的提示加白名单。测试连接调 `/system?action=GetSystemTotal`。
 - 1Panel（`onepanel.certificate`）：面板地址、API 接口密钥、面板版本（v2 默认，v1 可选，决定 `/api/v2` 或 `/api/v1`）、证书 ID。每个新版本用 `POST …/websites/ssl/upload`（`sslID` 为设置的证书，`type=paste`，保留原来的描述）原地替换面板里那张证书的内容，用它的网站随之换上新证书；签名头 `1Panel-Token = md5("1panel" + 密钥 + 时间)`、`1Panel-Timestamp`，回答的 `code` 不是 2xx 时失败。测试连接列出面板里的证书和 ID（`…/websites/ssl/search`），方便填写。
 - 两者都是：私钥会经过面板接口，所以 `http://` 只能连内网（`httpx` 的 `PrivateOnly`，连接时检查地址）；`https://` 默认只连公网，内网要打开“允许内网地址”；面板用自签名证书时，测试连接报出它的 SHA-256 指纹，填进“面板证书指纹”后只信任这张证书（`httpx` 的 `Pin`），和 SSH 核对主机公钥一样。不跟随跳转。只用替身面板测过，还没有对真实面板验证。
+
+**Proxmox VE 的实现**（`internal/modules/proxmox`，M3）：部署目标类型 `proxmox.node`：地址（节点或集群里任一节点，`https://…:8006`）、节点名、API 令牌 ID（`root@pam!jec`）和密钥、是否重启网页服务（默认是）。每个新版本 `POST /api2/json/nodes/{node}/certificates/custom`（表单：`certificates` 证书链、`key` 私钥、`force=1`、`restart`），认证头 `PVEAPIToken=令牌ID=密钥`；令牌要有 `/nodes/{node}` 上的 `Sys.Modify`。Proxmox VE 把失败原因放在状态行里，参数错误另在 `errors` 里，都拼进错误信息。测试连接读 `/certificates/info`。地址、指纹和内网的规则同面板：Proxmox VE 默认用自己生成的证书，测试连接报出指纹，填上后信任它；JEC 部署了自己的证书以后，就可以清空指纹。只用替身测过。
 
 **腾讯云的实现**（`internal/modules/tencentcloud`，M3）：部署目标类型 `tencentcloud.ssl`：SecretId、SecretKey，要更新的资源类型（`cdn`、`teo`、`clb`、`waf`、`live`、`ddos`、`apigateway`、`vod`、`tke`、`tcb`、`tse`、`cos`，逗号分隔，默认 `cdn`），首次替换的证书 ID，删除被替换的证书（默认开），地域（给 clb 等要地域的类型），站点（中国站 `ssl.tencentcloudapi.com` 或国际站）。每个新版本先 `UploadCertificate`（`Repeatable=false`：同一张证书已经在时返回它的 ID，重试不会重复上传），再用 `UpdateCertificateInstance` 一键更新：旧证书是上一个版本（第一次是设置的首次替换证书），腾讯云把绑定旧证书的资源都换成新证书；这个接口是异步的，任务 ID 为 0 时每 3 秒再调一次，最多 2 分钟。没有旧证书时只上传，日志提示去控制台部署一次。删除只针对更早的版本：正在被替换的那张下次部署时再删，删不掉只记警告。测试连接调 `DescribeCertificates`。用 SDK 的通用客户端（TC3 签名），不引入 SSL 服务的 SDK。只用替身 API 测过，还没有对真实账号验证。
 

@@ -1395,6 +1395,51 @@
       "ok": "{plugin}: {message}"
     }
   },
+  "proxmox": {
+    "error": {
+      "api": "Proxmox VE refused: {reason} (HTTP {status})",
+      "fingerprint": "Not a SHA-256 fingerprint: {fingerprint}",
+      "network": "Could not reach {host}.",
+      "node": "Not the name of a node: {node}",
+      "permission": "The API token may not change the certificates of {node}: it needs Sys.Modify on /nodes/{node}.",
+      "pin": "The node's certificate does not have the fingerprint entered. Once JEC deployed its own, which browsers trust, clear the fingerprint.",
+      "plain": "{host} is on the public internet, where http:// would carry the private key in the clear. Use https://.",
+      "private": "{host} is a private address. To reach it, turn on “Allow private addresses” in the advanced settings.",
+      "token": "Proxmox VE refused the API token: check its ID and secret.",
+      "unverified": "JEC cannot verify the node's certificate, as with the one Proxmox VE makes itself. Check that its SHA-256 fingerprint is {fingerprint}, then enter it under Node certificate fingerprint in the advanced settings.",
+      "url": "Not an address: {url}"
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "For a node on this machine or on your network, as most are.",
+      "fingerprint": "Node certificate fingerprint",
+      "fingerprint_help": "For the certificate Proxmox VE makes itself: its SHA-256 fingerprint, which the connection test gives. JEC then trusts that certificate only, until it deploys its own.",
+      "node": "Node",
+      "node_help": "Its name, as Datacenter lists it, such as pve.",
+      "restart": "Restart the web interface",
+      "restart_help": "Restarts pveproxy so that it serves the new certificate at once; open sessions of the web interface reconnect.",
+      "token_id": "API token ID",
+      "token_id_help": "Such as root@pam!jec, from Datacenter → Permissions → API Tokens. The token needs Sys.Modify on /nodes/<node>: give it the permission, or leave privilege separation off.",
+      "token_secret": "API token secret",
+      "url": "Address",
+      "url_help": "Of the node, or of any node of the cluster, such as https://192.168.1.2:8006."
+    },
+    "log": {
+      "restart": "{node} restarts its web interface",
+      "upload": "Making the certificate the custom one of {node}"
+    },
+    "module": {
+      "description": "Makes certificates the custom certificate of Proxmox VE nodes, through their API.",
+      "name": "Proxmox VE"
+    },
+    "node": {
+      "description": "Makes each new certificate the custom certificate of a node, which its web interface and API then serve.",
+      "name": "Proxmox VE node"
+    },
+    "test": {
+      "ok": "JEC can reach the node {node} with the token."
+    }
+  },
   "serverchan": {
     "error": {
       "api": "ServerChan refused the message: {message} ({code})",
