@@ -1294,6 +1294,61 @@
       "title": "测试通知"
     }
   },
+  "npm": {
+    "certificate": {
+      "description": "把每个新版本放进面板的一张自定义证书（JEC 自己添加的，或者你指定的），并让 nginx 加载。在面板里给主机选一次这张证书就行。",
+      "name": "Nginx Proxy Manager"
+    },
+    "error": {
+      "api": "面板拒绝了：{message}（HTTP {status}）",
+      "certificate_id": "不是证书 ID：{id}",
+      "denied": "面板拒绝了：{message}。这个用户要能管理证书和主机，并且能看到所有项目。",
+      "fingerprint": "不是 SHA-256 指纹：{fingerprint}",
+      "network": "连不上 {host}。",
+      "nginx": "nginx 不接受{kind, select, proxy {代理主机} redirection {重定向主机} dead {404 主机} other {流}} {host} 的配置，面板把它下线了：{error}",
+      "no_certificate": "面板里没有证书 {id}。它的自定义证书：{certificates}",
+      "no_certificates": "面板里没有证书 {id}，也没有自定义证书。证书 ID 留空，JEC 会自己添加一张。",
+      "pin": "面板证书的指纹和填写的不一样。如果面板换了证书，请核对新指纹后重新填写。",
+      "plain": "{host} 在公网上，用 http:// 会让私钥以明文经过公网。请用面板的 https:// 地址。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "provider": "{certificate} 是面板自己续期的 Let's Encrypt 证书。请填一张自定义证书的 ID，或者留空让 JEC 自己添加一张。",
+      "reload": "面板没能重载 nginx：{message}（HTTP {status}）。原因在面板的日志里：只有所有主机的配置和所有证书都没问题，nginx 才会重载。",
+      "sign_in": "面板拒绝登录：{message}。请核对邮箱和密码。",
+      "status": "面板的回应看不懂（HTTP {status}）。请检查地址：要填管理页面的地址，没改过的话端口是 81。",
+      "two_factor": "这个用户开了两步验证，JEC 过不去。请给 JEC 单独建一个不开两步验证的用户。",
+      "unverified": "JEC 验证不了面板的证书（面板用自签名证书时就会这样）。请核对它的 SHA-256 指纹是 {fingerprint}，然后填进高级设置里的“面板证书指纹”。",
+      "url": "面板地址不对：{url}"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "面板在本机或内网、用 https:// 访问时打开。",
+      "certificate": "证书 ID",
+      "certificate_help": "留空时，JEC 在第一次部署时添加一张自己的自定义证书。也可以填面板里一张自定义证书的 ID，改为更新那张；测试连接会列出它们。",
+      "email": "邮箱",
+      "email_help": "要能管理证书和主机、并且能看到所有项目的用户，比如管理员。开了两步验证的用户不能经 API 登录：给 JEC 单独建一个不开两步验证的用户。",
+      "fingerprint": "面板证书指纹",
+      "fingerprint_help": "面板用自签名证书时填写：它的 SHA-256 指纹，测试连接会给出。JEC 只信任这张证书。",
+      "password": "密码",
+      "url": "面板地址",
+      "url_help": "管理页面的地址，比如 http://192.168.1.10:81。http:// 只能连本机或内网，因为私钥会以明文传输。"
+    },
+    "log": {
+      "apply": "重新保存{kind, select, proxy {代理主机} redirection {重定向主机} dead {404 主机} other {流}} {host}，让 nginx 加载新版本",
+      "create": "添加自定义证书 {name}",
+      "gone": "JEC 以前添加的自定义证书 #{id} 不在了：添加一张新的，需要在主机上重新选择",
+      "unused": "还没有启用的主机在用证书 {certificate}：请在面板里主机的 SSL 选项卡选上它。",
+      "upload": "把新版本上传到证书 {certificate}"
+    },
+    "module": {
+      "description": "通过 Nginx Proxy Manager 的 API 更新它的一张自定义证书，用这张证书的主机随之更新。",
+      "name": "Nginx Proxy Manager"
+    },
+    "test": {
+      "list": "登录成功。JEC 会在第一次部署时添加一张自己的自定义证书；要改为更新面板里已有的一张，填它的 ID：{certificates}",
+      "new": "登录成功。JEC 会在第一次部署时添加一张自己的自定义证书。",
+      "ok": "找到了证书 {certificate}，{count, plural, =0 {还没有主机在用} other {有 # 个主机在用}}。"
+    }
+  },
   "ntfy": {
     "error": {
       "api": "服务器拒绝了这条消息：{error}（HTTP {status}）",

@@ -1294,6 +1294,61 @@
       "title": "A test note"
     }
   },
+  "npm": {
+    "certificate": {
+      "description": "Puts each new version into a custom certificate of the panel, one JEC adds or one you choose, and has nginx load it. Pick that certificate on the hosts once, in the panel.",
+      "name": "Nginx Proxy Manager"
+    },
+    "error": {
+      "api": "The panel refused: {message} (HTTP {status})",
+      "certificate_id": "Not a certificate ID: {id}",
+      "denied": "The panel refused: {message}. The user needs to manage certificates and hosts, and to see all items.",
+      "fingerprint": "Not a SHA-256 fingerprint: {fingerprint}",
+      "network": "Could not reach {host}.",
+      "nginx": "Nginx refused the configuration of the {kind, select, proxy {proxy host} redirection {redirection host} dead {404 host} other {stream}} {host}, so the panel took it offline: {error}",
+      "no_certificate": "The panel has no certificate {id}. Its custom certificates: {certificates}",
+      "no_certificates": "The panel has no certificate {id}, nor any custom certificate. Leave the ID empty for JEC to add one.",
+      "pin": "The panel's certificate does not have the fingerprint entered. If the panel changed its certificate, check the new fingerprint and enter it.",
+      "plain": "{host} is on the public internet, where http:// would carry the private key in the clear. Use the panel's https:// address.",
+      "private": "{host} is a private address. To reach it, turn on “Allow private addresses” in the advanced settings.",
+      "provider": "{certificate} is a Let's Encrypt certificate, which the panel renews itself. Enter the ID of a custom certificate, or leave it empty for JEC to add one.",
+      "reload": "The panel could not reload nginx: {message} (HTTP {status}). Its log tells why: nginx reloads only when the configuration of every host, and every certificate, is sound.",
+      "sign_in": "The panel refused to sign in: {message}. Check the email and password.",
+      "status": "The panel's answer made no sense (HTTP {status}). Check its address: that of the admin page, on port 81 unless you changed it.",
+      "two_factor": "This user has two-factor authentication, which JEC cannot get through. Add a user for JEC without it.",
+      "unverified": "JEC cannot verify the panel's certificate, as with one of the panel's own making. Check that its SHA-256 fingerprint is {fingerprint}, then enter it under Panel certificate fingerprint in the advanced settings.",
+      "url": "Not a panel address: {url}"
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "For a panel on this machine or on your network, over https://.",
+      "certificate": "Certificate ID",
+      "certificate_help": "Leave it empty for JEC to add a custom certificate of its own at the first deployment. Or enter the ID of one of the panel's custom certificates to update instead; the connection test lists them.",
+      "email": "Email",
+      "email_help": "Of a user who can manage certificates and hosts and sees all items, such as an administrator. Users with two-factor authentication cannot sign in through the API: add one for JEC without it.",
+      "fingerprint": "Panel certificate fingerprint",
+      "fingerprint_help": "For a panel with a certificate of its own making: its SHA-256 fingerprint, which the connection test gives. JEC then trusts that certificate only.",
+      "password": "Password",
+      "url": "Panel address",
+      "url_help": "The address of its admin page, such as http://192.168.1.10:81. Plain http:// reaches this machine or your network only, as the private key would cross the internet in the clear."
+    },
+    "log": {
+      "apply": "Saving the {kind, select, proxy {proxy host} redirection {redirection host} dead {404 host} other {stream}} {host} again, for nginx to load the new version",
+      "create": "Adding the custom certificate {name}",
+      "gone": "The custom certificate #{id} that JEC added before is gone: adding a new one, to pick on the hosts again",
+      "unused": "No enabled host uses the certificate {certificate} yet: pick it on the hosts in the panel, on their SSL tab.",
+      "upload": "Uploading the new version to the certificate {certificate}"
+    },
+    "module": {
+      "description": "Keeps a custom certificate of Nginx Proxy Manager up to date through its API, and with it the hosts that use it.",
+      "name": "Nginx Proxy Manager"
+    },
+    "test": {
+      "list": "Signed in. JEC adds a custom certificate of its own at the first deployment; to update one of the panel's instead, enter its ID: {certificates}",
+      "new": "Signed in. JEC adds a custom certificate of its own at the first deployment.",
+      "ok": "Found the certificate {certificate}, used by {count, plural, =0 {no host yet} one {# host} other {# hosts}}."
+    }
+  },
   "ntfy": {
     "error": {
       "api": "The server refused the message: {error} (HTTP {status})",
