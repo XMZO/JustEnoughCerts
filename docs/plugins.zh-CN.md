@@ -55,7 +55,7 @@ JEC 启动时向每个插件发送 `{"protocol": 1, "action": "describe"}`。回
 ```
 
 - 文字可以是一个字符串（所有语言都用它），也可以是按语言标签给出的对象。JEC 依次选用：用户语言的文字、同一语言其他地区的文字、所有语言通用的字符串、英文、第一个。文字原样显示，不解析任何标记。
-- `kind` 是 `target`（部署证书）、`notifier`（发通知）或 `solver`（验证域名）。验证方式的 `challenge` 是 `dns`（默认，添加 TXT 记录）或 `http`（在网站上放文件）。DNS 验证可以用秒数说明记录多久才能查到、多久查一次：`"wait": {"timeout": 300, "interval": 10}`，不写时是 120 和 5。
+- `kind` 是 `target`（部署证书）、`notifier`（发通知）或 `solver`（验证域名）。验证方式的 `challenge` 是 `dns`（默认，添加 TXT 记录）或 `http`（在网站上放文件）。DNS 验证可以用秒数说明记录多久才能查到、多久查一次：`"wait": {"timeout": 300, "interval": 10}`，不写时是 120 和 5。标了 `"records": true` 的 DNS 验证还能添加任意类型的记录，也就是有些证书厂商验证域名用的 TXT、CNAME 记录，Namecheap、阿里云等证书来源就能用它。
 - 字段要有 `key`（字母、数字和 `_`，以字母开头）和 `kind`：`text`、`multiline`、`number`、`url`、`email`、`select` 或 `switch`（`"true"` 或 `"false"`）。可以有 `label`、写在下面的 `help`、`default`、选择框的 `options`，也可以是 `required`（必填）、`secret`（加密保存，保存后不再显示）、`advanced`（在表单里单独放）或者只在前面某个普通字段等于某个值时出现（`when`）。
 - 通知渠道还会自动加上 JEC 自己的字段：消息语言和发送哪些事件。JEC 按选的语言写好通知再交给插件。
 - 一个插件最多 32 种类型，每种最多 64 个字段。类型 ID 的规则和插件 ID 一样；JEC 里类型的全名是 `plugins.<插件>.<类型>`。类型和字段的 ID 用上以后不要再改：用户保存的设置引用着它们。
@@ -70,12 +70,14 @@ JEC 启动时向每个插件发送 `{"protocol": 1, "action": "describe"}`。回
 | `deploy` | `certificate`、`previous` | `ref`、`removed` |
 | `notify` | `note` | |
 | `dns_present`、`dns_cleanup` | `record` | |
+| `dns_add_record`、`dns_remove_record` | `dns_record`，删除时还有 `ref` | 添加时可以有 `ref` |
 | `file_put`、`file_remove` | `file` | |
 
 - `test` 只发给标了 `testable` 的类型，由卡片上的“测试连接”按钮触发。它只检查设置，不改动任何东西。
 - `deploy` 安装一个新版本。`certificate` 里有 `id`、`domains`（主域名在前）、`serial`（十六进制）、`fingerprint`（叶子证书的 SHA-256，十六进制）、`not_before` 和 `not_after`（RFC 3339），以及 PEM 格式的 `cert`、`chain`、`fullchain`、`privkey`，和 certbot 的文件同名。`previous` 是这张证书以前部署到这个实例时回答的 `ref`，新的在前。回答里的 `ref` 说明目标现在放着什么（比如 CDN 上的证书 ID），下次会出现在 `previous` 里；`removed` 列出 `previous` 里被插件删掉的那些。
 - `notify` 发送 `note`：`event`（比如 `certificate.issue_failed`，测试时是 `notify.test`）、`title`、`subject`（标题前加上 JEC 标记，适合很多来源混在一起的地方）、`text`、`link`（JEC 里对应的页面，JEC 知道自己的地址时才有）、`time` 和 `data`（事件自己的数据）。
 - `dns_present` 添加、`dns_cleanup` 删除 DNS-01 验证的 TXT 记录：`record` 里有 `domain`、记录名 `fqdn`（比如 `_acme-challenge.example.com.`）和 `value`。
+- `dns_add_record` 添加、`dns_remove_record` 删除任意类型的记录，只发给标了 `records` 的验证方式：`dns_record` 里有完整的记录名 `name`（比如 `_dnsauth.example.com`，末尾没有点）、类型 `type`（`TXT` 或 `CNAME`）和 `value`。`dns_add_record` 的回答里可以有 `ref`（比如这条记录在服务商那里的 ID），`dns_remove_record` 时原样放在 `ref` 里交还。
 - `file_put` 放、`file_remove` 删网站要在 `http://<domain><path>` 提供的文件：`file` 里有 `domain`、`path`（在 `/.well-known/` 下）和 `content`。
 
 ## 回答

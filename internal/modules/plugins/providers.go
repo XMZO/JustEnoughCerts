@@ -29,6 +29,8 @@ func factory(p *plugin, spec typeSpec) providers.Factory {
 			return &notifier{base}, nil
 		case spec.Challenge == providers.ChallengeHTTP:
 			return &fileSolver{base}, nil
+		case spec.Records:
+			return &recordSolver{dnsSolver{base}}, nil
 		}
 		return &dnsSolver{base}, nil
 	}
@@ -43,11 +45,12 @@ type instance struct {
 }
 
 var (
-	_ contracts.Target     = (*target)(nil)
-	_ contracts.Notifier   = (*notifier)(nil)
-	_ contracts.Solver     = (*dnsSolver)(nil)
-	_ contracts.FileSolver = (*fileSolver)(nil)
-	_ contracts.Tester     = (*instance)(nil)
+	_ contracts.Target       = (*target)(nil)
+	_ contracts.Notifier     = (*notifier)(nil)
+	_ contracts.Solver       = (*dnsSolver)(nil)
+	_ contracts.RecordSolver = (*recordSolver)(nil)
+	_ contracts.FileSolver   = (*fileSolver)(nil)
+	_ contracts.Tester       = (*instance)(nil)
 )
 
 // request is a request of action about the instance.
@@ -185,6 +188,29 @@ func (s *dnsSolver) record(ctx context.Context, action string, ch contracts.Chal
 	r := s.request(action)
 	r.Record = &record{Domain: ch.Domain, FQDN: "_acme-challenge." + ch.Domain + ".", Value: base64.RawURLEncoding.EncodeToString(sum[:])}
 	_, err := s.do(ctx, actionTimeout, r, nil)
+	return err
+}
+
+// recordSolver is a dnsSolver that adds and removes records of any type
+// too, through the plugin.
+type recordSolver struct{ dnsSolver }
+
+// AddRecord has the plugin add r, and returns the ref it answers.
+func (s *recordSolver) AddRecord(ctx context.Context, r contracts.Record) (string, error) {
+	req := s.request(actionDNSAddRecord)
+	req.DNSRecord = &dnsRecord{Name: r.Name, Type: r.Type, Value: r.Value}
+	a, err := s.do(ctx, actionTimeout, req, nil)
+	if err != nil {
+		return "", err
+	}
+	return a.Ref, nil
+}
+
+// RemoveRecord has the plugin remove the record it added as ref.
+func (s *recordSolver) RemoveRecord(ctx context.Context, r contracts.Record, ref string) error {
+	req := s.request(actionDNSRemoveRecord)
+	req.DNSRecord, req.Ref = &dnsRecord{Name: r.Name, Type: r.Type, Value: r.Value}, ref
+	_, err := s.do(ctx, actionTimeout, req, nil)
 	return err
 }
 

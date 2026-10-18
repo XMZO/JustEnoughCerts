@@ -63,7 +63,7 @@ const fakeDescription = `{"protocol":1,"ok":true,
     {"key":"extra","kind":"text","when":{"key":"mode","value":"b"}},
     {"key":"behave","kind":"text","advanced":true}]},
   {"id":"notes","kind":"notifier","name":"Fake notes","fields":[{"key":"behave","kind":"text"}]},
-  {"id":"dns","kind":"solver","name":"Fake DNS","wait":{"timeout":30,"interval":1},"fields":[{"key":"behave","kind":"text"}]},
+  {"id":"dns","kind":"solver","name":"Fake DNS","records":true,"wait":{"timeout":30,"interval":1},"fields":[{"key":"behave","kind":"text"}]},
   {"id":"files","kind":"solver","challenge":"http","name":"Fake files","fields":[{"key":"behave","kind":"text"}]}]}`
 
 // helper is the plugin of the tests. It keeps each request in its working
@@ -107,6 +107,9 @@ func helper() int {
 	case "bad-kind":
 		fmt.Print(strings.Replace(fakeDescription, `"kind":"notifier"`, `"kind":"source"`, 1))
 		return 0
+	case "bad-records":
+		fmt.Print(strings.Replace(fakeDescription, `"challenge":"http",`, `"challenge":"http","records":true,`, 1))
+		return 0
 	}
 	switch req.Action {
 	case actionDescribe:
@@ -119,6 +122,8 @@ func helper() int {
 			"protocol": 1, "ok": true, "ref": "v-" + req.Certificate.Serial, "removed": append(req.Previous, "not-one-of-them"),
 			"log": []logLine{{Level: "ok", Text: "uploaded"}, {Level: "loud", Text: "done"}},
 		})
+	case actionDNSAddRecord:
+		return reply(map[string]any{"protocol": 1, "ok": true, "ref": "rec-" + req.DNSRecord.Name})
 	}
 	return reply(map[string]any{"protocol": 1, "ok": true})
 }
@@ -302,11 +307,12 @@ func TestDescribe(t *testing.T) {
 
 func TestDescribeFails(t *testing.T) {
 	for behave, key := range map[string]i18n.Key{
-		"bad-kind":  i18n.PluginsErrorDescribe,
-		"garbage":   i18n.PluginsErrorAnswer,
-		"exit":      i18n.PluginsErrorExit,
-		"protocol2": i18n.PluginsErrorAnswer,
-		"fail":      i18n.PluginsErrorFailed,
+		"bad-kind":    i18n.PluginsErrorDescribe,
+		"bad-records": i18n.PluginsErrorDescribe,
+		"garbage":     i18n.PluginsErrorAnswer,
+		"exit":        i18n.PluginsErrorExit,
+		"protocol2":   i18n.PluginsErrorAnswer,
+		"fail":        i18n.PluginsErrorFailed,
 	} {
 		t.Setenv(describeEnv, behave)
 		f := newFixture(t, "fake")
@@ -505,6 +511,27 @@ func TestSolvers(t *testing.T) {
 	}
 	if err := s.CleanUp(t.Context(), ch); err != nil || f.sent().Action != actionDNSCleanUp {
 		t.Errorf("clean up: %v", err)
+	}
+
+	// Records of any type, for a type that adds them.
+	if typ, _ := f.reg.Type("plugins.fake.dns"); !typ.Records {
+		t.Error("the type adds no records")
+	}
+	rs := s.(contracts.RecordSolver)
+	rec := contracts.Record{Name: "_dnsauth.example.com", Type: "CNAME", Value: "x.sectigo.com"}
+	ref, err := rs.AddRecord(t.Context(), rec)
+	if sent := f.sent(); err != nil || ref != "rec-_dnsauth.example.com" || sent.Action != actionDNSAddRecord || sent.DNSRecord == nil ||
+		*sent.DNSRecord != (dnsRecord{Name: rec.Name, Type: "CNAME", Value: rec.Value}) {
+		t.Errorf("add record: %q %v, sent %+v", ref, err, sent)
+	}
+	if err := rs.RemoveRecord(t.Context(), rec, ref); err != nil {
+		t.Fatal(err)
+	}
+	if sent := f.sent(); sent.Action != actionDNSRemoveRecord || sent.Ref != ref || sent.DNSRecord == nil || sent.DNSRecord.Name != rec.Name {
+		t.Errorf("remove record: sent %+v", sent)
+	}
+	if _, ok := f.open("plugins.fake.files", nil, nil).(contracts.RecordSolver); ok {
+		t.Error("a solver over HTTP adds records")
 	}
 
 	fs := f.open("plugins.fake.files", nil, nil).(contracts.FileSolver)

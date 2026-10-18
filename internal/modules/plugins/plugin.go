@@ -185,6 +185,12 @@ func buildType(plugin string, spec typeSpec, tags []language.Tag) (providers.Typ
 	case spec.Challenge != "":
 		return none, fmt.Errorf("the challenge %q is for solvers, dns or http", spec.Challenge)
 	}
+	if spec.Records {
+		if t.Challenge != providers.ChallengeDNS {
+			return none, errors.New("records are for solvers of DNS")
+		}
+		t.Records = true
+	}
 	for _, f := range spec.Fields {
 		if !slices.Contains(fieldKinds, providers.FieldKind(f.Kind)) {
 			return none, fmt.Errorf("field %q: the kind %q is not one of %v", f.Key, f.Kind, fieldKinds)

@@ -25,8 +25,11 @@ const (
 	actionNotify     = "notify"
 	actionDNSPresent = "dns_present"
 	actionDNSCleanUp = "dns_cleanup"
-	actionFilePut    = "file_put"
-	actionFileRemove = "file_remove"
+	// A DNS solver that adds records of any type gets these too.
+	actionDNSAddRecord    = "dns_add_record"
+	actionDNSRemoveRecord = "dns_remove_record"
+	actionFilePut         = "file_put"
+	actionFileRemove      = "file_remove"
 )
 
 // request is what JEC writes on a plugin's standard input.
@@ -41,7 +44,10 @@ type request struct {
 	Previous    []string          `json:"previous,omitempty"`
 	Note        *contracts.Note   `json:"note,omitempty"`
 	Record      *record           `json:"record,omitempty"`
-	File        *file             `json:"file,omitempty"`
+	DNSRecord   *dnsRecord        `json:"dns_record,omitempty"`
+	// Ref is what dns_add_record answered, for dns_remove_record.
+	Ref  string `json:"ref,omitempty"`
+	File *file  `json:"file,omitempty"`
 }
 
 // certificate is the version a deployment installs, as webhooks get it.
@@ -63,6 +69,15 @@ type record struct {
 	Domain string `json:"domain"`
 	FQDN   string `json:"fqdn"`
 	Value  string `json:"value"`
+}
+
+// dnsRecord is a record of any type, as a vendor's validation asks for:
+// its full name, without a final dot, its type, TXT or CNAME, and its
+// value.
+type dnsRecord struct {
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Value string `json:"value"`
 }
 
 // file is a file that a domain's web server serves.
@@ -105,13 +120,15 @@ type description struct {
 
 // typeSpec is a provider type a plugin offers.
 type typeSpec struct {
-	ID          string      `json:"id"`
-	Kind        string      `json:"kind"`
-	Challenge   string      `json:"challenge"`
-	Name        text        `json:"name"`
-	Description text        `json:"description"`
-	Testable    bool        `json:"testable"`
-	Fields      []fieldSpec `json:"fields"`
+	ID          string `json:"id"`
+	Kind        string `json:"kind"`
+	Challenge   string `json:"challenge"`
+	Name        text   `json:"name"`
+	Description text   `json:"description"`
+	Testable    bool   `json:"testable"`
+	// Records marks a DNS solver that adds records of any type too.
+	Records bool        `json:"records"`
+	Fields  []fieldSpec `json:"fields"`
 	// Wait is how long a DNS record may take to be seen, and how often to
 	// look, in seconds.
 	Wait *struct {

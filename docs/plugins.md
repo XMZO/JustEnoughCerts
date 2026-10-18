@@ -89,7 +89,9 @@ The answer names the plugin and lists its types:
   the default, for TXT records, or `http` for files on the website. A DNS
   solver may say how long a record takes to be seen and how often to look,
   in seconds: `"wait": {"timeout": 300, "interval": 10}`, 120 and 5 when
-  left out.
+  left out. A DNS solver with `"records": true` adds records of any type
+  too, the TXT and CNAME records some certificate vendors validate domains
+  with, so that sources such as Namecheap's or Alibaba Cloud's can use it.
 - A field has a `key` (letters, digits and `_`, starting with a letter) and
   a `kind`: `text`, `multiline`, `number`, `url`, `email`, `select` or
   `switch` (`"true"` or `"false"`). It may have a `label`, a `help` under
@@ -114,6 +116,7 @@ the configured instance: `config`, the plain ones, and `secrets`, by key.
 | `deploy` | `certificate`, `previous` | `ref`, `removed` |
 | `notify` | `note` | |
 | `dns_present`, `dns_cleanup` | `record` | |
+| `dns_add_record`, `dns_remove_record` | `dns_record`, and `ref` to remove | `ref`, to add |
 | `file_put`, `file_remove` | `file` | |
 
 - `test` comes for types marked `testable`, from the button on their
@@ -134,6 +137,12 @@ the configured instance: `config`, the plain ones, and `secrets`, by key.
 - `dns_present` adds, and `dns_cleanup` removes, the TXT record of a DNS-01
   validation: `record` holds its `domain`, its name `fqdn` (such as
   `_acme-challenge.example.com.`) and its `value`.
+- `dns_add_record` adds, and `dns_remove_record` removes, a record of any
+  type, for a solver with `records`: `dns_record` holds its full `name`
+  (such as `_dnsauth.example.com`, without a final dot), its `type`, `TXT`
+  or `CNAME`, and its `value`. The answer to `dns_add_record` may hold a
+  `ref`, such as the record's ID at the provider, which `dns_remove_record`
+  gets back as `ref`.
 - `file_put` puts, and `file_remove` removes, a file the website must serve
   at `http://<domain><path>`: `file` holds the `domain`, the `path` (under
   `/.well-known/`) and the `content`.
