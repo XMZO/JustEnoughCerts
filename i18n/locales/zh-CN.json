@@ -2084,14 +2084,21 @@
       "private": "{host} 是内网地址。要发到内网，请在高级设置里打开“允许内网地址”。",
       "redirect": "接口要求跳转（HTTP {status}）到 {location}，请直接填写跳转后的地址。",
       "status": "接口返回了 HTTP {status}。",
+      "template": "请求体模板有误：{error}",
       "url": "URL 不对：{url}"
     },
     "field": {
       "allow_private": "允许内网地址",
       "allow_private_help": "默认只发到公网地址，防止被用来探测内网。接收方在本机或内网里时打开。",
+      "body": "请求体",
+      "body_help": "留空时把消息以 JSON 发出。要发别的格式，就把请求体写成 Go 模板：'{{.subject}}'、'{{.title}}'、'{{.text}}'、'{{.link}}'、'{{.event}}'、'{{.time}}'、'{{.data}}' 和 JSON 里的同名字段一样；'{{json .text}}' 把值写成 JSON，表单用 '{{urlquery .text}}'。例如：'{\"msgtype\": \"text\", \"text\": {\"content\": {{json .text}}}}'",
+      "content_type": "内容类型",
+      "content_type_help": "用模板生成请求体时的 Content-Type，比如表单是 application/x-www-form-urlencoded。",
+      "deploy_body_help": "留空时把证书以 JSON 发出。要调用别的格式的接口，就把请求体写成 Go 模板，字段和那个 JSON 一样：'{{.domains}}'、'{{.fullchain}}'、'{{.cert}}'、'{{.chain}}'、'{{.privkey}}'、'{{.not_after}}' 等；'{{json .fullchain}}' 把值写成 JSON，'{{index .domains 0}}' 是主域名。例如：'{\"cert\": {{json .fullchain}}, \"key\": {{json .privkey}}}'",
       "deploy_url_help": "必须是 https:// 地址，因为请求里有私钥。接口可以回 '{\"ref\": \"…\"}'，下次部署时 JEC 会把它放在 previous 里传回来，方便删除旧证书。",
       "headers": "额外的请求头",
       "headers_help": "每行一个，比如 Authorization: Bearer xxx。保存后不再显示。",
+      "method": "请求方法",
       "secret": "签名密钥",
       "secret_help": "填写后，每个请求带 X-JEC-Signature 头，值是 sha256= 加上用这个密钥对请求体算的 HMAC-SHA256，接收方据此确认请求来自 JEC。",
       "url": "URL",
@@ -2101,6 +2108,10 @@
       "accepted": "接口已接收",
       "post": "发送到 {url}",
       "ref": "接口已接收，标识 {ref}"
+    },
+    "method": {
+      "post": "POST",
+      "put": "PUT"
     },
     "module": {
       "description": "用 HTTP POST 把通知或新证书发到你自己的接口。",

@@ -25,6 +25,7 @@ import (
 
 // received is a request a test server got.
 type received struct {
+	method string
 	header http.Header
 	body   []byte
 }
@@ -34,7 +35,7 @@ func server(t *testing.T, tls bool, answer func(w http.ResponseWriter)) (*httpte
 	var got []received
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
-		got = append(got, received{header: r.Header.Clone(), body: body})
+		got = append(got, received{method: r.Method, header: r.Header.Clone(), body: body})
 		answer(w)
 	})
 	var srv *httptest.Server

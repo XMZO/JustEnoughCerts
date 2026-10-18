@@ -2084,14 +2084,21 @@
       "private": "{host} is a private address. To reach it, turn on “Allow private addresses” in the advanced settings.",
       "redirect": "The endpoint redirects (HTTP {status}) to {location}; use that address instead.",
       "status": "The endpoint answered HTTP {status}.",
+      "template": "The template of the request body is wrong: {error}",
       "url": "Not a valid URL: {url}"
     },
     "field": {
       "allow_private": "Allow private addresses",
       "allow_private_help": "By default only public addresses are reached, so that a webhook cannot probe your network. Turn it on for a receiver on this machine or on your network.",
+      "body": "Request body",
+      "body_help": "Leave it empty to post the note as JSON. For another format, write the body as a Go template: '{{.subject}}', '{{.title}}', '{{.text}}', '{{.link}}', '{{.event}}', '{{.time}}' and '{{.data}}' hold what the JSON does; '{{json .text}}' writes a value as JSON, '{{urlquery .text}}' for a form. For example: '{\"msgtype\": \"text\", \"text\": {\"content\": {{json .text}}}}'",
+      "content_type": "Content type",
+      "content_type_help": "The Content-Type of a body made from the template, such as application/x-www-form-urlencoded for a form.",
+      "deploy_body_help": "Leave it empty to post the certificate as JSON. To call an API that takes another format, write the body as a Go template with the fields of that JSON: '{{.domains}}', '{{.fullchain}}', '{{.cert}}', '{{.chain}}', '{{.privkey}}', '{{.not_after}}' and the like; '{{json .fullchain}}' writes a value as JSON, '{{index .domains 0}}' is the primary domain. For example: '{\"cert\": {{json .fullchain}}, \"key\": {{json .privkey}}}'",
       "deploy_url_help": "Must be an https:// address, as the requests carry the private key. The endpoint may answer '{\"ref\": \"…\"}', which JEC passes back in previous with the next deployment, so that the old certificate can go.",
       "headers": "Extra headers",
       "headers_help": "One per line, such as Authorization: Bearer xxx. Not shown again once saved.",
+      "method": "Method",
       "secret": "Signing secret",
       "secret_help": "When set, each request carries X-JEC-Signature: sha256= and the HMAC-SHA256 of the body with this secret, so the receiver can tell it comes from JEC.",
       "url": "URL",
@@ -2099,8 +2106,12 @@
     },
     "log": {
       "accepted": "The endpoint took it",
-      "post": "Posting to {url}",
+      "post": "Sending to {url}",
       "ref": "The endpoint took it, as {ref}"
+    },
+    "method": {
+      "post": "POST",
+      "put": "PUT"
     },
     "module": {
       "description": "Posts notes, or new certificates, to an HTTP endpoint of your own.",

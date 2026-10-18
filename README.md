@@ -43,7 +43,8 @@ Working on the main branch:
   Manager, Synology DSM and Proxmox VE nodes; to local directories and to
   servers over SSH, each with a command afterwards, such as reloading
   nginx; into Docker containers, which are then signaled to reload, or
-  restarted; into Kubernetes TLS Secrets; and to webhooks.
+  restarted; into Kubernetes TLS Secrets; and to webhooks, as JSON or in
+  a format of your own.
 - Renewal once a certificate enters its renewal window, at the time of
   day set on the Settings page (02:00 by default), or at once with a week
   or less left, or earlier when the CA suggests so through ACME Renewal
@@ -52,8 +53,9 @@ Working on the main branch:
 - Notifications through Telegram, email (SMTP), webhooks, the group
   robots of DingTalk, Feishu (Lark) and WeCom, ServerChan, Bark, ntfy,
   Gotify, Discord, Slack (and Mattermost or Rocket.Chat) and Pushover,
-  each in the language you choose for it; or a script of yours, run by
-  JEC's built-in shell, for anything else.
+  each in the language you choose for it; anything else through a
+  webhook in a format of your own, or a script run by JEC's built-in
+  shell.
 - A history of every issuance, renewal and deployment, with its full log.
 - Online checks: JEC connects to each domain as a browser does and tells
   you when one still serves the old certificate after a renewal, as when a

@@ -296,7 +296,7 @@ type Target interface {
 - 脚本用内嵌的 shell（`mvdan.cc/sh`，POSIX sh 和 Bash 的写法都认；和本地目录部署的命令共用 `internal/lib/shellx`）在数据目录下的 `hooks/` 里运行（第一次用时建立，只有属主能进），最多 20 秒（通知模块给每个渠道 30 秒）。环境变量是 JEC 自己的环境去掉 `JEC_` 开头的设置，加上按渠道的语言写好的消息 `JEC_EVENT`、`JEC_TIME`、`JEC_TITLE`、`JEC_SUBJECT`、`JEC_TEXT`、`JEC_LINK`，事件关于某张证书时还有 `JEC_CERTIFICATE_ID`、`JEC_DOMAIN`、`JEC_DOMAINS`、`JEC_NOT_AFTER`、`JEC_FINGERPRINT`；标准输入是整条消息的 JSON，和 Webhook 通知发的一样。
 - 退出码 0 算发送成功；75（sysexits 的 `EX_TEMPFAIL`，照邮件程序的用法）表示暂时失败，事件总线退避重试；其他退出码、语法错误、超时都不重试。失败时输出的最后一行（300 字节以内）放进错误信息，渠道卡片和测试结果里能看到。
 - 要用证书文件的钩子是部署目标：本地目录写好文件后执行命令（certbot 的部署钩子脚本可以直接用），SSH 在服务器上执行命令，Docker 容器发信号或重启，Webhook 部署把证书 POST 出去。`before_issue` 这类节点没有做：域名验证由验证方式完成，不需要先停掉占着 80 端口的服务。
-- 容器镜像里除了 JEC 没有别的程序，脚本只能用 shell 自己的命令和重定向（比如把消息追加到文件里），所以主要给直接运行的 JEC 用。令牌之类放在 JEC 的环境变量里，名字不以 `JEC_` 开头。
+- 容器镜像里除了 JEC 没有别的程序，脚本只能用 shell 自己的命令和重定向（比如把消息追加到文件里），所以主要给直接运行的 JEC 用。令牌之类放在 JEC 的环境变量里，名字不以 `JEC_` 开头。要按别的格式调用 HTTP 接口时，用 Webhook 的自定义请求体（5.3.3 的“自定义请求”）。
 
 **外部插件的实现**（模块 `plugins`，M3，协议写在 `docs/plugins.md`）：
 
@@ -397,6 +397,8 @@ DNS 验证分成两种能力，实现方式不同：
 
 **Webhook 部署的实现**（`internal/modules/webhook`，M1）：部署目标类型 `webhook.deploy`：URL（必须是 https，因为请求里有私钥）、签名密钥、额外的请求头（保密保存）、允许内网地址。每个新版本 POST 一个 JSON：`event`（`certificate.deploy`）、`certificate`（证书 ID）、`domains`、`serial`、`fingerprint`（叶子证书的 SHA-256，十六进制）、`not_before`、`not_after`，`cert`、`chain`、`fullchain`、`privkey`（PEM，和 certbot 的文件同名），`previous`（以前部署时接口回的 ref，新的在前）。接口回 2xx 就算成功，可以回 `{"ref": "…", "removed": […]}`：JEC 记下 ref，下次放进 `previous`，`removed` 里的记为已删除。请求头带 `X-JEC-Event`；设了签名密钥时带 `X-JEC-Signature: sha256=<用密钥对请求体算的 HMAC-SHA256>`。不跟随跳转；4xx（408、429 除外）不重试，5xx、408、429 按 `Retry-After` 或退避重试。
 
+**自定义请求**（两种 Webhook 都有，高级设置，M3）：请求体可以换成自己写的 Go 模板（`text/template`），这样不写插件也能调用格式不同的接口，比如收证书的面板或 WAF 的接口、没有现成渠道的推送服务。模板里的名字和默认 JSON 的字段同名：部署是 `{{.domains}}`、`{{.fullchain}}`、`{{.cert}}`、`{{.chain}}`、`{{.privkey}}`、`{{.not_after}}` 等，通知是 `{{.subject}}`、`{{.title}}`、`{{.text}}`、`{{.link}}`、`{{.event}}`、`{{.time}}`、`{{.data}}`（通知没有链接或事件数据时它们为空，不会变成 `<no value>`）。数字按原样读出（`UseNumber`）。另加一个函数 `json`，把值写成 JSON（字符串带引号并转义，不转义 `<>&`）；表单用 `text/template` 自带的 `urlquery`。还可以选请求方法（POST 或 PUT）和模板请求体的 Content-Type（默认 `application/json`）。模板写错时保存后第一次发送就报错，不重试；签名按实际发出的请求体计算。
+
 #### 5.3.4 通知渠道
 
 | 阶段 | 渠道 |
@@ -411,7 +413,7 @@ DNS 验证分成两种能力，实现方式不同：
 - **发送记录**在 `notify_sends`（事件 × 渠道，保留 30 天）：同一事件再次投递时跳过已经发出的渠道；可能自己恢复的失败（网络、服务端 5xx、限流）让事件总线退避重试，恢复不了的（Token 错、被拒收）直接记为失败。超过 3 天的事件不再发。`GET /api/v1/notify/sends` 返回每个渠道最近一次发送；`POST /api/v1/notify/notifiers/{id}/test` 立即用渠道的语言发一条测试消息，失败时返回渠道自己的错误信息（502）。
 - **Telegram**（`telegram.bot`）：Bot Token（保密）、Chat ID；高级设置里有代理（http、https、socks5，国内网络连 Telegram 要用）和自建的 Bot API 地址。消息用 HTML 格式，标题加粗。Token 错、找不到聊天、没有权限不重试，429 按 `retry_after` 重试。Token 在 URL 路径里，所以错误信息只保留底层原因，不带 URL。
 - **邮件**（`email.smtp`）：服务器、加密方式（SSL/TLS、STARTTLS、不加密）、端口（留空时按加密方式取 465、587、25）、用户名、密码或授权码、发件人、收件人（逗号分隔）。按服务器提供的方式用 PLAIN 或 LOGIN 登录（net/smtp 没有 LOGIN，自己实现），两者都不会在不加密的连接上发送密码（发往本机除外）。邮件标题用消息的主题。UTF-8 纯文本，quoted-printable 编码。登录失败、收件人被拒、证书不受信任、加密方式和端口对不上都不重试。
-- **Webhook**（`webhook.notify`）：把 `contracts.Note` 原样 POST 成 JSON；签名、请求头、内网限制和重试规则同 Webhook 部署。
+- **Webhook**（`webhook.notify`）：把 `contracts.Note` 原样 POST 成 JSON；签名、请求头、内网限制和重试规则同 Webhook 部署。请求体也可以用模板自定义（5.3.3 的“自定义请求”），用来接入没有现成渠道的服务。
 - **群机器人**（M3）：钉钉（`dingtalk.robot`）、飞书（`feishu.bot`，也接受 Lark 国际版的地址）、企业微信（`wecom.robot`）。都填群里机器人的 Webhook 地址（地址里有令牌，保密保存，必须是官方地址的前缀），发纯文本：主题加正文，主题里有 `JEC`，所以机器人的安全设置可以用关键词 `JEC`。钉钉和飞书还可以填加签密钥：钉钉用密钥对“毫秒时间戳 + 换行 + 密钥”算 HMAC-SHA256，`timestamp`、`sign` 放进 URL；飞书以“秒时间戳 + 换行 + 密钥”为密钥对空内容算 HMAC-SHA256，放进请求体。文字超过上限时在字符之间截断（企业微信 2048 字节，钉钉、飞书 4000 字节）。令牌失效、签名不对、缺关键词等不重试；限流（每个机器人每分钟 20 条左右）一分钟后再试；网络问题和 5xx 照常重试。错误信息不带 URL。
 - **推送服务**（M3）：
   - **Bark**（`bark.device`）：设备 Key（保密）、服务器（默认 `https://api.day.app`，可以换成自建的）。POST `/push`：标题用主题，内容用正文，分组 `JEC`，有链接时点通知打开 JEC 里对应的页面。服务器不认这个 Key 时不重试。

@@ -21,7 +21,7 @@ func notifyType() providers.Type {
 		Tags: []string{"self_hosted"},
 		Fields: append([]providers.Field{
 			{Key: "url", Label: i18n.WebhookFieldUrl, Help: i18n.WebhookFieldUrlHelp, Kind: providers.URL, Required: true},
-			secretField, headerField, allowField,
+			secretField, headerField, allowField, methodField, bodyField(i18n.WebhookFieldBodyHelp), typeField,
 		}, contracts.NotifierFields()...),
 	}
 }
@@ -32,12 +32,12 @@ func deployType() providers.Type {
 		Tags: []string{"self_hosted"},
 		Fields: []providers.Field{
 			{Key: "url", Label: i18n.WebhookFieldUrl, Help: i18n.WebhookFieldDeployUrlHelp, Kind: providers.URL, Required: true},
-			secretField, headerField, allowField,
+			secretField, headerField, allowField, methodField, bodyField(i18n.WebhookFieldDeployBodyHelp), typeField,
 		},
 	}
 }
 
-// notifier posts notes as JSON: contracts.Note as it is.
+// notifier posts notes: contracts.Note as JSON, or through a template.
 type notifier struct{ e *endpoint }
 
 var _ contracts.Notifier = (*notifier)(nil)
@@ -51,9 +51,10 @@ func newNotifier(_ context.Context, in providers.Instance) (any, error) {
 }
 
 func (n *notifier) Notify(ctx context.Context, note contracts.Note) error {
-	body, err := json.Marshal(note)
+	// A note without a link or data has them empty for templates.
+	body, err := n.e.body(note, map[string]any{"link": "", "data": map[string]any{}})
 	if err != nil {
-		return retry.Permanent(err)
+		return err
 	}
 	_, err = n.e.post(ctx, note.Event, body)
 	return err
@@ -131,7 +132,7 @@ func (d *deployer) Deploy(ctx context.Context, req contracts.DeployRequest) (con
 		return none, retry.Permanent(err)
 	}
 	fp := sha256.Sum256(leaf.Raw)
-	body, err := json.Marshal(Deployment{
+	body, err := d.e.body(Deployment{
 		Event: DeployEvent, Certificate: req.CertificateID, Domains: req.Domains,
 		Serial: leaf.SerialNumber.Text(16), Fingerprint: hex.EncodeToString(fp[:]),
 		NotBefore: leaf.NotBefore.UTC(), NotAfter: leaf.NotAfter.UTC(),
@@ -140,9 +141,9 @@ func (d *deployer) Deploy(ctx context.Context, req contracts.DeployRequest) (con
 		Fullchain: string(cryptox.EncodeCertificates(req.Chain...)),
 		PrivKey:   string(key),
 		Previous:  append([]string{}, req.Previous...),
-	})
+	}, nil)
 	if err != nil {
-		return none, retry.Permanent(err)
+		return none, err
 	}
 	log(contracts.LogLine{Level: contracts.Info, Key: i18n.WebhookLogPost, Params: map[string]any{"url": d.e.shown()}})
 	data, err := d.e.post(ctx, DeployEvent, body)
