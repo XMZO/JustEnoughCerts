@@ -414,6 +414,7 @@ DNS 验证分成两种能力，实现方式不同：
   - **Slack**（`slack.webhook`）：incoming webhook 地址（保密，必须 https），Mattermost、Rocket.Chat 接受同样的格式，所以不限域名，内网要打开“允许内网地址”。发纯文本（三家的标记语法不同）：主题、空行、正文、链接，转义 `&`、`<`、`>`，3000 字以内。Slack 用纯文本说明原因（如 `invalid_token`、`channel_is_archived`）：403、404、410 不重试，429 按 `Retry-After` 等。
   - **Pushover**（`pushover.user`）：应用令牌和用户（或群组）密钥（都保密），可选只推送到某台设备。表单发到 `api.pushover.net`：主题作标题、正文作消息（250、1024 字以内），需要处理的事件用高优先级（1），有链接时点开就是 JEC 的页面。令牌或密钥不对（回答里 `token`/`user` 为 `invalid`）不重试，额度用完（429）稍后重试。
   - 这三种只用替身测过。
+  - 邮件、ntfy、Gotify 对着一次性容器里真实的服务端验证过（Mailpit 的 SMTP、ntfy、Gotify，各自的 `live_test.go`，设置 `JEC_TEST_SMTP`、`JEC_TEST_NTFY`、`JEC_TEST_GOTIFY` 等环境变量时运行，CI 不跑）：中文主题和正文、优先级、点击链接都对。
   - 能自建的三种（Bark、ntfy、Gotify）都有“允许内网地址”开关（默认关，同 Webhook），都不跟随跳转（跳转会把 POST 变成 GET，还可能把令牌带到别处），遇到跳转时报出跳转到的地址。
 - 共用的 HTTP 客户端在 `internal/lib/httpx`：超时、单独设置的代理（不读环境变量里的代理），以及“只连公网地址”（第 10 节）。
 
