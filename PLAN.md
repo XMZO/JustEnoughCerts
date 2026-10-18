@@ -356,7 +356,7 @@ DNS 验证分成两种能力，实现方式不同：
 | 类别 | 平台 | 阶段 |
 |---|---|---|
 | CDN / 边缘 | **阿里云 ESA**（M1）；阿里云 CDN / DCDN、七牛云（已完成）、腾讯云 EdgeOne、腾讯云 CDN、华为云 CDN、百度智能云 CDN、火山引擎 CDN、又拍云、AWS CloudFront（经 ACM，已完成）、Cloudflare（自定义证书需付费套餐） | M1 / M3 |
-| 负载均衡 / 证书库 | 阿里云 SLB / ALB、阿里云证书服务、腾讯云 CLB、腾讯云 SSL 证书（已完成，经它更新 CDN、EdgeOne、CLB 等）、AWS ACM（已完成） | M3 |
+| 负载均衡 / 证书库 | 阿里云 SLB / ALB、阿里云证书服务（CLB 和数字证书管理服务已完成）、腾讯云 CLB、腾讯云 SSL 证书（已完成，经它更新 CDN、EdgeOne、CLB 等）、AWS ACM（已完成） | M3 |
 | 对象存储 | 阿里云 OSS、腾讯云 COS 的自定义域名 HTTPS | M3 |
 | 服务器 | 本地文件 + 执行命令（nginx、caddy、haproxy 等）；SSH / SFTP 上传 + 远程命令；Docker 容器（通过挂载的 Docker API 发信号或重启，不需要 docker 命令行）；Kubernetes Secret | M1（本地、SSH）/ M3（Docker、Kubernetes 已完成） |
 | 面板与应用 | 1Panel、宝塔、Proxmox VE、Nginx Proxy Manager、群晖 DSM（已完成）、Caddy 管理 API | M3 |
@@ -386,6 +386,13 @@ DNS 验证分成两种能力，实现方式不同：
 **腾讯云的实现**（`internal/modules/tencentcloud`，M3）：部署目标类型 `tencentcloud.ssl`：SecretId、SecretKey，要更新的资源类型（`cdn`、`teo`、`clb`、`waf`、`live`、`ddos`、`apigateway`、`vod`、`tke`、`tcb`、`tse`、`cos`，逗号分隔，默认 `cdn`），首次替换的证书 ID，删除被替换的证书（默认开），地域（给 clb 等要地域的类型），站点（中国站 `ssl.tencentcloudapi.com` 或国际站）。每个新版本先 `UploadCertificate`（`Repeatable=false`：同一张证书已经在时返回它的 ID，重试不会重复上传），再用 `UpdateCertificateInstance` 一键更新：旧证书是上一个版本（第一次是设置的首次替换证书），腾讯云把绑定旧证书的资源都换成新证书；这个接口是异步的，任务 ID 为 0 时每 3 秒再调一次，最多 2 分钟。没有旧证书时只上传，日志提示去控制台部署一次。删除只针对更早的版本：正在被替换的那张下次部署时再删，删不掉只记警告。测试连接调 `DescribeCertificates`。用 SDK 的通用客户端（TC3 签名），不引入 SSL 服务的 SDK。只用替身 API 测过，还没有对真实账号验证。
 
 **阿里云 CDN 和全站加速的实现**（`internal/modules/aliyun`，M3）：部署目标类型 `aliyun.cdn`、`aliyun.dcdn`：AccessKey，加速域名（逗号分隔；留空时用证书里不是通配符的域名）。每个新版本对每个加速域名调一次 `SetCdnDomainSSLCertificate` / `SetDcdnDomainSSLCertificate`：`CertType=upload`、`SSLProtocol=on`，证书链和私钥放在表单里，不传证书名，由阿里云起名，和 acme.sh 的 `ali_cdn`、`ali_dcdn` 一样。上传的证书会存进数字证书管理服务，JEC 不删旧的。测试连接对每个加速域名调 `DescribeDomainCertificateInfo` / `DescribeDcdnDomainCertificateInfo`，不做改动。用阿里云 OpenAPI 客户端的通用调用（V3 签名），不引入各产品的 SDK；错误码由 `internal/lib/aliyunapi` 读取（客户端返回的是 `*tea.SDKError`）。域名不在这个账号、AccessKey 或权限不对都不重试，限流和 5xx 照常重试。只用替身 API 测过，还没有对真实账号验证。
+
+**阿里云数字证书管理服务和传统型负载均衡的实现**（同在 `internal/modules/aliyun`，M3，调用方式参照阿里云 SDK 和 certimate 的用法）：
+
+- 通用的 RPC 调用（`rpc` 接口，`do` 把回答的 JSON 解进结构体；数字原样保留，ID 可能是数字也可能是字符串）。证书和私钥都放在表单里，不放进 URL（官方 SDK 放在查询串里）；私钥用 PKCS #1 / SEC 1 格式。证书名是 `jec-<证书 ID>-<指纹前 12 位>`，中断后重试时按名字找到上次传好的，不重复上传。“删除旧证书”默认开：新证书生效后删除 JEC 以前上传的（部署的 ref 就是证书 ID），删不掉的（比如还在被别的资源使用）只记警告，下次部署再删；不存在的算已删除。
+- **数字证书管理服务**（`aliyun.cas`，2020-04-07）：AccessKey、站点（中国站 `cas.aliyuncs.com` 或国际站 `cas.ap-southeast-1.aliyuncs.com`）。先用 `ListUserCertificateOrder`（`OrderType=UPLOAD`，`Keyword` 是主域名：它只按域名或资源 ID 模糊搜索，不按名字）找同名的，没有就 `UploadUserCertificate`，旧的用 `DeleteUserCertificate` 删。传上去以后，ALB、OSS、WAF 等产品可以在控制台里选用。测试连接列出上传的证书数。RAM 权限：`yundun-cert:ListUserCertificateOrder`、`UploadUserCertificate`、`DeleteUserCertificate`。
+- **传统型负载均衡 CLB**（`aliyun.clb`，原 SLB，2014-05-15）：AccessKey、地域（`cn-hangzhou` 和几个金融云地域用 `slb.aliyuncs.com`，其他用 `slb.<地域>.aliyuncs.com`）、负载均衡实例 ID、监听端口（留空时是全部 HTTPS 监听）、扩展证书的域名（高级设置）。先用 `DescribeLoadBalancerAttribute` 读出 HTTPS 监听的端口（没有就报错，不重试），再按名字在 `DescribeServerCertificates` 里找、没有就 `UploadServerCertificate`；没填域名时把证书设为每个监听的默认证书（`DescribeLoadBalancerHTTPSListenerAttribute` 已经是这张就跳过，否则 `SetLoadBalancerHTTPSListenerAttribute`），填了域名时改监听里这个域名的扩展证书（`DescribeDomainExtensions`、`SetDomainExtensionAttribute`；监听没有这个域名的扩展证书时报错，提示先在控制台添加）。旧证书用 `DeleteServerCertificate` 删。负载均衡不存在、端口不是 HTTPS 监听都不重试。测试连接报出负载均衡的名字和 HTTPS 监听数。
+- 两者都只用替身 API 测过（按动作回答的替身，加上一个对着 HTTP 替身检查签名、查询串和表单的测试），还没有对真实账号验证。
 
 **七牛云的实现**（`internal/modules/qiniu`，M3）：部署目标类型 `qiniu.cdn`：AccessKey、SecretKey、加速域名（逗号分隔，泛域名写成 `.example.com`；留空时用证书里不是通配符的域名）、删除旧证书（默认开）。接口用法依据 acme.sh 的 `deploy/qiniu.sh` 和七牛的文档；请求用 QBox 签名：`Authorization: QBox AK:签名`，签名是 SecretKey 对“路径和查询 + 换行”的 HMAC-SHA1，URL 安全的 Base64，JSON 请求体不参与签名。先在证书列表（`GET /sslcert`，分页）里按名字找这次要传的证书（名字是 `jec-<证书 ID>-<指纹前 12 位>`，中断后重试不会重复上传），没有就 `POST /sslcert`（`name`、`common_name`、`ca` 证书链、`pri` 私钥）。再对每个加速域名查 `GET /domain/<域名>`：已经在用这张的跳过；开了 HTTPS 的用 `PUT /domain/<域名>/httpsconf` 换证书，保留原来的强制 HTTPS 和 HTTP/2 设置；没开的用 `PUT …/sslize` 开启（不强制 HTTPS，开 HTTP/2）。最后删除以前部署上传的证书（`DELETE /sslcert/<ID>`）：还有域名在用的七牛不让删，只记警告，下次部署再删。密钥不对、域名不在这个账号都不重试。只用替身 API 测过。
 

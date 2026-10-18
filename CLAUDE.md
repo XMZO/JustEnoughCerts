@@ -76,6 +76,7 @@
 - M3 还完成了：钩子 `internal/modules/hooks`（通知渠道类型 `hooks.script`，`PLAN.md` 5.2 的“钩子的实现”：内置 shell 在数据目录的 `hooks/` 里运行脚本，消息在 `JEC_*` 环境变量和标准输入的 JSON 里，退出码 75 稍后重试）；运行脚本的共用库 `internal/lib/shellx`，本地目录部署的命令也改用它。
 - M3 还完成了：Webhook 的自定义请求（`webhook.notify`、`webhook.deploy` 的高级设置，`PLAN.md` 5.3.3）：请求体可以写成 Go 模板（字段名同默认 JSON，`json` 函数），可选 POST/PUT 和 Content-Type。
 - M3 还完成了：YAML 导入导出（内核 `internal/kernel/configfile`，接口 `configfileapi`，`PLAN.md` 11）：模块用 `r.Config` 登记自己那部分（证书模块的 `renewal`、`certificates`），导入在一个事务里先预览后执行，服务商按种类和名称对应、证书按域名对应，只增改不删；设置页“数据和备份”的“配置文件”。模块的导入只能经给它的事务写数据库。
+- M3 还完成了：阿里云数字证书管理服务 `aliyun.cas` 和传统型负载均衡 `aliyun.clb`（在 `internal/modules/aliyun`，通用 RPC 调用 `rpc.do`，按名字 `jec-<ID>-<指纹>` 找上次传的，删除旧证书；只用替身测过）。参考实现：certimate 的源码可以浅克隆到草稿目录里查接口用法（只读，不运行）。
 - 下一步：用真实账号验证阿里云 ESA 部署、ESA 边缘应答和 Namecheap 模块（M1/M2 验收，`PLAN.md` 5.4、5.6 列了要确认的点）；DNS 验证（要先确认 Namecheap 给不给 DNS 验证，还要能加 CNAME 记录）。
 
 ## 工程约定

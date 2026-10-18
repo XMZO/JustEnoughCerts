@@ -1,7 +1,9 @@
-// Package aliyun is the module of Alibaba Cloud's CDN and DCDN (Dynamic
-// Route for CDN) as deploy targets: each new certificate is set on the
-// accelerated domains, as acme.sh's ali_cdn and ali_dcdn hooks do. ESA has
-// a module of its own.
+// Package aliyun is the module of Alibaba Cloud's products as deploy
+// targets: CDN and DCDN (Dynamic Route for CDN), where each new
+// certificate is set on the accelerated domains, as acme.sh's ali_cdn and
+// ali_dcdn hooks do; the Certificate Management Service, where it is
+// uploaded for the other products; and CLB, the Classic Load Balancer. ESA
+// has a module of its own.
 package aliyun
 
 import (
@@ -13,12 +15,14 @@ import (
 
 // Module is the aliyun module.
 type Module struct {
-	// open makes the API of a service; tests replace it.
+	// open makes the API of CDN or DCDN, and rpc that of another service
+	// at an endpoint; tests replace them.
 	open func(svc service, id, secret string) (cdnAPI, error)
+	rpc  func(endpoint, version, id, secret string) (rpc, error)
 }
 
 // New returns the module.
-func New() *Module { return &Module{open: newSDK} }
+func New() *Module { return &Module{open: newSDK, rpc: newRPC} }
 
 // Manifest describes the module.
 func (*Module) Manifest() module.Manifest {
@@ -33,12 +37,16 @@ func (*Module) Manifest() module.Manifest {
 // Migrations returns nil: the module keeps nothing of its own.
 func (*Module) Migrations() fs.FS { return nil }
 
-// Register adds the CDN and DCDN types.
+// Register adds the CDN, DCDN, Certificate Management Service and CLB
+// types.
 func (m *Module) Register(r *module.Registry) error {
 	for _, svc := range []service{cdn, dcdn} {
 		if err := r.Providers.Add(svc.providerType(), m.factory(svc)); err != nil {
 			return err
 		}
 	}
-	return nil
+	if err := r.Providers.Add(casType(), m.casFactory); err != nil {
+		return err
+	}
+	return r.Providers.Add(clbType(), m.clbFactory)
 }

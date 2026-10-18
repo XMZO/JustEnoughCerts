@@ -80,9 +80,17 @@
     }
   },
   "aliyun": {
+    "cas": {
+      "description": "Uploads each new certificate to Certificate Management Service, from where Alibaba Cloud's products, such as ALB, OSS and WAF, take it; deletes those JEC uploaded before.",
+      "name": "Alibaba Cloud Certificate Management Service"
+    },
     "cdn": {
       "description": "Sets each new certificate on accelerated domains of CDN, with HTTPS on.",
       "name": "Alibaba Cloud CDN"
+    },
+    "clb": {
+      "description": "Uploads each new certificate to CLB and sets it on the HTTPS listeners of a load balancer, as their default certificate or as the additional certificate of a domain.",
+      "name": "Alibaba Cloud CLB (Classic Load Balancer)"
     },
     "dcdn": {
       "description": "Sets each new certificate on accelerated domains of DCDN (Dynamic Route for CDN), with HTTPS on.",
@@ -92,26 +100,58 @@
       "api": "Alibaba Cloud returned the error {code}. The full log says why.",
       "auth": "Alibaba Cloud refused the AccessKey, or it lacks the permissions needed.",
       "domain": "This account has no accelerated domain {domain}, or it does not have HTTPS. Check the domain, and the product: CDN and DCDN are apart.",
+      "listener": "The load balancer {id} has no HTTPS listener on port {port}.",
+      "load_balancer": "This account has no load balancer {id} in region {region}.",
       "network": "Could not reach {endpoint}.",
       "no_domains": "Enter the accelerated domains to test them; deployments use the certificate's own when there are none.",
+      "no_extension": "The listener on port {port} has no additional certificate for {domain}. Add one in the console first.",
+      "no_listeners": "The load balancer {id} has no HTTPS listener.",
+      "port": "The listener port {port} is not a port number.",
       "throttled": "Alibaba Cloud refused for now: too many requests. JEC tries again later."
     },
     "field": {
       "access_key_id": "AccessKey ID",
       "access_key_secret": "AccessKey secret",
+      "cas_secret_help": "Best from a RAM user granted yundun-cert:ListUserCertificateOrder, yundun-cert:UploadUserCertificate and yundun-cert:DeleteUserCertificate only.",
       "cdn_secret_help": "Best from a RAM user granted cdn:SetCdnDomainSSLCertificate and cdn:DescribeDomainCertificateInfo only. Alibaba Cloud keeps the uploaded certificates in its Certificate Management Service: should it refuse, grant that service's permissions too.",
+      "clb_domain": "Domain of an additional certificate",
+      "clb_domain_help": "To update the listeners' additional certificate of this domain instead of their default certificate.",
+      "clb_secret_help": "Best from a RAM user granted these only: slb:DescribeLoadBalancerAttribute, slb:DescribeServerCertificates, slb:UploadServerCertificate, slb:DeleteServerCertificate, slb:DescribeLoadBalancerHTTPSListenerAttribute, slb:SetLoadBalancerHTTPSListenerAttribute, slb:DescribeDomainExtensions and slb:SetDomainExtensionAttribute.",
       "dcdn_secret_help": "Best from a RAM user granted dcdn:SetDcdnDomainSSLCertificate and dcdn:DescribeDcdnDomainCertificateInfo only. Alibaba Cloud keeps the uploaded certificates in its Certificate Management Service: should it refuse, grant that service's permissions too.",
+      "delete_old": "Delete old certificates",
+      "delete_old_help": "Once a new certificate is in place, deletes those JEC uploaded before; one still in use stays until a later deployment.",
       "domains": "Accelerated domains",
-      "domains_help": "Separated by commas. Left empty, the certificate's own domains, but for wildcards. Old certificates stay in the Certificate Management Service, where you may delete them."
+      "domains_help": "Separated by commas. Left empty, the certificate's own domains, but for wildcards. Old certificates stay in the Certificate Management Service, where you may delete them.",
+      "listener_port": "Listener port",
+      "listener_port_help": "Left empty, every HTTPS listener of the load balancer.",
+      "load_balancer": "Load balancer ID",
+      "region": "Region",
+      "region_help": "The ID of the load balancer's region, such as cn-hangzhou or cn-shanghai.",
+      "site": "Site"
     },
     "log": {
+      "cas_found": "Certificate Management Service has {name} already",
+      "cas_upload": "Uploading {name} to Certificate Management Service",
+      "clb_current": "The listener on port {port} has this certificate already",
+      "clb_extension": "Setting the certificate of {domain} on the listener on port {port}",
+      "clb_found": "CLB has {name} already",
+      "clb_listener": "Setting the certificate on the listener on port {port}",
+      "clb_upload": "Uploading {name} to CLB",
+      "deleted": "Deleted the certificate {id} uploaded before",
+      "kept": "Could not delete the certificate {id} ({code}), which may still be in use; a later deployment tries again",
       "set": "Setting the certificate on {domain}"
     },
     "module": {
-      "description": "Deploys certificates to the accelerated domains of Alibaba Cloud CDN and DCDN.",
-      "name": "Alibaba Cloud CDN"
+      "description": "Deploys certificates to Alibaba Cloud CDN and DCDN, to Certificate Management Service, and to CLB load balancers.",
+      "name": "Alibaba Cloud"
+    },
+    "site": {
+      "china": "China (cas.aliyuncs.com)",
+      "intl": "International (cas.ap-southeast-1.aliyuncs.com)"
     },
     "test": {
+      "cas_ok": "Signed in. Certificate Management Service has {count, plural, one {# uploaded certificate} other {# uploaded certificates}}.",
+      "clb_ok": "Found the load balancer {name}, with {count, plural, one {# HTTPS listener} other {# HTTPS listeners}}.",
       "ok": "Found the accelerated domains {domains}."
     }
   },
