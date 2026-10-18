@@ -52,7 +52,8 @@ Working on the main branch:
 - Notifications through Telegram, email (SMTP), webhooks, the group
   robots of DingTalk, Feishu (Lark) and WeCom, ServerChan, Bark, ntfy,
   Gotify, Discord, Slack (and Mattermost or Rocket.Chat) and Pushover,
-  each in the language you choose for it.
+  each in the language you choose for it; or a script of yours, run by
+  JEC's built-in shell, for anything else.
 - A history of every issuance, renewal and deployment, with its full log.
 - Online checks: JEC connects to each domain as a browser does and tells
   you when one still serves the old certificate after a renewal, as when a

@@ -1040,6 +1040,28 @@
       "name": "Gotify"
     }
   },
+  "hooks": {
+    "error": {
+      "directory": "Could not make the directory {directory} to run the script in: {error}",
+      "run": "The script could not run: {error}",
+      "status": "The script failed with status {status}.",
+      "status_output": "The script failed with status {status}: {output}",
+      "syntax": "The script is not valid shell: {error}",
+      "timeout": "The script was still running after {seconds, plural, one {# second} other {# seconds}}, and was stopped."
+    },
+    "field": {
+      "script": "Script",
+      "script_help": "JEC runs it with its built-in shell, in the directory hooks in its data directory, for 20 seconds at most. $JEC_EVENT, $JEC_SUBJECT, $JEC_TEXT, $JEC_LINK, $JEC_DOMAIN, $JEC_DOMAINS, $JEC_CERTIFICATE_ID and $JEC_NOT_AFTER tell what happened; the whole note comes as JSON on its standard input. Exit with status 75 to have it run again later; other failures are not retried. The container image has no programs besides JEC, so this is mainly for JEC installed on its own. Keep tokens in JEC's environment, under names that do not start with JEC_."
+    },
+    "module": {
+      "description": "Runs scripts of your own when something happens to a certificate.",
+      "name": "Hooks"
+    },
+    "script": {
+      "description": "Runs a shell script for each event it is set to, with what happened in its environment, to reach systems no other channel does.",
+      "name": "Run a script"
+    }
+  },
   "kernel": {
     "account": {
       "confirm_password": "Your password",

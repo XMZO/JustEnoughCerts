@@ -1040,6 +1040,28 @@
       "name": "Gotify"
     }
   },
+  "hooks": {
+    "error": {
+      "directory": "无法创建运行脚本的目录 {directory}：{error}",
+      "run": "脚本无法运行：{error}",
+      "status": "脚本执行失败，退出码 {status}。",
+      "status_output": "脚本执行失败，退出码 {status}：{output}",
+      "syntax": "脚本的 shell 语法不对：{error}",
+      "timeout": "脚本运行了 {seconds, plural, other {# 秒}}还没结束，已停止。"
+    },
+    "field": {
+      "script": "脚本",
+      "script_help": "JEC 用内置的 shell 在数据目录下的 hooks 目录里运行它，最多 20 秒。$JEC_EVENT、$JEC_SUBJECT、$JEC_TEXT、$JEC_LINK、$JEC_DOMAIN、$JEC_DOMAINS、$JEC_CERTIFICATE_ID、$JEC_NOT_AFTER 说明发生了什么，完整的消息以 JSON 从标准输入传入。退出码为 75 时稍后再运行一次，其他失败不重试。容器镜像里除了 JEC 没有别的程序，所以主要给直接运行的 JEC 用。令牌之类放在 JEC 的环境变量里，名字不要以 JEC_ 开头。"
+    },
+    "module": {
+      "description": "证书有变化时运行你自己的脚本。",
+      "name": "钩子"
+    },
+    "script": {
+      "description": "每发生一种选中的事件，就运行一段 shell 脚本，发生了什么放在环境变量里，用来接入其他渠道接不了的系统。",
+      "name": "运行脚本"
+    }
+  },
   "kernel": {
     "account": {
       "confirm_password": "你的登录密码",

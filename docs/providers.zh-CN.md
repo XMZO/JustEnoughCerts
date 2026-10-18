@@ -66,4 +66,5 @@ JEC 的每种证书来源、验证方式、部署目标和通知渠道，以及�
 | `discord.webhook` | Discord | 替身 |
 | `slack.webhook` | Slack、Mattermost、Rocket.Chat | 替身 |
 | `pushover.user` | Pushover | 替身 |
+| `hooks.script` | 你自己的脚本，由内置的 shell 运行 | 真实脚本 |
 | `plugins.*` | 插件 | 真实程序 |

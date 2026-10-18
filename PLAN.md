@@ -290,6 +290,14 @@ type Target interface {
 2. **外部插件（exec 协议）**：任何语言写的可执行文件，通过 stdin/stdout 交换带版本号的 JSON。`describe` 动作返回 Schema 和插件自带的翻译，界面就能出现对应表单。不用重新编译 JEC，就能接入自家内部系统。
 3. **钩子（Hooks）**：在 `before_issue`、`after_issue`、`after_deploy`、`on_failure` 等节点执行脚本或内置动作（HTTP 请求、SSH 命令、写文件、重启 Docker 容器）。证书文件路径、域名等通过环境变量传入，模板语法是 Go 的 `text/template`。
 
+**钩子的实现**（模块 `hooks`，M3）：
+
+- 钩子是一种通知渠道 `hooks.script`（“运行脚本”）：由通知模块按渠道选的事件运行，和别的渠道一样有发送记录和“发送测试”。设置只有一段脚本，加上通知渠道共有的语言和事件开关。
+- 脚本用内嵌的 shell（`mvdan.cc/sh`，POSIX sh 和 Bash 的写法都认；和本地目录部署的命令共用 `internal/lib/shellx`）在数据目录下的 `hooks/` 里运行（第一次用时建立，只有属主能进），最多 20 秒（通知模块给每个渠道 30 秒）。环境变量是 JEC 自己的环境去掉 `JEC_` 开头的设置，加上按渠道的语言写好的消息 `JEC_EVENT`、`JEC_TIME`、`JEC_TITLE`、`JEC_SUBJECT`、`JEC_TEXT`、`JEC_LINK`，事件关于某张证书时还有 `JEC_CERTIFICATE_ID`、`JEC_DOMAIN`、`JEC_DOMAINS`、`JEC_NOT_AFTER`、`JEC_FINGERPRINT`；标准输入是整条消息的 JSON，和 Webhook 通知发的一样。
+- 退出码 0 算发送成功；75（sysexits 的 `EX_TEMPFAIL`，照邮件程序的用法）表示暂时失败，事件总线退避重试；其他退出码、语法错误、超时都不重试。失败时输出的最后一行（300 字节以内）放进错误信息，渠道卡片和测试结果里能看到。
+- 要用证书文件的钩子是部署目标：本地目录写好文件后执行命令（certbot 的部署钩子脚本可以直接用），SSH 在服务器上执行命令，Docker 容器发信号或重启，Webhook 部署把证书 POST 出去。`before_issue` 这类节点没有做：域名验证由验证方式完成，不需要先停掉占着 80 端口的服务。
+- 容器镜像里除了 JEC 没有别的程序，脚本只能用 shell 自己的命令和重定向（比如把消息追加到文件里），所以主要给直接运行的 JEC 用。令牌之类放在 JEC 的环境变量里，名字不以 `JEC_` 开头。
+
 **外部插件的实现**（模块 `plugins`，M3，协议写在 `docs/plugins.md`）：
 
 - JEC 启动时扫描数据目录下的 `plugins/`：每个可执行文件是一个插件，文件名去掉扩展名就是 ID。文件和目录只能由属主写入，属主要是 root 或运行 JEC 的用户，否则不运行。
@@ -414,6 +422,7 @@ DNS 验证分成两种能力，实现方式不同：
   - **Slack**（`slack.webhook`）：incoming webhook 地址（保密，必须 https），Mattermost、Rocket.Chat 接受同样的格式，所以不限域名，内网要打开“允许内网地址”。发纯文本（三家的标记语法不同）：主题、空行、正文、链接，转义 `&`、`<`、`>`，3000 字以内。Slack 用纯文本说明原因（如 `invalid_token`、`channel_is_archived`）：403、404、410 不重试，429 按 `Retry-After` 等。
   - **Pushover**（`pushover.user`）：应用令牌和用户（或群组）密钥（都保密），可选只推送到某台设备。表单发到 `api.pushover.net`：主题作标题、正文作消息（250、1024 字以内），需要处理的事件用高优先级（1），有链接时点开就是 JEC 的页面。令牌或密钥不对（回答里 `token`/`user` 为 `invalid`）不重试，额度用完（429）稍后重试。
   - 这三种只用替身测过。
+- **运行脚本**（`hooks.script`，模块 `hooks`，M3）：事件发生时运行自己写的脚本，见 5.2 的“钩子的实现”。
   - 邮件、ntfy、Gotify 对着一次性容器里真实的服务端验证过（Mailpit 的 SMTP、ntfy、Gotify，各自的 `live_test.go`，设置 `JEC_TEST_SMTP`、`JEC_TEST_NTFY`、`JEC_TEST_GOTIFY` 等环境变量时运行，CI 不跑）：中文主题和正文、优先级、点击链接都对。
   - 能自建的三种（Bark、ntfy、Gotify）都有“允许内网地址”开关（默认关，同 Webhook），都不跟随跳转（跳转会把 POST 变成 GET，还可能把令牌带到别处），遇到跳转时报出跳转到的地址。
 - 共用的 HTTP 客户端在 `internal/lib/httpx`：超时、单独设置的代理（不读环境变量里的代理），以及“只连公网地址”（第 10 节）。
@@ -701,7 +710,7 @@ services:
 
 - **基础镜像是 `scratch`（空镜像）**：镜像里只有 `/jec` 这一个程序和空的 `/data` 目录，没有操作系统文件。
 - **CA 根证书和时区数据嵌进程序**（`golang.org/x/crypto/x509roots/fallback`、`time/tzdata`），所以不需要系统里的证书和时区文件。需要信任自定义 CA 时，挂载文件并设置 `SSL_CERT_FILE` 即可。
-- **钩子不依赖系统 shell**：程序内嵌纯 Go 的 POSIX shell 解释器（`mvdan.cc/sh`），再加上内置动作（HTTP 请求、SSH 命令、写文件、Docker 容器发信号或重启），容器里不装 sh 和 curl 也能用全部钩子功能。确实需要额外命令行工具的，可以基于本镜像 `FROM` 一层自己加，或者改用原生二进制。
+- **钩子不依赖系统 shell**：程序内嵌纯 Go 的 POSIX shell 解释器（`mvdan.cc/sh`），本地目录部署的命令和钩子的脚本都用它；HTTP 请求、SSH 命令、写文件、Docker 容器发信号或重启由部署目标完成，容器里不装 sh 和 curl 也能用。确实需要额外命令行工具的，可以基于本镜像 `FROM` 一层自己加，或者改用原生二进制。
 - **健康检查**用 `jec healthcheck` 子命令，不依赖 curl 或 wget。
 - 默认以 `65532:65532` 非 root 用户运行；可以在 compose 里用 `user:` 指定，跟挂载目录的属主对上。
 - 所有数据都在 `/data`：数据库、加密密钥、日志。备份这一个目录就够了。
@@ -857,6 +866,7 @@ JustEnoughCerts/
 │   │                           # 验证 lego, http …；部署 aliyun_esa, ssh …；通知 telegram, smtp …
 │   └── lib/                    # 模块共用的工具库（不含业务逻辑）
 │       ├── cryptox/            # 私钥、CSR、PEM/PFX 处理，加密存储
+│       ├── shellx/             # 内嵌的 shell：钩子的脚本、本地目录部署的命令
 │       ├── cloudsign/          # 阿里云 V3、腾讯云 TC3、AWS SigV4 等轻量签名
 │       └── dnsrecord/          # 任意 DNS 记录增删（libdns 适配 + 自己实现）
 ├── web/
@@ -887,7 +897,7 @@ JustEnoughCerts/
 | **M0 骨架** | 仓库、CI、发布流水线、`scratch` 镜像、体积检查；内核与模块注册表、模块脚手架；**i18n 模块和全部门禁**（从第一行界面文字开始就不允许硬编码）；空的前端、登录和初始化向导（中英文）；SQLite（含驱动选型实测） | 打一个 `v0.0.1` 标签，能自动产出全部二进制和镜像，`docker compose up` 能打开中英文登录页，i18n 门禁和体积检查在 CI 里生效 |
 | **M1 最小可用** | 证书模块、状态机、调度器；手动上传和导入；ACME（任意 CA + EAB）+ lego 的 221 家 DNS；阿里云 ESA、本地文件、SSH、Webhook 部署；Telegram、邮件、Webhook 通知；总览和证书页 | 用免费证书完整跑通“签发 → 部署到 ESA → 删除旧证书 → 到期自动续” |
 | **M2 厂商来源与付费证书** | 厂商来源的通用框架（提交后等 CA 审核，跨多次检查才取回证书，等待期间加密保存私钥）；第一个实现是 Namecheap SSL Manager（实验性，JEC 扮演它的客户端，见 5.6）；HTTP 文件验证（写到源站的网站目录、经 SSH 写到远程服务器，或由 JEC 自己应答）；导入已有的付费证书；逐家验证商业 CA 的 ACME + EAB（含 Namecheap ACME 上线后） | 第 1 节的验收场景全自动跑通一个周期 |
-| **M3 扩展** | 国内云平台证书来源；DNS 记录管理层（任意记录增删，5.3.2 ②）和手动验证（ACME 的手动 DNS 已完成）；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子、YAML 导入导出；线上巡检 | 不改核心代码，写一个外部插件接入新平台；停用任意模块后其余功能正常 |
+| **M3 扩展** | 国内云平台证书来源；DNS 记录管理层（任意记录增删，5.3.2 ②）和手动验证（ACME 的手动 DNS 已完成）；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子（都已完成）、YAML 导入导出；线上巡检（已完成） | 不改核心代码，写一个外部插件接入新平台；停用任意模块后其余功能正常 |
 | **M4 打磨** | 两步验证、审计日志（都已提前完成）、OIDC、PWA、文档站、翻译指南、服务商兼容表（已有 `docs/providers.md`：每个服务商测到了哪一步） | 发布 `v1.0.0` |
 | **以后** | Namecheap 官方 API、Spaceship 的 SSL Manager、其他厂商证书 API、更多语言（社区贡献）、多用户和角色、PostgreSQL、私有 CA | 按需求排期 |
 

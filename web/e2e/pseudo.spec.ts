@@ -13,8 +13,13 @@ const english = JSON.parse(readFileSync(new URL('../../i18n/locales/en-US.json',
 
 /** label is how a plain message reads in the pseudo-locale, to find a button by its name. */
 function label(key: string): string {
+  return message(key, {})
+}
+
+/** message is how a message with simple parameters, not plurals, reads in the pseudo-locale. */
+function message(key: string, params: Record<string, string>): string {
   const text = key.split('.').reduce<unknown>((node, part) => (node as Record<string, unknown>)[part], english)
-  return pseudoize(String(text))
+  return pseudoize(Object.entries(params).reduce((s, [name, value]) => s.replace(`{${name}}`, value), String(text)))
 }
 
 // violations are what the browser refused under the server's
@@ -397,6 +402,20 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.getByRole('button', { name: label('notify.action.test') }).click()
   await expect(page.getByRole('alert')).toBeVisible()
   expect.soft(await problems(page), 'a test that failed').toEqual([])
+
+  // A script, whose test fails with what it wrote.
+  await page.getByRole('button', { name: label('kernel.providers.notifier.add') }).filter({ visible: true }).first().click()
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('option', { name: label('hooks.script.name') }).click()
+  await dialog.getByLabel(label('kernel.providers.field.name')).fill('e2e script')
+  await dialog.getByLabel(label('hooks.field.script')).fill('echo "no route from $JEC_EVENT" >&2; exit 1')
+  expect.soft(await problems(page), 'add a channel: a script').toEqual([])
+  await dialog.locator('button[type=submit]').click()
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  const script = page.locator('article', { hasText: 'e2e script' })
+  await script.getByRole('button', { name: label('notify.action.test') }).click()
+  await expect(script.getByRole('alert')).toHaveText(message('hooks.error.status_output', { status: '1', output: 'no route from notify.test' }))
+  expect.soft(await problems(page), 'a script whose test failed').toEqual([])
 
   // A certificate from the source: the form, its errors, the issuance.
   await page.goto('./certificates/new')

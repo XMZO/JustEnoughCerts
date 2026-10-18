@@ -72,4 +72,5 @@ Reports of what works with a real account, or does not, are welcome.
 | `discord.webhook` | Discord | Fake |
 | `slack.webhook` | Slack, Mattermost, Rocket.Chat | Fake |
 | `pushover.user` | Pushover | Fake |
+| `hooks.script` | A script of yours, run by the built-in shell | Real scripts |
 | `plugins.*` | Plugins | Real programs |
