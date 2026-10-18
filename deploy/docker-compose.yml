@@ -26,3 +26,12 @@ services:
       # (or acme.sh) renews them in, read-only. Its keys are usually root's,
       # so JEC has to run as root then: user "0:0" above.
       # - /etc/letsencrypt:/etc/letsencrypt:ro
+      # For the target "Docker container", which puts certificates into
+      # other containers and has them reload: the Docker socket. It gives
+      # full control of Docker, so a socket proxy that allows only
+      # CONTAINERS=1 and POST=1 is safer (endpoint tcp://<proxy>:2375).
+      # - /var/run/docker.sock:/var/run/docker.sock
+    # The group that owns the socket, as stat -c %g /var/run/docker.sock
+    # prints it, for JEC to use the socket.
+    # group_add:
+    #   - "999"

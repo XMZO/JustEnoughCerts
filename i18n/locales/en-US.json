@@ -556,6 +556,64 @@
       "name": "DingTalk robot"
     }
   },
+  "docker": {
+    "action": {
+      "none": "Nothing",
+      "restart": "Restart the container",
+      "signal": "Send a signal, to reload"
+    },
+    "container": {
+      "description": "Copies the files into a container, such as nginx's, then signals it to reload them or restarts it. JEC needs the Docker socket, or a socket proxy.",
+      "name": "Docker container"
+    },
+    "error": {
+      "api": "Docker refused: {message} (HTTP {status})",
+      "container": "Docker has no container {container}.",
+      "directory": "There is no directory {directory} in {container}. Create it in the image, or mount one there.",
+      "endpoint": "Not a Docker endpoint: {endpoint}. Use unix:// and the path of the socket, or tcp:// and a host and port.",
+      "forbidden": "Docker refused: {message}. Through a socket proxy, it has to allow CONTAINERS=1 and POST=1; a read-only file system takes no files.",
+      "name": "Not the name or ID of a container: {container}",
+      "network": "Could not reach Docker at {endpoint}.",
+      "nothing": "Set a directory for the files, an action afterwards, or both.",
+      "owner": "The owner must be uid:gid, two numbers, such as 101:101: {owner}",
+      "permission": "JEC may not use {path}. Add the group that owns it to JEC's container (group_add in docker-compose.yml; stat -c %g {path} prints it), or go through a socket proxy.",
+      "relative": "The directory must be an absolute path: {directory}",
+      "signal": "Not a signal: {signal}. Use a name, such as HUP or USR1, or a number.",
+      "socket": "There is no Docker socket at {path}. Mount it into JEC's container: /var/run/docker.sock:/var/run/docker.sock in docker-compose.yml."
+    },
+    "field": {
+      "action": "Afterwards",
+      "container": "Container",
+      "container_help": "Its name or ID, such as nginx.",
+      "directory": "Directory in the container",
+      "directory_help": "An absolute path that exists in the container, such as /etc/nginx/certs. Leave it empty to only signal or restart the container.",
+      "endpoint": "Docker endpoint",
+      "endpoint_help": "unix:///var/run/docker.sock for the socket mounted into JEC's container, or tcp://host:2375 for a socket proxy such as docker-socket-proxy, which needs to allow only CONTAINERS=1 and POST=1.",
+      "layout": "Where the files go",
+      "owner": "Owner of the files",
+      "owner_help": "uid:gid in the container, for a server that does not run as root; root (0:0) when empty. The private key is readable by its owner only.",
+      "signal": "Signal",
+      "signal_help": "HUP has nginx reload; Apache httpd takes USR1 for a graceful restart."
+    },
+    "layout": {
+      "by_domain": "A subdirectory for each certificate, named after its primary domain",
+      "flat": "Right in this directory"
+    },
+    "log": {
+      "copy": "Copying the files to {directory} in {container}",
+      "restart": "Restarting {container}",
+      "signal": "Sending {signal} to {container}",
+      "stopped": "{container} is not running: it reads the new files when it starts."
+    },
+    "module": {
+      "description": "Puts certificates into Docker containers and has them reload, through the Docker API.",
+      "name": "Docker"
+    },
+    "test": {
+      "ok": "Found {container}, running.",
+      "stopped": "Found {container}, but it is not running ({status})."
+    }
+  },
   "email": {
     "error": {
       "auth": "The mail server refused the sign-in: {message} ({code}). Check the username and the password.",
@@ -702,7 +760,7 @@
     },
     "field": {
       "command": "Command to run afterwards",
-      "command_help": "Such as systemctl reload nginx; leave it empty for none. JEC runs it with its built-in shell, in the certificate's directory, where $JEC_FULLCHAIN_FILE, $JEC_KEY_FILE, $JEC_DOMAINS and the like name the files and domains, as do certbot's $RENEWED_LINEAGE and $RENEWED_DOMAINS. The container image has no programs besides JEC.",
+      "command_help": "Such as systemctl reload nginx; leave it empty for none. JEC runs it with its built-in shell, in the certificate's directory, where $JEC_FULLCHAIN_FILE, $JEC_KEY_FILE, $JEC_DOMAINS and the like name the files and domains, as do certbot's $RENEWED_LINEAGE and $RENEWED_DOMAINS. The container image has no programs besides JEC. To reload another container, use a Docker container target.",
       "directory": "Directory",
       "directory_help": "An absolute path JEC can write to. In a container, a mounted directory, such as /data/certs.",
       "layout": "Where the files go",

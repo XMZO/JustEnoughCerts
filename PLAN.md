@@ -341,7 +341,7 @@ DNS 验证分成两种能力，实现方式不同：
 | CDN / 边缘 | **阿里云 ESA**（M1）；阿里云 CDN / DCDN、腾讯云 EdgeOne、腾讯云 CDN、华为云 CDN、百度智能云 CDN、火山引擎 CDN、七牛云、又拍云、AWS CloudFront、Cloudflare（自定义证书需付费套餐） | M1 / M3 |
 | 负载均衡 / 证书库 | 阿里云 SLB / ALB、阿里云证书服务、腾讯云 CLB、腾讯云 SSL 证书、AWS ACM | M3 |
 | 对象存储 | 阿里云 OSS、腾讯云 COS 的自定义域名 HTTPS | M3 |
-| 服务器 | 本地文件 + 执行命令（nginx、caddy、haproxy 等）；SSH / SFTP 上传 + 远程命令；Docker 容器（通过挂载的 Docker API 发信号或重启，不需要 docker 命令行）；Kubernetes Secret | M1（本地、SSH）/ M3 |
+| 服务器 | 本地文件 + 执行命令（nginx、caddy、haproxy 等）；SSH / SFTP 上传 + 远程命令；Docker 容器（通过挂载的 Docker API 发信号或重启，不需要 docker 命令行）；Kubernetes Secret | M1（本地、SSH）/ M3（Docker 已完成） |
 | 面板与应用 | 1Panel、宝塔、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Caddy 管理 API | M3 |
 | 通用 | Webhook、外部插件 | M1 |
 
@@ -353,6 +353,8 @@ DNS 验证分成两种能力，实现方式不同：
 - 读不了私钥时（certbot、acme.sh 的私钥通常只有属主能读）报出是哪个文件，提示让 JEC 以那个用户运行（`docker-compose.yml` 里 `user: "0:0"`）或者用 `--deploy-hook` 复制一份；目录不存在时提示挂载。测试连接列出找到了哪些证书。用 Docker 时把目录只读挂载进容器，`docker-compose.yml` 里有注释掉的示例。
 
 **SSH 的实现**（`internal/modules/ssh`，M1）：部署目标类型 `ssh.server`：主机、端口、用户名、私钥（OpenSSH 或 PEM，可以带口令）或密码、主机公钥、远程目录（绝对路径）和放法（同本地文件），以及写入后执行的命令。用已有依赖里的 `golang.org/x/crypto/ssh`，不用 SFTP：每个文件用一条 `cat > 临时文件` 命令写入（私钥在 `umask 077` 下写），四个都写好后用一条命令一起改名，再执行设置的命令（比如 `systemctl reload nginx`），它的输出记进部署日志。所以服务器要有 POSIX shell，Linux 和 BSD 都有。主机公钥一定核对：可以填 `SHA256:` 开头的指纹，或 known_hosts 里的那一行；留空时第一次部署会失败，错误信息给出服务器出示的指纹，让人核对后填进去。登录被拒、主机公钥不对、写不进去、命令退出码不是 0 都不自动重试，网络问题照常重试。
+
+**Docker 容器的实现**（`internal/modules/docker`，M3）：部署目标类型 `docker.container`：容器（名字或 ID）、容器里的目录（可选，绝对路径，要已经存在）和放法（同本地文件）、放好之后做什么（发信号，默认 `HUP`；重启；什么都不做）、文件属主（`uid:gid`，默认 root）、Docker 地址（默认 `unix:///var/run/docker.sock`，也可以是 `tcp://` 的 socket 代理）。经 Docker Engine API，路径不带版本号，由 Docker 按它自己的版本回答（Docker 29 起不再接受 1.44 以下的版本）：四个文件打成 tar 用 `PUT /containers/{id}/archive` 放进目录（私钥 0600），再 `POST /containers/{id}/kill?signal=…` 或 `/restart`。容器没在运行时不发信号，算部署成功（启动时会读到新文件）。测试连接只读：查容器（`GET /containers/{id}/json`）和目录（`HEAD …/archive`）。找不到容器或目录、没有 socket、没有权限（socket 所属的组、代理没放开）都不重试，Docker 的 5xx 和网络问题照常重试。挂载 Docker socket 等于给了主机的 root 权限，所以 `docker-compose.yml` 的注释建议用只放开 `CONTAINERS=1`、`POST=1` 的 socket 代理。
 
 **Webhook 部署的实现**（`internal/modules/webhook`，M1）：部署目标类型 `webhook.deploy`：URL（必须是 https，因为请求里有私钥）、签名密钥、额外的请求头（保密保存）、允许内网地址。每个新版本 POST 一个 JSON：`event`（`certificate.deploy`）、`certificate`（证书 ID）、`domains`、`serial`、`fingerprint`（叶子证书的 SHA-256，十六进制）、`not_before`、`not_after`，`cert`、`chain`、`fullchain`、`privkey`（PEM，和 certbot 的文件同名），`previous`（以前部署时接口回的 ref，新的在前）。接口回 2xx 就算成功，可以回 `{"ref": "…", "removed": […]}`：JEC 记下 ref，下次放进 `previous`，`removed` 里的记为已删除。请求头带 `X-JEC-Event`；设了签名密钥时带 `X-JEC-Signature: sha256=<用密钥对请求体算的 HMAC-SHA256>`。不跟随跳转；4xx（408、429 除外）不重试，5xx、408、429 按 `Retry-After` 或退避重试。
 

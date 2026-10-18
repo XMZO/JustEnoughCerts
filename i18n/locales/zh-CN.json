@@ -556,6 +556,64 @@
       "name": "钉钉群机器人"
     }
   },
+  "docker": {
+    "action": {
+      "none": "什么都不做",
+      "restart": "重启容器",
+      "signal": "发信号让它重载"
+    },
+    "container": {
+      "description": "把证书文件复制进容器（比如 nginx 的），再发信号让它重载，或者重启它。JEC 要能访问 Docker 的 socket 或 socket 代理。",
+      "name": "Docker 容器"
+    },
+    "error": {
+      "api": "Docker 拒绝了：{message}（HTTP {status}）",
+      "container": "Docker 里没有容器 {container}。",
+      "directory": "容器 {container} 里没有目录 {directory}。请在镜像里创建它，或者在那里挂载一个目录。",
+      "endpoint": "Docker 地址不对：{endpoint}。要写成 unix:// 加 socket 路径，或者 tcp:// 加主机和端口。",
+      "forbidden": "Docker 拒绝了：{message}。经 socket 代理连接时，代理要放开 CONTAINERS=1 和 POST=1；只读的文件系统也放不进文件。",
+      "name": "不是容器的名字或 ID：{container}",
+      "network": "连不上 Docker（{endpoint}）。",
+      "nothing": "请设置放文件的目录或放好之后的动作，至少一项。",
+      "owner": "文件属主要写成 uid:gid 两个数字，比如 101:101：{owner}",
+      "permission": "JEC 没有权限访问 {path}。请在 docker-compose.yml 里用 group_add 给 JEC 的容器加上它所属的组（stat -c %g {path} 可以查到组号），或者改用 socket 代理。",
+      "relative": "目录必须是绝对路径：{directory}",
+      "signal": "信号不对：{signal}。要写信号名（比如 HUP、USR1）或编号。",
+      "socket": "{path} 没有 Docker 的 socket。请在 docker-compose.yml 里把它挂载进 JEC 的容器：/var/run/docker.sock:/var/run/docker.sock。"
+    },
+    "field": {
+      "action": "放好之后",
+      "container": "容器",
+      "container_help": "容器的名字或 ID，比如 nginx。",
+      "directory": "容器里的目录",
+      "directory_help": "容器里已经存在的绝对路径，比如 /etc/nginx/certs。留空则只发信号或重启容器。",
+      "endpoint": "Docker 地址",
+      "endpoint_help": "unix:///var/run/docker.sock 表示挂载进 JEC 容器的 socket；用 docker-socket-proxy 这类 socket 代理时填 tcp://主机:2375，代理只需放开 CONTAINERS=1 和 POST=1。",
+      "layout": "文件放在哪里",
+      "owner": "文件属主",
+      "owner_help": "容器里的 uid:gid，给不以 root 运行的服务用；留空是 root（0:0）。私钥只有属主能读。",
+      "signal": "信号",
+      "signal_help": "nginx 收到 HUP 会重新加载；Apache httpd 用 USR1 平滑重启。"
+    },
+    "layout": {
+      "by_domain": "每张证书一个子目录，以主域名命名",
+      "flat": "直接放在这个目录里"
+    },
+    "log": {
+      "copy": "把文件复制到容器 {container} 的 {directory}",
+      "restart": "重启 {container}",
+      "signal": "向 {container} 发送 {signal}",
+      "stopped": "{container} 没有在运行，启动时会读到新文件。"
+    },
+    "module": {
+      "description": "经 Docker API 把证书放进容器，并让容器重载。",
+      "name": "Docker"
+    },
+    "test": {
+      "ok": "找到了容器 {container}，正在运行。",
+      "stopped": "找到了容器 {container}，但它没有在运行（{status}）。"
+    }
+  },
   "email": {
     "error": {
       "auth": "邮件服务器拒绝登录：{message}（{code}）。请检查用户名和密码（或授权码）。",
@@ -702,7 +760,7 @@
     },
     "field": {
       "command": "写入后执行的命令",
-      "command_help": "比如 systemctl reload nginx；留空则不执行。JEC 用内置的 shell 在证书目录里执行，可以用 $JEC_FULLCHAIN_FILE、$JEC_KEY_FILE、$JEC_DOMAINS 等变量取文件路径和域名，也设了 certbot 的 $RENEWED_LINEAGE 和 $RENEWED_DOMAINS。容器镜像里除了 JEC 没有别的程序。",
+      "command_help": "比如 systemctl reload nginx；留空则不执行。JEC 用内置的 shell 在证书目录里执行，可以用 $JEC_FULLCHAIN_FILE、$JEC_KEY_FILE、$JEC_DOMAINS 等变量取文件路径和域名，也设了 certbot 的 $RENEWED_LINEAGE 和 $RENEWED_DOMAINS。容器镜像里除了 JEC 没有别的程序。要重载别的容器，请用“Docker 容器”部署目标。",
       "directory": "目录",
       "directory_help": "JEC 能写入的绝对路径。在容器里运行时，填挂载进来的目录，比如 /data/certs。",
       "layout": "文件放在哪里",
