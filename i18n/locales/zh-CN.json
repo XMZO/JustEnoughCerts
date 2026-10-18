@@ -907,10 +907,16 @@
       "setup_token_invalid": "初始化令牌不对，请从服务器日志里重新复制。",
       "too_large": "提交的内容太大，请换一个更小的文件。",
       "too_many_attempts": "失败次数太多，请 {minutes, plural, other {# 分钟}}后再试。",
+      "two_factor_code": "验证码不对，或者已经用过了。验证码每 30 秒变一次；一直不对的话，请检查装着 App 的设备的时间。",
+      "two_factor_expired": "超过 10 分钟了，请重新开始。",
+      "two_factor_on": "两步验证已经开启了。",
+      "two_factor_required": "请输入验证器 App 里的验证码。",
       "unauthorized": "请先登录。"
     },
     "login": {
-      "forgot": "忘记密码：在服务器上运行",
+      "code": "验证器 App 里的验证码",
+      "code_hint": "6 位数字，每 30 秒更新一次。",
+      "forgot": "忘记密码或者验证器 App 丢了：在服务器上运行",
       "submit": "登录",
       "title": "登录"
     },
@@ -1027,6 +1033,7 @@
       "data": "数据和备份",
       "data_dir": "数据目录",
       "data_dir_help": "数据库和密钥文件都在这里",
+      "days": "{days, plural, other {# 天}}",
       "intro": "改动会立即保存。",
       "language": "语言",
       "language_help": "界面文字的语言，记在这个浏览器里",
@@ -1042,8 +1049,18 @@
       "secret_key_env": "环境变量 JEC_SECRET_KEY",
       "secret_key_file": "数据目录里的 secret.key",
       "secret_key_help": "备份不包含它，请另外保存：没有它，备份里加密的内容就读不出来",
+      "session_days": "登录有效期",
+      "session_days_hint": "对之后的登录生效。",
       "source": "源代码",
       "title": "设置",
+      "two_factor": "两步验证",
+      "two_factor_done": "两步验证已开启，其他地方的登录都已退出。",
+      "two_factor_hint": "登录时还要输入验证器 App 里的 6 位数字",
+      "two_factor_off_done": "两步验证已关闭。",
+      "two_factor_state_off": "未开启",
+      "two_factor_state_on": "已开启",
+      "two_factor_turn_off": "关闭",
+      "two_factor_turn_on": "开启",
       "version": "版本"
     },
     "setup": {
@@ -1062,6 +1079,17 @@
       "sign_out": "退出登录",
       "signed_in": "已登录：{username}",
       "version": "版本 {version}"
+    },
+    "two_factor": {
+      "code": "验证码",
+      "key": "密钥",
+      "lost": "如果 App 丢了，在服务器上运行这个命令可以重设密码并关闭两步验证：",
+      "next": "下一步",
+      "off_hint": "关闭后登录只需要密码。",
+      "qr": "密钥的二维码",
+      "scan": "用验证器 App（比如 Google Authenticator、Microsoft Authenticator 或 1Password）扫描二维码，或者手动输入密钥，然后填上 App 显示的验证码。",
+      "title_off": "关闭两步验证",
+      "title_on": "开启两步验证"
     }
   },
   "lego": {

@@ -39,7 +39,7 @@ export function useSession() {
 export function useSignIn() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: (body: { username: string; password: string }) => unwrap(api.POST('/session', { body })),
+    mutationFn: (body: { username: string; password: string; code?: string }) => unwrap(api.POST('/session', { body })),
     onSuccess: (account) => client.setQueryData(sessionKey, account),
   })
 }
@@ -69,6 +69,40 @@ export function useChangePassword() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (body: { password: string; newPassword: string }) => unwrap(api.PUT('/account/password', { body })),
+    onSuccess: () => client.invalidateQueries({ queryKey: sessionKey }),
+  })
+}
+
+/** Changes the settings of the account, such as how many days a sign-in lasts. */
+export function useUpdateAccount() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { sessionDays: 1 | 7 | 30 }) => unwrap(api.PATCH('/account', { body })),
+    onSuccess: (account) => client.setQueryData(sessionKey, account),
+  })
+}
+
+/** Makes a new secret of two-factor authentication, once the password is confirmed. */
+export function useTwoFactorSecret() {
+  return useMutation({
+    mutationFn: (body: { password: string }) => unwrap(api.POST('/account/two-factor/secret', { body })),
+  })
+}
+
+/** Turns two-factor authentication on with a code of the new secret; the account's other sessions end. */
+export function useEnableTwoFactor() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { code: string }) => unwrap(api.POST('/account/two-factor/enable', { body })),
+    onSuccess: () => client.invalidateQueries({ queryKey: sessionKey }),
+  })
+}
+
+/** Turns two-factor authentication off, once the password is confirmed. */
+export function useDisableTwoFactor() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { password: string }) => unwrap(api.POST('/account/two-factor/disable', { body })),
     onSuccess: () => client.invalidateQueries({ queryKey: sessionKey }),
   })
 }

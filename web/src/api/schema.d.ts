@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change the settings of the account */
+        patch: operations["update-account"];
+        trace?: never;
+    };
     "/account/password": {
         parameters: {
             query?: never;
@@ -15,6 +32,60 @@ export interface paths {
         /** Change the password, which signs the account out everywhere else */
         put: operations["change-password"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/two-factor/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Turn two-factor authentication off, once the password is confirmed */
+        post: operations["two-factor-disable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/two-factor/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Turn two-factor authentication on with a code of the new secret, which signs the account out everywhere else */
+        post: operations["two-factor-enable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/two-factor/secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a new secret for two-factor authentication
+         * @description Once the password is confirmed. The secret waits ten minutes for a code of it, which turns two-factor authentication on.
+         */
+        post: operations["two-factor-secret"];
         delete?: never;
         options?: never;
         head?: never;
@@ -563,7 +634,22 @@ export interface components {
              * @description When the password last changed
              */
             passwordChangedAt?: string;
+            /**
+             * Format: int64
+             * @description How many days a sign-in lasts
+             */
+            sessionDays: number;
+            /** @description Signing in also takes a code of an authenticator app */
+            twoFactor: boolean;
             username: string;
+        };
+        AccountInputBody: {
+            /**
+             * Format: int64
+             * @description How many days a sign-in lasts
+             * @enum {integer}
+             */
+            sessionDays: 1 | 7 | 30;
         };
         AddInputBody: {
             /** @description PEM certificates: the leaf and its intermediates, in any order. The private key may come along. Left out with pfx. */
@@ -686,6 +772,14 @@ export interface components {
             old: number;
             /** Format: int64 */
             unreachable: number;
+        };
+        CodeInputBody: {
+            /** @description A code of the authenticator app */
+            code: string;
+        };
+        ConfirmInputBody: {
+            /** @description The current password */
+            password: string;
         };
         CreateInputBody: {
             config?: {
@@ -1116,6 +1210,8 @@ export interface components {
             required: boolean;
         };
         SignInInputBody: {
+            /** @description A code of the authenticator app, for an account with two-factor authentication on */
+            code?: string;
             password: string;
             username: string;
         };
@@ -1140,6 +1236,14 @@ export interface components {
         TestOutputBody: {
             /** @description What the test found */
             message: components["schemas"]["Message"];
+        };
+        TwoFactorSetup: {
+            /** @description The QR code of the URI, as an SVG data URL */
+            qr: string;
+            /** @description The secret in base32, to type in */
+            secret: string;
+            /** @description The otpauth URI of the secret */
+            uri: string;
         };
         Type: {
             brand?: string;
@@ -1268,6 +1372,39 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "update-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     "change-password": {
         parameters: {
             query?: never;
@@ -1287,6 +1424,101 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "two-factor-disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmInputBody"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "two-factor-enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeInputBody"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "two-factor-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoFactorSetup"];
+                };
             };
             /** @description Error */
             default: {

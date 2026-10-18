@@ -35,7 +35,7 @@ func commands() []command {
 	return []command{
 		{"serve", "run the server", runServe},
 		{"healthcheck", "exit 0 if the local server is up (for container health checks)", runHealthcheck},
-		{"reset-password", "set a new password for an account and sign it out everywhere", runResetPassword},
+		{"reset-password", "set a new password for an account, turn its two-factor authentication off and sign it out everywhere", runResetPassword},
 		{"version", "print version information", runVersion},
 	}
 }

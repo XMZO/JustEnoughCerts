@@ -527,7 +527,7 @@ CDN 不能缓存这些路径；有跳转（如 HTTP 跳 HTTPS）时要确认 CA 
 - **来源 / 验证 / 部署 / 通知**：Provider 实例的配置，表单由 Schema 自动生成，带“测试连接”按钮。服务商列表支持搜索，按地区和类别分组。
 - **凭据**：集中管理，显示被哪些 Provider 引用；保存后不再明文显示。
 - **模块**：查看、启用、停用模块，显示模块之间的依赖关系。已实现（`/modules`，M2，因为默认关闭的实验模块要有地方打开）：按类别分组，每个模块一个开关，点了立即生效（`PUT /api/v1/modules/{id}`，必需的模块不能停用）；标出内置和实验模块；按状态筛选、搜索；启用了但依赖的模块没开时说明在等谁。所有模块的数据表在启动时都已建好，运行中打开不需要重启。
-- **设置**：账号、语言、两步验证、API 令牌、备份与恢复、外观、检查更新（可关闭）。已实现（`/settings`，按设计稿，改动立即保存）：语言；续期默认值（提前几天、每天检查时间、默认密钥类型，存在证书模块的 `certs_settings` 表里，接口 `GET`/`PUT /api/v1/certs/settings`，新证书没给的值取这里的）；账号和安全（用户名、上次改密码的时间、改密码，见第 10 节的“登录”）；面板访问（面板地址、监听地址，只读，由环境变量设置）；数据和备份（数据目录、主密钥从哪来；下载备份：`POST /api/v1/system/backup` 要输密码，用 `VACUUM INTO` 做一份一致的数据库副本，JEC 照常运行；恢复：停止 JEC，把文件放进数据目录、改名为 `jec.db`，再启动）；关于（版本、构建日期和平台，来自 `GET /api/v1/manifest`）。运行信息来自内核的 `GET /api/v1/system`（`internal/kernel/system`）。两步验证、登录有效期、在界面里恢复备份以后做。
+- **设置**：账号、语言、两步验证、API 令牌、备份与恢复、外观、检查更新（可关闭）。已实现（`/settings`，按设计稿，改动立即保存）：语言；续期默认值（提前几天、每天检查时间、默认密钥类型，存在证书模块的 `certs_settings` 表里，接口 `GET`/`PUT /api/v1/certs/settings`，新证书没给的值取这里的）；账号和安全（用户名、上次改密码的时间、改密码、两步验证、登录有效期，见第 10 节的“登录”）；面板访问（面板地址、监听地址，只读，由环境变量设置）；数据和备份（数据目录、主密钥从哪来；下载备份：`POST /api/v1/system/backup` 要输密码，用 `VACUUM INTO` 做一份一致的数据库副本，JEC 照常运行；恢复：停止 JEC，把文件放进数据目录、改名为 `jec.db`，再启动）；关于（版本、构建日期和平台，来自 `GET /api/v1/manifest`）。运行信息来自内核的 `GET /api/v1/system`（`internal/kernel/system`）。在界面里恢复备份以后做。
 
 菜单和页面由已启用的模块决定，停用的模块不出现在界面上。
 
@@ -762,10 +762,11 @@ services:
   - 库里存一段用主密钥加密的校验值，启动时主密钥对不上就直接拒绝启动，不会等到用私钥时才发现解不开。
   - 下载私钥：`POST /api/v1/certs/certificates/{id}/versions/{version}/download` 带上当前账号的密码，内核的 `ConfirmPassword`（模块通过 `r.ConfirmPassword` 使用）先核对密码，输错和登录失败共用同一个锁定计数。返回 certbot 那样的 ZIP（cert.pem、chain.pem、fullchain.pem、privkey.pem），响应不缓存，并发出 `certificate.key_downloaded` 事件，留给审计日志模块记录。
 - **登录**：本地账号，密码用 argon2id 哈希（RFC 9106 第二组推荐参数：64 MiB、3 轮、4 线程，同时最多算 2 个），支持 TOTP 两步验证；以后支持 OIDC 单点登录。
-  - 会话是随机令牌，库里只存 SHA-256，有效期 30 天。Cookie 设 `HttpOnly`、`SameSite=Lax`；base URL 是 https 时再加 `Secure`（纯 HTTP 访问时浏览器不收 Secure Cookie，局域网直连会登不上）。
+  - 会话是随机令牌，库里只存 SHA-256，有效期按账号设置：1、7（默认）或 30 天，对之后的登录生效（`PATCH /api/v1/account`）。Cookie 设 `HttpOnly`、`SameSite=Lax`；base URL 是 https 时再加 `Secure`（纯 HTTP 访问时浏览器不收 Secure Cookie，局域网直连会登不上）。
   - CSRF 防护用 Go 标准库的 `http.CrossOriginProtection`，按 `Sec-Fetch-Site` 和 `Origin` 拒绝跨站的写请求；base URL 的 origin 被信任，反向代理改写 Host 时也能通过。
   - 登录和初始化按客户端 IP 限速：连续失败 5 次锁定 15 分钟（与设计稿的提示一致，次数和时长作为参数传给文案）；成功一次或停 15 分钟不再失败，就重新计数。
-  - 忘记密码时在服务器上运行 `jec reset-password`（Docker 里是 `docker exec -it jec /jec reset-password`），新密码生效后该账号的所有会话都会退出。
+  - 两步验证（TOTP，RFC 6238：SHA-1、6 位、30 秒，各种验证器 App 都认）：设置页里先确认密码，JEC 生成密钥（`POST /api/v1/account/two-factor/secret`，返回密钥、`otpauth://` 地址和二维码的 SVG），10 分钟内填上 App 显示的验证码才开启（`…/enable`），开启时其他地方的登录都会退出；关闭只要密码（`…/disable`）。密钥用主密钥加密存在 `kernel_users`。登录时密码对了才要验证码（`kernel.error.two_factor_required`），允许前后各差一个 30 秒，每个验证码只能用一次（记下用过的时间步）；验证码错误和密码错误一起算进 5 次锁定。用的是依赖里已有的 `pquerna/otp` 和 `boombuler/barcode`。
+  - 忘记密码或验证器 App 丢了时，在服务器上运行 `jec reset-password`（Docker 里是 `docker exec -it jec /jec reset-password`）：设新密码、关闭两步验证，该账号的所有会话都会退出。
   - 在设置页改密码：`PUT /api/v1/account/password` 要当前密码（输错和登录失败共用锁定计数），改好后这个账号在其他地方的登录都退出，当前这个保留；`kernel_users.password_changed_at` 记下修改时间，设置页显示。
   - 所有 API 默认要求登录，只有初始化和登录接口在 OpenAPI 里标成公开。
 - **API 令牌**：可以按权限范围生成，用于 CLI 和自动化。
@@ -854,7 +855,7 @@ JustEnoughCerts/
 | **M1 最小可用** | 证书模块、状态机、调度器；手动上传和导入；ACME（任意 CA + EAB）+ lego 的 221 家 DNS；阿里云 ESA、本地文件、SSH、Webhook 部署；Telegram、邮件、Webhook 通知；总览和证书页 | 用免费证书完整跑通“签发 → 部署到 ESA → 删除旧证书 → 到期自动续” |
 | **M2 厂商来源与付费证书** | 厂商来源的通用框架（提交后等 CA 审核，跨多次检查才取回证书，等待期间加密保存私钥）；第一个实现是 Namecheap SSL Manager（实验性，JEC 扮演它的客户端，见 5.6）；HTTP 文件验证（写到源站的网站目录、经 SSH 写到远程服务器，或由 JEC 自己应答）；导入已有的付费证书；逐家验证商业 CA 的 ACME + EAB（含 Namecheap ACME 上线后） | 第 1 节的验收场景全自动跑通一个周期 |
 | **M3 扩展** | 国内云平台证书来源；DNS 记录管理层（任意记录增删，5.3.2 ②）和手动验证；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子、YAML 导入导出；线上巡检 | 不改核心代码，写一个外部插件接入新平台；停用任意模块后其余功能正常 |
-| **M4 打磨** | 两步验证、OIDC、审计日志、PWA、文档站、翻译指南、服务商兼容表 | 发布 `v1.0.0` |
+| **M4 打磨** | 两步验证（已提前完成）、OIDC、审计日志、PWA、文档站、翻译指南、服务商兼容表 | 发布 `v1.0.0` |
 | **以后** | Namecheap 官方 API、Spaceship 的 SSL Manager、其他厂商证书 API、更多语言（社区贡献）、多用户和角色、PostgreSQL、私有 CA | 按需求排期 |
 
 先做 M0，是为了尽早把“打标签 → 自动发布”这条链路跑通，同时让模块化和 i18n 门禁从第一天就生效，之后每个功能都能随时发版试用。

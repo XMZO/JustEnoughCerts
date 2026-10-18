@@ -13,12 +13,42 @@
             "format": "date-time",
             "type": "string"
           },
+          "sessionDays": {
+            "description": "How many days a sign-in lasts",
+            "format": "int64",
+            "type": "integer"
+          },
+          "twoFactor": {
+            "description": "Signing in also takes a code of an authenticator app",
+            "type": "boolean"
+          },
           "username": {
             "type": "string"
           }
         },
         "required": [
-          "username"
+          "username",
+          "twoFactor",
+          "sessionDays"
+        ],
+        "type": "object"
+      },
+      "AccountInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "sessionDays": {
+            "description": "How many days a sign-in lasts",
+            "enum": [
+              1,
+              7,
+              30
+            ],
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sessionDays"
         ],
         "type": "object"
       },
@@ -326,6 +356,34 @@
           "certificateId",
           "old",
           "unreachable"
+        ],
+        "type": "object"
+      },
+      "CodeInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "A code of the authenticator app",
+            "maxLength": 16,
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      },
+      "ConfirmInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "description": "The current password",
+            "maxLength": 1024,
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
         ],
         "type": "object"
       },
@@ -1461,6 +1519,11 @@
       "SignInInputBody": {
         "additionalProperties": false,
         "properties": {
+          "code": {
+            "description": "A code of the authenticator app, for an account with two-factor authentication on",
+            "maxLength": 16,
+            "type": "string"
+          },
           "password": {
             "maxLength": 1024,
             "type": "string"
@@ -1549,6 +1612,29 @@
         },
         "required": [
           "message"
+        ],
+        "type": "object"
+      },
+      "TwoFactorSetup": {
+        "additionalProperties": false,
+        "properties": {
+          "qr": {
+            "description": "The QR code of the URI, as an SVG data URL",
+            "type": "string"
+          },
+          "secret": {
+            "description": "The secret in base32, to type in",
+            "type": "string"
+          },
+          "uri": {
+            "description": "The otpauth URI of the secret",
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret",
+          "uri",
+          "qr"
         ],
         "type": "object"
       },
@@ -1917,6 +2003,47 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/account": {
+      "patch": {
+        "operationId": "update-account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Change the settings of the account",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/account/password": {
       "put": {
         "operationId": "change-password",
@@ -1946,6 +2073,116 @@
           }
         },
         "summary": "Change the password, which signs the account out everywhere else",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/account/two-factor/disable": {
+      "post": {
+        "operationId": "two-factor-disable",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Turn two-factor authentication off, once the password is confirmed",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/account/two-factor/enable": {
+      "post": {
+        "operationId": "two-factor-enable",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Turn two-factor authentication on with a code of the new secret, which signs the account out everywhere else",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/account/two-factor/secret": {
+      "post": {
+        "description": "Once the password is confirmed. The secret waits ten minutes for a code of it, which turns two-factor authentication on.",
+        "operationId": "two-factor-secret",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TwoFactorSetup"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Make a new secret for two-factor authentication",
         "tags": [
           "auth"
         ]

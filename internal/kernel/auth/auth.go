@@ -31,15 +31,18 @@ import (
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 )
 
 // CookieName is the session cookie.
 const CookieName = "jec_session"
 
 const (
-	sessionTTL  = 30 * 24 * time.Hour
-	maxFailures = 5
-	lockout     = 15 * time.Minute
+	// defaultSessionDays is how long a sign-in lasts until the account
+	// says otherwise.
+	defaultSessionDays = 7
+	maxFailures        = 5
+	lockout            = 15 * time.Minute
 )
 
 // loginFailed is the answer to a wrong username or password; it says how
@@ -56,6 +59,8 @@ type Options struct {
 	// Secure restricts the cookie to HTTPS; set it when users reach JEC
 	// over HTTPS, as an https base URL says.
 	Secure bool
+	// Secrets seals the secrets of two-factor authentication.
+	Secrets *secrets.Scope
 }
 
 // Service is the account system.
@@ -67,13 +72,14 @@ type Service struct {
 	limit *limiter
 
 	mu         sync.Mutex
-	setupToken string // set while no account exists
+	setupToken string                  // set while no account exists
+	pending    map[int64]pendingSecret // new secrets of two-factor authentication, by account
 }
 
 // New starts the account system on db, whose kernel migrations are applied.
 // Without any account it makes a setup token and logs it.
 func New(ctx context.Context, db *sql.DB, log *slog.Logger, opts Options) (*Service, error) {
-	s := &Service{db: db, log: log, opts: opts, now: time.Now, limit: newLimiter(maxFailures, lockout)}
+	s := &Service{db: db, log: log, opts: opts, now: time.Now, limit: newLimiter(maxFailures, lockout), pending: map[int64]pendingSecret{}}
 	var n int
 	if err := db.QueryRowContext(ctx, "SELECT count(*) FROM kernel_users").Scan(&n); err != nil {
 		return nil, fmt.Errorf("count accounts: %w", err)
@@ -174,6 +180,8 @@ type Account struct {
 	Username          string     `json:"username"`
 	Locale            string     `json:"locale,omitempty" doc:"BCP 47 tag of the language chosen for the account"`
 	PasswordChangedAt *time.Time `json:"passwordChangedAt,omitempty" doc:"When the password last changed"`
+	TwoFactor         bool       `json:"twoFactor" doc:"Signing in also takes a code of an authenticator app"`
+	SessionDays       int        `json:"sessionDays" doc:"How many days a sign-in lasts"`
 }
 
 type setupStatus struct {
@@ -196,6 +204,7 @@ type signInInput struct {
 	Body struct {
 		Username string `json:"username" maxLength:"64"`
 		Password string `json:"password" maxLength:"1024"`
+		Code     string `json:"code,omitempty" maxLength:"16" doc:"A code of the authenticator app, for an account with two-factor authentication on"`
 	}
 }
 
@@ -247,6 +256,24 @@ func (s *Service) Register(a huma.API) {
 		OperationID: "change-password", Method: http.MethodPut, Path: "/account/password", Tags: tags,
 		Summary: "Change the password, which signs the account out everywhere else", DefaultStatus: http.StatusNoContent,
 	}, s.changePassword)
+	huma.Register(a, huma.Operation{
+		OperationID: "update-account", Method: http.MethodPatch, Path: "/account", Tags: tags,
+		Summary: "Change the settings of the account",
+	}, s.updateAccount)
+	huma.Register(a, huma.Operation{
+		OperationID: "two-factor-secret", Method: http.MethodPost, Path: "/account/two-factor/secret", Tags: tags,
+		Summary:     "Make a new secret for two-factor authentication",
+		Description: "Once the password is confirmed. The secret waits ten minutes for a code of it, which turns two-factor authentication on.",
+	}, s.setUpTwoFactor)
+	huma.Register(a, huma.Operation{
+		OperationID: "two-factor-enable", Method: http.MethodPost, Path: "/account/two-factor/enable", Tags: tags,
+		Summary:       "Turn two-factor authentication on with a code of the new secret, which signs the account out everywhere else",
+		DefaultStatus: http.StatusNoContent,
+	}, s.enableTwoFactor)
+	huma.Register(a, huma.Operation{
+		OperationID: "two-factor-disable", Method: http.MethodPost, Path: "/account/two-factor/disable", Tags: tags,
+		Summary: "Turn two-factor authentication off, once the password is confirmed", DefaultStatus: http.StatusNoContent,
+	}, s.disableTwoFactor)
 }
 
 func (s *Service) getSetup(context.Context, *struct{}) (*setupStatus, error) {
@@ -314,7 +341,7 @@ func (s *Service) setup(ctx context.Context, in *setupInput) (*sessionOutput, er
 	if err != nil {
 		return nil, err
 	}
-	token, expires, err := s.newSession(ctx, tx, id)
+	token, expires, err := s.newSession(ctx, tx, id, defaultSessionDays)
 	if err != nil {
 		return nil, err
 	}
@@ -339,10 +366,12 @@ func (s *Service) signIn(ctx context.Context, in *signInInput) (*sessionOutput, 
 	if err := s.throttle(client); err != nil {
 		return nil, err
 	}
-	var id int64
+	var id, step int64
 	var hash string
-	err := s.db.QueryRowContext(ctx, "SELECT id, password_hash FROM kernel_users WHERE username = ?",
-		in.Body.Username).Scan(&id, &hash)
+	var secret []byte
+	var days int
+	err := s.db.QueryRowContext(ctx, "SELECT id, password_hash, totp_secret, totp_step, session_days FROM kernel_users WHERE username = ?",
+		in.Body.Username).Scan(&id, &hash, &secret, &step, &days)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		_, _ = checkPassword(dummyHash(), in.Body.Password) // take as long as a wrong password
@@ -359,11 +388,16 @@ func (s *Service) signIn(ctx context.Context, in *signInInput) (*sessionOutput, 
 		s.limit.fail(client, s.now())
 		return nil, loginFailed()
 	}
+	if len(secret) > 0 {
+		if err := s.secondFactor(ctx, client, id, secret, step, in.Body.Code); err != nil {
+			return nil, err
+		}
+	}
 	s.limit.reset(client)
 	if _, err := s.db.ExecContext(ctx, "DELETE FROM kernel_sessions WHERE expires_at <= ?", timestamp(s.now())); err != nil {
 		s.log.Warn("remove expired sessions", "err", err)
 	}
-	token, expires, err := s.newSession(ctx, s.db, id)
+	token, expires, err := s.newSession(ctx, s.db, id, days)
 	if err != nil {
 		return nil, err
 	}
@@ -387,8 +421,9 @@ func (s *Service) getSession(ctx context.Context, _ *struct{}) (*accountOutput, 
 func (s *Service) account(ctx context.Context, id int64) (Account, error) {
 	var a Account
 	var changed sql.NullString
-	if err := s.db.QueryRowContext(ctx, "SELECT username, coalesce(locale, ''), password_changed_at FROM kernel_users WHERE id = ?", id).
-		Scan(&a.Username, &a.Locale, &changed); err != nil {
+	if err := s.db.QueryRowContext(ctx,
+		"SELECT username, coalesce(locale, ''), password_changed_at, totp_secret IS NOT NULL, session_days FROM kernel_users WHERE id = ?", id).
+		Scan(&a.Username, &a.Locale, &changed, &a.TwoFactor, &a.SessionDays); err != nil {
 		return Account{}, err
 	}
 	if t, err := time.Parse(time.RFC3339, changed.String); err == nil {
@@ -484,7 +519,8 @@ type execer interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
 
-func (s *Service) newSession(ctx context.Context, db execer, userID int64) (string, time.Time, error) {
+// newSession signs userID in for days.
+func (s *Service) newSession(ctx context.Context, db execer, userID int64, days int) (string, time.Time, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return "", time.Time{}, err
@@ -492,7 +528,7 @@ func (s *Service) newSession(ctx context.Context, db execer, userID int64) (stri
 	token := base64.RawURLEncoding.EncodeToString(b)
 	hash := sha256.Sum256([]byte(token))
 	now := s.now()
-	expires := now.Add(sessionTTL)
+	expires := now.Add(time.Duration(max(days, 1)) * 24 * time.Hour)
 	_, err := db.ExecContext(ctx,
 		"INSERT INTO kernel_sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
 		hash[:], userID, timestamp(now), timestamp(expires))

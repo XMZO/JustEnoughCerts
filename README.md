@@ -54,6 +54,8 @@ Working on the main branch:
 - Plugins, programs in any language, add deploy targets, notification
   channels and ways to validate domains without rebuilding JEC
   ([docs/plugins.md](docs/plugins.md)).
+- Sign-in with a password and, if you like, the codes of an authenticator
+  app (two-factor authentication).
 - One small container image or one static binary, with SQLite.
 
 Planned: manual validation, hooks, and more CDNs and panels.
@@ -85,8 +87,10 @@ Private keys and credentials are encrypted in the database with the key in
 nothing encrypted can be read again, so keep it with the database backups,
 or keep the key elsewhere and pass it as `JEC_SECRET_KEY`.
 
-To change the password, use the Settings page. Forgot it? Set a new one
-on the server; this also signs the account out everywhere:
+To change the password, or turn on two-factor authentication with an
+authenticator app, use the Settings page. Forgot the password, or lost the
+app? Set a new password on the server; this also turns two-factor
+authentication off and signs the account out everywhere:
 
 ```sh
 docker exec -it jec /jec reset-password

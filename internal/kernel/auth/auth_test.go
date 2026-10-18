@@ -20,6 +20,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 )
 
@@ -47,6 +48,14 @@ func newFixture(t *testing.T, opts Options) *fixture {
 	t.Cleanup(func() { _ = st.Close() })
 	if _, err := st.Migrate(t.Context(), "kernel", migrations.FS); err != nil {
 		t.Fatal(err)
+	}
+	if opts.Secrets == nil {
+		dir := t.TempDir()
+		box, _, err := secrets.Load(dir, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		opts.Secrets = box.Scope("kernel")
 	}
 	svc, err := New(t.Context(), st.DB(), slog.New(slog.DiscardHandler), opts)
 	if err != nil {
@@ -158,11 +167,11 @@ func TestSetup(t *testing.T) {
 
 	// The token may come with stray spaces and capitals from a copy.
 	r := f.call(http.MethodPost, "/setup", "", f.setupBody("  "+strings.ToUpper(f.token)+" "))
-	if r.status != http.StatusCreated || r.body != "{\"username\":\"admin\",\"locale\":\"zh-CN\",\"passwordChangedAt\":\"2026-10-16T12:00:00Z\"}\n" {
+	if r.status != http.StatusCreated || r.body != "{\"username\":\"admin\",\"locale\":\"zh-CN\",\"passwordChangedAt\":\"2026-10-16T12:00:00Z\",\"twoFactor\":false,\"sessionDays\":7}\n" {
 		t.Fatalf("setup = %d %s", r.status, r.body)
 	}
 	c := r.cookie
-	if c == nil || !c.HttpOnly || !c.Secure || c.SameSite != http.SameSiteLaxMode || c.Path != "/jec" || c.MaxAge != int(sessionTTL.Seconds()) {
+	if c == nil || !c.HttpOnly || !c.Secure || c.SameSite != http.SameSiteLaxMode || c.Path != "/jec" || c.MaxAge != int((defaultSessionDays*24*time.Hour).Seconds()) {
 		t.Errorf("session cookie = %+v", c)
 	}
 	if r := f.call(http.MethodGet, "/session", c.Value, ""); r.status != http.StatusOK || !strings.Contains(r.body, `"username":"admin"`) {
@@ -275,7 +284,7 @@ func TestProtectedByDefault(t *testing.T) {
 func TestSessionExpires(t *testing.T) {
 	f := signedUp(t)
 	session := f.call(http.MethodPost, "/session", "", `{"username": "admin", "password": "correct horse"}`).cookie.Value
-	f.clock = f.clock.Add(sessionTTL - time.Minute)
+	f.clock = f.clock.Add(defaultSessionDays*24*time.Hour - time.Minute)
 	if r := f.call(http.MethodGet, "/whoami", session, ""); r.status != http.StatusOK {
 		t.Errorf("before expiry = %d", r.status)
 	}

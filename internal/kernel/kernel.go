@@ -96,6 +96,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	accounts, err := auth.New(ctx, st.DB(), log, auth.Options{
 		CookiePath: cookiePath,
 		Secure:     strings.HasPrefix(cfg.BaseURL, "https://"),
+		Secrets:    box.Scope(owner),
 	})
 	if err != nil {
 		return nil, err

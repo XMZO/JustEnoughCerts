@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
 import { expect, test, type Page } from '@playwright/test'
@@ -21,6 +22,21 @@ test.beforeEach(async ({ page }) => {
 })
 
 /** problems lists text without markers and text that does not fit. */
+/**
+ * totp is the code of a base32 key some steps of 30 seconds from now, as
+ * authenticator apps make it (RFC 6238).
+ */
+function totp(key: string, steps: number): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+  const bits = [...key.toUpperCase()].map((c) => alphabet.indexOf(c).toString(2).padStart(5, '0')).join('')
+  const bytes = Buffer.from((bits.match(/.{8}/g) ?? []).map((b) => parseInt(b, 2)))
+  const counter = Buffer.alloc(8)
+  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30_000) + steps))
+  const mac = createHmac('sha1', bytes).update(counter).digest()
+  const offset = mac[mac.length - 1]! & 0xf
+  return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0')
+}
+
 async function problems(page: Page): Promise<string[]> {
   await page.waitForLoadState('networkidle')
   return page.evaluate(() => {
@@ -468,6 +484,23 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect((await download).suggestedFilename()).toMatch(/^jec-backup-\d{8}-\d{6}\.db$/)
   await expect(page.locator('dialog[open]')).toHaveCount(0)
 
+  // Two-factor authentication, on with a code of the new key, which the
+  // test reckons as an authenticator app does.
+  await page.getByRole('button', { name: label('kernel.settings.two_factor_turn_on') }).click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'turn on two-factor authentication').toEqual([])
+  await dialog.locator('#two-factor-password').fill('correct horse')
+  await dialog.locator('button[type=submit]').click()
+  await expect(dialog.locator('#two-factor-code')).toBeVisible()
+  expect.soft(await problems(page), 'turn on two-factor authentication: the key').toEqual([])
+  const key = ((await dialog.locator('code').first().textContent()) ?? '').replaceAll(' ', '')
+  await dialog.locator('#two-factor-code').fill(totp(key, 0))
+  await dialog.locator('button[type=submit]').click()
+  await expect(page.getByRole('status').filter({ hasText: label('kernel.settings.two_factor_done') })).toBeVisible()
+  expect.soft(await problems(page), 'two-factor authentication on').toEqual([])
+  await page.locator('#session-days').selectOption('30')
+  await expect(page.locator('#session-days')).toHaveValue('30')
+
   await page.goto('./more')
   expect.soft(await problems(page), 'more').toEqual([])
   await page.getByRole('button', { name: label('kernel.shell.sign_out') }).filter({ visible: true }).first().click()
@@ -479,4 +512,22 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.locator('form button[type=submit]').click()
   await expect(page.getByRole('alert')).toBeVisible()
   expect.soft(await problems(page), 'sign-in page with an error').toEqual([])
+
+  // The right password asks for the code, which works once: the next one
+  // signs in. Then two-factor authentication goes off again.
+  await page.locator('#password').fill('correct horse')
+  await page.locator('form button[type=submit]').click()
+  await expect(page.locator('#code')).toBeVisible()
+  expect.soft(await problems(page), 'sign-in page asking for the code').toEqual([])
+  await page.locator('#code').fill(totp(key, 1))
+  await page.locator('form button[type=submit]').click()
+  await expect(page).not.toHaveURL(/\/login$/)
+  await page.goto('./settings')
+  await page.getByRole('button', { name: label('kernel.settings.two_factor_turn_off') }).click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'turn off two-factor authentication').toEqual([])
+  await dialog.locator('#two-factor-off-password').fill('correct horse')
+  await dialog.locator('button[type=submit]').click()
+  await expect(page.getByRole('status').filter({ hasText: label('kernel.settings.two_factor_off_done') })).toBeVisible()
+  expect.soft(await problems(page), 'two-factor authentication off').toEqual([])
 })

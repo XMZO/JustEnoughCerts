@@ -37,8 +37,9 @@ func Usernames(ctx context.Context, db *sql.DB) ([]string, error) {
 	return names, rows.Err()
 }
 
-// SetPassword gives the account username a new password and ends all of
-// its sessions.
+// SetPassword gives the account username a new password, turns its
+// two-factor authentication off and ends all of its sessions: it is how
+// someone who lost the password or the authenticator gets back in.
 func SetPassword(ctx context.Context, db *sql.DB, username, password string) error {
 	if n := utf8.RuneCountInString(password); n < MinPasswordLength || n > MaxPasswordLength {
 		return fmt.Errorf("a password has %d to %d characters", MinPasswordLength, MaxPasswordLength)
@@ -61,7 +62,8 @@ func SetPassword(ctx context.Context, db *sql.DB, username, password string) err
 		return err
 	}
 	now := timestamp(time.Now())
-	if _, err := tx.ExecContext(ctx, "UPDATE kernel_users SET password_hash = ?, password_changed_at = ?, updated_at = ? WHERE id = ?",
+	if _, err := tx.ExecContext(ctx,
+		"UPDATE kernel_users SET password_hash = ?, password_changed_at = ?, totp_secret = NULL, totp_step = 0, updated_at = ? WHERE id = ?",
 		hash, now, now, id); err != nil {
 		return err
 	}
