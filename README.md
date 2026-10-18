@@ -45,7 +45,9 @@ Working on the main branch:
   Kubernetes TLS Secrets; and to webhooks.
 - Renewal once a certificate enters its renewal window, at the time of
   day set on the Settings page (02:00 by default), or at once with a week
-  or less left; failures are retried with a growing delay.
+  or less left, or earlier when the CA suggests so through ACME Renewal
+  Information, as before a revocation; failures are retried with a
+  growing delay.
 - Notifications through Telegram, email (SMTP), webhooks, the group
   robots of DingTalk, Feishu (Lark) and WeCom, ServerChan, Bark, ntfy and
   Gotify, each in the language you choose for it.

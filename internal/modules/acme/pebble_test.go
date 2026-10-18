@@ -5,6 +5,7 @@ import (
 	"os"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
@@ -42,18 +43,43 @@ func TestPebble(t *testing.T) {
 		t.Fatalf("test: %+v, %v", msg, err)
 	}
 
-	for round := range 2 {
+	// The second order renews the first certificate, which Pebble takes;
+	// the third says it renews one Pebble never issued, which must not keep
+	// it from issuing.
+	ca := cryptoxtest.NewCA(t)
+	foreign := ca.Leaf(t, cryptoxtest.NewKey(t), time.Now().Add(-time.Hour), time.Now().Add(time.Hour), "jec.example.com")
+	var first *x509.Certificate
+	for round := range 3 {
 		key := cryptoxtest.NewKey(t)
 		solver := &fakeSolver{}
 		var steps []i18n.Key
-		chain, err := src.Issue(t.Context(), contracts.IssueRequest{
+		req := contracts.IssueRequest{
 			Domains: []string{"jec.example.com", "*.jec.example.com"}, Key: key, Solver: solver,
 			Log: func(l contracts.LogLine) { steps = append(steps, l.Key) },
-		})
+		}
+		switch round {
+		case 1:
+			req.Replaces = first
+		case 2:
+			req.Replaces = foreign
+		}
+		chain, err := src.Issue(t.Context(), req)
 		if err != nil {
 			t.Fatalf("round %d: %v", round, err)
 		}
 		leaf := chain[0]
+		switch {
+		case round == 0:
+			first = leaf
+			info, err := src.RenewalInfo(t.Context(), leaf)
+			if err != nil || !info.End.After(info.Start) || !info.End.Before(leaf.NotAfter) {
+				t.Errorf("renewal info: %+v %v", info, err)
+			}
+		case round == 1 && slices.Contains(steps, i18n.AcmeLogReplacesRefused):
+			t.Errorf("Pebble refused the renewal of its own certificate: %v", steps)
+		case round == 2:
+			t.Logf("replacing a foreign certificate: refused and ordered again: %v", slices.Contains(steps, i18n.AcmeLogReplacesRefused))
+		}
 		if !slices.Contains(leaf.DNSNames, "jec.example.com") || !slices.Contains(leaf.DNSNames, "*.jec.example.com") ||
 			!key.PublicKey.Equal(leaf.PublicKey) || len(chain) < 2 {
 			t.Errorf("round %d: leaf for %v, chain of %d", round, leaf.DNSNames, len(chain))

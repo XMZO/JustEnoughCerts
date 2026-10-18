@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"slices"
 	"sync"
 	"testing"
@@ -263,5 +264,24 @@ func TestTestUnreachable(t *testing.T) {
 	var p *contracts.Problem
 	if !errors.As(err, &p) || p.Key != i18n.AcmeErrorDirectory {
 		t.Errorf("a CA that is not there: %v", err)
+	}
+}
+
+func TestRefusedReplaces(t *testing.T) {
+	order := func(typ, detail string) error {
+		return fmt.Errorf("obtain: %w", &legoacme.ProblemDetails{Type: typ, Detail: detail, Method: http.MethodPost, URL: "https://ca.example/acme/new-order"})
+	}
+	for err, want := range map[error]bool{
+		order(legoacme.UnauthorizedErrorType, "requester account did not request the certificate being replaced by this order"):   true,
+		order(legoacme.MalformedErrorType, "while parsing ARI CertID an error occurred"):                                          true,
+		order(legoacme.MalformedErrorType, "request included `replaces` field, but no current certificate with serial 01 exists"): true,
+		order(legoacme.RateLimitedErrorType, "too many new orders recently; replaces"):                                            false,
+		order(legoacme.UnauthorizedErrorType, "the authorization was not valid"):                                                  false,
+		&legoacme.ProblemDetails{Type: legoacme.MalformedErrorType, Detail: "replaces", Method: http.MethodGet}:                   false,
+		errors.New("replaces"): false,
+	} {
+		if got := refusedReplaces(err); got != want {
+			t.Errorf("%v: %v", err, got)
+		}
 	}
 }

@@ -68,6 +68,7 @@
       "register": "Registering the account at {directory}",
       "remove_file": "Removing the validation file for {domain}",
       "remove_file_failed": "Could not remove the validation file for {domain}; you can remove it from the website",
+      "replaces_refused": "The CA does not take the order as the renewal of the current version: ordering again without saying so",
       "wait": "Waiting for the records to show in DNS, at most {seconds, plural, one {# second} other {# seconds}}"
     },
     "module": {
@@ -505,6 +506,10 @@
       "first": "First issuance",
       "manual": "Issued by hand",
       "renewal": "Renewal"
+    },
+    "renewal": {
+      "suggested": "The CA suggests {start} to {end}",
+      "why": "Why"
     },
     "runs": {
       "action": {

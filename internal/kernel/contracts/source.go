@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
+	"errors"
 	"time"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
@@ -63,9 +64,39 @@ type IssueRequest struct {
 	// State is what the source kept when the last attempt of this issuance
 	// ended in a Wait; nil before that.
 	State []byte
+	// Replaces is the leaf of the version this issuance renews, when the
+	// same source issued it: an ACME order says which certificate it
+	// replaces (RFC 9773). Nil otherwise.
+	Replaces *x509.Certificate
 	// Log receives the steps of the issuance.
 	Log func(LogLine)
 }
+
+// RenewalAdvisor is a Source whose CA suggests when to renew the
+// certificates it issued: ACME Renewal Information (RFC 9773). A CA moves
+// the window earlier when it is going to revoke a certificate, as in a
+// mass revocation.
+type RenewalAdvisor interface {
+	// RenewalInfo asks about leaf, which the source issued. It returns
+	// ErrNoRenewalInfo when the CA makes no suggestions.
+	RenewalInfo(ctx context.Context, leaf *x509.Certificate) (RenewalInfo, error)
+}
+
+// RenewalInfo is what a CA suggests about renewing a certificate.
+type RenewalInfo struct {
+	// Start and End bound the window the CA suggests renewing in.
+	Start, End time.Time
+	// ExplanationURL is a page of the CA that says why, as when it is going
+	// to revoke the certificate; empty for none.
+	ExplanationURL string
+	// RetryAfter is when to ask again, as the CA asks it; zero when it
+	// does not say.
+	RetryAfter time.Duration
+}
+
+// ErrNoRenewalInfo is the error of a RenewalAdvisor whose CA makes no
+// suggestions about renewing.
+var ErrNoRenewalInfo = errors.New("contracts: the CA makes no suggestions about renewing")
 
 // Source gets certificates, such as an ACME account. The providers of kind
 // "source" make Sources.

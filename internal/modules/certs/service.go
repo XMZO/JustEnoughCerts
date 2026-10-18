@@ -141,6 +141,21 @@ type Version struct {
 	NotAfter    time.Time
 	Chain       string // PEM, the leaf first
 	CreatedAt   time.Time
+	// SourceProvider is the source that issued the version: 0 for an
+	// uploaded one, or one issued before JEC kept it.
+	SourceProvider int64
+	// Renewal is what the CA suggests about renewing the version, nil
+	// until it answered (renewal.go); RenewalCheck is when to ask again.
+	Renewal      *RenewalWindow
+	RenewalCheck time.Time
+}
+
+// RenewalWindow is the window a CA suggests renewing a version in, and the
+// time JEC picked in it.
+type RenewalWindow struct {
+	Start, End, At time.Time
+	// Explanation is a page of the CA that says why, or empty.
+	Explanation string
 }
 
 // state tells how a certificate stands at now: being issued or failing to
@@ -207,7 +222,7 @@ func (s *service) add(ctx context.Context, b *cryptox.Bundle, renewBeforeDays in
 	if err := s.setTargets(ctx, tx, &Certificate{ID: id}, targets); err != nil {
 		return 0, err
 	}
-	if _, err := s.addVersion(ctx, tx, id, b, originUpload); err != nil {
+	if _, err := s.addVersion(ctx, tx, id, b, originUpload, 0); err != nil {
 		return 0, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -241,7 +256,7 @@ func (s *service) upload(ctx context.Context, id int64, b *cryptox.Bundle) error
 	if err != nil {
 		return err
 	}
-	if _, err := s.addVersion(ctx, tx, id, b, originUpload); err != nil {
+	if _, err := s.addVersion(ctx, tx, id, b, originUpload, 0); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -253,7 +268,7 @@ func (s *service) upload(ctx context.Context, id int64, b *cryptox.Bundle) error
 
 // addVersion stores b as the current version of certificate id and
 // publishes certificate.issued, in tx. It returns the version's ID.
-func (s *service) addVersion(ctx context.Context, tx *sql.Tx, id int64, b *cryptox.Bundle, origin string) (int64, error) {
+func (s *service) addVersion(ctx context.Context, tx *sql.Tx, id int64, b *cryptox.Bundle, origin string, source int64) (int64, error) {
 	fingerprint := cryptox.Fingerprint(b.Leaf)
 	var owner int64
 	err := tx.QueryRowContext(ctx, "SELECT certificate_id FROM certs_versions WHERE fingerprint = ?", fingerprint).Scan(&owner)
@@ -275,11 +290,11 @@ func (s *service) addVersion(ctx context.Context, tx *sql.Tx, id int64, b *crypt
 	var version int64
 	err = tx.QueryRowContext(ctx,
 		`INSERT INTO certs_versions (certificate_id, origin, names, serial, fingerprint, issuer, key_type,
-		 not_before, not_after, chain, sealed_key, notified, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?) RETURNING id`,
+		 not_before, not_after, chain, sealed_key, notified, created_at, source_provider)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?) RETURNING id`,
 		id, origin, string(namesJSON), b.Leaf.SerialNumber.Text(16), fingerprint, issuerName(b.Leaf),
 		cryptox.KeyType(b.Leaf.PublicKey), b.Leaf.NotBefore.UnixMilli(), b.Leaf.NotAfter.UnixMilli(),
-		string(chain), s.secrets.Seal(key, "key:"+fingerprint), now.UnixMilli()).Scan(&version)
+		string(chain), s.secrets.Seal(key, "key:"+fingerprint), now.UnixMilli(), source).Scan(&version)
 	if err != nil {
 		return 0, err
 	}
@@ -343,6 +358,7 @@ type querier interface {
 const selectCertificates = `SELECT c.id, c.domains, c.source, c.source_provider, c.solver_provider, c.key_type,
 	c.renew_before_days, c.created_at,
 	v.id, v.origin, v.names, v.serial, v.fingerprint, v.issuer, v.key_type, v.not_before, v.not_after, v.chain, v.created_at,
+	v.source_provider, v.renewal_start, v.renewal_end, v.renewal_at, v.renewal_explanation, v.renewal_check,
 	` + issuanceColumns + `
 	FROM certs_certificates c LEFT JOIN certs_versions v ON v.id = c.current_version_id
 	LEFT JOIN certs_issuances i ON i.id = (SELECT max(id) FROM certs_issuances WHERE certificate_id = c.id)`
@@ -389,13 +405,14 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 		var created int64
 		var sourceProvider, solverProvider sql.NullInt64
 		var v struct {
-			id                                                         sql.NullInt64
-			origin, names, serial, fingerprint, issuer, keyType, chain sql.NullString
-			notBefore, notAfter, created                               sql.NullInt64
+			id                                                                      sql.NullInt64
+			origin, names, serial, fingerprint, issuer, keyType, chain, explanation sql.NullString
+			notBefore, notAfter, created, source, start, end, at, check             sql.NullInt64
 		}
 		var is issuanceRow
 		dest := []any{&c.ID, &domains, &c.Source, &sourceProvider, &solverProvider, &c.KeyType, &c.RenewBeforeDays, &created,
-			&v.id, &v.origin, &v.names, &v.serial, &v.fingerprint, &v.issuer, &v.keyType, &v.notBefore, &v.notAfter, &v.chain, &v.created}
+			&v.id, &v.origin, &v.names, &v.serial, &v.fingerprint, &v.issuer, &v.keyType, &v.notBefore, &v.notAfter, &v.chain, &v.created,
+			&v.source, &v.start, &v.end, &v.at, &v.explanation, &v.check}
 		if err := rows.Scan(append(dest, is.dest()...)...); err != nil {
 			return nil, err
 		}
@@ -415,7 +432,12 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 				ID: v.id.Int64, Origin: v.origin.String, Serial: v.serial.String, Fingerprint: v.fingerprint.String,
 				Issuer: v.issuer.String, KeyType: v.keyType.String, Chain: v.chain.String,
 				NotBefore: time.UnixMilli(v.notBefore.Int64).UTC(), NotAfter: time.UnixMilli(v.notAfter.Int64).UTC(),
-				CreatedAt: time.UnixMilli(v.created.Int64).UTC(),
+				CreatedAt: time.UnixMilli(v.created.Int64).UTC(), SourceProvider: v.source.Int64,
+				RenewalCheck: time.UnixMilli(v.check.Int64).UTC(),
+			}
+			if v.start.Valid && v.end.Valid && v.at.Valid {
+				c.Current.Renewal = &RenewalWindow{Start: time.UnixMilli(v.start.Int64).UTC(), End: time.UnixMilli(v.end.Int64).UTC(),
+					At: time.UnixMilli(v.at.Int64).UTC(), Explanation: v.explanation.String}
 			}
 			if err := json.Unmarshal([]byte(v.names.String), &c.Current.Names); err != nil {
 				return nil, err

@@ -346,6 +346,12 @@ async function confirmDelete() {
             <dd class="m-0 mt-0.5 font-semibold tabular-nums">
               <time v-if="issued && cert.renewAt" :datetime="cert.renewAt">{{ intl.dateTime(cert.renewAt) }}</time>
               <time v-else :datetime="new Date(reminderAt).toISOString()">{{ intl.date(reminderAt) }}</time>
+              <span v-if="issued && cert.renewalWindow" class="mt-0.5 block text-caption font-normal text-ink-muted [overflow-wrap:anywhere]">
+                {{ t('certs.renewal.suggested', { start: intl.date(cert.renewalWindow.start), end: intl.date(cert.renewalWindow.end) }) }}
+                <a v-if="cert.renewalWindow.explanationUrl" :href="cert.renewalWindow.explanationUrl" target="_blank" rel="noopener noreferrer">{{
+                  t('certs.renewal.why')
+                }}</a>
+              </span>
             </dd>
           </div>
         </dl>

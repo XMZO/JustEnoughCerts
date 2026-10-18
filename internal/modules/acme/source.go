@@ -7,12 +7,14 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	legoacme "github.com/go-acme/lego/v5/acme"
+	"github.com/go-acme/lego/v5/acme/api"
 	"github.com/go-acme/lego/v5/certificate"
 	"github.com/go-acme/lego/v5/challenge/dns01"
 	"github.com/go-acme/lego/v5/challenge/http01"
@@ -34,8 +36,9 @@ type source struct {
 }
 
 var (
-	_ contracts.Source = (*source)(nil)
-	_ contracts.Tester = (*source)(nil)
+	_ contracts.Source         = (*source)(nil)
+	_ contracts.Tester         = (*source)(nil)
+	_ contracts.RenewalAdvisor = (*source)(nil)
 )
 
 func (m *Module) factory(_ context.Context, in providers.Instance) (any, error) {
@@ -71,7 +74,20 @@ func (s *source) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509
 		return nil, err
 	}
 	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.AcmeLogOrder, Params: map[string]any{"domains": strings.Join(req.Domains, ", ")}})
-	res, err := client.Certificate.Obtain(ctx, certificate.ObtainRequest{Domains: req.Domains, PrivateKey: req.Key, Bundle: true})
+	order := certificate.ObtainRequest{Domains: req.Domains, PrivateKey: req.Key, Bundle: true}
+	if req.Replaces != nil {
+		// The order renews the current version (RFC 9773), which lego says
+		// to a CA with ARI only.
+		order.ReplacesCertID, _ = api.MakeARICertID(req.Replaces)
+	}
+	res, err := client.Certificate.Obtain(ctx, order)
+	if err != nil && order.ReplacesCertID != "" && refusedReplaces(err) {
+		// The CA does not take the order as the renewal: the version came
+		// from another account, say. Nothing was validated yet.
+		log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.AcmeLogReplacesRefused, Detail: err.Error()})
+		order.ReplacesCertID = ""
+		res, err = client.Certificate.Obtain(ctx, order)
+	}
 	if err != nil {
 		if isAccountGone(err) {
 			// Register again next time: the CA forgot the account.
@@ -87,6 +103,42 @@ func (s *source) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509
 	}
 	log(contracts.LogLine{Level: contracts.OK, Step: contracts.StepDownload, Key: i18n.AcmeLogIssued})
 	return chain, nil
+}
+
+// refusedReplaces tells whether err is the CA refusing a new order for its
+// replaces field, as Let's Encrypt does for a certificate of another
+// account or of another CA, rather than a failure of the validation.
+// lego itself orders again when the certificate was replaced already.
+func refusedReplaces(err error) bool {
+	var pd *legoacme.ProblemDetails
+	if !errors.As(err, &pd) || pd.Method != http.MethodPost || pd.Type == legoacme.RateLimitedErrorType || pd.Type == legoacme.ServerInternalErrorType {
+		return false
+	}
+	// As Boulder words it: "request included `replaces` field, but no
+	// current certificate with serial ... exists", "while parsing ARI
+	// CertID an error occurred".
+	detail := strings.ToLower(pd.Detail)
+	return strings.Contains(detail, "replace") || strings.Contains(detail, "certid")
+}
+
+// RenewalInfo asks the CA what it suggests about renewing leaf, which
+// this account issued (RFC 9773). A CA without ARI, or one that does not
+// know leaf, makes no suggestions.
+func (s *source) RenewalInfo(ctx context.Context, leaf *x509.Certificate) (contracts.RenewalInfo, error) {
+	client, _, err := s.connect(ctx, func(contracts.LogLine) {})
+	if err != nil {
+		return contracts.RenewalInfo{}, err
+	}
+	info, err := client.Certificate.GetRenewalInfo(ctx, leaf)
+	var pd *legoacme.ProblemDetails
+	switch {
+	case errors.Is(err, api.ErrNoARI), errors.As(err, &pd) && pd.HTTPStatus == http.StatusNotFound:
+		return contracts.RenewalInfo{}, contracts.ErrNoRenewalInfo
+	case err != nil:
+		return contracts.RenewalInfo{}, err
+	}
+	return contracts.RenewalInfo{Start: info.SuggestedWindow.Start, End: info.SuggestedWindow.End,
+		ExplanationURL: info.ExplanationURL, RetryAfter: info.RetryAfter}, nil
 }
 
 // Test reaches the CA and registers the account if it is new, as the

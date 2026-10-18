@@ -68,6 +68,7 @@
       "register": "正在向 {directory} 注册账号",
       "remove_file": "正在删除 {domain} 的验证文件",
       "remove_file_failed": "没能删除 {domain} 的验证文件，可以到网站上手动删除",
+      "replaces_refused": "CA 不接受把这个订单当作当前版本的续期：改为不带这一项重新下单",
       "wait": "等待验证记录在 DNS 里生效，最多 {seconds, plural, other {# 秒}}"
     },
     "module": {
@@ -505,6 +506,10 @@
       "first": "首次签发",
       "manual": "手动签发",
       "renewal": "自动续期"
+    },
+    "renewal": {
+      "suggested": "CA 建议 {start} 至 {end}",
+      "why": "原因"
     },
     "runs": {
       "action": {

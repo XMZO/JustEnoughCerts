@@ -720,6 +720,8 @@ export interface components {
              * @description How many days before the end the certificate is renewed, or a reminder sent
              */
             renewBeforeDays: number;
+            /** @description The window the CA suggests renewing the current version in (ACME Renewal Information), once it answered */
+            renewalWindow?: components["schemas"]["RenewalBody"];
             /**
              * Format: int64
              * @description The solver provider instance that proves control of the domains
@@ -1104,6 +1106,14 @@ export interface components {
             /** @description Where JEC looks for plugins when it starts */
             dir: string;
             plugins: components["schemas"]["PluginBody"][];
+        };
+        RenewalBody: {
+            /** Format: date-time */
+            end: string;
+            /** @description A page of the CA that says why, as before a revocation */
+            explanationUrl?: string;
+            /** Format: date-time */
+            start: string;
         };
         RunBody: {
             /**

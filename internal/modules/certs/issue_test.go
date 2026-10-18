@@ -33,6 +33,10 @@ type fakes struct {
 	// removing the previous ones.
 	deploy   func(ctx context.Context, req contracts.DeployRequest) (contracts.DeployResult, error)
 	deployed []contracts.DeployRequest
+	// renewal is what the fake CA suggests about renewing, nothing when nil;
+	// asked counts the questions.
+	renewal func(leaf *x509.Certificate) (contracts.RenewalInfo, error)
+	asked   int
 }
 
 func (f *fixture) addFakes() {
@@ -94,6 +98,16 @@ func (s *fakeSource) Issue(ctx context.Context, req contracts.IssueRequest) ([]*
 }
 
 func (s *fakeSource) Close() error { return s.f.closed() }
+
+func (s *fakeSource) RenewalInfo(_ context.Context, leaf *x509.Certificate) (contracts.RenewalInfo, error) {
+	s.f.fake.mu.Lock()
+	defer s.f.fake.mu.Unlock()
+	s.f.fake.asked++
+	if s.f.fake.renewal == nil {
+		return contracts.RenewalInfo{}, contracts.ErrNoRenewalInfo
+	}
+	return s.f.fake.renewal(leaf)
+}
 
 type fakeKeySource struct{ f *fixture }
 

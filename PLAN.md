@@ -458,7 +458,7 @@ DNS 验证分成两种能力，实现方式不同：
 **ACME 来源**（模块 `acme`，来源类）：
 
 - ACME 账号是一个 Provider 实例：CA 目录地址（内置 Let's Encrypt 和它的测试环境、ZeroSSL、Google Trust Services 等 lego 已知的 CA，也可以填任意地址）、联系邮箱、EAB（Key ID 和 HMAC，HMAC 只用一次，注册后不再保存）。账号私钥加密保存。
-- 签发用 lego 的 `Obtain`：私钥由证书模块生成并加密保存，每次续期都换新私钥；验证由证书选定的验证实例完成，DNS 服务商走 DNS-01，网站目录走 HTTP-01（文件在 `/.well-known/acme-challenge/` 下）。CA 支持 ARI（RFC 9773）时，按 CA 给的时间续期（待做）。
+- 签发用 lego 的 `Obtain`：私钥由证书模块生成并加密保存，每次续期都换新私钥；验证由证书选定的验证实例完成，DNS 服务商走 DNS-01，网站目录走 HTTP-01（文件在 `/.well-known/acme-challenge/` 下）。CA 支持 ARI（RFC 9773）时按 CA 的建议续期：证书模块的 `certs.renewal_info` 任务（每小时看一次）向签发当前版本的来源（`contracts.RenewalAdvisor`）询问 CA 建议的续期窗口，在窗口里随机选一个时间（同一个窗口不重选）；间隔按 CA 的 Retry-After，限在 1 小时到 1 天，没说就 6 小时；CA 不支持 ARI 或不认识这张证书时一周后再问，出错一小时后再问。续期从“自己的计划”和“CA 建议的时间”中较早的那个开始：CA 要吊销证书而把窗口提前时立即续期，建议得晚也不推迟。证书详情的续期时间下面显示 CA 建议的区间，CA 给了说明页面（只认 http、https）时附“原因”链接。续期的订单带 `replaces`，只在当前版本就是这个来源签发的时候；CA 不接受（比如证书来自别的账号）时去掉它重新下单，这时还没验证任何域名；已经被替换过的情况 lego 自己处理。为此版本记下签发它的来源（迁移时，以前签发的版本按证书现在的来源推断）。CI 的 Pebble 测试覆盖了询问窗口、带 `replaces` 续期、`replaces` 被拒后重新下单。
 - 出错时翻译成界面能显示的原因，并决定要不要重试：限流按 CA 的 `Retry-After` 重试；缺少 EAB、CA 拒绝这些域名、要求用户先处理，不再自动重试；验证失败、CAA 不允许、CA 内部错误照常重试。CA 说账号不存在时，下次重新注册。
 - 等待验证记录生效时，JEC 停止就立即结束等待（lego 自己的等待不看取消信号）；某个域名第一次没查到记录、清理验证记录失败（lego 只写日志），都会记进签发日志。
 - lego 会把传给它的 `http.Client` 改成只允许 HTTPS，所以给它单独的 client；本地测试用 Pebble，同样要走 HTTPS。

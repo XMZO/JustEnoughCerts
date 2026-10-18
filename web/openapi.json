@@ -227,6 +227,10 @@
             "format": "int64",
             "type": "integer"
           },
+          "renewalWindow": {
+            "$ref": "#/components/schemas/RenewalBody",
+            "description": "The window the CA suggests renewing the current version in (ACME Renewal Information), once it answered"
+          },
           "solverProvider": {
             "description": "The solver provider instance that proves control of the domains",
             "format": "int64",
@@ -1260,6 +1264,28 @@
         "required": [
           "dir",
           "plugins"
+        ],
+        "type": "object"
+      },
+      "RenewalBody": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "explanationUrl": {
+            "description": "A page of the CA that says why, as before a revocation",
+            "type": "string"
+          },
+          "start": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
         ],
         "type": "object"
       },

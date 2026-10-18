@@ -26,6 +26,7 @@ type CertificateBody struct {
 	State           string           `json:"state" enum:"ok,expiring,expired,issuing,deploying,failed,deploy_failed" doc:"issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end) or expired"`
 	Current         *VersionBody     `json:"current,omitempty" doc:"The version in use"`
 	RenewAt         *time.Time       `json:"renewAt,omitempty" doc:"When the renewal of the current version starts, or started: for a certificate with a source"`
+	RenewalWindow   *RenewalBody     `json:"renewalWindow,omitempty" doc:"The window the CA suggests renewing the current version in (ACME Renewal Information), once it answered"`
 	Issuance        *IssuanceBody    `json:"issuance,omitempty" doc:"The latest issuance"`
 	Targets         []int64          `json:"targets" doc:"The target provider instances each version is deployed to, in order"`
 	Deployments     []DeploymentBody `json:"deployments" doc:"The latest deployment to each target that had one, in the order of targets"`
@@ -46,6 +47,13 @@ type VersionBody struct {
 	CreatedAt   time.Time `json:"createdAt"`
 }
 
+// RenewalBody is the window a CA suggests renewing a version in.
+type RenewalBody struct {
+	Start          time.Time `json:"start"`
+	End            time.Time `json:"end"`
+	ExplanationURL string    `json:"explanationUrl,omitempty" doc:"A page of the CA that says why, as before a revocation"`
+}
+
 // ChainEntry is a certificate of a chain.
 type ChainEntry struct {
 	Subject  string    `json:"subject"`
@@ -62,8 +70,11 @@ func certificateBody(c *Certificate, now time.Time, sch schedule) CertificateBod
 		v := versionBody(c.Current)
 		b.Current = &v
 		if c.Source == sourceProvider {
-			at := sch.renewAt(c.Current.NotAfter, c.RenewBeforeDays)
+			at := sch.due(c)
 			b.RenewAt = &at
+		}
+		if r := c.Current.Renewal; r != nil && c.Source == sourceProvider {
+			b.RenewalWindow = &RenewalBody{Start: r.Start, End: r.End, ExplanationURL: r.Explanation}
 		}
 	}
 	if c.Issuance != nil {

@@ -254,6 +254,7 @@ type claimed struct {
 	attempt           int
 	started           time.Time // the attempt
 	resumed           bool      // after a wait
+	source            int64     // the source provider asked, once it is
 }
 
 // runIssuances is the job certs.issue: it runs the due issuances (see
@@ -377,6 +378,7 @@ func (s *service) obtain(ctx context.Context, cl *claimed, log func(contracts.Lo
 		return nil, err
 	}
 	defer closeProvider(provider, s)
+	cl.source = c.SourceProvider
 	if ks, ok := provider.(contracts.KeySource); ok {
 		return s.collect(ctx, c, ks, log)
 	}
@@ -384,7 +386,7 @@ func (s *service) obtain(ctx context.Context, cl *claimed, log func(contracts.Lo
 	if !ok {
 		return nil, retry.Permanent(fmt.Errorf("provider %d is no source", c.SourceProvider))
 	}
-	req := contracts.IssueRequest{Domains: c.Domains, Log: log}
+	req := contracts.IssueRequest{Domains: c.Domains, Log: log, Replaces: replaced(c)}
 	if c.SolverProvider != 0 {
 		solver, err := openProvider[io.Closer](ctx, s.providers, c.SolverProvider)
 		if err != nil {
@@ -542,7 +544,7 @@ func (s *service) complete(ctx context.Context, c *claimed, b *cryptox.Bundle, l
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	version, err := s.addVersion(ctx, tx, c.certificateID, b, originIssued)
+	version, err := s.addVersion(ctx, tx, c.certificateID, b, originIssued, c.source)
 	if err != nil {
 		return err
 	}
@@ -670,7 +672,7 @@ func (s *service) usesProvider(ctx context.Context, id int64) (bool, error) {
 }
 
 // renew is the job certs.renew. For each certificate with a source whose
-// current version is due for renewal (schedule.renewAt), or that has no
+// current version is due for renewal (schedule.due), or that has no
 // version, it starts an issuance, unless one is under way or the last one
 // failed for good less than failedPause ago.
 func (s *service) renew(ctx context.Context) error {
@@ -688,7 +690,7 @@ func (s *service) renew(ctx context.Context) error {
 		if c.Source != sourceProvider {
 			continue
 		}
-		if c.Current != nil && now.Before(sch.renewAt(c.Current.NotAfter, c.RenewBeforeDays)) {
+		if c.Current != nil && now.Before(sch.due(c)) {
 			continue
 		}
 		if is := c.Issuance; is != nil {
