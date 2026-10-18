@@ -144,6 +144,13 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.locator('button[form=add-form]').click()
   await expect(page.locator('#certificate-error')).toBeVisible()
   expect.soft(await problems(page), 'add a certificate with an error').toEqual([])
+  // As a PKCS #12 file, which this is not.
+  await page.getByRole('button', { name: label('certs.add.format_pfx') }).click()
+  await page.locator('#pfx').setInputFiles({ name: 'cert.pfx', mimeType: 'application/x-pkcs12', buffer: Buffer.from('not a PFX file') })
+  await page.locator('button[form=add-form]').click()
+  await expect(page.locator('#pfx-error')).toBeVisible()
+  expect.soft(await problems(page), 'add a certificate from a PFX file').toEqual([])
+  await page.getByRole('button', { name: label('certs.add.format_pem') }).click()
 
   // A certificate in each state, the first two with long and several names.
   for (const [names, from, to] of [
@@ -409,6 +416,27 @@ test('every page is translated and fits', async ({ page }, info) => {
   await days.fill('30')
   await days.blur()
   await expect(days).not.toHaveAttribute('aria-invalid')
+  // Changing the password: two new passwords that differ stop it before the
+  // server, where a wrong current password would count toward the lockout.
+  await page.getByRole('button', { name: label('kernel.settings.change_password') }).click()
+  await expect(dialog).toBeVisible()
+  await dialog.locator('#current-password').fill('correct horse')
+  await dialog.locator('#new-password').fill('a new password')
+  await dialog.locator('#password-again').fill('another password')
+  await dialog.locator('button[type=submit]').click()
+  await expect(dialog.getByText(label('kernel.account.password_mismatch'))).toBeVisible()
+  expect.soft(await problems(page), 'change the password').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  // A backup, downloaded once the password is confirmed.
+  await page.getByRole('button', { name: label('kernel.settings.backup_download') }).click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'download a backup').toEqual([])
+  await dialog.locator('#backup-password').fill('correct horse')
+  const download = page.waitForEvent('download')
+  await dialog.locator('button[type=submit]').click()
+  expect((await download).suggestedFilename()).toMatch(/^jec-backup-\d{8}-\d{6}\.db$/)
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
 
   await page.goto('./more')
   expect.soft(await problems(page), 'more').toEqual([])

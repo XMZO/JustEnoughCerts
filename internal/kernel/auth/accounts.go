@@ -60,8 +60,9 @@ func SetPassword(ctx context.Context, db *sql.DB, username, password string) err
 	if err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, "UPDATE kernel_users SET password_hash = ?, updated_at = ? WHERE id = ?",
-		hash, timestamp(time.Now()), id); err != nil {
+	now := timestamp(time.Now())
+	if _, err := tx.ExecContext(ctx, "UPDATE kernel_users SET password_hash = ?, password_changed_at = ?, updated_at = ? WHERE id = ?",
+		hash, now, now, id); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM kernel_sessions WHERE user_id = ?", id); err != nil {

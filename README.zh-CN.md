@@ -13,7 +13,7 @@ Just Enough Certs（JEC）是自托管的 SSL/TLS 证书管理面板：从你购
 
 main 分支上已经可用：
 
-- 从任意 ACME CA（支持 External Account Binding）获取证书，或者手动上传。
+- 从任意 ACME CA（支持 External Account Binding）获取证书，或者手动上传（PEM，或者 PFX/P12 文件）。
 - 由 JEC 扮演 Namecheap SSL Manager 的客户端，自动取得在 Namecheap 买的付费证书（如 PositiveSSL）。实验性功能，默认关闭；还没有用真实账号试过。
 - 域名验证：在 [lego](https://github.com/go-acme/lego) 支持的 221 家 DNS 服务商添加记录，或者走 HTTP：把文件放进网站目录（本机或经 SSH），或者让网站的反向代理或 CDN 把 `/.well-known/` 转给 JEC，由 JEC 自己应答；网站在阿里云 ESA 上时，还可以由 JEC 部署的边缘函数从边缘 KV 直接应答，不经过源站。
 - 每张新证书自动部署到阿里云 ESA（并删掉被替换的旧证书）、本地目录、SSH 服务器（写完可以执行一条命令，比如重载 nginx）和 Webhook。
@@ -39,11 +39,11 @@ docker logs jec 2>&1 | grep setup_token
 
 打开 `http://<主机>:8080`，填入日志里的初始化令牌，创建账号。在账号创建之前，服务每次启动都会在日志里打印一个新令牌，所以只有能看到日志的人才能接管这台服务。
 
-容器以 65532:65532 用户运行，数据库等所有数据都在 `./data`，备份这个目录就够了。想以已有目录的属主运行，在 `docker-compose.yml` 里设置 `user:`。
+容器以 65532:65532 用户运行，数据库等所有数据都在 `./data`，备份这个目录就够了，也可以在设置页下载数据库的备份。恢复时停止 JEC，把备份文件放进 `./data`、改名为 `jec.db`。想以已有目录的属主运行，在 `docker-compose.yml` 里设置 `user:`。
 
 私钥和凭据在数据库里是加密存放的，密钥在 `./data/secret.key`，第一次启动时自动生成。没有这个文件，加密的内容就再也读不出来，所以要和数据库一起备份；也可以把密钥放在别处，通过 `JEC_SECRET_KEY` 传入。
 
-忘了密码可以重新设置，同时会让这个账号在所有地方退出登录：
+改密码在设置页。忘了密码可以在服务器上重新设置，同时会让这个账号在所有地方退出登录：
 
 ```sh
 docker exec -it jec /jec reset-password

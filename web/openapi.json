@@ -8,6 +8,11 @@
             "description": "BCP 47 tag of the language chosen for the account",
             "type": "string"
           },
+          "passwordChangedAt": {
+            "description": "When the password last changed",
+            "format": "date-time",
+            "type": "string"
+          },
           "username": {
             "type": "string"
           }
@@ -21,9 +26,19 @@
         "additionalProperties": false,
         "properties": {
           "certificate": {
-            "description": "PEM certificates: the leaf and its intermediates, in any order. The private key may come along.",
+            "description": "PEM certificates: the leaf and its intermediates, in any order. The private key may come along. Left out with pfx.",
             "maxLength": 262144,
-            "minLength": 1,
+            "type": "string"
+          },
+          "pfx": {
+            "contentEncoding": "base64",
+            "description": "A PKCS #12 file (.pfx, .p12) with the certificate, its chain and its private key, in place of certificate and privateKey",
+            "maxLength": 131072,
+            "type": "string"
+          },
+          "pfxPassword": {
+            "description": "The password of pfx, if it has one",
+            "maxLength": 1024,
             "type": "string"
           },
           "privateKey": {
@@ -48,8 +63,19 @@
             "type": "array"
           }
         },
+        "type": "object"
+      },
+      "BackupInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "description": "The password of the signed-in account",
+            "maxLength": 1024,
+            "type": "string"
+          }
+        },
         "required": [
-          "certificate"
+          "password"
         ],
         "type": "object"
       },
@@ -991,23 +1017,23 @@
         ],
         "type": "object"
       },
-      "PEMFields": {
+      "PasswordInputBody": {
         "additionalProperties": false,
         "properties": {
-          "certificate": {
-            "description": "PEM certificates: the leaf and its intermediates, in any order. The private key may come along.",
-            "maxLength": 262144,
-            "minLength": 1,
+          "newPassword": {
+            "maxLength": 1024,
+            "minLength": 8,
             "type": "string"
           },
-          "privateKey": {
-            "description": "The PEM private key, unless it is in certificate",
-            "maxLength": 65536,
+          "password": {
+            "description": "The current password",
+            "maxLength": 1024,
             "type": "string"
           }
         },
         "required": [
-          "certificate"
+          "password",
+          "newPassword"
         ],
         "type": "object"
       },
@@ -1125,6 +1151,37 @@
         "required": [
           "runs",
           "more"
+        ],
+        "type": "object"
+      },
+      "RuntimeBody": {
+        "additionalProperties": false,
+        "properties": {
+          "baseURL": {
+            "description": "The URL people open, from JEC_BASE_URL; links in notifications need it",
+            "type": "string"
+          },
+          "dataDir": {
+            "description": "Where the database and the key file are",
+            "type": "string"
+          },
+          "listen": {
+            "description": "The address the HTTP server binds to, from JEC_LISTEN",
+            "type": "string"
+          },
+          "secretKey": {
+            "description": "Where the master key comes from: JEC_SECRET_KEY, or the key file in dataDir",
+            "enum": [
+              "env",
+              "file"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "dataDir",
+          "listen",
+          "secretKey"
         ],
         "type": "object"
       },
@@ -1530,6 +1587,33 @@
         },
         "type": "object"
       },
+      "UploadFields": {
+        "additionalProperties": false,
+        "properties": {
+          "certificate": {
+            "description": "PEM certificates: the leaf and its intermediates, in any order. The private key may come along. Left out with pfx.",
+            "maxLength": 262144,
+            "type": "string"
+          },
+          "pfx": {
+            "contentEncoding": "base64",
+            "description": "A PKCS #12 file (.pfx, .p12) with the certificate, its chain and its private key, in place of certificate and privateKey",
+            "maxLength": 131072,
+            "type": "string"
+          },
+          "pfxPassword": {
+            "description": "The password of pfx, if it has one",
+            "maxLength": 1024,
+            "type": "string"
+          },
+          "privateKey": {
+            "description": "The PEM private key, unless it is in certificate",
+            "maxLength": 65536,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "VersionBody": {
         "additionalProperties": false,
         "properties": {
@@ -1624,6 +1708,40 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/account/password": {
+      "put": {
+        "operationId": "change-password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Change the password, which signs the account out everywhere else",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/certs/certificates": {
       "get": {
         "operationId": "certs-list",
@@ -2031,7 +2149,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PEMFields"
+                "$ref": "#/components/schemas/UploadFields"
               }
             }
           },
@@ -3000,6 +3118,98 @@
         "summary": "Create the first account with the setup token, and sign in",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/system": {
+      "get": {
+        "operationId": "get-system",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Tell where JEC keeps its data and how it is reached",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/system/backup": {
+      "post": {
+        "description": "The copy holds the certificates, their private keys and the credentials, sealed with the master key, which is not in it. To restore it, stop JEC and put the file in the data directory as jec.db.",
+        "operationId": "backup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackupInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.sqlite3": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "The SQLite database",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Download a copy of the database, once the password is confirmed",
+        "tags": [
+          "system"
         ]
       }
     }

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2/humatest"
+	"software.sslmate.com/src/go-pkcs12"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
@@ -231,7 +232,7 @@ func TestAddErrors(t *testing.T) {
 		}
 	}
 	e := f.apiError(f.api.Post("/certificates", map[string]any{"privateKey": u.key}), http.StatusUnprocessableEntity)
-	if e.Code != "kernel.error.invalid_request" {
+	if e.Code != "certs.error.no_certificate" || len(e.Fields) != 1 || e.Fields[0].Location != "body.certificate" {
 		t.Errorf("without a certificate: %+v", e)
 	}
 
@@ -425,5 +426,58 @@ func TestDownload(t *testing.T) {
 	evs := f.events()
 	if last := evs[len(evs)-1]; last.typ != contracts.CertificateKeyDownloaded || last.data.VersionID != c.Current.ID {
 		t.Errorf("events %+v", evs)
+	}
+}
+
+// pfx is u as a PKCS #12 file, sealed with password.
+func (f *fixture) pfx(u upload, password string) []byte {
+	f.t.Helper()
+	b, err := cryptox.ParseBundle([]byte(u.cert), []byte(u.key))
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	data, err := pkcs12.Modern.Encode(b.Key, b.Leaf, b.Chain, password)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return data
+}
+
+func TestAddPFX(t *testing.T) {
+	f := newFixture(t)
+	u := f.leaf(90, "example.com")
+	data := f.pfx(u, "correct horse")
+	for name, tt := range map[string]struct {
+		body  map[string]any
+		code  string
+		field string
+	}{
+		"wrong password": {map[string]any{"pfx": data, "pfxPassword": "wrong horse"}, "certs.error.pfx_password", "body.pfxPassword"},
+		"not PFX":        {map[string]any{"pfx": []byte("hello")}, "certs.error.bad_pfx", "body.pfx"},
+		"wrong key": {
+			map[string]any{"pfx": func() []byte {
+				b, _ := cryptox.ParseBundle([]byte(u.cert), []byte(u.key))
+				d, _ := pkcs12.Modern.Encode(cryptoxtest.NewKey(t), b.Leaf, b.Chain, "")
+				return d
+			}()},
+			"certs.error.key_mismatch", "body.pfx",
+		},
+	} {
+		e := f.apiError(f.api.Post("/certificates", tt.body), http.StatusUnprocessableEntity)
+		if e.Code != tt.code || len(e.Fields) != 1 || e.Fields[0].Location != tt.field {
+			t.Errorf("%s: %+v", name, e)
+		}
+	}
+
+	var c CertificateBody
+	f.call(f.api.Post("/certificates", map[string]any{"pfx": data, "pfxPassword": "correct horse"}), http.StatusCreated, &c)
+	if c.Current == nil || c.Domains[0] != "example.com" {
+		t.Fatalf("added %+v", c)
+	}
+	// A new version, as a file too.
+	next := f.leaf(120, "example.com")
+	f.call(f.api.Post("/certificates/"+strconv.FormatInt(c.ID, 10)+"/versions", map[string]any{"pfx": f.pfx(next, "")}), http.StatusCreated, &c)
+	if !c.Current.NotAfter.After(f.now.Add(100 * day)) {
+		t.Errorf("the new version ends %s", c.Current.NotAfter)
 	}
 }

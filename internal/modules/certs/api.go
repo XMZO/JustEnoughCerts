@@ -107,15 +107,17 @@ type detailOutput struct {
 	}
 }
 
-// PEMFields are the PEM texts of an upload.
-type PEMFields struct {
-	Certificate string `json:"certificate" minLength:"1" maxLength:"262144" doc:"PEM certificates: the leaf and its intermediates, in any order. The private key may come along."`
+// UploadFields are what an upload carries: PEM texts, or a PKCS #12 file.
+type UploadFields struct {
+	Certificate string `json:"certificate,omitempty" maxLength:"262144" doc:"PEM certificates: the leaf and its intermediates, in any order. The private key may come along. Left out with pfx."`
 	PrivateKey  string `json:"privateKey,omitempty" maxLength:"65536" doc:"The PEM private key, unless it is in certificate"`
+	PFX         []byte `json:"pfx,omitempty" maxLength:"131072" doc:"A PKCS #12 file (.pfx, .p12) with the certificate, its chain and its private key, in place of certificate and privateKey"`
+	PFXPassword string `json:"pfxPassword,omitempty" maxLength:"1024" doc:"The password of pfx, if it has one"`
 }
 
 type addInput struct {
 	Body struct {
-		PEMFields
+		UploadFields
 		RenewBeforeDays int     `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Days before the end to send a reminder; that of the settings if left out"`
 		Targets         []int64 `json:"targets,omitempty" maxItems:"50" doc:"The target provider instances to deploy each version to, in order"`
 	}
@@ -123,7 +125,7 @@ type addInput struct {
 
 type uploadInput struct {
 	ID   int64 `path:"id"`
-	Body PEMFields
+	Body UploadFields
 }
 
 type downloadInput struct {
@@ -180,9 +182,9 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 		OperationID: "certs-add", Method: http.MethodPost, Path: "/certificates", DefaultStatus: http.StatusCreated,
 		Summary: "Add a certificate by uploading it with its private key",
 	}, func(ctx context.Context, in *addInput) (*certificateOutput, error) {
-		b, err := cryptox.ParseBundle([]byte(in.Body.Certificate), []byte(in.Body.PrivateKey))
+		b, err := parseUpload(in.Body.UploadFields)
 		if err != nil {
-			return nil, bundleError(err)
+			return nil, err
 		}
 		targets, err := s.validTargets(ctx, in.Body.Targets)
 		if err != nil {
@@ -252,9 +254,9 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 		OperationID: "certs-upload", Method: http.MethodPost, Path: "/certificates/{id}/versions", DefaultStatus: http.StatusCreated,
 		Summary: "Upload a new version of a certificate",
 	}, func(ctx context.Context, in *uploadInput) (*certificateOutput, error) {
-		b, err := cryptox.ParseBundle([]byte(in.Body.Certificate), []byte(in.Body.PrivateKey))
+		b, err := parseUpload(in.Body)
 		if err != nil {
-			return nil, bundleError(err)
+			return nil, err
 		}
 		if err := s.upload(ctx, in.ID, b); err != nil {
 			return nil, serviceError(err)
@@ -315,15 +317,34 @@ func (s *service) body(ctx context.Context, c *Certificate) (CertificateBody, er
 	return certificateBody(c, s.now(), sch), nil
 }
 
+// parseUpload reads the certificate and key of an upload: a PKCS #12 file
+// when there is one, or else the PEM texts.
+func parseUpload(f UploadFields) (*cryptox.Bundle, error) {
+	if len(f.PFX) == 0 {
+		b, err := cryptox.ParseBundle([]byte(f.Certificate), []byte(f.PrivateKey))
+		if err != nil {
+			return nil, bundleError(err, false)
+		}
+		return b, nil
+	}
+	b, err := cryptox.ParsePFX(f.PFX, f.PFXPassword)
+	if err != nil {
+		return nil, bundleError(err, true)
+	}
+	return b, nil
+}
+
 // bundleError turns what is wrong with an upload into a response that
-// points at the field to fix.
-func bundleError(err error) error {
+// points at the field to fix: those of the file, for a PKCS #12 one.
+func bundleError(err error, pfx bool) error {
 	field, code := "body.certificate", i18n.CertsErrorBadCertificate
 	for _, e := range []struct {
 		err   error
 		field string
 		code  i18n.Key
 	}{
+		{cryptox.ErrPFXPassword, "body.pfxPassword", i18n.CertsErrorPfxPassword},
+		{cryptox.ErrBadPFX, "body.pfx", i18n.CertsErrorBadPfx},
 		{cryptox.ErrNoCertificate, "body.certificate", i18n.CertsErrorNoCertificate},
 		{cryptox.ErrBadCertificate, "body.certificate", i18n.CertsErrorBadCertificate},
 		{cryptox.ErrKeyMismatch, "body.privateKey", i18n.CertsErrorKeyMismatch},
@@ -337,6 +358,9 @@ func bundleError(err error) error {
 			field, code = e.field, e.code
 			break
 		}
+	}
+	if pfx && field != "body.pfxPassword" {
+		field = "body.pfx"
 	}
 	return api.NewError(http.StatusUnprocessableEntity, code, nil).WithField(field, code)
 }

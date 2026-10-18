@@ -171,8 +171,9 @@ func timestamp(t time.Time) string { return t.UTC().Format(time.RFC3339) }
 
 // Account is what the API tells about the signed-in account.
 type Account struct {
-	Username string `json:"username"`
-	Locale   string `json:"locale,omitempty" doc:"BCP 47 tag of the language chosen for the account"`
+	Username          string     `json:"username"`
+	Locale            string     `json:"locale,omitempty" doc:"BCP 47 tag of the language chosen for the account"`
+	PasswordChangedAt *time.Time `json:"passwordChangedAt,omitempty" doc:"When the password last changed"`
 }
 
 type setupStatus struct {
@@ -211,6 +212,14 @@ type signOutOutput struct {
 	SetCookie http.Cookie `header:"Set-Cookie"`
 }
 
+// The limits of NewPassword are MinPasswordLength and MaxPasswordLength.
+type passwordInput struct {
+	Body struct {
+		Password    string `json:"password" maxLength:"1024" doc:"The current password"`
+		NewPassword string `json:"newPassword" minLength:"8" maxLength:"1024"`
+	}
+}
+
 // Register adds the account operations to a.
 func (s *Service) Register(a huma.API) {
 	tags := []string{"auth"}
@@ -234,6 +243,10 @@ func (s *Service) Register(a huma.API) {
 		OperationID: "sign-out", Method: http.MethodDelete, Path: "/session", Tags: tags,
 		Summary: "Sign out", DefaultStatus: http.StatusNoContent,
 	}, s.signOut)
+	huma.Register(a, huma.Operation{
+		OperationID: "change-password", Method: http.MethodPut, Path: "/account/password", Tags: tags,
+		Summary: "Change the password, which signs the account out everywhere else", DefaultStatus: http.StatusNoContent,
+	}, s.changePassword)
 }
 
 func (s *Service) getSetup(context.Context, *struct{}) (*setupStatus, error) {
@@ -291,8 +304,9 @@ func (s *Service) setup(ctx context.Context, in *setupInput) (*sessionOutput, er
 	}
 	now := timestamp(s.now())
 	res, err := tx.ExecContext(ctx,
-		"INSERT INTO kernel_users (username, password_hash, locale, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-		in.Body.Username, hash, locale, now, now)
+		`INSERT INTO kernel_users (username, password_hash, locale, created_at, updated_at, password_changed_at)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		in.Body.Username, hash, locale, now, now, now)
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +327,11 @@ func (s *Service) setup(ctx context.Context, in *setupInput) (*sessionOutput, er
 	s.mu.Unlock()
 	s.limit.reset(client)
 	s.log.Info("first account created", "username", in.Body.Username)
-	return &sessionOutput{SetCookie: s.cookie(token, expires), Body: Account{Username: in.Body.Username, Locale: locale.String}}, nil
+	account, err := s.account(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &sessionOutput{SetCookie: s.cookie(token, expires), Body: account}, nil
 }
 
 func (s *Service) signIn(ctx context.Context, in *signInInput) (*sessionOutput, error) {
@@ -323,9 +341,8 @@ func (s *Service) signIn(ctx context.Context, in *signInInput) (*sessionOutput, 
 	}
 	var id int64
 	var hash string
-	var locale sql.NullString
-	err := s.db.QueryRowContext(ctx, "SELECT id, password_hash, locale FROM kernel_users WHERE username = ?",
-		in.Body.Username).Scan(&id, &hash, &locale)
+	err := s.db.QueryRowContext(ctx, "SELECT id, password_hash FROM kernel_users WHERE username = ?",
+		in.Body.Username).Scan(&id, &hash)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		_, _ = checkPassword(dummyHash(), in.Body.Password) // take as long as a wrong password
@@ -350,12 +367,67 @@ func (s *Service) signIn(ctx context.Context, in *signInInput) (*sessionOutput, 
 	if err != nil {
 		return nil, err
 	}
-	return &sessionOutput{SetCookie: s.cookie(token, expires), Body: Account{Username: in.Body.Username, Locale: locale.String}}, nil
+	account, err := s.account(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &sessionOutput{SetCookie: s.cookie(token, expires), Body: account}, nil
 }
 
 func (s *Service) getSession(ctx context.Context, _ *struct{}) (*accountOutput, error) {
 	u, _ := UserFrom(ctx)
-	return &accountOutput{Body: Account{Username: u.Username, Locale: u.Locale}}, nil
+	account, err := s.account(ctx, u.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &accountOutput{Body: account}, nil
+}
+
+// account reads what the API tells about account id.
+func (s *Service) account(ctx context.Context, id int64) (Account, error) {
+	var a Account
+	var changed sql.NullString
+	if err := s.db.QueryRowContext(ctx, "SELECT username, coalesce(locale, ''), password_changed_at FROM kernel_users WHERE id = ?", id).
+		Scan(&a.Username, &a.Locale, &changed); err != nil {
+		return Account{}, err
+	}
+	if t, err := time.Parse(time.RFC3339, changed.String); err == nil {
+		a.PasswordChangedAt = &t
+	}
+	return a, nil
+}
+
+// changePassword gives the signed-in account a new password once the
+// current one is confirmed, and ends its other sessions: whoever else
+// knew the old password is out.
+func (s *Service) changePassword(ctx context.Context, in *passwordInput) (*struct{}, error) {
+	if err := s.ConfirmPassword(ctx, in.Body.Password); err != nil {
+		return nil, err
+	}
+	u, _ := UserFrom(ctx)
+	sess, _ := ctx.Value(sessionKey{}).(session)
+	hash, err := hashPassword(in.Body.NewPassword)
+	if err != nil {
+		return nil, err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	now := timestamp(s.now())
+	if _, err := tx.ExecContext(ctx, "UPDATE kernel_users SET password_hash = ?, password_changed_at = ?, updated_at = ? WHERE id = ?",
+		hash, now, now, u.ID); err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM kernel_sessions WHERE user_id = ? AND token_hash != ?", u.ID, sess.tokenHash); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	s.log.Info("password changed", "username", u.Username)
+	return nil, nil
 }
 
 func (s *Service) signOut(ctx context.Context, _ *struct{}) (*signOutOutput, error) {

@@ -158,7 +158,7 @@ func TestSetup(t *testing.T) {
 
 	// The token may come with stray spaces and capitals from a copy.
 	r := f.call(http.MethodPost, "/setup", "", f.setupBody("  "+strings.ToUpper(f.token)+" "))
-	if r.status != http.StatusCreated || r.body != "{\"username\":\"admin\",\"locale\":\"zh-CN\"}\n" {
+	if r.status != http.StatusCreated || r.body != "{\"username\":\"admin\",\"locale\":\"zh-CN\",\"passwordChangedAt\":\"2026-10-16T12:00:00Z\"}\n" {
 		t.Fatalf("setup = %d %s", r.status, r.body)
 	}
 	c := r.cookie
@@ -437,5 +437,45 @@ func TestConfirmPassword(t *testing.T) {
 	}
 	if r := f.call(http.MethodPost, "/session", "", `{"username": "admin", "password": "correct horse"}`); r.status != http.StatusTooManyRequests {
 		t.Errorf("sign in after the lockout started = %d %s", r.status, r.body)
+	}
+}
+
+func TestChangePassword(t *testing.T) {
+	f := signedUp(t)
+	signIn := func(password string) result {
+		return f.call(http.MethodPost, "/session", "", `{"username": "admin", "password": "`+password+`"}`)
+	}
+	here, elsewhere := signIn("correct horse").cookie.Value, signIn("correct horse").cookie.Value
+
+	r := f.call(http.MethodPut, "/account/password", here, `{"password": "wrong horse", "newPassword": "brand new password"}`)
+	if r.status != http.StatusUnprocessableEntity || code(t, r.body) != i18n.KernelErrorPasswordWrong || !strings.Contains(r.body, `"location":"body.password"`) {
+		t.Errorf("a wrong current password = %d %s", r.status, r.body)
+	}
+	r = f.call(http.MethodPut, "/account/password", here, `{"password": "correct horse", "newPassword": "short"}`)
+	if r.status != http.StatusUnprocessableEntity || !strings.Contains(r.body, "body.newPassword") {
+		t.Errorf("a short new password = %d %s", r.status, r.body)
+	}
+	if r := f.call(http.MethodPut, "/account/password", "", `{"password": "correct horse", "newPassword": "brand new password"}`); r.status != http.StatusUnauthorized {
+		t.Errorf("signed out = %d %s", r.status, r.body)
+	}
+
+	f.clock = f.clock.Add(time.Hour)
+	if r := f.call(http.MethodPut, "/account/password", here, `{"password": "correct horse", "newPassword": "brand new password"}`); r.status != http.StatusNoContent {
+		t.Fatalf("change = %d %s", r.status, r.body)
+	}
+	if r := f.call(http.MethodGet, "/whoami", here, ""); r.status != http.StatusOK {
+		t.Errorf("the session that changed it ended: %d", r.status)
+	}
+	if r := f.call(http.MethodGet, "/whoami", elsewhere, ""); r.status != http.StatusUnauthorized {
+		t.Errorf("another session survived: %d", r.status)
+	}
+	if r := signIn("correct horse"); r.status != http.StatusUnauthorized {
+		t.Errorf("the old password still works: %d", r.status)
+	}
+	if r := signIn("brand new password"); r.status != http.StatusOK {
+		t.Errorf("the new password fails: %d %s", r.status, r.body)
+	}
+	if r := f.call(http.MethodGet, "/session", here, ""); !strings.Contains(r.body, `"passwordChangedAt":"2026-10-16T13:00:00Z"`) {
+		t.Errorf("GET /session = %s", r.body)
 	}
 }

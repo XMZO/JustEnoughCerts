@@ -291,7 +291,7 @@ type Target interface {
 |---|---|---|---|
 | **通用：ACME 免费证书** | Let's Encrypt、ZeroSSL、Google Trust Services、SSL.com、Actalis | ACME（部分需要 EAB 凭据） | M1 |
 | **通用：ACME 商业证书** | Sectigo、DigiCert、GlobalSign、HARICA、TrustAsia（亚洲诚信）等提供 ACME 的 CA，以及经销商提供的 ACME（如 Namecheap，官方计划 2026 年 11–12 月上线） | 自定义 ACME 地址 + EAB，**任何支持 ACME 的 CA 都能接**，逐家验证后列入兼容表 | M1 |
-| **通用：手动上传 / 导入** | 任何 CA 的证书（PEM / PFX）；扫描 acme.sh、certbot 的目录 | 只读导入，避免和原工具冲突 | M1 |
+| **通用：手动上传 / 导入** | 任何 CA 的证书（PEM / PFX）；扫描 acme.sh、certbot 的目录 | 只读导入，避免和原工具冲突。PEM 和 PFX/P12 上传已实现（`cryptox.ParsePFX` 用 `go-pkcs12`，旧的 3DES/RC2 和 OpenSSL 3 的 AES 都能读）；扫描目录还没做 | M1 |
 | 厂商自动化工具（实验性模块） | **Namecheap SSL Manager**（Namecheap 给直客的服务器端自动化工具，后端 `externalautossl.service.spaceship.com`） | JEC 扮演它的客户端：一次性令牌注册，自己生成私钥和 CSR，HTTP 文件验证，取回每一张 200 天的证书。非公开接口，默认关闭，界面标注“可能随时失效”；见 5.6 | M2 |
 | 厂商专有 API（可选模块） | 阿里云数字证书管理服务、腾讯云 SSL 证书 | 云 API：申请免费证书、拉取已购证书 | M3 |
 | 厂商专有 API（可选模块） | ZeroSSL REST API、GoGetSSL、TheSSLStore、DigiCert CertCentral 等 | 各自的 API，按需求排期 | 以后 |
@@ -491,7 +491,7 @@ CDN 不能缓存这些路径；有跳转（如 HTTP 跳 HTTPS）时要确认 CA 
 - **来源 / 验证 / 部署 / 通知**：Provider 实例的配置，表单由 Schema 自动生成，带“测试连接”按钮。服务商列表支持搜索，按地区和类别分组。
 - **凭据**：集中管理，显示被哪些 Provider 引用；保存后不再明文显示。
 - **模块**：查看、启用、停用模块，显示模块之间的依赖关系。已实现（`/modules`，M2，因为默认关闭的实验模块要有地方打开）：按类别分组，每个模块一个开关，点了立即生效（`PUT /api/v1/modules/{id}`，必需的模块不能停用）；标出内置和实验模块；按状态筛选、搜索；启用了但依赖的模块没开时说明在等谁。所有模块的数据表在启动时都已建好，运行中打开不需要重启。
-- **设置**：账号、语言、两步验证、API 令牌、备份与恢复、外观、检查更新（可关闭）。已实现（`/settings`，按设计稿，改动立即保存）：语言；续期默认值（提前几天、每天检查时间、默认密钥类型，存在证书模块的 `certs_settings` 表里，接口 `GET`/`PUT /api/v1/certs/settings`，新证书没给的值取这里的）；关于（版本、构建日期和平台，来自 `GET /api/v1/manifest`）。账号和安全、面板地址、备份以后做。
+- **设置**：账号、语言、两步验证、API 令牌、备份与恢复、外观、检查更新（可关闭）。已实现（`/settings`，按设计稿，改动立即保存）：语言；续期默认值（提前几天、每天检查时间、默认密钥类型，存在证书模块的 `certs_settings` 表里，接口 `GET`/`PUT /api/v1/certs/settings`，新证书没给的值取这里的）；账号和安全（用户名、上次改密码的时间、改密码，见第 10 节的“登录”）；面板访问（面板地址、监听地址，只读，由环境变量设置）；数据和备份（数据目录、主密钥从哪来；下载备份：`POST /api/v1/system/backup` 要输密码，用 `VACUUM INTO` 做一份一致的数据库副本，JEC 照常运行；恢复：停止 JEC，把文件放进数据目录、改名为 `jec.db`，再启动）；关于（版本、构建日期和平台，来自 `GET /api/v1/manifest`）。运行信息来自内核的 `GET /api/v1/system`（`internal/kernel/system`）。两步验证、登录有效期、在界面里恢复备份以后做。
 
 菜单和页面由已启用的模块决定，停用的模块不出现在界面上。
 
@@ -730,10 +730,12 @@ services:
   - CSRF 防护用 Go 标准库的 `http.CrossOriginProtection`，按 `Sec-Fetch-Site` 和 `Origin` 拒绝跨站的写请求；base URL 的 origin 被信任，反向代理改写 Host 时也能通过。
   - 登录和初始化按客户端 IP 限速：连续失败 5 次锁定 15 分钟（与设计稿的提示一致，次数和时长作为参数传给文案）；成功一次或停 15 分钟不再失败，就重新计数。
   - 忘记密码时在服务器上运行 `jec reset-password`（Docker 里是 `docker exec -it jec /jec reset-password`），新密码生效后该账号的所有会话都会退出。
+  - 在设置页改密码：`PUT /api/v1/account/password` 要当前密码（输错和登录失败共用锁定计数），改好后这个账号在其他地方的登录都退出，当前这个保留；`kernel_users.password_changed_at` 记下修改时间，设置页显示。
   - 所有 API 默认要求登录，只有初始化和登录接口在 OpenAPI 里标成公开。
 - **API 令牌**：可以按权限范围生成，用于 CLI 和自动化。
 - **审计日志**：谁在什么时候改了什么、下载了哪个私钥。
 - **安全响应头**：CSP、HSTS（由用户选择是否开启）等。
+- **备份**：下载备份和下载私钥一样要先输密码，日志记下是谁；备份里的私钥和凭据由主密钥加密，主密钥不在备份里，要另外保存。
 - **公开的 `/.well-known/`**：只回答验证方式放进去的文件（JEC 自己应答），不需要登录；文件只能在 `/.well-known/` 下，内容本来就是要给 CA 公开看的。从外网核对验证文件时不校验证书（5.3.2 ④），这样的客户端只用来取公开的验证文件，不发送任何东西。
 - **部署到别人平台上的代码**：ESA 边缘应答的函数代码（5.4）经 OSS 上传时一律走 HTTPS，不管接口给的地址是不是 http。
 - **Webhook 防 SSRF**：默认禁止请求内网地址，可配置白名单。
@@ -751,7 +753,7 @@ services:
 - **语言**：新增一个语言文件即可，见第 7 节。
 - **配置三选一或混用**：网页界面、环境变量、`config.yaml`；证书和 Provider 配置可以导出导入为 YAML，方便迁移和用 Git 管理。
 - **密钥类型**：RSA 2048/3072/4096，ECDSA P-256/P-384；可以每张证书单独设置。
-- **证书格式**：PEM（证书 / 完整链 / 私钥分开或合并）、PFX/PKCS#12、JKS。
+- **证书格式**：PEM（证书 / 完整链 / 私钥分开或合并）、PFX/PKCS#12、JKS。上传已支持 PEM 和 PFX/P12（带密码）：添加证书和上传新版本时选“PEM 文本”或“PFX / P12 文件”，接口里是 `pfx`（Base64）和 `pfxPassword`；密码不对、文件读不了、私钥和证书不配对时报在文件的字段上。
 - **文件部署**：路径、文件名模板、属主、权限、写入后执行的命令都可配置，因此兼容 nginx、caddy、haproxy 等任何读文件的程序。
 - **导入现有证书**：支持手动上传，也支持扫描 acme.sh、certbot 的目录导入（只读，避免冲突）。
 - **命名模板**：部署到 CDN 时的证书名可自定义，例如 `jec-{{.Domain}}-{{.NotAfter | date "20060102"}}`。

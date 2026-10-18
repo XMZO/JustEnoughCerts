@@ -63,3 +63,12 @@ export function useSignOut() {
     onSettled: () => client.setQueryData(sessionKey, null),
   })
 }
+
+/** Changes the password once the current one is confirmed; the account's other sessions end. */
+export function useChangePassword() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { password: string; newPassword: string }) => unwrap(api.PUT('/account/password', { body })),
+    onSuccess: () => client.invalidateQueries({ queryKey: sessionKey }),
+  })
+}

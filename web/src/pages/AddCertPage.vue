@@ -56,7 +56,7 @@ const typeLabel = (p: Provider, types: typeof sourceTypes) => {
 
 // Upload.
 const add = useAddCertificate()
-const pem = ref({ certificate: '', privateKey: '' })
+const pem = ref({ certificate: '', privateKey: '', pfx: '', pfxPassword: '' })
 
 // Issue.
 const issue = useIssueCertificate()
@@ -132,8 +132,10 @@ async function submit() {
     let created
     try {
       created = await add.mutateAsync({
-        certificate: pem.value.certificate,
+        certificate: pem.value.certificate || undefined,
         privateKey: pem.value.privateKey || undefined,
+        pfx: pem.value.pfx || undefined,
+        pfxPassword: pem.value.pfxPassword || undefined,
         renewBeforeDays: Number(days.value) || undefined,
         targets: chosenTargets.value,
       })
@@ -212,6 +214,8 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
           v-if="uploading"
           v-model:certificate="pem.certificate"
           v-model:private-key="pem.privateKey"
+          v-model:pfx="pem.pfx"
+          v-model:pfx-password="pem.pfxPassword"
           :errors="errors.fields.value"
           :error-params="errors.error.value?.params"
         />

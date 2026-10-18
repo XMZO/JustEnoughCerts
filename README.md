@@ -23,7 +23,7 @@ Minecraft mod JEI.
 Working on the main branch:
 
 - Certificates from any ACME CA, with External Account Binding, or
-  uploaded by hand.
+  uploaded by hand, as PEM or as a PFX/P12 file.
 - Namecheap's paid certificates, such as PositiveSSL, with JEC acting as
   the client of Namecheap's SSL Manager. Experimental and off until you
   switch it on; not yet tried against a real account.
@@ -66,16 +66,18 @@ your account. Until an account exists, each start of the server logs a new
 token, so only someone who can read the log can claim the server.
 
 The container runs as user 65532:65532 and keeps everything, the database
-included, in `./data`: back up that directory. To run as the owner of an
-existing directory instead, set `user:` in `docker-compose.yml`.
+included, in `./data`: back up that directory, or download a backup of the
+database on the Settings page. To restore one, stop JEC and put it in
+`./data` as `jec.db`. To run as the owner of an existing directory
+instead, set `user:` in `docker-compose.yml`.
 
 Private keys and credentials are encrypted in the database with the key in
 `./data/secret.key`, which JEC creates on first start. Without that file,
 nothing encrypted can be read again, so keep it with the database backups,
 or keep the key elsewhere and pass it as `JEC_SECRET_KEY`.
 
-Forgot the password? Set a new one; this also signs the account out
-everywhere:
+To change the password, use the Settings page. Forgot it? Set a new one
+on the server; this also signs the account out everywhere:
 
 ```sh
 docker exec -it jec /jec reset-password

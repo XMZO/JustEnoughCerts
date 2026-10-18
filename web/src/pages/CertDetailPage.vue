@@ -148,17 +148,22 @@ const history = computed(() =>
 const uploading = ref(route.query.upload === '1')
 const upload = useUploadVersion(() => props.id)
 const uploadError = useApiError(upload.error)
-const pem = ref({ certificate: '', privateKey: '' })
+const pem = ref({ certificate: '', privateKey: '', pfx: '', pfxPassword: '' })
 watch(uploading, (open) => {
   if (!open) {
     upload.reset()
-    pem.value = { certificate: '', privateKey: '' }
+    pem.value = { certificate: '', privateKey: '', pfx: '', pfxPassword: '' }
     if (route.query.upload) void router.replace({ query: {} })
   }
 })
 async function submitUpload() {
   try {
-    await upload.mutateAsync({ certificate: pem.value.certificate, privateKey: pem.value.privateKey || undefined })
+    await upload.mutateAsync({
+      certificate: pem.value.certificate || undefined,
+      privateKey: pem.value.privateKey || undefined,
+      pfx: pem.value.pfx || undefined,
+      pfxPassword: pem.value.pfxPassword || undefined,
+    })
   } catch {
     return // shown in the dialog
   }
@@ -529,6 +534,8 @@ async function confirmDelete() {
       <PemFields
         v-model:certificate="pem.certificate"
         v-model:private-key="pem.privateKey"
+        v-model:pfx="pem.pfx"
+        v-model:pfx-password="pem.pfxPassword"
         :errors="uploadError.fields.value"
         :error-params="uploadError.error.value?.params"
       />

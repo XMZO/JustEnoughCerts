@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/account/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Change the password, which signs the account out everywhere else */
+        put: operations["change-password"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/certs/certificates": {
         parameters: {
             query?: never;
@@ -426,6 +443,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tell where JEC keeps its data and how it is reached */
+        get: operations["get-system"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Download a copy of the database, once the password is confirmed
+         * @description The copy holds the certificates, their private keys and the credentials, sealed with the master key, which is not in it. To restore it, stop JEC and put the file in the data directory as jec.db.
+         */
+        post: operations["backup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -433,11 +487,20 @@ export interface components {
         Account: {
             /** @description BCP 47 tag of the language chosen for the account */
             locale?: string;
+            /**
+             * Format: date-time
+             * @description When the password last changed
+             */
+            passwordChangedAt?: string;
             username: string;
         };
         AddInputBody: {
-            /** @description PEM certificates: the leaf and its intermediates, in any order. The private key may come along. */
-            certificate: string;
+            /** @description PEM certificates: the leaf and its intermediates, in any order. The private key may come along. Left out with pfx. */
+            certificate?: string;
+            /** @description A PKCS #12 file (.pfx, .p12) with the certificate, its chain and its private key, in place of certificate and privateKey */
+            pfx?: string;
+            /** @description The password of pfx, if it has one */
+            pfxPassword?: string;
             /** @description The PEM private key, unless it is in certificate */
             privateKey?: string;
             /**
@@ -447,6 +510,10 @@ export interface components {
             renewBeforeDays?: number;
             /** @description The target provider instances to deploy each version to, in order */
             targets?: number[];
+        };
+        BackupInputBody: {
+            /** @description The password of the signed-in account */
+            password: string;
         };
         CertSettingsBody: {
             /** @description The time of day, HH:MM in timeZone, renewals start once certificates enter their renewal window; with a week or less left, they start at once */
@@ -801,11 +868,10 @@ export interface components {
             label: string;
             value: string;
         };
-        PEMFields: {
-            /** @description PEM certificates: the leaf and its intermediates, in any order. The private key may come along. */
-            certificate: string;
-            /** @description The PEM private key, unless it is in certificate */
-            privateKey?: string;
+        PasswordInputBody: {
+            newPassword: string;
+            /** @description The current password */
+            password: string;
         };
         RunBody: {
             /**
@@ -860,6 +926,19 @@ export interface components {
             more: boolean;
             /** @description The newest first */
             runs: components["schemas"]["RunBody"][];
+        };
+        RuntimeBody: {
+            /** @description The URL people open, from JEC_BASE_URL; links in notifications need it */
+            baseURL?: string;
+            /** @description Where the database and the key file are */
+            dataDir: string;
+            /** @description The address the HTTP server binds to, from JEC_LISTEN */
+            listen: string;
+            /**
+             * @description Where the master key comes from: JEC_SECRET_KEY, or the key file in dataDir
+             * @enum {string}
+             */
+            secretKey: "env" | "file";
         };
         SendBody: {
             /** Format: date-time */
@@ -988,6 +1067,16 @@ export interface components {
             /** @description Replaces the targets when given; an empty list removes them all */
             targets?: number[];
         };
+        UploadFields: {
+            /** @description PEM certificates: the leaf and its intermediates, in any order. The private key may come along. Left out with pfx. */
+            certificate?: string;
+            /** @description A PKCS #12 file (.pfx, .p12) with the certificate, its chain and its private key, in place of certificate and privateKey */
+            pfx?: string;
+            /** @description The password of pfx, if it has one */
+            pfxPassword?: string;
+            /** @description The PEM private key, unless it is in certificate */
+            privateKey?: string;
+        };
         VersionBody: {
             /** Format: date-time */
             createdAt: string;
@@ -1024,6 +1113,37 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    "change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordInputBody"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     "certs-list": {
         parameters: {
             query?: never;
@@ -1325,7 +1445,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PEMFields"];
+                "application/json": components["schemas"]["UploadFields"];
             };
         };
         responses: {
@@ -2059,6 +2179,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Account"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "get-system": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    backup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupInputBody"];
+            };
+        };
+        responses: {
+            /** @description The SQLite database */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    "Content-Disposition"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.sqlite3": string;
                 };
             };
             /** @description Error */

@@ -31,6 +31,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers/providersapi"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/system"
 	"github.com/XMZO/JustEnoughCerts/web"
 )
 
@@ -115,6 +116,10 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	}
 	accounts.Register(a.Kernel())
 	providersapi.Register(a.Kernel(), registry)
+	system.Register(a.Kernel(), system.Options{
+		DataDir: cfg.DataDir, Listen: cfg.Listen, BaseURL: cfg.BaseURL, KeyFromEnv: cfg.SecretKey != "",
+		DB: st.DB(), Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log,
+	})
 	var wellKnown []wellKnownHandler
 	for _, m := range set.Modules() {
 		id := m.Manifest().ID

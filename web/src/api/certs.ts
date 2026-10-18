@@ -20,10 +20,12 @@ export type DeploymentDetail = components['schemas']['DeploymentDetailOutputBody
 export type CertSettings = components['schemas']['CertSettingsBody']
 export type CertSettingsInput = components['schemas']['CertSettingsInputBody']
 
-/** A certificate with its PEM private key, as pasted. */
+/** A certificate with its private key: PEM as pasted, or a PKCS #12 file in Base64. */
 export interface PEMUpload {
-  certificate: string
+  certificate?: string
   privateKey?: string
+  pfx?: string
+  pfxPassword?: string
 }
 
 const all = ['certs'] as const
