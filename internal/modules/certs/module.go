@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
 )
@@ -60,6 +62,9 @@ func (m *Module) Register(r *module.Registry) error {
 	s.deploying.trigger = func() { r.Jobs.Trigger("deploy") }
 	registerAPI(r.API, s, r.ConfirmPassword)
 	r.Providers.UsedBy(s.usesProvider)
+	if err := r.Events.Subscribe(events.Subscription{Name: "announce", Types: []string{contracts.CertificatesAnnounce}, Handler: s.announce}); err != nil {
+		return err
+	}
 	for _, j := range []jobs.Job{
 		// Run until nothing is due; started at once when work is added.
 		{Name: "issue", Every: time.Minute, Timeout: 24 * time.Hour, Run: s.runIssuances},

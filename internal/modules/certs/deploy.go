@@ -459,8 +459,12 @@ func (s *service) completeDeployment(ctx context.Context, c *deployClaim, res co
 	if err != nil {
 		return err
 	}
+	var fingerprint string
+	if err := tx.QueryRowContext(ctx, "SELECT fingerprint FROM certs_versions WHERE id = ?", c.versionID).Scan(&fingerprint); err != nil {
+		return err
+	}
 	err = s.events.PublishTx(ctx, tx, contracts.CertificateDeployed, strconv.FormatInt(c.certificateID, 10), contracts.CertificateEvent{
-		CertificateID: c.certificateID, Domains: cert.Domains, VersionID: c.versionID,
+		CertificateID: c.certificateID, Domains: cert.Domains, VersionID: c.versionID, Fingerprint: fingerprint,
 		Deployment: &contracts.Deployment{ID: c.id, Target: c.target, Attempt: c.attempt},
 	})
 	if err != nil {

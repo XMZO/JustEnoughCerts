@@ -250,6 +250,11 @@ func (s *service) note(ctx context.Context, tag language.Tag, ev events.Event, d
 			title = i18n.NotifyNoteDeployFailedTitle
 		}
 		n.Title = w.text(title, i18n.Args{"domain": domain, "target": target})
+	case contracts.CertificateServedOld:
+		if c := d.Check; c != nil {
+			n.Title = w.text(i18n.NotifyNoteServedOldTitle, i18n.Args{"domain": c.Domain})
+			lines = append(lines, w.text(i18n.NotifyNoteServedOld, i18n.Args{"served": w.day(c.NotAfter), "current": w.day(d.NotAfter)}))
+		}
 	case contracts.CertificateExpiring:
 		if d.Expiry == contracts.ExpiryExpired {
 			n.Title = w.text(i18n.NotifyNoteExpiredTitle, i18n.Args{"domain": domain})

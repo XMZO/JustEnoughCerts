@@ -43,6 +43,9 @@ Working on the main branch:
 - Notifications through Telegram, email (SMTP) and webhooks, each in the
   language you choose for it.
 - A history of every issuance, renewal and deployment, with its full log.
+- Online checks: JEC connects to each domain as a browser does and tells
+  you when one still serves the old certificate after a renewal, as when a
+  CDN did not take the new one.
 - Everything beyond the kernel is a module, switched on and off on the
   Modules page or left out at build time.
 - One small container image or one static binary, with SQLite.

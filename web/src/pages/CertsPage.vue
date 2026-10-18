@@ -5,6 +5,7 @@ import { RouterLink } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
 import { useCertificates, type Certificate } from '../api/certs'
+import { useMonitorStates } from '../api/monitor'
 import { useProviders } from '../api/providers'
 import { useDeployNote } from '../certs/deployment'
 import { barPercent, certLife, lifeText, needsAttention, stateText } from '../certs/life'
@@ -32,6 +33,12 @@ const error = computed(() => {
   return err instanceof ApiError ? err : networkError
 })
 
+// Domains that still serve an older certificate, as the monitor found,
+// need attention too.
+const monitorStates = useMonitorStates()
+const servedOld = (c: Certificate) => (monitorStates.data.value?.get(c.id)?.old ?? 0) > 0
+const attention = (c: Certificate) => needsAttention(c) || servedOld(c)
+
 type Filter = 'all' | 'attention' | 'ok'
 const filter = ref<Filter>('all')
 const query = ref('')
@@ -42,12 +49,12 @@ const searched = computed(() => {
   return q ? all.value.filter((c) => c.domains.some((d) => d.includes(q))) : all.value
 })
 const shown = computed(() =>
-  searched.value.filter((c) => filter.value === 'all' || (filter.value === 'attention') === needsAttention(c)),
+  searched.value.filter((c) => filter.value === 'all' || (filter.value === 'attention') === attention(c)),
 )
 const filters = computed<{ id: Filter; label: MessageKey; count: number }[]>(() => [
   { id: 'all', label: 'certs.filter.all', count: searched.value.length },
-  { id: 'attention', label: 'certs.attention.title', count: searched.value.filter(needsAttention).length },
-  { id: 'ok', label: 'certs.state.ok', count: searched.value.filter((c) => !needsAttention(c)).length },
+  { id: 'attention', label: 'certs.attention.title', count: searched.value.filter(attention).length },
+  { id: 'ok', label: 'certs.state.ok', count: searched.value.filter((c) => !attention(c)).length },
 ])
 
 interface Row {
@@ -68,6 +75,7 @@ const day = 86_400_000
 
 /** note says why a certificate needs attention. */
 function note(c: Certificate): string {
+  if (servedOld(c) && (c.state === 'ok' || c.state === 'deploying')) return t('monitor.note.served_old')
   if (c.state === 'failed') return issueNote(c)
   if (c.state === 'deploy_failed') return deployNote(c)
   if (c.state === 'ok' || c.state === 'issuing' || c.state === 'deploying') return ''
@@ -113,8 +121,8 @@ const rows = computed<Row[]>(() =>
     }
   }),
 )
-const attentionRows = computed(() => rows.value.filter((r) => needsAttention(r.cert)))
-const healthyRows = computed(() => rows.value.filter((r) => !needsAttention(r.cert)))
+const attentionRows = computed(() => rows.value.filter((r) => attention(r.cert)))
+const healthyRows = computed(() => rows.value.filter((r) => !attention(r.cert)))
 
 const itemLooks = {
   expiring: { icon: TriangleAlert, ink: 'text-warn-ink', fill: 'bg-warn-fill' },

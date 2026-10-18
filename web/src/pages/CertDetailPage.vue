@@ -27,6 +27,7 @@ import JecDialog from '../components/JecDialog.vue'
 import JecField from '../components/JecField.vue'
 import JecInput from '../components/JecInput.vue'
 import LifeBar from '../components/LifeBar.vue'
+import MonitorSection from '../components/MonitorSection.vue'
 import PageHeader from '../components/PageHeader.vue'
 import PemFields from '../components/PemFields.vue'
 import StatusBadge from '../components/StatusBadge.vue'
@@ -390,6 +391,8 @@ async function confirmDelete() {
               </li>
             </ol>
           </section>
+
+          <MonitorSection v-if="current" :id="cert.id" />
 
           <section v-if="issued" aria-labelledby="issuances" class="rounded-lg border border-line bg-surface-raised p-4">
             <h2 id="issuances" class="m-0 mb-1 text-section-title font-semibold">{{ t('certs.detail.issuances') }}</h2>

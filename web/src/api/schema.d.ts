@@ -278,6 +278,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/monitor/certificates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tell what the domains of a certificate served the last time they were checked */
+        get: operations["monitor-certificate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/monitor/certificates/{id}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check the domains of a certificate now */
+        post: operations["monitor-check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/monitor/states": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sum up the checks of every certificate */
+        get: operations["monitor-states"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/notify/notifiers/{id}/test": {
         parameters: {
             query?: never;
@@ -586,11 +637,35 @@ export interface components {
             /** @description The target provider instances each version is deployed to, in order */
             targets: number[];
         };
+        CertificateChecksBody: {
+            /**
+             * Format: date-time
+             * @description When its domains are checked next
+             */
+            checkAt?: string;
+            /** @description What each domain served the last time it was checked, in the order of the certificate's domains */
+            results: components["schemas"]["DomainCheckBody"][];
+            /** @description Wildcard domains, which cannot be connected to */
+            skipped: string[];
+            /** @description The monitor knows the version the certificate uses */
+            tracked: boolean;
+        };
         ChainEntry: {
             issuer: string;
             /** Format: date-time */
             notAfter: string;
             subject: string;
+        };
+        CheckTallyBody: {
+            /** Format: int64 */
+            certificateId: number;
+            /**
+             * Format: int64
+             * @description The domains that still serve an older certificate
+             */
+            old: number;
+            /** Format: int64 */
+            unreachable: number;
         };
         CreateInputBody: {
             config?: {
@@ -661,6 +736,27 @@ export interface components {
             chain: components["schemas"]["ChainEntry"][];
             /** @description Every version, the newest first */
             versions: components["schemas"]["VersionBody"][];
+        };
+        DomainCheckBody: {
+            /** Format: date-time */
+            checkedAt: string;
+            domain: string;
+            /** @description Why the connection failed, as Go put it */
+            error?: string;
+            /** @description SHA-256 of the certificate served, lowercase hex */
+            fingerprint?: string;
+            /** @description Who issued the certificate served */
+            issuer?: string;
+            /**
+             * Format: date-time
+             * @description When the certificate served ends
+             */
+            notAfter?: string;
+            /**
+             * @description ok: the version in use; old: an older certificate for the domain; other: a certificate for other names, or a newer one; unreachable: nothing over TLS on port 443
+             * @enum {string}
+             */
+            state: "ok" | "old" | "other" | "unreachable";
         };
         DownloadInputBody: {
             /** @description The password of the signed-in account, asked again before a private key leaves JEC */
@@ -980,6 +1076,9 @@ export interface components {
         SignInInputBody: {
             password: string;
             username: string;
+        };
+        StatesOutputBody: {
+            certificates: components["schemas"]["CheckTallyBody"][];
         };
         StepBody: {
             /**
@@ -1718,6 +1817,97 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ModuleInfo"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "monitor-certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateChecksBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "monitor-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateChecksBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "monitor-states": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatesOutputBody"];
                 };
             };
             /** @description Error */

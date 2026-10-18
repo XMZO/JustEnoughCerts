@@ -290,9 +290,34 @@ func (s *service) addVersion(ctx context.Context, tx *sql.Tx, id int64, b *crypt
 		return 0, err
 	}
 	err = s.events.PublishTx(ctx, tx, contracts.CertificateIssued, strconv.FormatInt(id, 10), contracts.CertificateEvent{
-		CertificateID: id, Domains: names, VersionID: version, NotAfter: b.Leaf.NotAfter.UTC(),
+		CertificateID: id, Domains: names, VersionID: version, Fingerprint: fingerprint, NotAfter: b.Leaf.NotAfter.UTC(),
 	})
 	return version, err
+}
+
+// announce publishes CertificateCurrent for each certificate with a
+// version, as the module that published CertificatesAnnounce asked.
+func (s *service) announce(ctx context.Context, _ events.Event) error {
+	certs, err := s.list(ctx)
+	if err != nil {
+		return err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	for _, c := range certs {
+		if c.Current == nil {
+			continue
+		}
+		if err := s.events.PublishTx(ctx, tx, contracts.CertificateCurrent, strconv.FormatInt(c.ID, 10), contracts.CertificateEvent{
+			CertificateID: c.ID, Domains: c.Domains, VersionID: c.Current.ID, Fingerprint: c.Current.Fingerprint, NotAfter: c.Current.NotAfter.UTC(),
+		}); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // issuerName and subjectName are what the UI shows of a certificate's

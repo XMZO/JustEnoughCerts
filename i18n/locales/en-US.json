@@ -738,7 +738,8 @@
         "deployed": "When a deployment succeeds",
         "expiring": "When a certificate is about to expire, or has expired",
         "issue_failed": "When an issuance fails",
-        "issued": "When a new certificate is issued or uploaded"
+        "issued": "When a new certificate is issued or uploaded",
+        "served_old": "A website still serves the old certificate"
       },
       "field": {
         "locale": "Language of the notes"
@@ -862,6 +863,34 @@
       "name": "DNS providers (lego)"
     }
   },
+  "monitor": {
+    "action": {
+      "check": "Check now"
+    },
+    "error": {
+      "unknown": "The monitor does not know this certificate yet: it has no version, or was just added."
+    },
+    "module": {
+      "description": "Connects to the domains of each certificate as a browser does, and checks that they serve the version in use. A domain that still serves the old certificate a while after a renewal, as when a CDN did not take the new one, is told of through the notifiers.",
+      "name": "Online checks"
+    },
+    "note": {
+      "served_old": "A domain still serves the old certificate"
+    },
+    "section": {
+      "next_check": "Next check:",
+      "pending": "Not checked yet; due at",
+      "skipped": "Wildcard domains are not checked: {domains}",
+      "title": "Online check",
+      "untracked": "Not checked yet: the checks start once the monitor knows the version in use."
+    },
+    "state": {
+      "ok": "Serves the version in use",
+      "old": "Still serves an older certificate, which ends on {date}",
+      "other": "Serves another certificate, from {issuer}, which ends on {date}",
+      "unreachable": "Nothing answered over TLS on port 443"
+    }
+  },
   "namecheap": {
     "error": {
       "api": "Namecheap's API answered with an error (status {status}); the log has the details.",
@@ -962,6 +991,8 @@
       },
       "link": "Details: {url}",
       "retry": "JEC tries again at {time}.",
+      "served_old": "The certificate it serves ends on {served}, the version in use on {current}: the target, such as a CDN, may not have taken the new one.",
+      "served_old_title": "{domain} still serves the old certificate",
       "target_gone": "a deleted target",
       "valid_until": "Valid until {date}."
     },

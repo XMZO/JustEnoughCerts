@@ -222,6 +222,17 @@ stateDiagram-v2
 - **签发**：`POST /api/v1/certs/certificates/issue` 用来源实例、验证实例、域名、密钥类型（默认 RSA 2048）添加证书，立即返回，首次签发在后台进行。域名统一成小写的 ASCII 形式（国际化域名转成 Punycode），去掉重复，通配符写成 `*.example.com`。`POST .../certificates/{id}/issue` 立即签发，`GET .../certificates/{id}/issuances` 列出最近的签发记录，`GET .../issuances/{id}` 返回签发记录、每一步的状态和完整日志。
 - **上传**：`POST /api/v1/certs/certificates` 接收 PEM 证书（顺序随意，可以带私钥）和私钥；`cryptox.ParseBundle` 找出和私钥匹配的证书，按签发关系排好中间证书，去掉自签名的根证书。常见错误（没有私钥、私钥加密了、私钥和证书不匹配等）返回各自的错误码，并指出是哪个输入框。上传新版本时，新证书必须包含原来的主域名，而且到期时间要比当前版本晚。
 - **事件**（类型和数据结构在 `internal/kernel/contracts`）：新版本成为当前版本时发 `certificate.issued`；删除时发 `certificate.deleted`；每小时的 `certs.check_expiry` 任务在当前版本进入续期窗口、只剩 7 天、已过期时各发一次 `certificate.expiring`（重启或停机跳过的级别不补发）。
+- **事件里的指纹**：`certificate.issued`、`certificate.deployed` 带版本叶子证书的 SHA-256 指纹（`Fingerprint`）。别的模块发 `certificates.announce` 时，证书模块给每张有版本的证书发一条 `certificate.current`（数据同 `issued`），供后来启用、或者错过了事件的模块补齐。
+
+### 4.7 线上巡检
+
+实现在 `internal/modules/monitor`（模块 ID `monitor`，默认开）：像浏览器一样连到每张证书的域名（443 端口，带 SNI，不校验证书：要看的是哪一张），核对线上返回的是不是当前版本。
+
+- **知道哪些证书**：订阅证书模块的 `certificate.issued`、`current`、`deployed`、`deleted`，记在 `monitor_certificates`（域名、当前版本和指纹、成为当前版本的时间、下次检查时间）。启动后不久和之后每天发一次 `certificates.announce`，让证书模块把全部证书报一遍，所以升级前已有的证书也会检查。
+- **什么时候查**：新版本 30 分钟后（留出部署时间）；部署到某个目标 2 分钟后；平时每 6 小时；发现旧证书后每 30 分钟复查。`monitor.check` 任务每分钟看一次，一次最多查 20 张证书，同时最多 4 个连接，每个 15 秒超时。通配符域名连不上，跳过。
+- **结果**（`monitor_results`，每个域名一行）：`ok` 是当前版本；`old` 是覆盖这个域名、但比当前版本早到期的证书，也就是还没换上新的；`other` 是别的名字的证书或更新的证书；`unreachable` 是 443 端口没有 TLS 回应（证书可能用在别处，只显示、不告警）。
+- **告警**：当前版本生效满 30 分钟后，某个域名还是 `old`，就发 `certificate.served_old`（数据带 `Check`：域名、线上证书的指纹和到期时间），每个版本每个域名只发一次，恢复 `ok` 后重新计。通知模块把它当作默认打开的事件（“网站上还是旧证书”）。
+- **接口**：`GET /api/v1/monitor/certificates/{id}`（各域名最近一次的结果、下次检查时间、跳过的通配符域名），`POST …/check` 立即检查，`GET /api/v1/monitor/states`（每张证书有几个域名还是旧证书、几个连不上）。界面：证书详情的“线上检查”一块，证书列表把线上还是旧证书的放进“需要处理”。模块停用时这些都不显示。
 
 ## 5. 可插拔 Provider 设计
 
@@ -354,7 +365,7 @@ DNS 验证分成两种能力，实现方式不同：
 
 **实现**（M1）：
 
-- **分发**（`internal/modules/notify`）：订阅 `certificate.issue_failed`、`deploy_failed`、`expiring`、`issued`、`deployed`；对每个想要这个事件的通知渠道（类型为 notifier 的 Provider 实例），按渠道设置的语言渲染一条消息（`contracts.Note`：标题、正文、JEC 里对应页面的链接，以及事件的原始数据），交给渠道发送。链接要设置了 `JEC_BASE_URL` 才有。每种渠道的设置最后都有同样两组（`contracts.NotifierFields`）：消息语言（字段类型 `locale`，表单默认填当前界面语言）和每种事件一个开关，默认只开签发失败、部署失败、快到期。
+- **分发**（`internal/modules/notify`）：订阅 `certificate.issue_failed`、`deploy_failed`、`expiring`、`served_old`（线上巡检发现网站上还是旧证书，4.7）、`issued`、`deployed`；对每个想要这个事件的通知渠道（类型为 notifier 的 Provider 实例），按渠道设置的语言渲染一条消息（`contracts.Note`：标题、正文、JEC 里对应页面的链接，以及事件的原始数据），交给渠道发送。链接要设置了 `JEC_BASE_URL` 才有。每种渠道的设置最后都有同样两组（`contracts.NotifierFields`）：消息语言（字段类型 `locale`，表单默认填当前界面语言）和每种事件一个开关，默认只开签发失败、部署失败、快到期。
 - **发送记录**在 `notify_sends`（事件 × 渠道，保留 30 天）：同一事件再次投递时跳过已经发出的渠道；可能自己恢复的失败（网络、服务端 5xx、限流）让事件总线退避重试，恢复不了的（Token 错、被拒收）直接记为失败。超过 3 天的事件不再发。`GET /api/v1/notify/sends` 返回每个渠道最近一次发送；`POST /api/v1/notify/notifiers/{id}/test` 立即用渠道的语言发一条测试消息，失败时返回渠道自己的错误信息（502）。
 - **Telegram**（`telegram.bot`）：Bot Token（保密）、Chat ID；高级设置里有代理（http、https、socks5，国内网络连 Telegram 要用）和自建的 Bot API 地址。消息用 HTML 格式，标题加粗。Token 错、找不到聊天、没有权限不重试，429 按 `retry_after` 重试。Token 在 URL 路径里，所以错误信息只保留底层原因，不带 URL。
 - **邮件**（`email.smtp`）：服务器、加密方式（SSL/TLS、STARTTLS、不加密）、端口（留空时按加密方式取 465、587、25）、用户名、密码或授权码、发件人、收件人（逗号分隔）。按服务器提供的方式用 PLAIN 或 LOGIN 登录（net/smtp 没有 LOGIN，自己实现），两者都不会在不加密的连接上发送密码（发往本机除外）。UTF-8 纯文本，quoted-printable 编码。登录失败、收件人被拒、证书不受信任、加密方式和端口对不上都不重试。

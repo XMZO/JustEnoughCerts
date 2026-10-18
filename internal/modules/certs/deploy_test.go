@@ -82,6 +82,9 @@ func TestDeployUpload(t *testing.T) {
 	if got := eventTypes(f.events()); !slices.Equal(got, []string{contracts.CertificateIssued, contracts.CertificateDeployed}) {
 		t.Errorf("events %v", got)
 	}
+	if ev := f.events()[1].data; ev.Fingerprint != c.Current.Fingerprint || ev.VersionID != c.Current.ID {
+		t.Errorf("the deployed event tells %+v", ev)
+	}
 
 	var detail struct {
 		Deployment DeploymentBody `json:"deployment"`

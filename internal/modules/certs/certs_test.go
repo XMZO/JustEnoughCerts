@@ -481,3 +481,31 @@ func TestAddPFX(t *testing.T) {
 		t.Errorf("the new version ends %s", c.Current.NotAfter)
 	}
 }
+
+func TestAnnounce(t *testing.T) {
+	f := newFixture(t)
+	c := f.add(f.leaf(90, "example.com"))
+	var none CertificateBody
+	f.call(f.api.Post("/certificates/issue", map[string]any{
+		"domains": []string{"pending.example.com"}, "sourceProvider": f.provider("fake.ca"), "solverProvider": f.provider("fake.dns"),
+	}), http.StatusCreated, &none) // no version yet
+	if err := f.svc.announce(t.Context(), events.Event{Type: contracts.CertificatesAnnounce}); err != nil {
+		t.Fatal(err)
+	}
+	var issued, current []storedEvent
+	for _, e := range f.events() {
+		switch e.typ {
+		case contracts.CertificateIssued:
+			issued = append(issued, e)
+		case contracts.CertificateCurrent:
+			current = append(current, e)
+		}
+	}
+	if len(issued) != 1 || issued[0].data.Fingerprint != c.Current.Fingerprint {
+		t.Errorf("issued %+v", issued)
+	}
+	if len(current) != 1 || current[0].subject != strconv.FormatInt(c.ID, 10) || current[0].data.Fingerprint != c.Current.Fingerprint ||
+		current[0].data.VersionID != c.Current.ID || !current[0].data.NotAfter.Equal(c.Current.NotAfter) {
+		t.Errorf("current %+v", current)
+	}
+}

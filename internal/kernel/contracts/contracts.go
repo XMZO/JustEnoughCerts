@@ -15,8 +15,12 @@ import (
 // decimal.
 const (
 	// CertificateIssued: a new version of a certificate became current, as
-	// issued by its source or uploaded. Payload CertificateEvent.
+	// issued by its source or uploaded. Payload CertificateEvent with
+	// VersionID, Fingerprint and NotAfter set.
 	CertificateIssued = "certificate.issued"
+	// CertificateCurrent: the version a certificate uses, told again when a
+	// module asks with CertificatesAnnounce. Payload as CertificateIssued.
+	CertificateCurrent = "certificate.current"
 	// CertificateExpiring: the current version entered the renewal window,
 	// has a week or less left, or expired; see Expiry. Payload
 	// CertificateEvent with Expiry set.
@@ -32,12 +36,27 @@ const (
 	// set; the current version, if any, is still in use.
 	CertificateIssueFailed = "certificate.issue_failed"
 	// CertificateDeployed: a version was installed at one of the
-	// certificate's targets. Payload CertificateEvent with VersionID and
-	// Deployment set.
+	// certificate's targets. Payload CertificateEvent with VersionID,
+	// Fingerprint and Deployment set.
 	CertificateDeployed = "certificate.deployed"
 	// CertificateDeployFailed: an attempt to install a version at a target
 	// failed. Payload CertificateEvent with VersionID and Deployment set.
 	CertificateDeployFailed = "certificate.deploy_failed"
+)
+
+// CertificatesAnnounce asks the certs module to publish CertificateCurrent
+// for each certificate with a version, as a module that keeps track of them
+// does when it starts with nothing to go on. It has no subject or payload.
+const CertificatesAnnounce = "certificates.announce"
+
+// Events of the monitor module. Their subject is the certificate ID, in
+// decimal.
+const (
+	// CertificateServedOld: a domain of a certificate still serves an older
+	// certificate than the version in use, a while after that one became
+	// current, as when a CDN did not take it. Payload CertificateEvent with
+	// VersionID, Fingerprint, NotAfter and Check set.
+	CertificateServedOld = "certificate.served_old"
 )
 
 // Expiry says how close a certificate is to its end, in increasing order of
@@ -56,11 +75,22 @@ type CertificateEvent struct {
 	CertificateID int64       `json:"certificateId"`
 	Domains       []string    `json:"domains"` // the primary domain first
 	VersionID     int64       `json:"versionId,omitempty"`
-	NotAfter      time.Time   `json:"notAfter,omitzero"` // the end of the version
+	Fingerprint   string      `json:"fingerprint,omitempty"` // SHA-256 of the version's leaf, lowercase hex
+	NotAfter      time.Time   `json:"notAfter,omitzero"`     // the end of the version
 	Expiry        Expiry      `json:"expiry,omitempty"`
 	Username      string      `json:"username,omitempty"` // who did it, where a person did
 	Issuance      *Issuance   `json:"issuance,omitempty"`
 	Deployment    *Deployment `json:"deployment,omitempty"`
+	Check         *Check      `json:"check,omitempty"`
+}
+
+// Check tells what a domain of a certificate served when the monitor
+// connected to it.
+type Check struct {
+	Domain string `json:"domain"`
+	// Fingerprint and NotAfter are those of the certificate it served.
+	Fingerprint string    `json:"fingerprint"`
+	NotAfter    time.Time `json:"notAfter,omitzero"`
 }
 
 // Issuance tells how an attempt to issue a certificate went.
