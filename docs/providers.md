@@ -54,6 +54,7 @@ Reports of what works with a real account, or does not, are welcome.
 | `cloudflare.custom` | Cloudflare custom certificates | Fake |
 | `tencentcloud.ssl` | Tencent Cloud SSL Certificates, to CDN, EdgeOne, CLB and more | Fake |
 | `qiniu.cdn` | Qiniu Cloud CDN | Fake |
+| `volcengine.cdn` | Volcengine CDN | Fake; the official SDK signs |
 | `aws.acm` | AWS Certificate Manager, for CloudFront and load balancers | Emulator: moto |
 | `baota.site` | BaoTa (aaPanel) websites | Fake |
 | `onepanel.certificate` | 1Panel certificates | Fake |

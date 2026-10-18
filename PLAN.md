@@ -372,7 +372,7 @@ DNS 验证分成两种能力，实现方式不同：
 
 | 类别 | 平台 | 阶段 |
 |---|---|---|
-| CDN / 边缘 | **阿里云 ESA**（M1）；阿里云 CDN / DCDN、七牛云（已完成）、腾讯云 EdgeOne、腾讯云 CDN、华为云 CDN（已完成）、百度智能云 CDN、火山引擎 CDN、又拍云、AWS CloudFront（经 ACM，已完成）、Cloudflare（自定义证书需付费套餐，已完成） | M1 / M3 |
+| CDN / 边缘 | **阿里云 ESA**（M1）；阿里云 CDN / DCDN、七牛云（已完成）、腾讯云 EdgeOne、腾讯云 CDN、华为云 CDN（已完成）、百度智能云 CDN、火山引擎 CDN（已完成）、又拍云、AWS CloudFront（经 ACM，已完成）、Cloudflare（自定义证书需付费套餐，已完成） | M1 / M3 |
 | 负载均衡 / 证书库 | 阿里云 SLB / ALB、阿里云证书服务（CLB、ALB 和数字证书管理服务已完成）、腾讯云 CLB、腾讯云 SSL 证书（已完成，经它更新 CDN、EdgeOne、CLB 等）、AWS ACM（已完成） | M3 |
 | 对象存储 | 阿里云 OSS（已完成）、腾讯云 COS（经腾讯云 SSL 证书服务，已完成）的自定义域名 HTTPS | M3 |
 | 服务器 | 本地文件 + 执行命令（nginx、caddy、haproxy 等）；SSH / SFTP 上传 + 远程命令；Docker 容器（通过挂载的 Docker API 发信号或重启，不需要 docker 命令行）；Kubernetes Secret | M1（本地、SSH）/ M3（Docker、Kubernetes 已完成） |
@@ -420,6 +420,8 @@ DNS 验证分成两种能力，实现方式不同：
 **Cloudflare 的实现**（`internal/modules/cloudflare`，M3）：部署目标类型 `cloudflare.custom`：API 令牌（权限“区域 → SSL 和证书 → 编辑”，用域名填站点时还要“区域 → 区域 → 读取”）、站点（区域 ID，或者站点的域名，按名字查出 ID）、自定义证书 ID（高级设置，可不填）。直接调 v4 REST 接口（`Authorization: Bearer`，只连公网、不跟随跳转）。第一次部署 `POST /zones/{id}/custom_certificates` 添加一张自定义证书（`type=sni_custom`、`bundle_method=ubiquitous`，证书链和 PKCS #1 / SEC 1 私钥），它的 ID 作为 ref 记下；以后的版本都用 `PATCH …/custom_certificates/{ref}` 原地替换，替换期间站点一直有证书可用。记下的那张被删了（404）就再添加一张；填了自定义证书 ID 就一直替换那张，它不在时报错。添加前先列出站点的自定义证书，按覆盖的主机和到期时间找上次中断前添加的那张，不重复添加。测试连接读出站点名和自定义证书数。错误：401、403、代码 10000 和 9109 是令牌不对或权限不够，不重试；429 按 `Retry-After` 等；5xx 重试；其他 4xx 不重试，显示 Cloudflare 自己的代码和说明（比如免费套餐不能上传自定义证书）。自定义证书只有 Business 和 Enterprise 套餐能用。只用替身 API 测过。
 
 **七牛云的实现**（`internal/modules/qiniu`，M3）：部署目标类型 `qiniu.cdn`：AccessKey、SecretKey、加速域名（逗号分隔，泛域名写成 `.example.com`；留空时用证书里不是通配符的域名）、删除旧证书（默认开）。接口用法依据 acme.sh 的 `deploy/qiniu.sh` 和七牛的文档；请求用 QBox 签名：`Authorization: QBox AK:签名`，签名是 SecretKey 对“路径和查询 + 换行”的 HMAC-SHA1，URL 安全的 Base64，JSON 请求体不参与签名。先在证书列表（`GET /sslcert`，分页）里按名字找这次要传的证书（名字是 `jec-<证书 ID>-<指纹前 12 位>`，中断后重试不会重复上传），没有就 `POST /sslcert`（`name`、`common_name`、`ca` 证书链、`pri` 私钥）。再对每个加速域名查 `GET /domain/<域名>`：已经在用这张的跳过；开了 HTTPS 的用 `PUT /domain/<域名>/httpsconf` 换证书，保留原来的强制 HTTPS 和 HTTP/2 设置；没开的用 `PUT …/sslize` 开启（不强制 HTTPS，开 HTTP/2）。最后删除以前部署上传的证书（`DELETE /sslcert/<ID>`）：还有域名在用的七牛不让删，只记警告，下次部署再删。密钥不对、域名不在这个账号都不重试。只用替身 API 测过。
+
+**火山引擎 CDN 的实现**（`internal/modules/volcengine`，M3，接口用法参照 certimate）：部署目标类型 `volcengine.cdn`：Access Key ID、Secret Access Key、加速域名（逗号分隔；留空时用证书里不是通配符的域名）。接口是 `cdn.volcengineapi.com` 的 OpenAPI（2021-03-01，`POST /?Action=…&Version=…`，JSON），请求用 lego 已经带进来的火山引擎 SDK 的签名（`base.Credentials.Sign`，HMAC-SHA256，地域 `cn-north-1`、服务 `CDN`）签好，由 JEC 自己的 HTTP 客户端发出（只连公网），程序只大了约 24 KB。先在证书中心（`ListCertInfo`，`Source=volc_cert_center`）按 SHA-256 指纹找这张证书，没有就 `AddCertificate`（名字 `jec-<证书 ID>-<指纹前 12 位>`），再 `BatchDeployCert` 部署到全部加速域名，逐个看结果，有失败的就报出哪些域名（稍后重试）。旧证书留在证书中心。测试连接用 `ListCdnDomains` 报出加速域名数。密钥不对、签名不对、没权限不重试，限流和 5xx 重试。只用替身测过（替身核对签名头的格式）。
 
 **Docker 容器的实现**（`internal/modules/docker`，M3）：部署目标类型 `docker.container`：容器（名字或 ID）、容器里的目录（可选，绝对路径，要已经存在）和放法（同本地文件）、放好之后做什么（发信号，默认 `HUP`；重启；什么都不做）、文件属主（`uid:gid`，默认 root）、Docker 地址（默认 `unix:///var/run/docker.sock`，也可以是 `tcp://` 的 socket 代理）。经 Docker Engine API，路径不带版本号，由 Docker 按它自己的版本回答（Docker 29 起不再接受 1.44 以下的版本）：四个文件打成 tar 用 `PUT /containers/{id}/archive` 放进目录（私钥 0600），再 `POST /containers/{id}/kill?signal=…` 或 `/restart`。容器没在运行时不发信号，算部署成功（启动时会读到新文件）。测试连接只读：查容器（`GET /containers/{id}/json`）和目录（`HEAD …/archive`）。找不到容器或目录、没有 socket、没有权限（socket 所属的组、代理没放开）都不重试，Docker 的 5xx 和网络问题照常重试。挂载 Docker socket 等于给了主机的 root 权限，所以 `docker-compose.yml` 的注释建议用只放开 `CONTAINERS=1`、`POST=1` 的 socket 代理。
 

@@ -2375,6 +2375,40 @@
       "ok": "JEC 能访问 SSL 证书服务：这个账号有 {count, plural, other {# 张证书}}。"
     }
   },
+  "volcengine": {
+    "cdn": {
+      "description": "把每张新证书上传到火山引擎的证书中心，再部署到 CDN 的加速域名上。旧证书留在证书中心里，可以在那里删除。",
+      "name": "火山引擎 CDN"
+    },
+    "error": {
+      "api": "火山引擎的接口返回了错误 {code}，详情见日志。",
+      "auth": "火山引擎不接受这对密钥，或者它没有需要的权限。",
+      "deploy": "没能部署到加速域名 {domains}，原因见日志。",
+      "network": "连不上火山引擎的接口 {endpoint}。",
+      "no_domains": "没有可以部署的加速域名：证书里只有通配符域名时，请填写加速域名。",
+      "throttled": "火山引擎的接口限流了，稍后重试。"
+    },
+    "field": {
+      "access_key_id": "Access Key ID",
+      "domains": "加速域名",
+      "domains_help": "多个用逗号分隔。留空时用证书里的域名（通配符除外）。",
+      "secret_access_key": "Secret Access Key",
+      "secret_help": "最好用只授予 CDN 的 ListCertInfo、AddCertificate、BatchDeployCert 和 ListCdnDomains 权限的子用户。"
+    },
+    "log": {
+      "deploy": "部署到加速域名 {domains}",
+      "deployed": "CDN 已换上新证书",
+      "found": "证书中心里已经有这张证书（{id}）",
+      "upload": "上传证书 {name} 到证书中心"
+    },
+    "module": {
+      "description": "把证书部署到火山引擎 CDN。",
+      "name": "火山引擎"
+    },
+    "test": {
+      "cdn_ok": "已连上火山引擎 CDN，有 {count, plural, other {# 个加速域名}}。"
+    }
+  },
   "webhook": {
     "deploy": {
       "description": "把每个新版本的证书和私钥以 JSON 发到你的 HTTPS 接口，由你的程序完成安装。",

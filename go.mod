@@ -18,6 +18,7 @@ require (
 	github.com/pquerna/otp v1.5.0
 	github.com/pressly/goose/v3 v3.29.0
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.177
+	github.com/volcengine/volc-sdk-golang v1.0.256
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/crypto v0.58.0
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20261014201258-cf169cd0986f
@@ -188,7 +189,6 @@ require (
 	github.com/ucloud/ucloud-sdk-go v0.22.123 // indirect
 	github.com/ultradns/ultradns-go-sdk v1.8.2-20260507133303-3f324c7 // indirect
 	github.com/vinyldns/go-vinyldns v0.9.18 // indirect
-	github.com/volcengine/volc-sdk-golang v1.0.256 // indirect
 	github.com/vultr/govultr/v3 v3.33.0 // indirect
 	github.com/yandex-cloud/go-genproto v0.126.0 // indirect
 	github.com/yandex-cloud/go-sdk/services/dns v0.0.96 // indirect

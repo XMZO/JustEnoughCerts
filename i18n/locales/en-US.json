@@ -2375,6 +2375,40 @@
       "ok": "JEC can reach SSL Certificates: the account has {count, plural, one {# certificate} other {# certificates}}."
     }
   },
+  "volcengine": {
+    "cdn": {
+      "description": "Uploads each new certificate to Volcengine's certificate center, then deploys it to the accelerated domains of its CDN. The old ones stay in the certificate center, where you can delete them.",
+      "name": "Volcengine CDN"
+    },
+    "error": {
+      "api": "Volcengine's API answered with the error {code}; the log has the details.",
+      "auth": "Volcengine refused the keys, or they lack the permissions needed.",
+      "deploy": "Could not deploy to the accelerated domains {domains}; the log says why.",
+      "network": "Could not reach Volcengine's API at {endpoint}.",
+      "no_domains": "No accelerated domain to deploy to: with only wildcard names in the certificate, enter the accelerated domains.",
+      "throttled": "Volcengine's API is throttling requests; trying again later."
+    },
+    "field": {
+      "access_key_id": "Access Key ID",
+      "domains": "Accelerated domains",
+      "domains_help": "Separated by commas. Left empty, the domains of the certificate, wildcards aside.",
+      "secret_access_key": "Secret Access Key",
+      "secret_help": "Best from a user granted ListCertInfo, AddCertificate, BatchDeployCert and ListCdnDomains of CDN only."
+    },
+    "log": {
+      "deploy": "Deploying it to the accelerated domains {domains}",
+      "deployed": "The CDN took the new certificate",
+      "found": "The certificate center has the certificate already ({id})",
+      "upload": "Uploading the certificate {name} to the certificate center"
+    },
+    "module": {
+      "description": "Deploys certificates to Volcengine CDN.",
+      "name": "Volcengine"
+    },
+    "test": {
+      "cdn_ok": "Connected to Volcengine CDN; {count, plural, one {# accelerated domain} other {# accelerated domains}}."
+    }
+  },
   "webhook": {
     "deploy": {
       "description": "Posts each new version of a certificate, with its private key, as JSON to an HTTPS endpoint of yours, which installs it.",
