@@ -177,7 +177,7 @@ make new-module id=acme category=source  # 生成一个新模块
 - 代码、注释和脚本都用英文。
 - 模块之间只通过内核通信：模块不能 import 其他模块，内核也不能 import 模块。
 
-[PLAN.md](PLAN.md) 里是架构、模块接口和路线图，[docs/design](docs/design) 里是设计系统和页面设计稿。
+[PLAN.md](PLAN.md) 里是架构、模块接口和路线图，[docs/design](docs/design) 里是设计系统和页面设计稿。想把 JEC 翻译成别的语言，见 [docs/translating.zh-CN.md](docs/translating.zh-CN.md)。
 
 ## 许可证
 

@@ -286,7 +286,8 @@ Some rules the checks enforce:
 
 [PLAN.md](PLAN.md) holds the architecture, the module interfaces and the
 roadmap, and [docs/design](docs/design) the design system and the page
-designs.
+designs. To translate JEC into another language, see
+[docs/translating.md](docs/translating.md).
 
 ## License
 
