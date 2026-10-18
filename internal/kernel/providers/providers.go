@@ -25,6 +25,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/text/language"
+
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 )
@@ -130,6 +132,11 @@ type Type struct {
 	// (contracts.Tester), through POST /api/v1/providers/{id}/test.
 	Testable     bool `json:"testable,omitempty"`
 	Experimental bool `json:"experimental,omitempty"`
+	// Texts are the type's own messages, by language tag and key, for keys
+	// the locale files lack, as a plugin brings its translations along. The
+	// web UI adds them to its messages. Their keys start with the module ID
+	// and a dot.
+	Texts map[string]map[i18n.Key]string `json:"texts,omitempty"`
 }
 
 // Challenges: how a solver proves control of a domain.
@@ -276,6 +283,19 @@ func (s *Scope) Add(t Type, f Factory) error {
 	case t.OwnKey && (t.Kind != Source || t.NeedsSolver):
 		return fmt.Errorf("provider type %s: own keys are for sources that need no solver", t.ID)
 	}
+	texts := make(map[string]map[i18n.Key]string, len(t.Texts))
+	for tag, messages := range t.Texts {
+		if _, err := language.Parse(tag); err != nil {
+			return fmt.Errorf("provider type %s: texts in %q: %w", t.ID, tag, err)
+		}
+		texts[tag] = make(map[i18n.Key]string, len(messages))
+		for key, text := range messages {
+			if !strings.HasPrefix(string(key), s.module+".") {
+				return fmt.Errorf("provider type %s: the key of text %s does not start with the module ID %s", t.ID, key, s.module)
+			}
+			texts[tag][key] = text
+		}
+	}
 	seen, plain := map[string]bool{}, map[string]bool{}
 	for _, field := range t.Fields {
 		switch {
@@ -295,6 +315,10 @@ func (s *Scope) Add(t Type, f Factory) error {
 	t.Fields = append([]Field{}, t.Fields...) // never nil: the API sends a list
 	t.Tags = slices.Clone(t.Tags)
 	t.Challenges = slices.Clone(t.Challenges)
+	t.Texts = nil
+	if len(texts) > 0 {
+		t.Texts = texts
+	}
 
 	r := s.reg
 	r.mu.Lock()

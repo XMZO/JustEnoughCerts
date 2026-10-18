@@ -42,6 +42,37 @@ export const i18n = createI18n({
 
 const storageKey = 'jec.locale'
 const loaded = new Set<string>()
+// Messages that come with data instead of the locale files, such as the
+// texts plugins bring, by locale and key: added to a locale's messages now
+// if they are loaded, or once they are.
+const extra = new Map<string, Record<string, string>>()
+
+/** nest turns flat keys, such as a.b.c, into the nested messages vue-i18n keeps. */
+function nest(flat: Record<string, string>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [key, text] of Object.entries(flat)) {
+    const parts = key.split('.')
+    const last = parts.pop()!
+    let node = out
+    for (const part of parts) {
+      const next = node[part]
+      node = (typeof next === 'object' && next !== null ? next : (node[part] = {})) as Record<string, unknown>
+    }
+    node[last] = text
+  }
+  return out
+}
+
+/**
+ * addMessages adds messages that are not in the locale files, by locale
+ * tag and key, such as the texts a plugin brings for its types.
+ */
+export function addMessages(texts: Record<string, Record<string, string>> | undefined): void {
+  for (const [tag, messages] of Object.entries(texts ?? {})) {
+    extra.set(tag, { ...extra.get(tag), ...messages })
+    if (loaded.has(tag)) i18n.global.mergeLocaleMessage(tag, nest(messages) as never)
+  }
+}
 
 function isLocale(tag: string): tag is Locale {
   return locales.some((l) => l.tag === tag)
@@ -54,6 +85,8 @@ async function load(tag: Locale): Promise<void> {
   const messages = { ...(await file()).default }
   delete messages._meta
   i18n.global.setLocaleMessage(tag, messages as never)
+  const more = extra.get(tag)
+  if (more) i18n.global.mergeLocaleMessage(tag, nest(more) as never)
   loaded.add(tag)
 }
 

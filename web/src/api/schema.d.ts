@@ -366,6 +366,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/plugins/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the plugins
+         * @description The executables of the plugins directory as JEC found them when it started, with the types each added or why it is not in use.
+         */
+        get: operations["plugins-files"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/providers": {
         parameters: {
             query?: never;
@@ -969,6 +989,28 @@ export interface components {
             /** @description The current password */
             password: string;
         };
+        PluginBody: {
+            description?: string;
+            /** @description Why it is not in use, or not wholly */
+            error?: components["schemas"]["Message"];
+            file: string;
+            id: string;
+            /** @description Message key of the name the plugin gives itself, in texts */
+            name?: string;
+            /** @description The plugin's own messages, by language tag and key */
+            texts?: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+            /** @description The provider types it added */
+            types: string[];
+        };
+        PluginListBody: {
+            /** @description Where JEC looks for plugins when it starts */
+            dir: string;
+            plugins: components["schemas"]["PluginBody"][];
+        };
         RunBody: {
             /**
              * @description renew: an issuance because the current version entered its renewal window
@@ -1117,6 +1159,11 @@ export interface components {
             ownKey?: boolean;
             tags?: string[];
             testable?: boolean;
+            texts?: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
             url?: string;
         };
         TypeSummary: {
@@ -1144,6 +1191,12 @@ export interface components {
             tags?: string[];
             /** @description Its instances can be tested */
             testable?: boolean;
+            /** @description The type's own messages, by language tag and key, for keys the locale files lack, such as a plugin's */
+            texts?: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
             url?: string;
         };
         TypesOutputBody: {
@@ -1966,6 +2019,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SendsOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "plugins-files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginListBody"];
                 };
             };
             /** @description Error */

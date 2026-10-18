@@ -134,6 +134,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 			Providers: registry.Scope(id),
 
 			BaseURL:         cfg.BaseURL,
+			DataDir:         cfg.DataDir,
 			ConfirmPassword: accounts.ConfirmPassword,
 			WellKnown:       func(h http.Handler) { wellKnown = append(wellKnown, wellKnownHandler{module: id, h: h}) },
 		}

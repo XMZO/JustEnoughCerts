@@ -13,6 +13,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2/humatest"
 
+	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
@@ -190,7 +191,8 @@ func locations(e errorBody) string {
 func TestAddChecks(t *testing.T) {
 	f := newFixture(t)
 	factory := func(context.Context, providers.Instance) (any, error) { return nil, nil }
-	s := providers.New(f.db, f.box, func(string) bool { return true }).Scope("dns")
+	reg := providers.New(f.db, f.box, func(string) bool { return true })
+	s := reg.Scope("dns")
 	if err := s.Add(providers.Type{ID: "dns.ok", Kind: providers.Solver, Brand: "OK"}, factory); err != nil {
 		t.Fatal(err)
 	}
@@ -215,6 +217,8 @@ func TestAddChecks(t *testing.T) {
 		"challenges, no solver":  {ID: "dns.x", Kind: providers.Source, Brand: "X", Challenges: []string{providers.ChallengeHTTP}},
 		"bad challenges":         {ID: "dns.x", Kind: providers.Source, Brand: "X", NeedsSolver: true, Challenges: []string{"email"}},
 		"challenges of a solver": {ID: "dns.x", Kind: providers.Solver, Brand: "X", NeedsSolver: true, Challenges: []string{providers.ChallengeDNS}},
+		"text of another module": {ID: "dns.x", Kind: providers.Solver, Brand: "X", Texts: map[string]map[i18n.Key]string{"en-US": {"web.x.name": "X"}}},
+		"text in no language":    {ID: "dns.x", Kind: providers.Solver, Brand: "X", Texts: map[string]map[i18n.Key]string{"no language!": {"dns.x.name": "X"}}},
 	} {
 		if err := s.Add(typ, factory); err == nil {
 			t.Errorf("%s: added", name)
@@ -222,6 +226,15 @@ func TestAddChecks(t *testing.T) {
 	}
 	if err := s.Add(providers.Type{ID: "dns.y", Kind: providers.Solver, Brand: "Y"}, nil); err == nil {
 		t.Error("added a type without a factory")
+	}
+	// A type that brings its own texts, as a plugin's does.
+	texts := map[string]map[i18n.Key]string{"zh-CN": {"dns.texts.t.name": "T"}}
+	if err := s.Add(providers.Type{ID: "dns.t", Kind: providers.Solver, Name: "dns.texts.t.name", Texts: texts}, factory); err != nil {
+		t.Fatal(err)
+	}
+	texts["zh-CN"]["dns.texts.t.name"] = "changed"
+	if typ, ok := reg.Type("dns.t"); !ok || typ.Texts["zh-CN"]["dns.texts.t.name"] != "T" {
+		t.Errorf("texts %v", typ.Texts)
 	}
 	if err := f.reg.Scope("dns").Add(providers.Type{ID: "dns.late", Kind: providers.Solver, Brand: "L"}, factory); err == nil {
 		t.Error("added a type after the registry was sealed")

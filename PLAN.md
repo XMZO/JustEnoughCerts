@@ -290,6 +290,15 @@ type Target interface {
 2. **外部插件（exec 协议）**：任何语言写的可执行文件，通过 stdin/stdout 交换带版本号的 JSON。`describe` 动作返回 Schema 和插件自带的翻译，界面就能出现对应表单。不用重新编译 JEC，就能接入自家内部系统。
 3. **钩子（Hooks）**：在 `before_issue`、`after_issue`、`after_deploy`、`on_failure` 等节点执行脚本或内置动作（HTTP 请求、SSH 命令、写文件、重启 Docker 容器）。证书文件路径、域名等通过环境变量传入，模板语法是 Go 的 `text/template`。
 
+**外部插件的实现**（模块 `plugins`，M3，协议写在 `docs/plugins.md`）：
+
+- JEC 启动时扫描数据目录下的 `plugins/`：每个可执行文件是一个插件，文件名去掉扩展名就是 ID。文件和目录只能由属主写入，属主要是 root 或运行 JEC 的用户，否则不运行。
+- 对每个插件发 `describe`（10 秒），把它声明的部署目标、通知渠道、验证方式（DNS 或 HTTP）登记成 provider 类型 `plugins.<插件>.<类型>`，带 `plugin` 标签；通知渠道自动加上 `contracts.NotifierFields`。
+- 插件自带的文字转义成原样显示的消息，键在 `plugins.texts.` 下（`i18n.PluginText`），作为类型的 `texts` 随类型接口返回，前端并入自己的消息（`addMessages`）。所以 provider 类型多了 `texts` 字段（键必须以模块 ID 开头），模块的 Registry 多了 `DataDir`。
+- 每个动作运行一次插件：标准输入一个 JSON 请求，标准输出一个 JSON 回答（最多 1 MiB），标准错误在失败时记进日志。在 `<plugins>/<ID>.data` 里运行，环境去掉 JEC 自己的 `JEC_` 设置；超时（测试 1 分钟，其他 5 分钟）后结束整个进程组。部署请求的内容和 Webhook 部署一样；插件给的日志行和错误原样显示。没有回答、超时可以重试，回答看不懂不重试。
+- 插件列表 `GET /api/v1/plugins/files`，显示在“模块”页。插件只在启动时读取，加了或改了要重启；“插件”模块关掉时类型不可用，但启动时仍会运行 `describe`。
+- 证书来源类的插件还没做。
+
 ### 5.3 服务商支持范围
 
 “阶段”一栏对应第 13 节的路线图。列表之外的平台，可以通过外部插件或钩子接入。

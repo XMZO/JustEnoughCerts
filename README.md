@@ -50,6 +50,9 @@ Working on the main branch:
   CDN did not take the new one.
 - Everything beyond the kernel is a module, switched on and off on the
   Modules page or left out at build time.
+- Plugins, programs in any language, add deploy targets, notification
+  channels and ways to validate domains without rebuilding JEC
+  ([docs/plugins.md](docs/plugins.md)).
 - One small container image or one static binary, with SQLite.
 
 Planned: manual validation, hooks, and more CDNs and panels.

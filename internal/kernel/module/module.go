@@ -89,6 +89,9 @@ type Registry struct {
 	// BaseURL is the URL users open JEC at, such as
 	// https://certs.example.com, for links in messages; "" when unknown.
 	BaseURL string
+	// DataDir is the directory JEC keeps its data in, such as /data. What a
+	// module keeps there goes in a directory named after its ID.
+	DataDir string
 	// WellKnown takes the module's handler of the requests under
 	// /.well-known/ at the root of the host, whatever JEC's base path: a CA
 	// fetching the answer to a domain validation, which the website's

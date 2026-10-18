@@ -257,6 +257,14 @@ test('every page is translated and fits', async ({ page }, info) => {
     await expect(dialog.getByLabel(label(field))).toBeVisible()
     expect.soft(await problems(page), `add a deploy target: ${type}`).toEqual([])
   }
+  // A plugin's type, with the texts it brings, where shell scripts run.
+  if (process.platform !== 'win32') {
+    if (info.project.name === 'phone') await dialog.getByRole('button', { name: label('kernel.providers.choose_other') }).click()
+    await dialog.getByRole('option', { name: pseudoize('E2E plugin target') }).click()
+    await expect(dialog.getByLabel(pseudoize('Endpoint'))).toBeVisible()
+    await expect(dialog.getByText(pseudoize('Where it {would} deploy'))).toBeVisible()
+    expect.soft(await problems(page), 'add a deploy target: a plugin').toEqual([])
+  }
   if (info.project.name === 'phone') await dialog.getByRole('button', { name: label('kernel.providers.choose_other') }).click()
   await dialog.getByRole('option', { name: label('files.directory.name') }).click()
   await dialog.getByLabel(label('kernel.providers.field.name')).fill('e2e files')
@@ -401,6 +409,10 @@ test('every page is translated and fits', async ({ page }, info) => {
   await module.click()
   await expect(module).toHaveCount(0) // on again, so no longer among those off
   await page.getByRole('button', { name: label('kernel.modules.filter.all') }).click()
+  // The plugins JEC found.
+  await expect(page.getByRole('heading', { name: label('plugins.page.title') })).toBeVisible()
+  if (process.platform !== 'win32') await expect(page.getByText(pseudoize('E2E plugin'), { exact: true })).toBeVisible()
+  expect.soft(await problems(page), 'modules with the plugins').toEqual([])
   await page.getByRole('searchbox').fill('nothing.example')
   await expect(page.getByText(label('kernel.modules.no_match'))).toBeVisible()
   expect.soft(await problems(page), 'modules with no match').toEqual([])

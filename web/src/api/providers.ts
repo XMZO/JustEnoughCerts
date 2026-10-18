@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 
+import { addMessages } from '../i18n'
 import { api, unwrap } from './client'
 import type { components } from './schema'
 
@@ -19,11 +20,18 @@ export interface ProviderSettings {
 
 const all = ['providers'] as const
 
+/** withTexts adds the messages a type brings along, as a plugin's do, before its texts show. */
+function withTexts<T extends { texts?: Record<string, Record<string, string>> }>(type: T): T {
+  addMessages(type.texts)
+  return type
+}
+
 /** The provider types of kind that the modules that are on offer. */
 export function useProviderTypes(kind: MaybeRefOrGetter<ProviderKind>) {
   return useQuery({
     queryKey: computed(() => [...all, 'types', toValue(kind)] as const),
-    queryFn: async () => (await unwrap(api.GET('/providers/types', { params: { query: { kind: toValue(kind) } } }))).types ?? [],
+    queryFn: async () =>
+      ((await unwrap(api.GET('/providers/types', { params: { query: { kind: toValue(kind) } } }))).types ?? []).map(withTexts),
     staleTime: 5 * 60_000,
   })
 }
@@ -32,7 +40,7 @@ export function useProviderTypes(kind: MaybeRefOrGetter<ProviderKind>) {
 export function useProviderType(id: MaybeRefOrGetter<string | undefined>) {
   return useQuery({
     queryKey: computed(() => [...all, 'type', toValue(id)] as const),
-    queryFn: () => unwrap(api.GET('/providers/types/{id}', { params: { path: { id: toValue(id) ?? '' } } })),
+    queryFn: async () => withTexts(await unwrap(api.GET('/providers/types/{id}', { params: { path: { id: toValue(id) ?? '' } } }))),
     enabled: computed(() => !!toValue(id)),
     staleTime: 5 * 60_000,
   })

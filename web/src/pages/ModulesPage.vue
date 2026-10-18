@@ -1,19 +1,21 @@
 <script setup lang="ts">
+import { CircleCheck, TriangleAlert } from '@lucide/vue'
 import { computed, ref } from 'vue'
 
 import { useApiError } from '../api/errors'
 import { useManifest, useSwitchModule, type ModuleInfo } from '../api/manifest'
+import { usePlugins, type PluginInfo } from '../api/plugins'
 import JecAlert from '../components/JecAlert.vue'
 import JecSwitch from '../components/JecSwitch.vue'
 import PageHeader from '../components/PageHeader.vue'
 import SearchBox from '../components/SearchBox.vue'
-import { useT, type MessageKey } from '../i18n'
+import { useT, type MessageKey, type Params } from '../i18n'
 
 // The modules (docs/design/boards/Modules and ModulesMobile): every source,
 // solver, target, notifier and feature compiled in, by category, each with
 // a switch that acts at once. Required modules stay on; experimental ones
 // start off. On phones a whole tile is the switch's target.
-const { t } = useT()
+const { t, locale } = useT()
 const manifest = useManifest()
 const loadError = useApiError(computed(() => manifest.error.value))
 const switcher = useSwitchModule()
@@ -82,6 +84,16 @@ async function toggle(m: ModuleInfo, on: boolean) {
 function tap(e: MouseEvent, m: ModuleInfo) {
   if (!(e.target as HTMLElement).closest('button')) void toggle(m, !isOn(m))
 }
+
+// The plugins found when JEC started, while their module is on: each with
+// the types it added, or why it is not in use.
+const pluginsOn = computed(() => modules.value.some((m) => m.id === 'plugins' && m.enabled))
+const plugins = usePlugins(pluginsOn)
+const pluginsError = useApiError(computed(() => plugins.error.value))
+const pluginName = (p: PluginInfo) => (p.name ? t(p.name as MessageKey) : p.id)
+const inUse = (p: PluginInfo) => t('plugins.page.in_use', { count: p.types?.length ?? 0 })
+const problem = (p: PluginInfo) => (p.error ? t(p.error.key as MessageKey, (p.error.params ?? {}) as Params) : '')
+const guide = computed(() => `https://github.com/XMZO/JustEnoughCerts/blob/main/docs/${locale.value === 'zh-CN' ? 'plugins.zh-CN.md' : 'plugins.md'}`)
 
 // A tag goes under the name when the two do not fit, and is cut short, with
 // its full text as a title, when it alone does not.
@@ -157,6 +169,37 @@ const tag = 'inline-block max-w-full truncate rounded-sm px-1.5 text-[11px] lead
           />
         </li>
       </ul>
+    </section>
+
+    <section
+      v-if="pluginsOn"
+      aria-labelledby="modules-plugins"
+      class="flex flex-col gap-2.5 rounded-lg border border-line bg-surface-raised p-3 sm:p-4"
+    >
+      <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+        <h2 id="modules-plugins" class="m-0 text-heading font-semibold sm:text-section-title">{{ t('plugins.page.title') }}</h2>
+        <a :href="guide" target="_blank" rel="noopener" class="text-small">{{ t('plugins.page.guide') }}</a>
+      </div>
+      <p class="m-0 text-small text-ink-muted">{{ t('plugins.page.intro') }}</p>
+      <code v-if="plugins.data.value" translate="no" class="text-small [overflow-wrap:anywhere]">{{ plugins.data.value.dir }}</code>
+      <JecAlert v-if="pluginsError.error.value" :code="pluginsError.error.value.code" :params="pluginsError.error.value.params" />
+      <ul v-if="plugins.data.value?.plugins?.length" class="m-0 flex list-none flex-col gap-1.5 p-0">
+        <li v-for="p in plugins.data.value.plugins" :key="p.file" class="flex min-w-0 flex-col gap-0.5 rounded-md border border-line px-3 py-2">
+          <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span class="min-w-0 truncate font-semibold" :title="pluginName(p)">{{ pluginName(p) }}</span>
+            <code translate="no" class="min-w-0 truncate text-caption text-ink-muted" :title="p.file">{{ p.file }}</code>
+            <span v-if="p.error" :class="[tag, 'inline-flex items-center gap-1 bg-warn-soft text-warn-ink']" :title="t('plugins.page.not_in_use')">
+              <TriangleAlert :size="12" aria-hidden="true" class="flex-none" />{{ t('plugins.page.not_in_use') }}
+            </span>
+            <span v-else :class="[tag, 'inline-flex items-center gap-1 bg-ok-soft text-ok-ink']" :title="inUse(p)">
+              <CircleCheck :size="12" aria-hidden="true" class="flex-none" />{{ inUse(p) }}
+            </span>
+          </div>
+          <p v-if="p.error" class="m-0 text-caption text-warn-ink [overflow-wrap:anywhere]">{{ problem(p) }}</p>
+          <p v-else-if="p.description" class="m-0 text-caption text-ink-muted [overflow-wrap:anywhere]">{{ t(p.description as MessageKey) }}</p>
+        </li>
+      </ul>
+      <p v-else-if="plugins.data.value" class="m-0 text-ink-muted">{{ t('plugins.page.empty') }}</p>
     </section>
 
     <p v-if="modules.length && !groups.length" class="m-0 text-ink-muted">{{ t('kernel.modules.no_match') }}</p>

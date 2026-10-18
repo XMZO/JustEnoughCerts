@@ -6,7 +6,7 @@
 //	pnpm build && go build -o ../build/jec ../cmd/jec
 //	JEC_E2E_BIN=../build/jec pnpm e2e
 import { spawn, type ChildProcess } from 'node:child_process'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -14,6 +14,23 @@ const servers = [
   { project: 'phone', port: 18090 },
   { project: 'desktop', port: 18091 },
 ]
+
+// A plugin (docs/plugins.md) for each server, where shell scripts run: it
+// offers one deploy target, and answers any other request with success.
+const plugin = `#!/bin/sh
+cat > /dev/null
+cat <<'EOF'
+{"protocol": 1, "ok": true, "name": "E2E plugin", "description": "A plugin of the end-to-end tests",
+ "types": [{"id": "cdn", "kind": "target", "testable": true, "name": "E2E plugin target", "description": "Deploys nowhere",
+  "fields": [{"key": "endpoint", "kind": "url", "label": "Endpoint", "help": "Where it {would} deploy", "required": true}]}]}
+EOF
+`
+
+function installPlugin(dir: string): void {
+  if (process.platform === 'win32') return
+  mkdirSync(join(dir, 'plugins'), { mode: 0o755 })
+  writeFileSync(join(dir, 'plugins', 'e2e'), plugin, { mode: 0o755 })
+}
 
 function start(bin: string, port: number, dir: string): Promise<{ proc: ChildProcess; token: string }> {
   return new Promise((resolve, reject) => {
@@ -43,6 +60,7 @@ export default async function globalSetup(): Promise<() => void> {
   process.env.JEC_E2E_FILES = files
   for (const { project, port } of servers) {
     const dir = mkdtempSync(join(tmpdir(), 'jec-e2e-'))
+    installPlugin(dir)
     const { proc, token } = await start(bin, port, dir)
     process.env[`JEC_E2E_TOKEN_${project.toUpperCase()}`] = token
     running.push({ proc, dir })

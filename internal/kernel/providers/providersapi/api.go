@@ -33,6 +33,9 @@ type TypeSummary struct {
 	Challenge    string         `json:"challenge,omitempty" enum:"dns,http" doc:"For a solver: how it proves control of a domain, through DNS records or files on the web server"`
 	Testable     bool           `json:"testable,omitempty" doc:"Its instances can be tested"`
 	Experimental bool           `json:"experimental,omitempty"`
+	// Texts holds the messages of the keys above that the locale files
+	// lack, such as a plugin's.
+	Texts map[string]map[i18n.Key]string `json:"texts,omitempty" doc:"The type's own messages, by language tag and key, for keys the locale files lack, such as a plugin's"`
 }
 
 // InstanceBody is an instance as the API returns it: secrets are never
@@ -123,6 +126,7 @@ func Register(a huma.API, r *providers.Registry) {
 			sum := TypeSummary{
 				ID: t.ID, Kind: t.Kind, Module: t.Module, Name: t.Name, Description: t.Description,
 				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, OwnKey: t.OwnKey, Testable: t.Testable, Experimental: t.Experimental,
+				Texts: t.Texts,
 			}
 			switch {
 			case t.Kind == providers.Solver:

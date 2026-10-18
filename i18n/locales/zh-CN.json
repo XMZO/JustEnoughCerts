@@ -960,6 +960,7 @@
         "all": "全部",
         "china": "国内",
         "http": "网站文件",
+        "plugin": "插件",
         "popular": "常用",
         "self_hosted": "自建"
       },
@@ -1202,6 +1203,40 @@
     "topic": {
       "description": "订阅了这个主题的手机和浏览器都能收到通知。",
       "name": "ntfy"
+    }
+  },
+  "plugins": {
+    "error": {
+      "answer": "插件 {plugin} 的回应 JEC 看不懂：{problem}",
+      "describe": "插件 {plugin} 对自己类型的描述有误：{problem}",
+      "exit": "插件 {plugin} 没有给出回应就退出了，退出码 {status}。它的错误输出记在 JEC 的日志里。",
+      "failed": "插件 {plugin} 报告失败：{message}",
+      "name": "{file} 的文件名不符合插件的要求：只能用小写字母、数字、- 和 _，以字母开头，最多 32 个字符，可以带扩展名。",
+      "owner": "{file} 或插件目录的属主既不是 root，也不是运行 JEC 的用户（{uid}），所以 JEC 不运行它。请修改属主（chown）。",
+      "repeated": "{file} 去掉扩展名后和 {other} 重名。",
+      "run": "运行不了插件 {plugin}。请检查文件是不是适用于这个系统的程序，以及 JEC 有没有权限运行它。",
+      "timeout": "插件 {plugin} 在 {seconds, plural, other {# 秒}}内没有回应，已停止。",
+      "writable": "除了属主以外的用户也能修改 {file} 或插件目录，所以 JEC 不运行它。请改成只有属主能写（chmod go-w）。"
+    },
+    "log": {
+      "line": "{text}",
+      "stderr": "插件 {plugin} 的错误输出"
+    },
+    "module": {
+      "description": "把放进插件目录的程序当作更多的部署目标、通知渠道和验证方式来用。",
+      "name": "插件"
+    },
+    "page": {
+      "empty": "还没有插件。",
+      "guide": "怎样写插件",
+      "in_use": "已启用：{count, plural, other {# 种类型}}",
+      "intro": "JEC 把这个目录里的程序当作插件来用。它在启动时读取插件：添加或修改插件后要重启 JEC。",
+      "not_in_use": "没有启用",
+      "title": "插件"
+    },
+    "test": {
+      "done": "插件 {plugin} 认可了这些设置。",
+      "ok": "{plugin}：{message}"
     }
   },
   "serverchan": {

@@ -960,6 +960,7 @@
         "all": "All",
         "china": "China",
         "http": "Website files",
+        "plugin": "Plugins",
         "popular": "Popular",
         "self_hosted": "Self-hosted"
       },
@@ -1202,6 +1203,40 @@
     "topic": {
       "description": "Every phone and browser subscribed to the topic gets the notes.",
       "name": "ntfy"
+    }
+  },
+  "plugins": {
+    "error": {
+      "answer": "The answer of the plugin {plugin} makes no sense to JEC: {problem}",
+      "describe": "The plugin {plugin} describes its types wrongly: {problem}",
+      "exit": "The plugin {plugin} stopped with status {status} without an answer. What it wrote on its standard error is in JEC's log.",
+      "failed": "The plugin {plugin} failed: {message}",
+      "name": "{file} is not named as a plugin: lowercase letters, digits, - and _, starting with a letter, 32 at most, with an extension or none.",
+      "owner": "{file} or the plugins directory belongs to a user other than root and the user JEC runs as ({uid}), so JEC does not run it. Change the owner (chown).",
+      "repeated": "{file} has the same name as {other}, without the extension.",
+      "run": "Could not run the plugin {plugin}. Check that the file is a program for this system, and that JEC may run it.",
+      "timeout": "The plugin {plugin} did not answer within {seconds, plural, one {# second} other {# seconds}}, and was stopped.",
+      "writable": "Users other than its owner may change {file} or the plugins directory, so JEC does not run it. Make them writable by their owner only (chmod go-w)."
+    },
+    "log": {
+      "line": "{text}",
+      "stderr": "What the plugin {plugin} wrote on its standard error"
+    },
+    "module": {
+      "description": "Runs the programs you put in the plugins directory as more deploy targets, notification channels and validation methods.",
+      "name": "Plugins"
+    },
+    "page": {
+      "empty": "No plugins.",
+      "guide": "How to write a plugin",
+      "in_use": "In use: {count, plural, one {# type} other {# types}}",
+      "intro": "JEC runs the programs in this directory as plugins. It reads them when it starts: restart JEC after adding or changing one.",
+      "not_in_use": "Not in use",
+      "title": "Plugins"
+    },
+    "test": {
+      "done": "The plugin {plugin} accepted the settings.",
+      "ok": "{plugin}: {message}"
     }
   },
   "serverchan": {

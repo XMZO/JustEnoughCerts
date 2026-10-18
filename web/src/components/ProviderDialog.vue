@@ -48,6 +48,7 @@ const allTags = [
   { id: 'popular', label: 'kernel.providers.tag.popular' },
   { id: 'self_hosted', label: 'kernel.providers.tag.self_hosted' },
   { id: 'http', label: 'kernel.providers.tag.http' },
+  { id: 'plugin', label: 'kernel.providers.tag.plugin' },
 ] as const
 const tags = computed(() => allTags.filter((g) => !g.id || types.data.value?.some((s) => s.tags?.includes(g.id))))
 const tag = ref('')

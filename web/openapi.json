@@ -1140,6 +1140,71 @@
         ],
         "type": "object"
       },
+      "PluginBody": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "error": {
+            "$ref": "#/components/schemas/Message",
+            "description": "Why it is not in use, or not wholly"
+          },
+          "file": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "description": "Message key of the name the plugin gives itself, in texts",
+            "type": "string"
+          },
+          "texts": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "description": "The plugin's own messages, by language tag and key",
+            "type": "object"
+          },
+          "types": {
+            "description": "The provider types it added",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "file",
+          "id",
+          "types"
+        ],
+        "type": "object"
+      },
+      "PluginListBody": {
+        "additionalProperties": false,
+        "properties": {
+          "dir": {
+            "description": "Where JEC looks for plugins when it starts",
+            "type": "string"
+          },
+          "plugins": {
+            "items": {
+              "$ref": "#/components/schemas/PluginBody"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "dir",
+          "plugins"
+        ],
+        "type": "object"
+      },
       "RunBody": {
         "additionalProperties": false,
         "properties": {
@@ -1558,6 +1623,15 @@
           "testable": {
             "type": "boolean"
           },
+          "texts": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "object"
+          },
           "url": {
             "type": "string"
           }
@@ -1638,6 +1712,16 @@
           "testable": {
             "description": "Its instances can be tested",
             "type": "boolean"
+          },
+          "texts": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "description": "The type's own messages, by language tag and key, for keys the locale files lack, such as a plugin's",
+            "type": "object"
           },
           "url": {
             "type": "string"
@@ -2852,6 +2936,38 @@
         "summary": "The last note sent through each notifier",
         "tags": [
           "notify"
+        ]
+      }
+    },
+    "/plugins/files": {
+      "get": {
+        "description": "The executables of the plugins directory as JEC found them when it started, with the types each added or why it is not in use.",
+        "operationId": "plugins-files",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PluginListBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the plugins",
+        "tags": [
+          "plugins"
         ]
       }
     },
