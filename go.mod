@@ -12,6 +12,7 @@ require (
 	github.com/go-acme/esa-20240910/v3 v3.13.1
 	github.com/go-acme/lego/v5 v5.5.2
 	github.com/go-chi/chi/v5 v5.5.0
+	github.com/huaweicloud/huaweicloud-sdk-go-v3 v0.1.215
 	github.com/ncruces/go-sqlite3 v0.35.6
 	github.com/pquerna/otp v1.5.0
 	github.com/pressly/goose/v3 v3.29.0
@@ -112,7 +113,6 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/huaweicloud/huaweicloud-sdk-go-v3 v0.1.215 // indirect
 	github.com/infobloxopen/infoblox-go-client/v2 v2.12.0 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
 	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect

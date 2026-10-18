@@ -777,6 +777,39 @@
       "title": "Upload a new certificate"
     }
   },
+  "cloudflare": {
+    "custom": {
+      "description": "Puts each new certificate in a custom certificate of a zone, which serves it for the hosts it covers, replaced in place at each renewal. Needs a Business or Enterprise plan.",
+      "name": "Cloudflare custom certificate"
+    },
+    "error": {
+      "api": "Cloudflare returned the error {code}: {message}",
+      "auth": "Cloudflare refused the API token, or it lacks the permission needed: {message}",
+      "network": "Could not reach Cloudflare's API.",
+      "throttled": "Cloudflare refused for now: too many requests. JEC tries again later.",
+      "zone": "The token sees no zone {zone}."
+    },
+    "field": {
+      "api_token": "API token",
+      "api_token_help": "Made under My Profile, API Tokens, with the permission Zone, SSL and Certificates, Edit; and Zone, Zone, Read to name the zone by its domain.",
+      "certificate_id": "Custom certificate ID",
+      "certificate_id_help": "To replace a custom certificate the zone has already. Left empty, JEC adds one of its own the first time, and replaces that one afterwards.",
+      "zone": "Zone",
+      "zone_help": "The zone's ID, on the right of its overview, or its domain."
+    },
+    "log": {
+      "add": "Adding a custom certificate",
+      "gone": "The custom certificate {id} is gone; adding a new one",
+      "replace": "Replacing the custom certificate {id}"
+    },
+    "module": {
+      "description": "Deploys certificates to Cloudflare zones as custom certificates.",
+      "name": "Cloudflare"
+    },
+    "test": {
+      "ok": "Found the zone {zone}, with {count, plural, one {# custom certificate} other {# custom certificates}}."
+    }
+  },
   "dingtalk": {
     "error": {
       "api": "DingTalk refused the message: {message} ({code})",
@@ -1115,6 +1148,45 @@
     "script": {
       "description": "Runs a shell script for each event it is set to, with what happened in its environment, to reach systems no other channel does.",
       "name": "Run a script"
+    }
+  },
+  "huaweicloud": {
+    "cdn": {
+      "description": "Sets each new certificate on accelerated domains of Huawei Cloud CDN, with HTTPS on; the domains keep their HTTP/2, TLS and OCSP settings.",
+      "name": "Huawei Cloud CDN"
+    },
+    "error": {
+      "api": "Huawei Cloud returned the error {code}: {message}",
+      "auth": "Huawei Cloud refused the AK and SK, or they lack the permissions needed ({code}).",
+      "domain": "This account has no accelerated domain {domain}.",
+      "network": "Could not reach Huawei Cloud's API.",
+      "no_domains": "Enter the accelerated domains to test them; deployments use the certificate's own when there are none.",
+      "throttled": "Huawei Cloud refused for now: too many requests. JEC tries again later."
+    },
+    "field": {
+      "access_key_id": "Access key ID (AK)",
+      "domain_id": "Account ID",
+      "domain_id_help": "Left empty, JEC looks it up with the AK. Fill it in, from My Credentials in the console, when the user may not look it up.",
+      "domains": "Accelerated domains",
+      "domains_help": "Separated by commas. Left empty, the certificate's own domains, but for wildcards.",
+      "secret_access_key": "Secret access key (SK)",
+      "secret_access_key_help": "Best from an IAM user granted only CDN DomainReadOnlyAccess and CDN DomainConfiguration, which go together.",
+      "site": "Site"
+    },
+    "log": {
+      "set": "Setting the certificate on {domain}"
+    },
+    "module": {
+      "description": "Deploys certificates to the accelerated domains of Huawei Cloud CDN.",
+      "name": "Huawei Cloud"
+    },
+    "site": {
+      "china": "China (cn-north-1)",
+      "europe": "Europe (eu-west-101)",
+      "intl": "International (ap-southeast-1)"
+    },
+    "test": {
+      "ok": "Found the accelerated domains {domains}."
     }
   },
   "kernel": {

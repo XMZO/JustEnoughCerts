@@ -38,6 +38,8 @@ JEC 的每种证书来源、验证方式、部署目标和通知渠道，以及�
 | `aliyun.cdn`、`aliyun.dcdn` | 阿里云 CDN 和全站加速 | 替身 |
 | `aliyun.cas` | 阿里云数字证书管理服务 | 替身 |
 | `aliyun.clb` | 阿里云传统型负载均衡（CLB） | 替身 |
+| `huaweicloud.cdn` | 华为云 CDN | 替身 |
+| `cloudflare.custom` | Cloudflare 自定义证书 | 替身 |
 | `tencentcloud.ssl` | 腾讯云 SSL 证书，更新到 CDN、EdgeOne、CLB 等 | 替身 |
 | `qiniu.cdn` | 七牛云 CDN | 替身 |
 | `aws.acm` | AWS Certificate Manager，供 CloudFront 和负载均衡使用 | 模拟器：moto |

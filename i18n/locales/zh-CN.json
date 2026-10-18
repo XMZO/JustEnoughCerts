@@ -777,6 +777,39 @@
       "title": "上传新证书"
     }
   },
+  "cloudflare": {
+    "custom": {
+      "description": "把每张新证书放进站点的一张自定义证书，它覆盖的主机都用这张证书；续期时原地替换。需要 Business 或 Enterprise 套餐。",
+      "name": "Cloudflare 自定义证书"
+    },
+    "error": {
+      "api": "Cloudflare 返回了错误 {code}：{message}",
+      "auth": "Cloudflare 不认这个 API 令牌，或者它缺少需要的权限：{message}",
+      "network": "连不上 Cloudflare 的接口。",
+      "throttled": "Cloudflare 暂时拒绝了：请求太多。JEC 稍后再试。",
+      "zone": "这个令牌看不到站点 {zone}。"
+    },
+    "field": {
+      "api_token": "API 令牌",
+      "api_token_help": "在“我的个人资料 → API 令牌”创建，权限选“区域 → SSL 和证书 → 编辑”；用域名填站点时还要“区域 → 区域 → 读取”。",
+      "certificate_id": "自定义证书 ID",
+      "certificate_id_help": "要替换站点里已有的一张自定义证书时填写。留空时 JEC 第一次部署时添加一张，以后都替换这一张。",
+      "zone": "站点",
+      "zone_help": "站点的区域 ID（在概览页右侧），或者站点的域名。"
+    },
+    "log": {
+      "add": "添加一张自定义证书",
+      "gone": "自定义证书 {id} 已经不在了，新添加一张",
+      "replace": "替换自定义证书 {id}"
+    },
+    "module": {
+      "description": "把证书作为自定义证书部署到 Cloudflare 的站点。",
+      "name": "Cloudflare"
+    },
+    "test": {
+      "ok": "找到了站点 {zone}，有 {count, plural, other {# 张}}自定义证书。"
+    }
+  },
   "dingtalk": {
     "error": {
       "api": "钉钉拒绝了这条消息：{message}（{code}）",
@@ -1115,6 +1148,45 @@
     "script": {
       "description": "每发生一种选中的事件，就运行一段 shell 脚本，发生了什么放在环境变量里，用来接入其他渠道接不了的系统。",
       "name": "运行脚本"
+    }
+  },
+  "huaweicloud": {
+    "cdn": {
+      "description": "把每张新证书设置到华为云 CDN 的加速域名上并打开 HTTPS；域名原来的 HTTP/2、TLS 版本和 OCSP 设置保持不变。",
+      "name": "华为云 CDN"
+    },
+    "error": {
+      "api": "华为云返回了错误 {code}：{message}",
+      "auth": "华为云不认这对 AK 和 SK，或者它们缺少需要的权限（{code}）。",
+      "domain": "这个账号没有加速域名 {domain}。",
+      "network": "连不上华为云的接口。",
+      "no_domains": "填上加速域名才能测试；不填时部署会用证书里的域名。",
+      "throttled": "华为云暂时拒绝了：请求太多。JEC 稍后再试。"
+    },
+    "field": {
+      "access_key_id": "访问密钥 ID（AK）",
+      "domain_id": "账号 ID",
+      "domain_id_help": "留空时 JEC 用 AK 自动查询。用户没有查询权限时填写，可以在控制台的“我的凭证”里看到。",
+      "domains": "加速域名",
+      "domains_help": "多个用逗号分隔。留空时用证书里的域名（通配符除外）。",
+      "secret_access_key": "秘密访问密钥（SK）",
+      "secret_access_key_help": "最好用只授予 CDN DomainReadOnlyAccess 和 CDN DomainConfiguration 权限的 IAM 用户，这两个要一起授予。",
+      "site": "站点"
+    },
+    "log": {
+      "set": "给 {domain} 设置证书"
+    },
+    "module": {
+      "description": "把证书部署到华为云 CDN 的加速域名。",
+      "name": "华为云"
+    },
+    "site": {
+      "china": "中国站（cn-north-1）",
+      "europe": "欧洲站（eu-west-101）",
+      "intl": "国际站（ap-southeast-1）"
+    },
+    "test": {
+      "ok": "找到了加速域名 {domains}。"
     }
   },
   "kernel": {

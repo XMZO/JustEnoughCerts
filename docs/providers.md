@@ -44,6 +44,8 @@ Reports of what works with a real account, or does not, are welcome.
 | `aliyun.cdn`, `aliyun.dcdn` | Alibaba Cloud CDN and DCDN | Fake |
 | `aliyun.cas` | Alibaba Cloud Certificate Management Service | Fake |
 | `aliyun.clb` | Alibaba Cloud CLB load balancers | Fake |
+| `huaweicloud.cdn` | Huawei Cloud CDN | Fake |
+| `cloudflare.custom` | Cloudflare custom certificates | Fake |
 | `tencentcloud.ssl` | Tencent Cloud SSL Certificates, to CDN, EdgeOne, CLB and more | Fake |
 | `qiniu.cdn` | Qiniu Cloud CDN | Fake |
 | `aws.acm` | AWS Certificate Manager, for CloudFront and load balancers | Emulator: moto |

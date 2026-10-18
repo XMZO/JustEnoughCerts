@@ -355,7 +355,7 @@ DNS 验证分成两种能力，实现方式不同：
 
 | 类别 | 平台 | 阶段 |
 |---|---|---|
-| CDN / 边缘 | **阿里云 ESA**（M1）；阿里云 CDN / DCDN、七牛云（已完成）、腾讯云 EdgeOne、腾讯云 CDN、华为云 CDN、百度智能云 CDN、火山引擎 CDN、又拍云、AWS CloudFront（经 ACM，已完成）、Cloudflare（自定义证书需付费套餐） | M1 / M3 |
+| CDN / 边缘 | **阿里云 ESA**（M1）；阿里云 CDN / DCDN、七牛云（已完成）、腾讯云 EdgeOne、腾讯云 CDN、华为云 CDN（已完成）、百度智能云 CDN、火山引擎 CDN、又拍云、AWS CloudFront（经 ACM，已完成）、Cloudflare（自定义证书需付费套餐，已完成） | M1 / M3 |
 | 负载均衡 / 证书库 | 阿里云 SLB / ALB、阿里云证书服务（CLB 和数字证书管理服务已完成）、腾讯云 CLB、腾讯云 SSL 证书（已完成，经它更新 CDN、EdgeOne、CLB 等）、AWS ACM（已完成） | M3 |
 | 对象存储 | 阿里云 OSS、腾讯云 COS 的自定义域名 HTTPS | M3 |
 | 服务器 | 本地文件 + 执行命令（nginx、caddy、haproxy 等）；SSH / SFTP 上传 + 远程命令；Docker 容器（通过挂载的 Docker API 发信号或重启，不需要 docker 命令行）；Kubernetes Secret | M1（本地、SSH）/ M3（Docker、Kubernetes 已完成） |
@@ -393,6 +393,10 @@ DNS 验证分成两种能力，实现方式不同：
 - **数字证书管理服务**（`aliyun.cas`，2020-04-07）：AccessKey、站点（中国站 `cas.aliyuncs.com` 或国际站 `cas.ap-southeast-1.aliyuncs.com`）。先用 `ListUserCertificateOrder`（`OrderType=UPLOAD`，`Keyword` 是主域名：它只按域名或资源 ID 模糊搜索，不按名字）找同名的，没有就 `UploadUserCertificate`，旧的用 `DeleteUserCertificate` 删。传上去以后，ALB、OSS、WAF 等产品可以在控制台里选用。测试连接列出上传的证书数。RAM 权限：`yundun-cert:ListUserCertificateOrder`、`UploadUserCertificate`、`DeleteUserCertificate`。
 - **传统型负载均衡 CLB**（`aliyun.clb`，原 SLB，2014-05-15）：AccessKey、地域（`cn-hangzhou` 和几个金融云地域用 `slb.aliyuncs.com`，其他用 `slb.<地域>.aliyuncs.com`）、负载均衡实例 ID、监听端口（留空时是全部 HTTPS 监听）、扩展证书的域名（高级设置）。先用 `DescribeLoadBalancerAttribute` 读出 HTTPS 监听的端口（没有就报错，不重试），再按名字在 `DescribeServerCertificates` 里找、没有就 `UploadServerCertificate`；没填域名时把证书设为每个监听的默认证书（`DescribeLoadBalancerHTTPSListenerAttribute` 已经是这张就跳过，否则 `SetLoadBalancerHTTPSListenerAttribute`），填了域名时改监听里这个域名的扩展证书（`DescribeDomainExtensions`、`SetDomainExtensionAttribute`；监听没有这个域名的扩展证书时报错，提示先在控制台添加）。旧证书用 `DeleteServerCertificate` 删。负载均衡不存在、端口不是 HTTPS 监听都不重试。测试连接报出负载均衡的名字和 HTTPS 监听数。
 - 两者都只用替身 API 测过（按动作回答的替身，加上一个对着 HTTP 替身检查签名、查询串和表单的测试），还没有对真实账号验证。
+
+**华为云 CDN 的实现**（`internal/modules/huaweicloud`，M3）：部署目标类型 `huaweicloud.cdn`：AK、SK、站点（中国站 `cn-north-1`、国际站 `ap-southeast-1`、欧洲站 `eu-west-101`，前两个的 CDN 接口都是 `cdn.myhuaweicloud.com`）、加速域名（逗号分隔；留空时用证书里不是通配符的域名）、账号 ID（高级设置，可不填）。用华为云官方 SDK（lego 已经依赖它，只多用了 CDN 的两个接口，链接器去掉了其余部分，程序只大了约 0.1 MiB）：CDN 是全局服务，SDK 用 AK 向 IAM 查出账号 ID（填了账号 ID 就不查，子用户没有查询权限时要填）。每个新版本对每个加速域名先 `ShowDomainFullConfig` 读出现在的 HTTPS 设置，再用 `UpdateDomainFullConfig` 只改 `https` 这一项：开启 HTTPS、自有证书（`certificate_source=0`、`certificate_type=server`）、证书名 `jec-<证书 ID>-<指纹前 12 位>`、证书链和私钥（PKCS #1 / SEC 1），并把原来的 `http2_status`、`tls_version`、`ocsp_stapling_status` 原样带上：不带的话这些会被恢复成默认值。测试连接对每个加速域名读一次配置，不做改动。SDK 的调用不能取消，每次最多 30 秒，不自动重试。错误：429 稍后重试；401、403、`APIGW.0301` 是密钥不对或没有权限，域名不存在（404），都不重试；5xx 重试。最小权限是系统策略 CDN DomainReadOnlyAccess 加 CDN DomainConfiguration（两者要一起授予）。只用替身 API 测过（经 SDK 发到 HTTP 替身，检查签名头和账号 ID），还没有对真实账号验证。
+
+**Cloudflare 的实现**（`internal/modules/cloudflare`，M3）：部署目标类型 `cloudflare.custom`：API 令牌（权限“区域 → SSL 和证书 → 编辑”，用域名填站点时还要“区域 → 区域 → 读取”）、站点（区域 ID，或者站点的域名，按名字查出 ID）、自定义证书 ID（高级设置，可不填）。直接调 v4 REST 接口（`Authorization: Bearer`，只连公网、不跟随跳转）。第一次部署 `POST /zones/{id}/custom_certificates` 添加一张自定义证书（`type=sni_custom`、`bundle_method=ubiquitous`，证书链和 PKCS #1 / SEC 1 私钥），它的 ID 作为 ref 记下；以后的版本都用 `PATCH …/custom_certificates/{ref}` 原地替换，替换期间站点一直有证书可用。记下的那张被删了（404）就再添加一张；填了自定义证书 ID 就一直替换那张，它不在时报错。添加前先列出站点的自定义证书，按覆盖的主机和到期时间找上次中断前添加的那张，不重复添加。测试连接读出站点名和自定义证书数。错误：401、403、代码 10000 和 9109 是令牌不对或权限不够，不重试；429 按 `Retry-After` 等；5xx 重试；其他 4xx 不重试，显示 Cloudflare 自己的代码和说明（比如免费套餐不能上传自定义证书）。自定义证书只有 Business 和 Enterprise 套餐能用。只用替身 API 测过。
 
 **七牛云的实现**（`internal/modules/qiniu`，M3）：部署目标类型 `qiniu.cdn`：AccessKey、SecretKey、加速域名（逗号分隔，泛域名写成 `.example.com`；留空时用证书里不是通配符的域名）、删除旧证书（默认开）。接口用法依据 acme.sh 的 `deploy/qiniu.sh` 和七牛的文档；请求用 QBox 签名：`Authorization: QBox AK:签名`，签名是 SecretKey 对“路径和查询 + 换行”的 HMAC-SHA1，URL 安全的 Base64，JSON 请求体不参与签名。先在证书列表（`GET /sslcert`，分页）里按名字找这次要传的证书（名字是 `jec-<证书 ID>-<指纹前 12 位>`，中断后重试不会重复上传），没有就 `POST /sslcert`（`name`、`common_name`、`ca` 证书链、`pri` 私钥）。再对每个加速域名查 `GET /domain/<域名>`：已经在用这张的跳过；开了 HTTPS 的用 `PUT /domain/<域名>/httpsconf` 换证书，保留原来的强制 HTTPS 和 HTTP/2 设置；没开的用 `PUT …/sslize` 开启（不强制 HTTPS，开 HTTP/2）。最后删除以前部署上传的证书（`DELETE /sslcert/<ID>`）：还有域名在用的七牛不让删，只记警告，下次部署再删。密钥不对、域名不在这个账号都不重试。只用替身 API 测过。
 
@@ -742,6 +746,7 @@ services:
   1. 和 lego 共用同一份依赖，不重复引入第二套。
   2. 官方 SDK 太重时，自己用轻量的签名实现直接调 HTTP API：阿里云 V3 签名、腾讯云 TC3、AWS SigV4 各写一份，供所有 Provider 共用。不过带上 lego 的全部服务商后，阿里云、腾讯云、AWS 等 SDK 本来就在程序里，这时直接复用 lego 已经依赖的 SDK（如 ESA 2024-09-10 版），自己写签名反而不省体积。
   3. CI 的发布演练用 `go-size-analyzer` 在摘要里列出 linux/amd64 程序里最大的 15 个包；整个程序和压缩包超过预算就让构建失败，防止体积慢慢涨上去。
+  4. 用官方 SDK 时只保存要调用的方法值，不保存客户端本身：程序里有用反射调方法的代码（`text/template` 就是）时，链接器会保留所有可能经接口到达的类型的全部导出方法，一个几百个接口的客户端存进 provider 的结构体，就会把每个接口的代码都带进来（华为云 CDN 的客户端因此多了 1 MiB，只存两个方法值后只多 0.1 MiB）。加入新 SDK 前用 `-tags no_<模块>` 对比构建大小。
 - **SQLite 驱动**：选 `ncruces/go-sqlite3`。2026-10 用 `modernc.org/sqlite` v1.60.1 和 `ncruces/go-sqlite3` v0.35.6（都内置 SQLite 3.53.4）实测，linux/amd64，WAL 模式：
   - 体积：在同一个程序上，modernc 增加 4.6MB（gzip 后 2.0MB），ncruces 增加 5.4MB（gzip 后 2.5MB）。
   - 性能：单线程插入、主键查询 ncruces 快 5%–10%，范围查询持平；8 读 1 写并发时，ncruces 读快约 2.2 倍、写快约 3.6 倍。

@@ -37,7 +37,8 @@ Working on the main branch:
   through an Edge Routine JEC deploys, without the origin.
 - Deployment of each new certificate to Alibaba Cloud ESA (removing the one
   it replaces), to Alibaba Cloud CDN and DCDN, its Certificate
-  Management Service and CLB load balancers, to Qiniu Cloud's CDN,
+  Management Service and CLB load balancers, to Huawei Cloud's CDN, to
+  Qiniu Cloud's CDN, to custom certificates of Cloudflare,
   through Tencent Cloud's SSL Certificates to its CDN, EdgeOne, CLB and
   more, and through AWS Certificate Manager to CloudFront and load
   balancers; to websites of BaoTa (aaPanel) and 1Panel, to Nginx Proxy
