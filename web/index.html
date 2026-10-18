@@ -6,7 +6,12 @@
     <!-- The server rewrites href to the base path. -->
     <base href="/" />
     <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#2b7a33" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#131813" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <!-- Installing JEC to a phone's home screen (PWA): the manifest and Apple's icon. -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>JEC</title>
   </head>
   <body>

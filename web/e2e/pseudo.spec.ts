@@ -149,6 +149,22 @@ test('the checks catch untranslated and overflowing text', async ({ page }) => {
   ])
 })
 
+test('the app installs to a home screen', async ({ page }) => {
+  // The manifest the page links, under the base path, and each of its icons.
+  await page.goto('./')
+  const href = await page.evaluate(() => document.querySelector<HTMLLinkElement>('link[rel="manifest"]')?.href ?? '')
+  const res = await page.request.get(href)
+  expect(res.ok()).toBe(true)
+  expect(res.headers()['content-type']).toBe('application/manifest+json')
+  const manifest = (await res.json()) as { start_url: string; icons: { src: string; sizes: string; purpose?: string }[] }
+  expect(manifest.icons.map((i) => i.sizes)).toEqual(expect.arrayContaining(['192x192', '512x512']))
+  expect(manifest.icons.some((i) => i.purpose === 'maskable')).toBe(true)
+  for (const icon of manifest.icons) {
+    expect((await page.request.get(new URL(icon.src, href).toString())).ok(), icon.src).toBe(true)
+  }
+  expect(new URL(manifest.start_url, href).toString()).toBe(new URL('./', href).toString())
+})
+
 // Soft checks: one run reports the problems of every page, not just the first.
 test('every page is translated and fits', async ({ page }, info) => {
   // A walk through every page: it outgrows the default 30 seconds on CI's runners.

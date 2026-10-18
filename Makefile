@@ -36,8 +36,9 @@ i18n-check: ## run the i18n gates
 i18n-fix: ## put the locale files in canonical form and regenerate the keys
 	$(GO) run ./tools/i18n fix
 
-gen: ## regenerate the message keys, the lego catalog and the web UI's API types
+gen: ## regenerate the message keys, the lego catalog, the web UI's API types and its icons
 	$(GO) generate ./i18n
+	$(GO) run ./tools/icons
 	$(GO) run ./tools/legocatalog
 	$(GO) run ./tools/openapi
 	$(PNPM) -C web gen:api

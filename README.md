@@ -84,6 +84,7 @@ Working on the main branch:
   app (two-factor authentication); API tokens for scripts; an audit log of
   what was done through the panel, by whom and from where; strict security
   headers.
+- A web app that installs to a phone's home screen (PWA).
 - One small container image or one static binary, with SQLite.
 
 Planned: the free certificates of Chinese cloud platforms as sources, and more CDNs and panels.
