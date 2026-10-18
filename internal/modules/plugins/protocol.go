@@ -30,6 +30,9 @@ const (
 	actionDNSRemoveRecord = "dns_remove_record"
 	actionFilePut         = "file_put"
 	actionFileRemove      = "file_remove"
+	// A source issues with JEC's key, or one with keys of its own collects.
+	actionIssue   = "issue"
+	actionCollect = "collect"
 )
 
 // request is what JEC writes on a plugin's standard input.
@@ -46,8 +49,47 @@ type request struct {
 	Record      *record           `json:"record,omitempty"`
 	DNSRecord   *dnsRecord        `json:"dns_record,omitempty"`
 	// Ref is what dns_add_record answered, for dns_remove_record.
-	Ref  string `json:"ref,omitempty"`
-	File *file  `json:"file,omitempty"`
+	Ref     string        `json:"ref,omitempty"`
+	File    *file         `json:"file,omitempty"`
+	Issue   *issueOrder   `json:"issue,omitempty"`
+	Collect *collectOrder `json:"collect,omitempty"`
+}
+
+// issueOrder asks a source for a certificate of the domains, the primary
+// first, for the key of csr, in PEM; state is what the source answered
+// with its last wait, if any, and files and records are what JEC put in
+// place for the validation it asked for then.
+type issueOrder struct {
+	Domains []string        `json:"domains"`
+	CSR     string          `json:"csr"`
+	State   string          `json:"state,omitempty"`
+	Files   []fileInPlace   `json:"files,omitempty"`
+	Records []recordInPlace `json:"records,omitempty"`
+}
+
+// fileInPlace is a file JEC put on a domain's web server for a source.
+type fileInPlace struct {
+	Domain string `json:"domain"`
+	Path   string `json:"path"`
+}
+
+// recordInPlace is a record JEC added to the DNS for a source: visible
+// once the authoritative servers of its zone answer it.
+type recordInPlace struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Value   string `json:"value"`
+	Visible bool   `json:"visible"`
+}
+
+// collectOrder asks a source with keys of its own for a certificate of the
+// domains, newer than the one in use, if any: current is the SHA-256 of its
+// leaf, in hex, and current_end when it ends.
+type collectOrder struct {
+	Domains    []string `json:"domains"`
+	Current    string   `json:"current,omitempty"`
+	CurrentEnd string   `json:"current_end,omitempty"`
+	State      string   `json:"state,omitempty"`
 }
 
 // certificate is the version a deployment installs, as webhooks get it.
@@ -102,6 +144,31 @@ type answer struct {
 	// Ref and Removed are what a deployment did, as contracts.DeployResult.
 	Ref     string   `json:"ref"`
 	Removed []string `json:"removed"`
+	// Chain, leaf first, and Key, in PEM, are what a source issued or
+	// collected; Wait, what it waits for in their place.
+	Chain string      `json:"chain"`
+	Key   string      `json:"key"`
+	Wait  *waitAnswer `json:"wait"`
+}
+
+// waitAnswer has JEC ask a source again after After seconds, handing back
+// State; meanwhile, the Files and Records its validation asks for are in
+// place, through the certificate's solver.
+type waitAnswer struct {
+	After   int           `json:"after"`
+	State   string        `json:"state"`
+	Files   []file        `json:"files"`
+	Records []askedRecord `json:"records"`
+}
+
+// askedRecord is a record that a source's validation of Domain asks for:
+// Name is its full name, or one relative to the domain, as consoles show
+// it (dnscheck.RecordName); Type is TXT or CNAME.
+type askedRecord struct {
+	Domain string `json:"domain"`
+	Name   string `json:"name"`
+	Type   string `json:"type"`
+	Value  string `json:"value"`
 }
 
 // logLine is a line a plugin adds to the log of an issuance or deployment.
@@ -126,9 +193,14 @@ type typeSpec struct {
 	Name        text   `json:"name"`
 	Description text   `json:"description"`
 	Testable    bool   `json:"testable"`
-	// Records marks a DNS solver that adds records of any type too.
-	Records bool        `json:"records"`
-	Fields  []fieldSpec `json:"fields"`
+	// Records marks a DNS solver that adds records of any type too, and
+	// OwnKey a source whose certificates come with their own keys; the
+	// Challenges of a source are how its validation goes through the
+	// certificate's solver, http or record.
+	Records    bool        `json:"records"`
+	OwnKey     bool        `json:"own_key"`
+	Challenges []string    `json:"challenges"`
+	Fields     []fieldSpec `json:"fields"`
 	// Wait is how long a DNS record may take to be seen, and how often to
 	// look, in seconds.
 	Wait *struct {

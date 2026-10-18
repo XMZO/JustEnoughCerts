@@ -301,11 +301,11 @@ type Target interface {
 **外部插件的实现**（模块 `plugins`，M3，协议写在 `docs/plugins.md`）：
 
 - JEC 启动时扫描数据目录下的 `plugins/`：每个可执行文件是一个插件，文件名去掉扩展名就是 ID。文件和目录只能由属主写入，属主要是 root 或运行 JEC 的用户，否则不运行。
-- 对每个插件发 `describe`（10 秒），把它声明的部署目标、通知渠道、验证方式（DNS 或 HTTP）登记成 provider 类型 `plugins.<插件>.<类型>`，带 `plugin` 标签；通知渠道自动加上 `contracts.NotifierFields`。
+- 对每个插件发 `describe`（10 秒），把它声明的证书来源、部署目标、通知渠道、验证方式（DNS 或 HTTP）登记成 provider 类型 `plugins.<插件>.<类型>`，带 `plugin` 标签；通知渠道自动加上 `contracts.NotifierFields`。
 - 插件自带的文字转义成原样显示的消息，键在 `plugins.texts.` 下（`i18n.PluginText`），作为类型的 `texts` 随类型接口返回，前端并入自己的消息（`addMessages`）。所以 provider 类型多了 `texts` 字段（键必须以模块 ID 开头），模块的 Registry 多了 `DataDir`。
 - 每个动作运行一次插件：标准输入一个 JSON 请求，标准输出一个 JSON 回答（最多 1 MiB），标准错误在失败时记进日志。在 `<plugins>/<ID>.data` 里运行，环境去掉 JEC 自己的 `JEC_` 设置；超时（测试 1 分钟，其他 5 分钟）后结束整个进程组。部署请求的内容和 Webhook 部署一样；插件给的日志行和错误原样显示。没有回答、超时可以重试，回答看不懂不重试。
 - 插件列表 `GET /api/v1/plugins/files`，显示在“模块”页。插件只在启动时读取，加了或改了要重启；“插件”模块关掉时类型不可用，但启动时仍会运行 `describe`。
-- 证书来源类的插件还没做。
+- 证书来源类的插件：普通来源收到 `issue`（域名和 JEC 生成的私钥的 CSR），回答证书链，或者回答等待（4.3 的“等待来源”，状态由插件自己定，1 分钟到 1 天后再问）；标了 `own_key` 的来源收到 `collect`（域名、正在用的证书的指纹和到期时间），回答证书和私钥，或者等待。来源在 `challenges` 里写 `http`、`record` 时要选验证方式：等待里可以列出要放的验证文件和 DNS 记录（TXT、CNAME，名字经 `dnscheck.RecordName` 限在证书域名的可注册域名下），JEC 用证书的验证方式放好，再问时告诉插件放了什么、记录在权威 DNS 上能不能查到；不再列出的删掉，签出后全部删掉。放到一半失败时用 `contracts.KeepState` 留下插件的新状态和已经放好的东西。插件回的证书要和私钥配对、包含全部域名。
 
 ### 5.3 服务商支持范围
 

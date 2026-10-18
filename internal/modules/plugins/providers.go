@@ -23,6 +23,10 @@ func factory(p *plugin, spec typeSpec) providers.Factory {
 	return func(_ context.Context, in providers.Instance) (any, error) {
 		base := instance{plugin: p, spec: spec, config: in.Config, secrets: in.Secrets}
 		switch {
+		case providers.Kind(spec.Kind) == providers.Source && spec.OwnKey:
+			return &keySource{base}, nil
+		case providers.Kind(spec.Kind) == providers.Source:
+			return &source{base}, nil
 		case providers.Kind(spec.Kind) == providers.Target:
 			return &target{base}, nil
 		case providers.Kind(spec.Kind) == providers.Notifier:
@@ -45,6 +49,8 @@ type instance struct {
 }
 
 var (
+	_ contracts.Source       = (*source)(nil)
+	_ contracts.KeySource    = (*keySource)(nil)
 	_ contracts.Target       = (*target)(nil)
 	_ contracts.Notifier     = (*notifier)(nil)
 	_ contracts.Solver       = (*dnsSolver)(nil)

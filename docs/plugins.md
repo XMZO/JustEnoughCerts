@@ -2,9 +2,9 @@
 
 [中文](plugins.zh-CN.md)
 
-A plugin is a program, in any language, that gives JEC more deploy targets,
-notification channels and ways to prove control of domains, without
-rebuilding JEC. It describes the types it offers, with their forms and
+A plugin is a program, in any language, that gives JEC more certificate
+sources, deploy targets, notification channels and ways to prove control
+of domains, without rebuilding JEC. It describes the types it offers, with their forms and
 texts in the languages it likes; JEC shows them as it shows its own, and
 runs the plugin for each thing to do.
 
@@ -84,14 +84,22 @@ The answer names the plugin and lists its types:
   language tag. JEC shows the one of the user's language, else one of the
   same language, the string for every language, the English one, or the
   first. Texts show as they are, without markup.
-- `kind` is `target` (deploys certificates), `notifier` (sends notes) or
-  `solver` (proves control of domains). A solver's `challenge` is `dns`,
+- `kind` is `source` (issues certificates, or brings them), `target`
+  (deploys certificates), `notifier` (sends notes) or `solver` (proves
+  control of domains). A solver's `challenge` is `dns`,
   the default, for TXT records, or `http` for files on the website. A DNS
   solver may say how long a record takes to be seen and how often to look,
   in seconds: `"wait": {"timeout": 300, "interval": 10}`, 120 and 5 when
   left out. A DNS solver with `"records": true` adds records of any type
   too, the TXT and CNAME records some certificate vendors validate domains
   with, so that sources such as Namecheap's or Alibaba Cloud's can use it.
+- A source issues certificates for keys JEC makes, from a CSR. When its CA
+  validates domains by files on the website or by DNS records, it says so
+  in `challenges`: `http`, `record` or both. A certificate from it then
+  chooses a solver that can, and JEC puts in place what the plugin asks
+  for (see `issue`). A source with `"own_key": true` brings certificates
+  with their own keys instead, as from a store or another tool, and
+  validates nothing through JEC.
 - A field has a `key` (letters, digits and `_`, starting with a letter) and
   a `kind`: `text`, `multiline`, `number`, `url`, `email`, `select` or
   `switch` (`"true"` or `"false"`). It may have a `label`, a `help` under
@@ -118,6 +126,8 @@ the configured instance: `config`, the plain ones, and `secrets`, by key.
 | `dns_present`, `dns_cleanup` | `record` | |
 | `dns_add_record`, `dns_remove_record` | `dns_record`, and `ref` to remove | `ref`, to add |
 | `file_put`, `file_remove` | `file` | |
+| `issue` | `issue` | `chain`, or `wait` |
+| `collect` | `collect` | `chain` and `key`, or `wait` |
 
 - `test` comes for types marked `testable`, from the button on their
   card. It checks the settings, and changes nothing.
@@ -146,6 +156,71 @@ the configured instance: `config`, the plain ones, and `secrets`, by key.
 - `file_put` puts, and `file_remove` removes, a file the website must serve
   at `http://<domain><path>`: `file` holds the `domain`, the `path` (under
   `/.well-known/`) and the `content`.
+- `issue` asks a source for a certificate. `issue` holds its `domains`
+  (the primary first, a wildcard as `*.example.com`) and the PEM `csr` of
+  the key JEC made for it, whose subject is the primary domain and whose
+  names are the domains. Every attempt of an issuance sends the same key,
+  so the plugin can go on with an order it placed. After a wait, `issue`
+  also holds the `state` the wait gave, the `files` JEC put in place for
+  it (`domain` and `path`) and the `records` it added (`name`, `type`,
+  `value`, and `visible`: whether the authoritative DNS servers of the
+  zone answer it yet). The answer holds the PEM `chain`, the leaf first,
+  for the CSR's key and covering every domain, or a `wait` (see below).
+- `collect` asks a source with `own_key` for a certificate newer than the
+  one in use. `collect` holds its `domains`; once there is a certificate in
+  use, `current`, the SHA-256 of its leaf (hex), and `current_end`, when it
+  ends (RFC 3339); and after a wait, its `state`. The answer holds the PEM
+  `chain` and the certificate's private `key`, or a `wait` when there is
+  nothing newer.
+
+## Waiting
+
+A source answers `"wait": {"after": 300, "state": "..."}` when the
+certificate is not ready yet: JEC asks again after `after` seconds, a
+minute to a day, with `state` back, which is the plugin's to fill as it
+likes. The issuance shows as waiting, not as failing; the plugin decides
+when to give up, by failing.
+
+The wait of a source that issues may hold the `files` (`domain`, `path`
+under `/.well-known/`, and `content`) and the `records` (`domain`, `name`,
+`type`, `TXT` or `CNAME`, and `value`) its validation needs. JEC puts them
+in place through the certificate's solver before it waits, keeps them as
+long as the waits list them, removes those they no longer list, and
+removes the rest once the plugin answers the chain. The `domain` of each is
+one of the certificate's; a record's `name` is its full name, or one
+relative to the domain, as consoles show it (`_dnsauth` for
+`_dnsauth.example.com`). When JEC cannot put one in place, the attempt
+fails, and the next one gets the `state` of the wait.
+
+A source of a DNS-validating CA could go like this. The request:
+
+```json
+{"protocol": 1, "action": "issue", "type": "dv", "config": {}, "secrets": {"api_key": "..."},
+ "issue": {"domains": ["example.com", "www.example.com"], "csr": "-----BEGIN CERTIFICATE REQUEST-----..."}}
+```
+
+The plugin places the order and answers with what the CA checks:
+
+```json
+{"protocol": 1, "ok": true, "wait": {"after": 300, "state": "order-12345",
+ "records": [{"domain": "example.com", "name": "_dnsauth", "type": "TXT", "value": "abc123"},
+             {"domain": "www.example.com", "name": "_dnsauth", "type": "TXT", "value": "def456"}]}}
+```
+
+Five minutes later, JEC asks again:
+
+```json
+{"protocol": 1, "action": "issue", "type": "dv", "config": {}, "secrets": {"api_key": "..."},
+ "issue": {"domains": ["example.com", "www.example.com"], "csr": "-----BEGIN CERTIFICATE REQUEST-----...",
+  "state": "order-12345",
+  "records": [{"name": "_dnsauth.example.com", "type": "TXT", "value": "abc123", "visible": true},
+              {"name": "_dnsauth.www.example.com", "type": "TXT", "value": "def456", "visible": true}]}}
+```
+
+The plugin tells the CA to check, if it has not yet, and answers the same
+wait until the CA issues; then it answers
+`{"protocol": 1, "ok": true, "chain": "-----BEGIN CERTIFICATE-----..."}`, and
+JEC removes the records.
 
 ## Answers
 
@@ -154,8 +229,8 @@ the configured instance: `config`, the plain ones, and `secrets`, by key.
   JEC shows `error` as it is. With `retry`, JEC tries again later: after
   `retry_after` seconds when given, after a growing delay otherwise.
   Without it, JEC gives up and lets the user know.
-- An answer may add lines to the log of the deployment it is part of,
-  100 at most: `"log": [{"level": "ok", "text": "Uploaded"}]`, where
+- An answer may add lines to the log of the deployment or issuance it is
+  part of, 100 at most: `"log": [{"level": "ok", "text": "Uploaded"}]`, where
   `level` is `info`, `ok`, `warn` or `error`.
 - A plugin that gives no answer, or runs out of time, has failed in a way
   worth trying again; an answer JEC cannot read has not.

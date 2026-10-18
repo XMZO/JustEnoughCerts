@@ -2055,19 +2055,32 @@
   },
   "plugins": {
     "error": {
+      "add_record": "没能添加验证记录 {name}。请检查 DNS 服务商的设置。",
       "answer": "插件 {plugin} 的回应 JEC 看不懂：{problem}",
+      "chain": "插件 {plugin} 回的证书读不出来，或者和私钥对不上，或者没有包含证书的全部域名。",
       "describe": "插件 {plugin} 对自己类型的描述有误：{problem}",
       "exit": "插件 {plugin} 没有给出回应就退出了，退出码 {status}。它的错误输出记在 JEC 的日志里。",
       "failed": "插件 {plugin} 报告失败：{message}",
       "name": "{file} 的文件名不符合插件的要求：只能用小写字母、数字、- 和 _，以字母开头，最多 32 个字符，可以带扩展名。",
+      "no_files": "插件 {plugin} 要在网站上放验证文件，这张证书选的验证方式做不到。请选放验证文件的验证方式。",
+      "no_records": "插件 {plugin} 要添加 DNS 记录，这张证书选的验证方式做不到。请选能添加任意记录的 DNS 服务商，或者手动添加 DNS 记录。",
       "owner": "{file} 或插件目录的属主既不是 root，也不是运行 JEC 的用户（{uid}），所以 JEC 不运行它。请修改属主（chown）。",
+      "put_file": "没能为 {domain} 放验证文件。请检查验证方式的设置。",
       "repeated": "{file} 去掉扩展名后和 {other} 重名。",
       "run": "运行不了插件 {plugin}。请检查文件是不是适用于这个系统的程序，以及 JEC 有没有权限运行它。",
       "timeout": "插件 {plugin} 在 {seconds, plural, other {# 秒}}内没有回应，已停止。",
+      "validation": "插件 {plugin} 要求放的验证文件或记录有误：{problem}",
       "writable": "除了属主以外的用户也能修改 {file} 或插件目录，所以 JEC 不运行它。请改成只有属主能写（chmod go-w）。"
     },
     "log": {
+      "add_record": "要添加的验证记录：{type} 记录 {name}，值为 {value}",
       "line": "{text}",
+      "put_file": "在 {domain} 放验证文件 {path}",
+      "record_left": "{type} 记录 {name} 已经用不到了，可以到 DNS 服务商那里删除",
+      "remove_file": "删除 {domain} 的验证文件 {path}",
+      "remove_file_failed": "没能删除 {domain} 的验证文件 {path}，可以到网站上手动删除",
+      "remove_record": "删除验证记录：{type} 记录 {name}",
+      "remove_record_failed": "没能删除 {type} 记录 {name}，可以到 DNS 服务商那里手动删除",
       "stderr": "插件 {plugin} 的错误输出"
     },
     "module": {

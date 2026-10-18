@@ -2,7 +2,7 @@
 
 [English](plugins.md)
 
-插件是用任何语言写的程序，不用重新编译 JEC，就能给它加上更多的部署目标、通知渠道和域名验证方式。插件说明自己提供哪些类型，包括表单和各种语言的文字；JEC 像显示自己的类型一样显示它们，每次要做什么就运行一次插件。
+插件是用任何语言写的程序，不用重新编译 JEC，就能给它加上更多的证书来源、部署目标、通知渠道和域名验证方式。插件说明自己提供哪些类型，包括表单和各种语言的文字；JEC 像显示自己的类型一样显示它们，每次要做什么就运行一次插件。
 
 ## 安装插件
 
@@ -55,7 +55,8 @@ JEC 启动时向每个插件发送 `{"protocol": 1, "action": "describe"}`。回
 ```
 
 - 文字可以是一个字符串（所有语言都用它），也可以是按语言标签给出的对象。JEC 依次选用：用户语言的文字、同一语言其他地区的文字、所有语言通用的字符串、英文、第一个。文字原样显示，不解析任何标记。
-- `kind` 是 `target`（部署证书）、`notifier`（发通知）或 `solver`（验证域名）。验证方式的 `challenge` 是 `dns`（默认，添加 TXT 记录）或 `http`（在网站上放文件）。DNS 验证可以用秒数说明记录多久才能查到、多久查一次：`"wait": {"timeout": 300, "interval": 10}`，不写时是 120 和 5。标了 `"records": true` 的 DNS 验证还能添加任意类型的记录，也就是有些证书厂商验证域名用的 TXT、CNAME 记录，Namecheap、阿里云等证书来源就能用它。
+- `kind` 是 `source`（签发证书，或者带来现成的证书）、`target`（部署证书）、`notifier`（发通知）或 `solver`（验证域名）。验证方式的 `challenge` 是 `dns`（默认，添加 TXT 记录）或 `http`（在网站上放文件）。DNS 验证可以用秒数说明记录多久才能查到、多久查一次：`"wait": {"timeout": 300, "interval": 10}`，不写时是 120 和 5。标了 `"records": true` 的 DNS 验证还能添加任意类型的记录，也就是有些证书厂商验证域名用的 TXT、CNAME 记录，Namecheap、阿里云等证书来源就能用它。
+- 证书来源按 CSR 签发证书，私钥由 JEC 生成。它的 CA 要用网站上的文件或 DNS 记录验证域名时，在 `challenges` 里写明：`http`、`record`，或者两个都写。用它的证书就要选能做到的验证方式，JEC 按插件的要求把文件或记录放好（见 `issue`）。标了 `"own_key": true` 的来源则带来自带私钥的现成证书，比如从证书仓库或别的工具取来，不经 JEC 验证任何东西。
 - 字段要有 `key`（字母、数字和 `_`，以字母开头）和 `kind`：`text`、`multiline`、`number`、`url`、`email`、`select` 或 `switch`（`"true"` 或 `"false"`）。可以有 `label`、写在下面的 `help`、`default`、选择框的 `options`，也可以是 `required`（必填）、`secret`（加密保存，保存后不再显示）、`advanced`（在表单里单独放）或者只在前面某个普通字段等于某个值时出现（`when`）。
 - 通知渠道还会自动加上 JEC 自己的字段：消息语言和发送哪些事件。JEC 按选的语言写好通知再交给插件。
 - 一个插件最多 32 种类型，每种最多 64 个字段。类型 ID 的规则和插件 ID 一样；JEC 里类型的全名是 `plugins.<插件>.<类型>`。类型和字段的 ID 用上以后不要再改：用户保存的设置引用着它们。
@@ -72,6 +73,8 @@ JEC 启动时向每个插件发送 `{"protocol": 1, "action": "describe"}`。回
 | `dns_present`、`dns_cleanup` | `record` | |
 | `dns_add_record`、`dns_remove_record` | `dns_record`，删除时还有 `ref` | 添加时可以有 `ref` |
 | `file_put`、`file_remove` | `file` | |
+| `issue` | `issue` | `chain`，或者 `wait` |
+| `collect` | `collect` | `chain` 和 `key`，或者 `wait` |
 
 - `test` 只发给标了 `testable` 的类型，由卡片上的“测试连接”按钮触发。它只检查设置，不改动任何东西。
 - `deploy` 安装一个新版本。`certificate` 里有 `id`、`domains`（主域名在前）、`serial`（十六进制）、`fingerprint`（叶子证书的 SHA-256，十六进制）、`not_before` 和 `not_after`（RFC 3339），以及 PEM 格式的 `cert`、`chain`、`fullchain`、`privkey`，和 certbot 的文件同名。`previous` 是这张证书以前部署到这个实例时回答的 `ref`，新的在前。回答里的 `ref` 说明目标现在放着什么（比如 CDN 上的证书 ID），下次会出现在 `previous` 里；`removed` 列出 `previous` 里被插件删掉的那些。
@@ -79,12 +82,47 @@ JEC 启动时向每个插件发送 `{"protocol": 1, "action": "describe"}`。回
 - `dns_present` 添加、`dns_cleanup` 删除 DNS-01 验证的 TXT 记录：`record` 里有 `domain`、记录名 `fqdn`（比如 `_acme-challenge.example.com.`）和 `value`。
 - `dns_add_record` 添加、`dns_remove_record` 删除任意类型的记录，只发给标了 `records` 的验证方式：`dns_record` 里有完整的记录名 `name`（比如 `_dnsauth.example.com`，末尾没有点）、类型 `type`（`TXT` 或 `CNAME`）和 `value`。`dns_add_record` 的回答里可以有 `ref`（比如这条记录在服务商那里的 ID），`dns_remove_record` 时原样放在 `ref` 里交还。
 - `file_put` 放、`file_remove` 删网站要在 `http://<domain><path>` 提供的文件：`file` 里有 `domain`、`path`（在 `/.well-known/` 下）和 `content`。
+- `issue` 向证书来源要一张证书。`issue` 里有 `domains`（主域名在前，通配符写成 `*.example.com`）和 JEC 为它生成的私钥的 PEM 格式 `csr`：主题是主域名，名称列表是全部域名。同一次签发的每次尝试都用同一个私钥，所以插件可以接着用自己下过的订单。等待过之后，`issue` 里还有那次等待给的 `state`、JEC 为它放好的 `files`（`domain` 和 `path`）和加上的 `records`（`name`、`type`、`value`，以及 `visible`：域名所在区域的权威 DNS 服务器是否已经查得到）。回答里是 PEM 格式的 `chain`（叶子证书在前，对应 CSR 的私钥，包含全部域名），或者 `wait`（见下文）。
+- `collect` 向标了 `own_key` 的来源要一张比正在用的更新的证书。`collect` 里有 `domains`；已经有证书在用时，还有 `current`（叶子证书的 SHA-256，十六进制）和 `current_end`（到期时间，RFC 3339）；等待过之后还有 `state`。回答里是 PEM 格式的 `chain` 和证书的私钥 `key`，没有更新的证书时回答 `wait`。
+
+## 等待
+
+证书还没好时，来源回答 `"wait": {"after": 300, "state": "..."}`：JEC 在 `after` 秒（1 分钟到 1 天）后再问一次，并把 `state` 原样交还，里面放什么由插件决定。签发显示为“等待中”而不是失败；什么时候放弃由插件决定，放弃时回答失败。
+
+签发证书的来源可以在等待里写上验证要用的 `files`（`domain`、`/.well-known/` 下的 `path` 和 `content`）和 `records`（`domain`、`name`、`type`（`TXT` 或 `CNAME`）和 `value`）。JEC 在等待之前用证书选的验证方式把它们放好，之后的等待里还列着就一直留着，不再列出的就删掉，插件回答证书后再删掉剩下的。每一项的 `domain` 必须是证书的域名之一；记录的 `name` 写完整的记录名，或者像控制台那样写相对于这个域名的部分（`_dnsauth` 表示 `_dnsauth.example.com`）。JEC 放不好时，这次尝试算失败，下一次尝试拿到的是这次等待的 `state`。
+
+一个用 DNS 验证的 CA 的来源大致是这样。请求：
+
+```json
+{"protocol": 1, "action": "issue", "type": "dv", "config": {}, "secrets": {"api_key": "..."},
+ "issue": {"domains": ["example.com", "www.example.com"], "csr": "-----BEGIN CERTIFICATE REQUEST-----..."}}
+```
+
+插件下单，回答 CA 要检查的记录：
+
+```json
+{"protocol": 1, "ok": true, "wait": {"after": 300, "state": "order-12345",
+ "records": [{"domain": "example.com", "name": "_dnsauth", "type": "TXT", "value": "abc123"},
+             {"domain": "www.example.com", "name": "_dnsauth", "type": "TXT", "value": "def456"}]}}
+```
+
+5 分钟后 JEC 再问：
+
+```json
+{"protocol": 1, "action": "issue", "type": "dv", "config": {}, "secrets": {"api_key": "..."},
+ "issue": {"domains": ["example.com", "www.example.com"], "csr": "-----BEGIN CERTIFICATE REQUEST-----...",
+  "state": "order-12345",
+  "records": [{"name": "_dnsauth.example.com", "type": "TXT", "value": "abc123", "visible": true},
+              {"name": "_dnsauth.www.example.com", "type": "TXT", "value": "def456", "visible": true}]}}
+```
+
+插件让 CA 检查（如果还没让过），在 CA 签发之前一直回答同样的等待；签发后回答 `{"protocol": 1, "ok": true, "chain": "-----BEGIN CERTIFICATE-----..."}`，JEC 再删掉这些记录。
 
 ## 回答
 
 - 成功：`{"protocol": 1, "ok": true}`，加上动作需要的内容。
 - 失败：`{"protocol": 1, "ok": false, "error": "出了什么问题", "retry": true, "retry_after": 60}`。JEC 原样显示 `error`。带 `retry` 时 JEC 稍后再试：给了 `retry_after` 就等这么多秒，否则等待时间逐渐拉长。不带时 JEC 不再重试，并告诉用户。
-- 回答可以给所在的部署日志加几行，最多 100 行：`"log": [{"level": "ok", "text": "已上传"}]`，`level` 是 `info`、`ok`、`warn` 或 `error`。
+- 回答可以给所在的部署或签发日志加几行，最多 100 行：`"log": [{"level": "ok", "text": "已上传"}]`，`level` 是 `info`、`ok`、`warn` 或 `error`。
 - 插件没有回答或者超时，算作值得重试的失败；回答 JEC 看不懂则不重试。
 
 ## 示例

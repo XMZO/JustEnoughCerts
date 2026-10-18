@@ -160,8 +160,11 @@ func buildType(plugin string, spec typeSpec, tags []language.Tag) (providers.Typ
 		return none, errors.New("an ID is lowercase letters, digits, - and _, starting with a letter, 32 at most")
 	}
 	kind := providers.Kind(spec.Kind)
-	if !slices.Contains([]providers.Kind{providers.Target, providers.Notifier, providers.Solver}, kind) {
-		return none, fmt.Errorf("the kind %q is not target, notifier or solver", spec.Kind)
+	if !slices.Contains([]providers.Kind{providers.Source, providers.Target, providers.Notifier, providers.Solver}, kind) {
+		return none, fmt.Errorf("the kind %q is not source, target, notifier or solver", spec.Kind)
+	}
+	if spec.OwnKey && kind != providers.Source {
+		return none, errors.New("own keys are for sources")
 	}
 	if spec.Name.empty() {
 		return none, errors.New("it has no name")
@@ -190,6 +193,18 @@ func buildType(plugin string, spec typeSpec, tags []language.Tag) (providers.Typ
 			return none, errors.New("records are for solvers of DNS")
 		}
 		t.Records = true
+	}
+	t.OwnKey = spec.OwnKey
+	if len(spec.Challenges) > 0 {
+		if kind != providers.Source || spec.OwnKey {
+			return none, errors.New("challenges are for sources that issue for JEC's keys")
+		}
+		for _, c := range spec.Challenges {
+			if c != providers.ChallengeHTTP && c != providers.ChallengeRecord {
+				return none, fmt.Errorf("the challenge %q of a source is not http or record", c)
+			}
+		}
+		t.NeedsSolver, t.Challenges = true, slices.Compact(slices.Sorted(slices.Values(spec.Challenges)))
 	}
 	for _, f := range spec.Fields {
 		if !slices.Contains(fieldKinds, providers.FieldKind(f.Kind)) {
