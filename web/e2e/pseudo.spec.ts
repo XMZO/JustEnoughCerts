@@ -225,6 +225,24 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'overview').toEqual([])
   await page.goto('./certificates')
   expect.soft(await problems(page), 'certificates').toEqual([])
+  if (info.project.name === 'desktop') {
+    // The menu of a row, which phones go without; then deletion from it,
+    // left unconfirmed.
+    const more = page.getByRole('button', { name: message('certs.menu.label', { domain: 'old.example.com' }) })
+    await more.click()
+    const rowMenu = page.getByRole('menu')
+    await expect(rowMenu.getByRole('menuitem').first()).toBeFocused()
+    expect.soft(await problems(page), 'the menu of a certificate').toEqual([])
+    await page.keyboard.press('Escape')
+    await expect(rowMenu).toBeHidden()
+    await expect(more).toBeFocused()
+    await more.click()
+    await rowMenu.getByRole('menuitem', { name: label('certs.action.delete') }).click()
+    await expect(page.locator('dialog[open]')).toBeVisible()
+    expect.soft(await problems(page), 'delete a certificate from the list').toEqual([])
+    await page.locator('dialog[open]').getByRole('button', { name: label('kernel.action.cancel') }).click()
+    await expect(page.locator('dialog[open]')).toHaveCount(0)
+  }
   await page.goto('./certificates/1')
   expect.soft(await problems(page), 'a certificate').toEqual([])
 

@@ -1,18 +1,22 @@
 <script setup lang="ts">
-import { CircleCheck, CircleX, FileDown, LoaderCircle, OctagonX, Plus, TriangleAlert } from '@lucide/vue'
+import { Activity, CircleCheck, CircleX, FileDown, LoaderCircle, OctagonX, Plus, RefreshCw, Send, Trash2, TriangleAlert, Upload } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
-import { useCertificates, type Certificate } from '../api/certs'
+import { useCertificates, useDeleteCertificate, type Certificate } from '../api/certs'
+import { useApiError } from '../api/errors'
 import { useMonitorStates } from '../api/monitor'
 import { useProviders } from '../api/providers'
+import { useCertActions } from '../certs/actions'
 import { useDeployNote } from '../certs/deployment'
 import { barPercent, certLife, lifeText, needsAttention, stateText } from '../certs/life'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
+import JecDialog from '../components/JecDialog.vue'
 import LifeBar from '../components/LifeBar.vue'
 import PageHeader from '../components/PageHeader.vue'
+import RowMenu, { type MenuItem } from '../components/RowMenu.vue'
 import SearchBox from '../components/SearchBox.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { useT, type MessageKey, type Params } from '../i18n'
@@ -135,6 +139,53 @@ const rows = computed<Row[]>(() =>
     }
   }),
 )
+
+// The menu of each row of the table: the main thing to do, deploying
+// again, a new version of an upload, and deletion, once confirmed.
+const { deploy, primary } = useCertActions()
+// What went wrong with the last action, above the table.
+const failure = ref<unknown>()
+const actionError = useApiError(failure)
+async function act(run: () => Promise<unknown>) {
+  failure.value = undefined
+  try {
+    await run()
+  } catch (err) {
+    failure.value = err
+  }
+}
+function menu(c: Certificate): MenuItem[] {
+  const items: MenuItem[] = []
+  const main = primary(c)
+  if (main) {
+    const run = main.run
+    items.push({ key: 'main', label: t(main.label), icon: main.to ? Activity : RefreshCw, to: main.to, run: run && (() => void act(run)) })
+  }
+  if (c.current && c.targets.length && c.state !== 'deploy_failed' && c.state !== 'deploying') {
+    items.push({ key: 'deploy', label: t('certs.action.redeploy'), icon: Send, run: () => void act(() => deploy.mutateAsync(c.id)) })
+  }
+  if (c.source !== 'provider') items.push({ key: 'upload', label: t('certs.action.upload'), icon: Upload, to: `/certificates/${c.id}?upload=1` })
+  items.push({ key: 'delete', label: t('certs.action.delete'), icon: Trash2, danger: true, run: () => (deleting.value = c) })
+  return items
+}
+const deleting = ref<Certificate>()
+const deleteOpen = computed({
+  get: () => !!deleting.value,
+  set: (open) => {
+    if (!open) deleting.value = undefined
+  },
+})
+const remove = useDeleteCertificate(() => deleting.value?.id ?? 0)
+const removeError = useApiError(remove.error)
+async function confirmDelete() {
+  try {
+    await remove.mutateAsync(undefined)
+  } catch {
+    return // shown in the dialog
+  }
+  deleting.value = undefined
+}
+
 const attentionRows = computed(() => rows.value.filter((r) => attention(r.cert)))
 const healthyRows = computed(() => rows.value.filter((r) => !attention(r.cert)))
 
@@ -176,6 +227,7 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
 
   <div class="flex flex-col gap-3 px-4 pt-3 sm:mt-4 sm:gap-4 sm:p-0">
     <JecAlert v-if="error" :code="error.code" :params="error.params" />
+    <JecAlert v-if="actionError.error.value" :code="actionError.error.value.code" :params="actionError.error.value.params" />
 
     <section
       v-if="certificates.isSuccess.value && !all.length"
@@ -234,6 +286,9 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
               >
                 {{ t(col) }}
               </th>
+              <th scope="col" class="relative w-11 border-b border-line bg-surface-sunken px-1 py-2">
+                <span class="sr-only">{{ t('certs.column.actions') }}</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -269,6 +324,9 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
                 </span>
               </td>
               <td class="max-w-56 truncate border-b border-line px-3 py-1.5 whitespace-nowrap text-ink-muted" :title="r.next">{{ r.next }}</td>
+              <td class="border-b border-line px-1 py-1">
+                <RowMenu :label="t('certs.menu.label', { domain: r.domain })" :items="menu(r.cert)" />
+              </td>
             </tr>
           </tbody>
         </table>
@@ -337,4 +395,17 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
       </section>
     </template>
   </div>
+
+  <JecDialog v-model:open="deleteOpen" :title="t('certs.delete.title', { domain: deleting?.domains[0] ?? '' })" small>
+    <div class="flex flex-col gap-3">
+      <p class="m-0">{{ t('certs.delete.body') }}</p>
+      <JecAlert v-if="removeError.error.value" :code="removeError.error.value.code" :params="removeError.error.value.params" />
+    </div>
+    <template #footer>
+      <JecButton @click="deleting = undefined">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton variant="danger" :busy="remove.isPending.value" @click="confirmDelete">
+        <Trash2 class="size-4" aria-hidden="true" />{{ t('certs.action.delete') }}
+      </JecButton>
+    </template>
+  </JecDialog>
 </template>

@@ -4,9 +4,10 @@ import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
-import { useCertificates, useDeployOf, useIssueOf, useRuns, type Certificate, type CertificateState } from '../api/certs'
+import { useCertificates, useRuns, type Certificate, type CertificateState } from '../api/certs'
 import { useApiError } from '../api/errors'
-import { useProviders, useProviderTypes } from '../api/providers'
+import { useProviders } from '../api/providers'
+import { useCertActions } from '../certs/actions'
 import { failingDeployment, useDeployNote } from '../certs/deployment'
 import { runAt, runLink, runResult, useRunText } from '../certs/runs'
 import { certLife, lifeText, needsAttention, type Life } from '../certs/life'
@@ -37,15 +38,9 @@ const error = computed(() => {
 
 const all = computed(() => certificates.data.value ?? [])
 const sources = useProviders('source')
-const sourceTypes = useProviderTypes('source')
 const targets = useProviders('target')
 const sourceName = (c: Certificate) => sources.data.value?.find((p) => p.id === c.sourceProvider)?.name ?? ''
 const targetNames = (c: Certificate) => c.targets.map((id) => targets.data.value?.find((p) => p.id === id)?.name ?? '').filter(Boolean)
-// A source with keys of its own collects rather than renews.
-const collects = (c: Certificate) => {
-  const type = sources.data.value?.find((p) => p.id === c.sourceProvider)?.type
-  return !!sourceTypes.data.value?.find((s) => s.id === type)?.ownKey
-}
 const deployNote = useDeployNote()
 const shown = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -76,8 +71,7 @@ const subtitle = computed(() => {
 })
 
 // What the buttons do: issue a certificate now, or deploy it again.
-const issue = useIssueOf()
-const deploy = useDeployOf()
+const { issue, deploy, primary } = useCertActions()
 const actionError = useApiError(computed(() => issue.error.value ?? deploy.error.value))
 const busy = ref<number | 'renewing' | null>(null)
 async function act(run: () => Promise<unknown>, who: number | 'renewing') {
@@ -92,14 +86,7 @@ async function act(run: () => Promise<unknown>, who: number | 'renewing') {
 }
 const renewAll = () => act(() => Promise.all(renewing.value.map((c) => issue.mutateAsync(c.id))), 'renewing')
 
-/** primary is the main thing to do for c: what the summary's first button does. */
-function primary(c: Certificate): { label: MessageKey; to?: string; run?: () => Promise<unknown> } | null {
-  if (c.source !== 'provider') return null // uploads have their own button
-  if (c.state === 'issuing' && c.issuance) return { label: 'certs.action.progress', to: `/certificates/${c.id}/issuances/${c.issuance.id}` }
-  if (c.state === 'deploy_failed') return { label: 'certs.action.deploy_now', run: () => deploy.mutateAsync(c.id) }
-  if (c.state === 'failed') return { label: 'certs.action.retry', run: () => issue.mutateAsync(c.id) }
-  return { label: collects(c) ? 'certs.action.collect_now' : 'certs.action.renew_now', run: () => issue.mutateAsync(c.id) }
-}
+// The summary's first button does the main thing for the certificate.
 const selectedPrimary = computed(() => (selected.value ? primary(selected.value) : null))
 
 const order: CertificateState[] = ['failed', 'deploy_failed', 'expired', 'expiring', 'issuing', 'deploying', 'ok']

@@ -594,6 +594,7 @@
       "title": "Certificate chain"
     },
     "column": {
+      "actions": "Actions",
       "domain": "Domain",
       "left": "Remaining",
       "next": "Next renewal",
@@ -809,6 +810,9 @@
       "retry": "Trying again in {minutes, plural, one {# minute} other {# minutes}}",
       "stored": "Certificate saved, valid for {days, plural, one {# day} other {# days}}",
       "take_over": "Picking up the order the last issuance left, with its private key"
+    },
+    "menu": {
+      "label": "More for {domain}"
     },
     "module": {
       "description": "Keeps track of each certificate and its versions, and warns before one expires.",

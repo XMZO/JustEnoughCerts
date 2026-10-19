@@ -594,6 +594,7 @@
       "title": "证书链"
     },
     "column": {
+      "actions": "操作",
       "domain": "域名",
       "left": "剩余",
       "next": "下次续期",
@@ -809,6 +810,9 @@
       "retry": "{minutes, plural, other {# 分钟}}后自动重试",
       "stored": "证书已保存，有效期还有 {days, plural, other {# 天}}",
       "take_over": "接着做上一次签发留下的订单，用它的私钥"
+    },
+    "menu": {
+      "label": "{domain} 的更多操作"
     },
     "module": {
       "description": "记录每张证书和它的各个版本，到期前发出提醒。",
