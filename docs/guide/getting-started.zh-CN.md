@@ -10,7 +10,7 @@
 - 一个托管于受支持 DNS 服务商（如腾讯云 DNSPod、阿里云 DNS、Cloudflare）的域名，以及该服务商的 API 密钥。
 
 > [!NOTE]
-> 正式版发布前，镜像标签 `latest` 指向的 0.0.x 版本仅包含基础框架。请将 `docker-compose.yml` 中的镜像标签改为 `beta`，以使用测试版。
+> 正式版发布前，`docker-compose.yml` 使用最新测试版，即镜像标签 `beta`。
 
 ## 1. 启动 JEC
 

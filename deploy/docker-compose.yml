@@ -7,7 +7,9 @@
 # directory must be writable by that user, or set "user:" to its owner.
 services:
   jec:
-    image: ghcr.io/xmzo/justenoughcerts:latest
+    # beta is the newest test release; latest, the newest stable one, comes
+    # with 1.0.0, and this file switches to it then.
+    image: ghcr.io/xmzo/justenoughcerts:beta
     container_name: jec
     restart: unless-stopped
     # Run as the owner of ./data instead of 65532:65532.

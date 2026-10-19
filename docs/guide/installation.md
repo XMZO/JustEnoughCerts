@@ -16,9 +16,10 @@ docker compose up -d
 
 - **Image**: `ghcr.io/xmzo/justenoughcerts`, for linux/amd64,
   linux/arm64 and, from the release after 0.1.0-alpha.5, linux/arm/v7
-  (32-bit ARM, as on a Raspberry Pi with a 32-bit system). The tag `latest` is the newest stable release and `beta`
-  the newest test release; a version, such as `0.1.0-alpha.5`, can be
-  given as well.
+  (32-bit ARM, as on a Raspberry Pi with a 32-bit system). The tag
+  `latest` is the newest stable release and `beta` the newest test
+  release; a version, such as `0.1.0-alpha.6`, can be given as well.
+  `docker-compose.yml` uses `beta` until the first stable release.
 - **User**: the container runs as 65532:65532 by default, so `./data` must
   be writable by that user. To run as the owner of an existing directory
   instead, set `user:` in `docker-compose.yml`; if the directory is not

@@ -34,7 +34,7 @@ docker compose up -d
 docker logs jec 2>&1 | grep setup_token
 ```
 
-正式版发布前，请将 `docker-compose.yml` 中的镜像标签改为 `beta` 以使用测试版。然后在浏览器中打开 `http://<主机>:8080`，填写日志中的初始化令牌并创建管理员账号。签发第一张证书的步骤见[快速开始](https://xmzo.github.io/JustEnoughCerts/zh-CN/guide/getting-started)。
+在浏览器中打开 `http://<主机>:8080`，填写日志中的初始化令牌并创建管理员账号。正式版发布前，该文件使用最新测试版（镜像标签 `beta`）。签发第一张证书的步骤见[快速开始](https://xmzo.github.io/JustEnoughCerts/zh-CN/guide/getting-started)。
 
 ## 文档
 

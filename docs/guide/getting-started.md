@@ -14,9 +14,8 @@ certificate. For other ways to install JEC, see
   provider.
 
 > [!NOTE]
-> Until a stable release, the image tag `latest` points to a 0.0.x
-> release with the basic framework only. Change the image tag in
-> `docker-compose.yml` to `beta` to use the test release.
+> Until the first stable release, `docker-compose.yml` runs the newest
+> test release, the image tag `beta`.
 
 ## 1. Start JEC
 

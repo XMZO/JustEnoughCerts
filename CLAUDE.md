@@ -88,7 +88,7 @@
 - 代理：`httpx` 的客户端不用环境变量的代理；连境外服务的类型加 `httpx.ProxyField()`，客户端用 `httpx.ClientFor(opts, in.Config)`（经代理时去掉 PublicOnly），新加这类类型照办。解析服务器 `JEC_DNS_RESOLVERS`（`dnscheck.UseResolvers`，`jec serve` 启动时设，子进程经环境变量继承）。
 - 写文件的部署目标（本地目录、SSH、Docker）共用 `internal/lib/certfiles`：文件名可改（`{domain}`）、可选合并文件和 PKCS #12（`cryptox.EncodePFX`）、权限；属主各自处理。
 - 续期默认值多了“失败后重试”（`certs_settings` 的 `retries`，默认 7，0 到 20，签发和部署都按它；配置文件 `renewal.retries`）。
-- 测试版 `v0.1.0-alpha.5`（凭据、时区、失败后重试、证书列表菜单、部署文件可配置、代理、解析服务器等）于 2026-10-19 发布。
+- 测试版 `v0.1.0-alpha.5`（凭据、时区、失败后重试、证书列表菜单、部署文件可配置、代理、解析服务器等）、`v0.1.0-alpha.6`（systemd 服务、32 位 ARM、吊销、无障碍检查等）于 2026-10-19 发布。`latest` 还是 0.0.1，所以 `deploy/docker-compose.yml` 在 1.0.0 之前用 `beta`，发正式版时改回 `latest`。
 - 文档站 https://xmzo.github.io/JustEnoughCerts/ （`docs/site`，VitePress；`docs.yml` 从 main 发布到 GitHub Pages，Pages 的来源是 GitHub Actions）：页面在 `docs/` 的 `guide`（开始）、`usage`（使用）、`operations`（运维）、`reference`（参考）、`development`（开发）五个目录，每页一份英文 `x.md` 和一份中文 `x.zh-CN.md`，改一份要同步另一份；`docs/site/pages.mjs` 的 `sections` 定侧栏顺序（目录里多出或缺少页面时构建失败），侧栏文字取每页的一级标题。首页是 `docs/site/home.md`、`home.zh-CN.md`（hero、功能卡片），下面的总览截图由 `.vitepress/theme/HomePreview.vue` 显示（`public/preview/`，界面大改后重拍）；动画在 `theme/jec.css` 和 `Layout.vue`，都照顾 `prefers-reduced-motion`。站内链接要能对上（VitePress 遇到失效链接会构建失败）；以数字开头的标题在 GitHub 和 VitePress 上锚点不同，不要链接到这种锚点。README 只放概要，详细说明写进文档站的页面。
 - 时区（设置页“外观”，`internal/kernel/zone`，存在 `kernel_meta`）：整个面板共用，默认跟随服务器；`PUT /api/v1/system/time-zone`，清单接口带 `timeZone`；模块用 `r.Zone`（每次现取），续期的每天检查时间和通知里的时间按它；前端 `web/src/zone.ts`（`useIntl` 的日期、按天分组用 `dayKey`、导出 CSV 用 `stamp`，不要再用 `toDateString` 或 `getHours` 之类按浏览器时区的写法）；配置文件里是 `time_zone`。
 - M4 开始：PWA（`web/public/manifest.webmanifest`，图标由 `go run ./tools/icons` 从 favicon 画出，`make gen` 也会跑，测试核对图标是最新的）。

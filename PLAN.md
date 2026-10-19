@@ -725,7 +725,8 @@ M0 落地时的做法（`web/`）：
 ```yaml
 services:
   jec:
-    image: ghcr.io/xmzo/justenoughcerts:latest
+    # 正式版（1.0.0）发布前用最新测试版 beta，之后换回 latest
+    image: ghcr.io/xmzo/justenoughcerts:beta
     container_name: jec
     restart: unless-stopped
     # 可选：指定运行用户，方便和挂载目录的权限对上（默认 65532:65532）

@@ -60,9 +60,9 @@ docker compose up -d
 docker logs jec 2>&1 | grep setup_token
 ```
 
-Until the first stable release, set the image tag in `docker-compose.yml`
-to `beta` to run the test release. Then open `http://<host>:8080`, enter
-the setup token from the log and create the administrator account.
+Open `http://<host>:8080`, enter the setup token from the log and create
+the administrator account; until the first stable release, the compose
+file runs the newest test release, the image tag `beta`.
 [Getting started](https://xmzo.github.io/JustEnoughCerts/guide/getting-started)
 continues with the first certificate.
 
