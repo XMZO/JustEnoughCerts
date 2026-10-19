@@ -905,50 +905,50 @@ services:
 
 ```text
 JustEnoughCerts/
-├── cmd/jec/                    # 程序入口（serve / healthcheck / service / version …）
-├── i18n/                       # 国际化模块（Go 包，同时被前端引用）
-│   ├── locales/
-│   │   ├── zh-CN.json          # 简体中文
-│   │   └── en-US.json          # 英文（基准与兜底语言）
-│   ├── i18n.go                 # 加载、回退、消息格式化
-│   └── keys_gen.go             # 由 en-US.json 自动生成的 key 常量
+├── cmd/jec/                    # 程序入口：serve、healthcheck、reset-password、service、version
+├── i18n/                       # 国际化（Go 包，前端也引用）
+│   ├── locales/                # zh-CN.json、en-US.json（基准与兜底语言），每种语言一个文件
+│   ├── i18n.go                 # 加载、回退、ICU 子集的消息格式化
+│   └── keys_gen.go             # 由 en-US.json 生成的 key 常量
 ├── internal/
-│   ├── kernel/                 # 内核：配置、存储、认证、事件总线、调度器、模块注册表
-│   ├── modules/                # 模块：每个目录一个，目录名就是模块 ID，可单独删除
-│   │   ├── all/                # 编译进二进制的模块清单，每个模块一个注册文件
-│   │   ├── certs/              # 证书管理与签发状态机
-│   │   ├── monitor/            # 线上巡检
-│   │   ├── hooks/              # 钩子：内嵌 shell 解释器与内置动作
-│   │   ├── plugins/            # exec 外部插件协议
-│   │   ├── audit/              # 审计日志
-│   │   ├── backup/             # 备份与恢复
-│   │   └── …                   # Provider 也在这里：来源 acme, namecheap, aliyun_cas …；
-│   │                           # 验证 lego, http …；部署 aliyun_esa, ssh …；通知 telegram, smtp …
+│   ├── kernel/                 # 内核，不依赖任何模块
+│   │   ├── api/                # huma，/api/v1，统一的错误格式
+│   │   ├── auth/               # 账号、会话、两步验证、API 令牌
+│   │   ├── config/             # 分层配置（默认值、config.yaml、JEC_*、命令行）
+│   │   ├── contracts/          # 跨模块的接口和数据：来源、验证、部署、通知、事件
+│   │   ├── events/  jobs/  retry/  # 事件总线、调度器、重试规则
+│   │   ├── module/             # 模块清单、依赖排序、启停
+│   │   ├── providers/          # Provider 注册表、凭据
+│   │   ├── secrets/  store/    # 主密钥和加密存储、SQLite 与迁移
+│   │   ├── configfile/         # YAML 导入导出
+│   │   └── …                   # children、clientip、httpserver、system、zone、migrations
+│   ├── modules/                # 模块：一个目录一个模块，目录名就是模块 ID
+│   │   ├── all/                # 编译进程序的模块清单，每个模块一个注册文件（build tag no_<id> 可去掉）
+│   │   ├── certs/              # 证书、版本、签发、续期、部署、吊销
+│   │   ├── acme/  lego/        # ACME 账号；lego 的 DNS 服务商（子进程）
+│   │   ├── notify/  monitor/  audit/  hooks/  plugins/  oidc/  wellknown/
+│   │   └── …                   # 各家服务商：esa、aliyun、tencentcloud、cloudflare、ssh、files、docker、telegram …
 │   └── lib/                    # 模块共用的工具库（不含业务逻辑）
-│       ├── cryptox/            # 私钥、CSR、PEM/PFX 处理，加密存储
-│       ├── shellx/             # 内嵌的 shell：钩子的脚本、本地目录部署的命令
-│       ├── cloudsign/          # 阿里云 V3、腾讯云 TC3、AWS SigV4 等轻量签名
+│       ├── cryptox/            # 证书、私钥、CSR、PEM/PFX
+│       ├── certfiles/          # 写文件的部署目标共用的文件名、合并文件、PKCS #12
+│       ├── credentials/        # 几个模块共用的凭据种类
+│       ├── httpx/              # HTTP 客户端：代理、只连公网、指纹信任
+│       ├── shellx/             # 内嵌 shell：钩子脚本、写入后执行的命令
 │       ├── dnscheck/           # 在权威 DNS 上查记录是否生效
-│       └── dnsrecord/          # 任意 DNS 记录增删（腾讯云、阿里云、Cloudflare、华为云）
-├── web/
-│   └── src/
-│       ├── core/               # 前端内核：布局、路由、请求、i18n 加载
-│       └── modules/            # 与后端模块一一对应的页面，按需加载
-├── tools/
-│   ├── i18n/                   # i18n 门禁、语言文件格式化、key 常量生成（check / fix / gen）
-│   ├── i18nlint/               # 检查代码里的 key 都来自生成的常量
-│   └── new-module/             # 模块脚手架
-├── deploy/
-│   ├── docker-compose.yml
-│   └── systemd/jec.service
-├── docs/                       # 使用文档、模块与 Provider 开发指南、翻译指南、最小权限模板、服务商兼容表
-├── .github/workflows/          # ci.yml, release.yml
-├── .goreleaser.yaml
-├── Dockerfile
-├── Makefile
+│       ├── dnsrecord/          # 任意 DNS 记录增删（腾讯云、阿里云、Cloudflare、华为云）
+│       └── aliyunapi/          # 阿里云 SDK 的错误码
+├── web/                        # Vue 3 前端，构建结果 go:embed 进程序
+│   ├── src/                    # pages/、components/、api/（含生成的 schema.d.ts）、certs/、providers/、i18n/
+│   └── e2e/                    # 伪语言和无障碍的 Playwright 测试
+├── tools/                      # i18n、i18nlint、openapi、legocatalog、icons、new-module
+├── scripts/                    # check-modules.sh、release-sizes.sh、stage-image-context.sh
+├── deploy/                     # docker-compose.yml、systemd/jec.service
+├── docs/                       # 文档站的页面（guide、usage、operations、reference、development）、design/ 设计稿、site/（VitePress）
+├── .github/workflows/          # ci.yml、release.yml、docs.yml、ca-roots.yml
+├── .goreleaser.yaml、Dockerfile、Makefile
 ├── LICENSE                     # MIT
-├── README.md                   # 英文说明：快速上手、配置、校验发布文件、开发
-└── README.zh-CN.md             # 中文说明，内容和英文版一致
+├── README.md                   # 英文概要：功能、快速开始、文档目录
+└── README.zh-CN.md             # 中文概要，内容和英文版一致
 ```
 
 ## 13. 路线图
