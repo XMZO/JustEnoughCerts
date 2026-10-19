@@ -116,6 +116,11 @@ export default defineConfig({
         nav: nav('en', { guide: 'Guide', reference: 'Reference', development: 'Development', releases: 'Releases' }),
         sidebar: sidebar('en'),
         editLink: editLink('Edit this page on GitHub'),
+        notFound: {
+          title: 'PAGE NOT FOUND',
+          quote: 'A creeper blew this page up. Or the link is wrong, or the page has moved.',
+          linkText: 'Take me home',
+        },
       },
     },
     'zh-CN': {
@@ -136,7 +141,7 @@ export default defineConfig({
         sidebarMenuLabel: '目录',
         returnToTopLabel: '回到顶部',
         langMenuLabel: '语言',
-        notFound: { title: '找不到这个页面', quote: '链接可能有误，或者页面已经移走。', linkText: '回到首页' },
+        notFound: { title: '找不到这个页面', quote: '这一页被苦力怕炸没了。也可能是链接有误，或者页面已经移走。', linkText: '回到首页' },
       },
     },
   },

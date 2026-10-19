@@ -3,7 +3,9 @@ import { useData, useRoute } from 'vitepress'
 import DefaultTheme from 'vitepress/theme'
 import { nextTick, provide, watch } from 'vue'
 
+import HeroLock from './HeroLock.vue'
 import HomePreview from './HomePreview.vue'
+import NotFound from './NotFound.vue'
 
 const { isDark } = useData()
 const route = useRoute()
@@ -63,8 +65,14 @@ provide('toggle-appearance', async (event: MouseEvent) => {
 
 <template>
   <DefaultTheme.Layout>
+    <template #home-hero-image>
+      <HeroLock />
+    </template>
     <template #home-features-after>
       <HomePreview />
+    </template>
+    <template #not-found>
+      <NotFound />
     </template>
   </DefaultTheme.Layout>
 </template>

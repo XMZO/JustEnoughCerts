@@ -103,6 +103,11 @@
   pointer-events: none;
 }
 
+/* While the lock's easter egg plays (HeroLock.vue), the glint waits. */
+.VPHero .image-container.jec-egg::after {
+  visibility: hidden;
+}
+
 /* The feature cards: a quiet surface with a line, whose icon takes the
    brand's color. */
 .VPFeatures .VPFeature {
