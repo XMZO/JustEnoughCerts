@@ -609,6 +609,13 @@
       "title": "最近动态"
     },
     "add": {
+      "bulk_failed": "{count, plural, other {# 张证书}}没有添加，原因如下；改好后可以再次提交：",
+      "bulk_help": "每行一张证书，同一行的多个域名用空格或逗号分隔，第一个是主域名；表单里的其余设置对每张都一样。共 {count, plural, other {# 张}}。",
+      "bulk_label": "每行一张证书",
+      "bulk_many": "多张证书",
+      "bulk_mode": "数量",
+      "bulk_one": "一张证书",
+      "bulk_submit": "{count, plural, other {添加 # 张证书}}",
       "certificate": "证书（PEM，含中间证书）",
       "certificate_help": "证书和中间证书，顺序不限。私钥也可以一起放在这里。",
       "dns": "DNS 服务商",
@@ -984,6 +991,7 @@
       "summary_renewing": "{count, plural, other {# 张证书。}}{renewing, plural, other {# 张}}将在 {time} 自动续期，{attention, plural, =0 {其余都正常。} other {# 张需要你处理。}}"
     },
     "plan": {
+      "bulk": "添加 {count, plural, other {# 张证书}}，每张都按下面的步骤",
       "check": "检查证书和私钥是否匹配",
       "collect": "从 {source} 取证书和私钥",
       "deploy": "部署到 {target}",

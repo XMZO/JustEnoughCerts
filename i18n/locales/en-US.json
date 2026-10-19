@@ -609,6 +609,13 @@
       "title": "Recent activity"
     },
     "add": {
+      "bulk_failed": "{count, plural, one {# certificate was not added} other {# certificates were not added}}; fix and add again:",
+      "bulk_help": "A certificate a line, its domains apart by spaces or commas, the first its primary; the rest of the form is for each. {count, plural, one {# certificate} other {# certificates}}.",
+      "bulk_label": "A certificate a line",
+      "bulk_many": "Several",
+      "bulk_mode": "How many",
+      "bulk_one": "One certificate",
+      "bulk_submit": "{count, plural, one {Add # certificate} other {Add # certificates}}",
       "certificate": "Certificate (PEM, with intermediates)",
       "certificate_help": "The certificate and its intermediates, in any order. The private key may go here too.",
       "dns": "DNS provider",
@@ -984,6 +991,7 @@
       "summary_renewing": "{count, plural, one {# certificate.} other {# certificates.}} {renewing, plural, one {# renews by itself} other {# renew by themselves}} at {time}; {attention, plural, =0 {the others are fine.} one {# needs you.} other {# need you.}}"
     },
     "plan": {
+      "bulk": "Add {count, plural, one {# certificate} other {# certificates}}, each through the steps below",
       "check": "Check that the certificate and the private key match",
       "collect": "Take the certificate and its key from {source}",
       "deploy": "Deploy to {target}",

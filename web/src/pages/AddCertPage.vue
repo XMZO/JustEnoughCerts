@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { CircleCheck, Plus, Save, ShieldCheck, TriangleAlert } from '@lucide/vue'
+import { CircleCheck, CircleX, Plus, Save, ShieldCheck, TriangleAlert } from '@lucide/vue'
 import { computed, ref, watchEffect } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
+import { ApiError, networkError } from '../api/client'
 import { useAddCertificate, useCertSettings, useIssueCertificate, type KeyType } from '../api/certs'
 import { revealError, useApiError } from '../api/errors'
 import { useProviders, useProviderTypes, type Provider } from '../api/providers'
@@ -12,6 +13,7 @@ import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
 import JecField from '../components/JecField.vue'
 import JecInput from '../components/JecInput.vue'
+import JecTextarea from '../components/JecTextarea.vue'
 import PageHeader from '../components/PageHeader.vue'
 import PemFields from '../components/PemFields.vue'
 import { useT, type MessageKey, type Params } from '../i18n'
@@ -84,6 +86,23 @@ const pem = ref({ certificate: '', privateKey: '', pfx: '', pfxPassword: '' })
 // Issue.
 const issue = useIssueCertificate()
 const domains = ref<string[]>([])
+// Or several at once: a certificate a line, its domains apart by spaces or
+// commas, all else alike.
+const bulk = ref(false)
+const lines = ref('')
+const batch = computed(() =>
+  lines.value
+    .split('\n')
+    .map((l) => l.split(/[\s,\uFF0C\u3001]+/).filter(Boolean))
+    .filter((d) => d.length > 0),
+)
+interface Outcome {
+  domains: string[]
+  message: string
+}
+// The lines that could not be added, and why.
+const refused = ref<Outcome[]>([])
+const adding = ref(false)
 const pickedSolver = ref<number>()
 const solver = computed(() => usable.value.find((p) => p.id === pickedSolver.value)?.id ?? usable.value[0]?.id)
 const solverProvider = computed(() => usable.value.find((p) => p.id === solver.value))
@@ -158,6 +177,7 @@ const plan = computed(() => {
     ]
   }
   const steps = [t('certs.plan.key', { key: keyLabel(keyType.value) }), t('certs.plan.order', { source: provider.value?.name ?? '' })]
+  if (bulk.value) steps.unshift(t('certs.plan.bulk', { count: batch.value.length }))
   if (needsSolver.value && solverProvider.value) {
     const name = solverProvider.value.name
     steps.push(challengeOf(solverProvider.value) === 'http' ? t('certs.plan.http', { solver: name }) : t('certs.plan.dns', { dns: name }))
@@ -189,6 +209,10 @@ async function submit() {
     return
   }
   if (typeof source.value !== 'number') return
+  if (bulk.value) {
+    await submitBatch(source.value)
+    return
+  }
   let created
   try {
     created = await issue.mutateAsync({
@@ -204,6 +228,41 @@ async function submit() {
     return
   }
   await router.replace(created.issuance ? `/certificates/${created.id}/issuances/${created.issuance.id}` : `/certificates/${created.id}`)
+}
+
+// submitBatch adds a certificate for each line, one after the other: those
+// that could not be added stay in the box, with why, for another go.
+async function submitBatch(from: number) {
+  adding.value = true
+  refused.value = []
+  const failed: Outcome[] = []
+  try {
+    for (const d of batch.value) {
+      try {
+        await issue.mutateAsync({
+          domains: d,
+          sourceProvider: from,
+          solverProvider: needsSolver.value ? solver.value : undefined,
+          keyType: ownKey.value ? undefined : keyType.value,
+          renewBeforeDays: Number(days.value) || undefined,
+          targets: chosenTargets.value,
+        })
+      } catch (err) {
+        const e = err instanceof ApiError ? err : networkError
+        const field = e.fields[0]
+        failed.push({ domains: d, message: field ? t(field.code) : t(e.code, e.params) })
+      }
+    }
+  } finally {
+    adding.value = false
+    issue.reset()
+  }
+  if (failed.length === 0) {
+    await router.replace('/certificates')
+    return
+  }
+  refused.value = failed
+  lines.value = failed.map((f) => f.domains.join(' ')).join('\n')
 }
 
 const cardClass = (on: boolean) => [
@@ -274,8 +333,34 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
 
       <template v-if="provider">
         <section aria-labelledby="domains" class="flex flex-col gap-3 rounded-lg border border-line bg-surface-raised p-4">
-          <h2 id="domains" class="m-0 text-section-title font-semibold">{{ t('certs.add.domains') }}</h2>
-          <div class="grid gap-1.5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="domains" class="m-0 text-section-title font-semibold">{{ t('certs.add.domains') }}</h2>
+            <div role="group" :aria-label="t('certs.add.bulk_mode')" class="inline-flex gap-0.5 rounded-md border border-line bg-surface-sunken p-0.5">
+              <button
+                v-for="many in [false, true]"
+                :key="String(many)"
+                type="button"
+                :aria-pressed="bulk === many ? 'true' : 'false'"
+                class="h-[30px] cursor-pointer rounded-sm border-0 bg-transparent px-3 text-[13px] font-semibold whitespace-nowrap text-ink-muted hover:text-ink aria-pressed:bg-surface-raised aria-pressed:text-ink aria-pressed:shadow-[0_0_0_1px_var(--line-strong)] max-sm:h-auto max-sm:min-h-9"
+                @click="bulk = many"
+              >
+                {{ t(many ? 'certs.add.bulk_many' : 'certs.add.bulk_one') }}
+              </button>
+            </div>
+          </div>
+          <div v-if="bulk" class="grid gap-1.5">
+            <label for="bulk-input" class="sr-only">{{ t('certs.add.bulk_label') }}</label>
+            <JecTextarea id="bulk-input" v-model="lines" :rows="6" spellcheck="false" aria-describedby="bulk-help" />
+            <p id="bulk-help" class="m-0 text-small text-ink-muted">{{ t('certs.add.bulk_help', { count: batch.length }) }}</p>
+            <div v-if="refused.length" role="alert" class="flex flex-col gap-1 rounded-md border border-line px-3 py-2 text-small">
+              <p class="m-0 font-semibold text-danger-ink">{{ t('certs.add.bulk_failed', { count: refused.length }) }}</p>
+              <p v-for="(r, i) in refused" :key="i" class="m-0 flex items-start gap-1.5 [overflow-wrap:anywhere]">
+                <CircleX class="mt-0.5 size-4 flex-none text-danger-ink" aria-hidden="true" />
+                <span><span class="font-semibold" translate="no">{{ r.domains.join(' ') }}</span> · {{ r.message }}</span>
+              </p>
+            </div>
+          </div>
+          <div v-else class="grid gap-1.5">
             <label for="domain-input" class="sr-only">{{ t('certs.add.domains') }}</label>
             <DomainInput id="domain-input" v-model="domains" :invalid="badDomains" described-by="domains-help" />
             <p v-if="badDomains.length" id="domains-help" class="m-0 text-small text-danger-ink">{{ t('certs.error.bad_domain') }}</p>
@@ -371,8 +456,15 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
           <span class="[overflow-wrap:anywhere]">{{ step }}</span>
         </li>
       </ol>
-      <JecButton type="submit" form="add-form" variant="primary" :busy="mutation.isPending.value" :disabled="source === undefined">
+      <JecButton
+        type="submit"
+        form="add-form"
+        variant="primary"
+        :busy="mutation.isPending.value || adding"
+        :disabled="source === undefined || (bulk && !uploading && !batch.length)"
+      >
         <template v-if="uploading"><Save class="size-4" aria-hidden="true" />{{ t('certs.action.save') }}</template>
+        <template v-else-if="bulk"><ShieldCheck class="size-4" aria-hidden="true" />{{ t('certs.add.bulk_submit', { count: batch.length }) }}</template>
         <template v-else><ShieldCheck class="size-4" aria-hidden="true" />{{ t('certs.action.issue') }}</template>
       </JecButton>
       <JecButton to="/certificates">{{ t('kernel.action.cancel') }}</JecButton>

@@ -588,6 +588,11 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.locator('button[form=add-form]').click()
   await expect(page.locator('#domains-help')).toHaveText(label('kernel.error.invalid_field'))
   expect.soft(await problems(page), 'add a certificate from a source with an error').toEqual([])
+  // Several at once, a line each: the box, then back to one.
+  await page.getByRole('button', { name: label('certs.add.bulk_many') }).click()
+  await page.locator('#bulk-input').fill('a.example.com www.a.example.com\nb.example.com')
+  expect.soft(await problems(page), 'add several certificates').toEqual([])
+  await page.getByRole('button', { name: label('certs.add.bulk_one') }).click()
   await page.locator('#domain-input').fill('issued.example.com')
   await page.locator('#domain-input').press('Enter')
   await page.locator('#domain-input').fill('*.issued.example.com')
