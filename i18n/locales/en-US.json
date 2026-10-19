@@ -303,7 +303,7 @@
       "summary": "{shown} of {total} shown.",
       "title": "Audit log",
       "today": "Today",
-      "via_token": "with the token {name}",
+      "via_token": "through {name}",
       "yesterday": "Yesterday"
     },
     "range": {
@@ -2713,9 +2713,81 @@
     }
   },
   "telegram": {
+    "action": {
+      "check_started": "The check started; refresh in a moment to see what it found.",
+      "deploy_ask": "Deploy {domain} again?",
+      "deploy_detail": "JEC deploys the current certificate to {targets} again, without getting a new one; the reloads or restarts set up for the targets run again too.",
+      "deploy_started": "The deployment started.",
+      "not_allowed": "This bot does not allow actions from Telegram.",
+      "renew_ask": "Renew {domain} now?",
+      "renew_detail": "JEC asks {source} for a new certificate now and deploys it once issued; until then, the current one stays in use.",
+      "renew_started": "The renewal started; a note follows once it is issued."
+    },
+    "answer": {
+      "failed": "JEC could not do it: {reason}",
+      "unknown": "JEC could not do it; try again later."
+    },
     "bot": {
       "description": "A bot made with @BotFather sends the notes to a person, a group or a channel.",
       "name": "Telegram bot"
+    },
+    "button": {
+      "back": "Back to the list",
+      "cancel": "Cancel",
+      "certs": "All certificates ({count})",
+      "check": "Check now",
+      "confirm_deploy": "Deploy",
+      "confirm_renew": "Renew",
+      "deploy": "Deploy again",
+      "help": "How to use it",
+      "menu": "Menu",
+      "next": "Next",
+      "online": "Online checks",
+      "open": "Open in JEC",
+      "prev": "Previous",
+      "recent": "Recent activity",
+      "refresh": "Refresh",
+      "renew": "Renew now",
+      "system": "System",
+      "todo": "Need attention ({count})"
+    },
+    "cert": {
+      "also": "Also {names}",
+      "deploys": "Deployments",
+      "expired": "Expired on {date}",
+      "issuer": "Issuer: {issuer}",
+      "last_run": "The last issuance",
+      "left": "{days, plural, one {# day} other {# days}} left, until {date}",
+      "manual": "A new certificate must be uploaded before it expires",
+      "next_look": "Next look: {time}",
+      "next_try": "Next try: {time}",
+      "no_targets": "No deploy targets",
+      "online": "Online checks",
+      "online_pending": "Not checked yet",
+      "pending": "Not issued yet",
+      "renew_at": "Renews on its own: {time}",
+      "solver": "Validation: {name}",
+      "source": "Source: {name}",
+      "upload": "Source: uploads"
+    },
+    "chat": {
+      "not_allowed": "This chat cannot use this JEC bot. To use it, set the bot's Chat ID in JEC to {id}."
+    },
+    "command": {
+      "certs": "All certificates",
+      "help": "How to use it",
+      "menu": "Open the menu",
+      "online": "Online checks",
+      "recent": "Recent activity",
+      "todo": "Certificates needing attention"
+    },
+    "deploy": {
+      "canceled": "Canceled",
+      "done": "Deployed",
+      "failed": "Failed",
+      "none": "Not deployed yet",
+      "pending": "Waiting",
+      "running": "Deploying"
     },
     "error": {
       "api": "Telegram refused the message: {description} ({status})",
@@ -2728,16 +2800,91 @@
       "token": "Telegram does not accept this bot token. Check it with @BotFather."
     },
     "field": {
+      "actions": "Allow actions from Telegram",
+      "actions_help": "Once on, a certificate's page in the menu can renew it, deploy it again and check it now; renewing and deploying ask first.",
       "api": "Bot API server",
       "api_help": "Change it only for a Bot API server of your own, or a reverse proxy.",
       "chat": "Chat ID",
       "chat_help": "The number of a person or a group (those of groups and channels start with -100), or @name for a public channel. Message the bot first, add it to the group, or make it an admin of the channel.",
+      "commands": "Commands and menu",
+      "commands_help": "Send /menu in Telegram for a menu of the certificates, the recent activity and the online checks. Only the chat above gets answers; a bot answers commands in one place only.",
       "token": "Bot token",
       "token_help": "@BotFather gives it when you create the bot with /newbot, like 123456:ABC-DEF…"
+    },
+    "help": {
+      "actions_off": "For now it only shows. To renew or deploy from here, turn on \"Allow actions from Telegram\" for this bot in JEC.",
+      "actions_on": "A certificate's page can renew it, deploy it again and check it now; renewing and deploying ask first.",
+      "intro": "Use the buttons under the messages, or send these commands:",
+      "title": "How to use it"
+    },
+    "list": {
+      "left": "{days, plural, one {# day} other {# days}} left",
+      "title": "All certificates ({count})"
+    },
+    "menu": {
+      "counts": "OK {ok} · Expiring {expiring} · Need attention {attention}",
+      "next_renewal": "Next renewal: {time} · {domain}",
+      "none": "No certificates yet. Add some in JEC.",
+      "summary": "{total, plural, one {# certificate} other {# certificates}}",
+      "title": "JEC certificates",
+      "updated": "Updated {time}"
     },
     "module": {
       "description": "Sends notes to a chat, a group or a channel through a Telegram bot.",
       "name": "Telegram"
+    },
+    "online": {
+      "all_ok": "Every domain checked serves the current certificate.",
+      "cn": "mainland China",
+      "global": "elsewhere",
+      "off": "The online check module is off.",
+      "ok": "The current certificate",
+      "old": "Still an older one (until {date})",
+      "other": "Another certificate ({issuer})",
+      "problem_old": "{count, plural, one {# domain still serves} other {# domains still serve}} an older certificate",
+      "problem_unreachable": "{count, plural, one {# domain} other {# domains}} unreachable",
+      "title": "Online checks",
+      "unreachable": "Unreachable"
+    },
+    "recent": {
+      "none": "No issuance or deployment in the last 7 days.",
+      "title": "The last 7 days"
+    },
+    "run": {
+      "canceled": "canceled",
+      "deploy": "Deployment",
+      "done": "done",
+      "failed": "failed",
+      "issue": "Issuance",
+      "manual": " (by hand)",
+      "pending": "waiting",
+      "renew": "Renewal",
+      "running": "under way",
+      "waiting": "waiting on the source"
+    },
+    "state": {
+      "deploy_failed": "Deployment failed",
+      "deploying": "Deploying",
+      "expired": "Expired",
+      "expiring": "Expiring",
+      "failed": "Issuance failed",
+      "issuing": "Issuing",
+      "ok": "OK"
+    },
+    "system": {
+      "modules": "Modules on: {count}",
+      "panel": "Panel: {url}",
+      "platform": "Platform: {platform}",
+      "providers": "Sources {sources} · Validations {solvers} · Deploy targets {targets} · Notifications {notifiers}",
+      "title": "System",
+      "version": "Version: {version}",
+      "zone": "Time zone: {zone}"
+    },
+    "todo": {
+      "expired": "Expired on {date}",
+      "expiring_manual": "Expires on {date}; upload a new certificate",
+      "none": "Nothing needs attention.",
+      "title": "Need attention ({count})"
     }
   },
   "tencentcloud": {

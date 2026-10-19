@@ -303,7 +303,7 @@
       "summary": "显示 {shown} 条，共 {total} 条。",
       "title": "审计日志",
       "today": "今天",
-      "via_token": "经令牌 {name}",
+      "via_token": "经 {name}",
       "yesterday": "昨天"
     },
     "range": {
@@ -2713,9 +2713,81 @@
     }
   },
   "telegram": {
+    "action": {
+      "check_started": "已开始检查，过一会儿刷新看结果。",
+      "deploy_ask": "确认重新部署 {domain}？",
+      "deploy_detail": "会把现在这张证书再部署到 {targets}，不申请新证书；部署目标设置的重载或重启也会再执行一次。",
+      "deploy_started": "已开始重新部署。",
+      "not_allowed": "这个机器人没有打开“允许在 Telegram 里操作”。",
+      "renew_ask": "确认立即续期 {domain}？",
+      "renew_detail": "会马上向 {source} 申请一张新证书，签好后部署；在那之前，现在这张照常使用。",
+      "renew_started": "已开始续期，签好后会收到通知。"
+    },
+    "answer": {
+      "failed": "JEC 没能完成：{reason}",
+      "unknown": "JEC 没能完成，请稍后再试。"
+    },
     "bot": {
       "description": "用 @BotFather 创建的机器人发消息，可以发给个人、群或频道。",
       "name": "Telegram 机器人"
+    },
+    "button": {
+      "back": "返回列表",
+      "cancel": "取消",
+      "certs": "全部证书（{count}）",
+      "check": "立即检查",
+      "confirm_deploy": "确认部署",
+      "confirm_renew": "确认续期",
+      "deploy": "重新部署",
+      "help": "怎么用",
+      "menu": "主菜单",
+      "next": "下一页",
+      "online": "线上检查",
+      "open": "在 JEC 中打开",
+      "prev": "上一页",
+      "recent": "最近动态",
+      "refresh": "刷新",
+      "renew": "立即续期",
+      "system": "系统信息",
+      "todo": "需要处理（{count}）"
+    },
+    "cert": {
+      "also": "另含 {names}",
+      "deploys": "部署",
+      "expired": "{date} 已过期",
+      "issuer": "颁发者：{issuer}",
+      "last_run": "最近一次签发",
+      "left": "剩 {days, plural, other {# 天}}，{date} 到期",
+      "manual": "到期前要手动上传新证书",
+      "next_look": "下次查看：{time}",
+      "next_try": "下次重试：{time}",
+      "no_targets": "没有部署目标",
+      "online": "线上检查",
+      "online_pending": "还没检查过",
+      "pending": "还没有签发",
+      "renew_at": "自动续期：{time}",
+      "solver": "验证：{name}",
+      "source": "来源：{name}",
+      "upload": "来源：手动上传"
+    },
+    "chat": {
+      "not_allowed": "这个聊天不能使用这个 JEC 机器人。要使用的话，在 JEC 里把它的“发给谁（Chat ID）”填成 {id}。"
+    },
+    "command": {
+      "certs": "全部证书",
+      "help": "怎么用",
+      "menu": "打开菜单",
+      "online": "线上检查",
+      "recent": "最近动态",
+      "todo": "需要处理的证书"
+    },
+    "deploy": {
+      "canceled": "已取消",
+      "done": "已部署",
+      "failed": "部署失败",
+      "none": "还没部署",
+      "pending": "等待部署",
+      "running": "部署中"
     },
     "error": {
       "api": "Telegram 拒绝了这条消息：{description}（{status}）",
@@ -2728,16 +2800,91 @@
       "token": "Telegram 不认这个机器人 Token，请到 @BotFather 核对。"
     },
     "field": {
+      "actions": "允许在 Telegram 里操作",
+      "actions_help": "打开后，证书详情里可以立即续期、重新部署和立即检查，续期和部署都要先点确认。",
       "api": "Bot API 地址",
       "api_help": "只有自建 Bot API 服务器或用反向代理时才需要改。",
       "chat": "发给谁（Chat ID）",
       "chat_help": "个人或群的数字 ID（群和频道以 -100 开头），公开频道也可以写 @频道名。先给机器人发一条消息，或把它拉进群、设为频道管理员。",
+      "commands": "接收指令和菜单",
+      "commands_help": "在 Telegram 里发 /menu 打开菜单，查看证书、最近动态和线上检查。只回应上面这个聊天；一个机器人只能有一处接收指令。",
       "token": "机器人 Token",
       "token_help": "在 Telegram 里找 @BotFather，用 /newbot 创建机器人后得到，形如 123456:ABC-DEF…"
+    },
+    "help": {
+      "actions_off": "现在只能查看。要在这里续期或部署，请在 JEC 里打开这个机器人的“允许在 Telegram 里操作”。",
+      "actions_on": "证书详情里可以立即续期、重新部署和立即检查；续期和部署都要先确认。",
+      "intro": "点消息下面的按钮浏览，或者发这些指令：",
+      "title": "怎么用"
+    },
+    "list": {
+      "left": "剩 {days, plural, other {# 天}}",
+      "title": "全部证书（{count}）"
+    },
+    "menu": {
+      "counts": "正常 {ok} · 即将到期 {expiring} · 需要处理 {attention}",
+      "next_renewal": "下次续期：{time} · {domain}",
+      "none": "还没有证书。可以在 JEC 里添加。",
+      "summary": "共 {total, plural, other {# 张证书}}",
+      "title": "JEC 证书面板",
+      "updated": "更新于 {time}"
     },
     "module": {
       "description": "通过 Telegram 机器人把通知发到私聊、群或频道。",
       "name": "Telegram"
+    },
+    "online": {
+      "all_ok": "所有在巡检的域名，线上都是当前证书。",
+      "cn": "中国大陆",
+      "global": "海外",
+      "off": "线上巡检模块没有启用。",
+      "ok": "当前证书",
+      "old": "还是旧证书（{date} 到期）",
+      "other": "另一张证书（{issuer}）",
+      "problem_old": "{count, plural, other {# 个域名}}还是旧证书",
+      "problem_unreachable": "{count, plural, other {# 个域名}}连不上",
+      "title": "线上检查",
+      "unreachable": "连不上"
+    },
+    "recent": {
+      "none": "最近 7 天没有签发和部署。",
+      "title": "最近 7 天的动态"
+    },
+    "run": {
+      "canceled": "已取消",
+      "deploy": "部署",
+      "done": "成功",
+      "failed": "失败",
+      "issue": "签发",
+      "manual": "（手动）",
+      "pending": "等待中",
+      "renew": "续期",
+      "running": "进行中",
+      "waiting": "等待来源"
+    },
+    "state": {
+      "deploy_failed": "部署失败",
+      "deploying": "部署中",
+      "expired": "已过期",
+      "expiring": "即将到期",
+      "failed": "签发失败",
+      "issuing": "签发中",
+      "ok": "正常"
+    },
+    "system": {
+      "modules": "启用的模块：{count}",
+      "panel": "面板：{url}",
+      "platform": "平台：{platform}",
+      "providers": "证书来源 {sources} · 域名验证 {solvers} · 部署目标 {targets} · 通知 {notifiers}",
+      "title": "系统信息",
+      "version": "版本：{version}",
+      "zone": "时区：{zone}"
+    },
+    "todo": {
+      "expired": "{date} 已过期",
+      "expiring_manual": "{date} 到期，要手动上传新证书",
+      "none": "没有需要处理的证书。",
+      "title": "需要处理（{count}）"
     }
   },
   "tencentcloud": {

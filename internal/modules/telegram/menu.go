@@ -1,0 +1,772 @@
+package telegram
+
+import (
+	"context"
+	"errors"
+	"html"
+	"math"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+	"unicode/utf8"
+
+	"github.com/XMZO/JustEnoughCerts/i18n"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
+)
+
+// The menu: a main view of how the certificates are, and views of them
+// all, of those needing attention, of the recent activity, of the online
+// checks, of the system and of the help; a certificate's own view, which,
+// when the bot allows actions, renews it, deploys it again and checks it
+// now, the first two once confirmed. A button's data names the view, and
+// an ID for those of one certificate.
+const (
+	viewMain   = "m"
+	viewList   = "l" // l:<page>
+	viewTodo   = "t"
+	viewRecent = "r"
+	viewOnline = "o"
+	viewSystem = "s"
+	viewHelp   = "h"
+	viewCert   = "c"  // c:<id>
+	askRenew   = "ar" // ar:<id>, and so on
+	askDeploy  = "ad"
+	doRenew    = "xr"
+	doDeploy   = "xd"
+	doCheck    = "xc"
+
+	pageSize   = 20   // certificates a page of the list holds
+	recentRuns = 15   // runs the recent activity shows
+	maxText    = 4000 // runes of a message, under Telegram's 4096
+	dayLength  = 24 * time.Hour
+)
+
+// The icons that go before what the views tell.
+const (
+	iconLock    = "🔒"
+	iconOK      = "✅"
+	iconWarn    = "⚠️"
+	iconFail    = "❌"
+	iconBusy    = "⏳"
+	iconInfo    = "ℹ️"
+	iconClock   = "⏰"
+	iconList    = "📋"
+	iconRecent  = "🕑"
+	iconOnline  = "🌐"
+	iconHelp    = "❓"
+	iconRefresh = "🔄"
+	iconLink    = "🔗"
+	iconHome    = "🏠"
+	iconBack    = "⬅️"
+	iconRenew   = "🔁"
+	iconDeploy  = "📤"
+	iconSource  = "📥"
+	iconIssuer  = "🏢"
+	iconUpload  = "📎"
+	iconOff     = "🔌"
+	iconPrev    = "◀️"
+	iconNext    = "▶️"
+	iconCancel  = "✖️"
+)
+
+// show builds the view data names, or the main one for data it does not
+// know; a failure shows as a view of its own.
+func (l *listener) show(ctx context.Context, data string) screen {
+	view, arg, _ := strings.Cut(data, ":")
+	id, _ := strconv.ParseInt(arg, 10, 64)
+	var s screen
+	var err error
+	switch view {
+	case viewList:
+		s, err = l.listView(ctx, int(id))
+	case viewTodo:
+		s, err = l.todoView(ctx)
+	case viewRecent:
+		s, err = l.recentView(ctx)
+	case viewOnline:
+		s, err = l.onlineView(ctx)
+	case viewSystem:
+		s, err = l.systemView(ctx)
+	case viewHelp:
+		s = l.helpView()
+	case viewCert:
+		s, err = l.certView(ctx, id, "")
+	case askRenew, askDeploy:
+		s, err = l.askView(ctx, view, id)
+	case doRenew, doDeploy, doCheck:
+		s, err = l.act(ctx, view, id)
+	default:
+		s, err = l.mainView(ctx)
+	}
+	if err != nil {
+		return l.failed(err)
+	}
+	if utf8.RuneCountInString(s.text) > maxText {
+		s.text = string([]rune(s.text)[:maxText]) + "…"
+	}
+	return s
+}
+
+// failed tells why JEC could not show or do what was asked.
+func (l *listener) failed(err error) screen {
+	var refused *module.CallError
+	reason := l.plain(i18n.TelegramAnswerUnknown, nil)
+	if errors.As(err, &refused) && refused.Code != "" {
+		reason = l.plain(i18n.TelegramAnswerFailed, i18n.Args{"reason": l.plain(refused.Code, i18n.Args(refused.Params))})
+	} else {
+		l.m.log.Warn("the Telegram menu", "bot", l.bot.id, "err", err)
+	}
+	return screen{text: iconFail + " " + html.EscapeString(reason), rows: [][]button{{l.home()}}, toast: reason}
+}
+
+func (l *listener) mainView(ctx context.Context) (screen, error) {
+	certs, err := l.certificates(ctx)
+	if err != nil {
+		return screen{}, err
+	}
+	now := l.m.now()
+	var ok, expiring, attention int
+	var next *certificate
+	for i := range certs {
+		c := &certs[i]
+		switch {
+		case needsAttention(c):
+			attention++
+		case c.State == "expiring":
+			expiring++
+		default:
+			ok++
+		}
+		if c.Source == "provider" && c.RenewAt != nil && c.RenewAt.After(now) && (next == nil || c.RenewAt.Before(*next.RenewAt)) {
+			next = c
+		}
+	}
+	lines := []string{iconLock + " <b>" + l.text(i18n.TelegramMenuTitle, nil) + "</b>", ""}
+	if len(certs) == 0 {
+		lines = append(lines, l.text(i18n.TelegramMenuNone, nil))
+	} else {
+		lines = append(lines,
+			l.text(i18n.TelegramMenuSummary, i18n.Args{"total": len(certs)}),
+			l.text(i18n.TelegramMenuCounts, i18n.Args{"ok": ok, "expiring": expiring, "attention": attention}))
+		if next != nil {
+			lines = append(lines, iconClock+" "+l.text(i18n.TelegramMenuNextRenewal, i18n.Args{"time": l.clock(*next.RenewAt), "domain": primary(next)}))
+		}
+	}
+	lines = append(lines, "", "<i>"+l.text(i18n.TelegramMenuUpdated, i18n.Args{"time": now.In(l.m.zone()).Format(time.TimeOnly)})+"</i>")
+	rows := [][]button{
+		{l.button(iconList, i18n.TelegramButtonCerts, i18n.Args{"count": len(certs)}, viewList+":0"),
+			l.button(iconWarn, i18n.TelegramButtonTodo, i18n.Args{"count": attention}, viewTodo)},
+		{l.button(iconRecent, i18n.TelegramButtonRecent, nil, viewRecent), l.button(iconOnline, i18n.TelegramButtonOnline, nil, viewOnline)},
+		{l.button(iconInfo, i18n.TelegramButtonSystem, nil, viewSystem), l.button(iconHelp, i18n.TelegramButtonHelp, nil, viewHelp)},
+		append([]button{l.button(iconRefresh, i18n.TelegramButtonRefresh, nil, viewMain)}, l.open("")...),
+	}
+	return screen{text: strings.Join(lines, "\n"), rows: rows}, nil
+}
+
+func (l *listener) listView(ctx context.Context, page int) (screen, error) {
+	certs, err := l.certificates(ctx)
+	if err != nil {
+		return screen{}, err
+	}
+	pages := max(1, (len(certs)+pageSize-1)/pageSize)
+	page = min(max(page, 0), pages-1)
+	shown := certs[min(page*pageSize, len(certs)):min((page+1)*pageSize, len(certs))]
+	lines := []string{iconList + " <b>" + l.text(i18n.TelegramListTitle, i18n.Args{"count": len(certs)}) + "</b>", ""}
+	if len(certs) == 0 {
+		lines = append(lines, l.text(i18n.TelegramMenuNone, nil))
+	}
+	for i := range shown {
+		c := &shown[i]
+		lines = append(lines, icon(c)+" <b>"+html.EscapeString(primary(c))+"</b>"+more(c)+" · "+l.short(c))
+	}
+	rows := l.certButtons(shown)
+	if pages > 1 {
+		var nav []button
+		if page > 0 {
+			nav = append(nav, l.button(iconPrev, i18n.TelegramButtonPrev, nil, viewList+":"+strconv.Itoa(page-1)))
+		}
+		if page < pages-1 {
+			nav = append(nav, l.button(iconNext, i18n.TelegramButtonNext, nil, viewList+":"+strconv.Itoa(page+1)))
+		}
+		rows = append(rows, nav)
+	}
+	rows = append(rows, []button{l.home()})
+	return screen{text: strings.Join(lines, "\n"), rows: rows}, nil
+}
+
+func (l *listener) todoView(ctx context.Context) (screen, error) {
+	certs, err := l.certificates(ctx)
+	if err != nil {
+		return screen{}, err
+	}
+	var todo []certificate
+	for _, c := range certs {
+		if needsAttention(&c) {
+			todo = append(todo, c)
+		}
+	}
+	lines := []string{iconWarn + " <b>" + l.text(i18n.TelegramTodoTitle, i18n.Args{"count": len(todo)}) + "</b>", ""}
+	if len(todo) == 0 {
+		lines = append(lines, iconOK+" "+l.text(i18n.TelegramTodoNone, nil))
+	}
+	for i := range todo {
+		c := &todo[i]
+		lines = append(lines, icon(c)+" <b>"+html.EscapeString(primary(c))+"</b> · "+l.text(stateText(c.State), nil))
+		if why := l.why(c); why != "" {
+			lines = append(lines, "    "+why)
+		}
+	}
+	rows := append(l.certButtons(todo), []button{l.button(iconRefresh, i18n.TelegramButtonRefresh, nil, viewTodo), l.home()})
+	return screen{text: strings.Join(lines, "\n"), rows: rows}, nil
+}
+
+// why tells why a certificate needs attention.
+func (l *listener) why(c *certificate) string {
+	switch c.State {
+	case "failed":
+		if c.Issuance != nil && c.Issuance.Error != nil {
+			return l.message(c.Issuance.Error)
+		}
+	case "deploy_failed":
+		for _, d := range c.Deployments {
+			if d.Error != nil && (d.State == "failed" || d.State == "pending") {
+				return l.message(d.Error)
+			}
+		}
+	case "expired":
+		if c.Current != nil {
+			return l.text(i18n.TelegramTodoExpired, i18n.Args{"date": l.day(c.Current.NotAfter)})
+		}
+	case "expiring":
+		if c.Current != nil {
+			return l.text(i18n.TelegramTodoExpiringManual, i18n.Args{"date": l.day(c.Current.NotAfter)})
+		}
+	}
+	return ""
+}
+
+func (l *listener) recentView(ctx context.Context) (screen, error) {
+	var out struct {
+		Runs []run `json:"runs"`
+	}
+	if err := l.get(ctx, "/certs/runs?days=7", &out); err != nil {
+		return screen{}, err
+	}
+	names := l.names(ctx)
+	lines := []string{iconRecent + " <b>" + l.text(i18n.TelegramRecentTitle, nil) + "</b>", ""}
+	if len(out.Runs) == 0 {
+		lines = append(lines, l.text(i18n.TelegramRecentNone, nil))
+	}
+	for _, r := range out.Runs[:min(len(out.Runs), recentRuns)] {
+		action := l.text(runActions[r.Action], nil)
+		if r.Trigger == "manual" && r.Action != "renew" {
+			action += l.text(i18n.TelegramRunManual, nil)
+		}
+		line := runIcon(r.State) + " " + l.clock(r.CreatedAt) + " " + action + " <b>" + html.EscapeString(r.Domain) + "</b>"
+		if r.Action == "deploy" {
+			if n, ok := names[r.Target]; ok {
+				line += " → " + html.EscapeString(n.Name)
+			}
+		}
+		lines = append(lines, line+" · "+l.text(runStates[r.State], nil))
+	}
+	rows := [][]button{{l.button(iconRefresh, i18n.TelegramButtonRefresh, nil, viewRecent), l.home()}}
+	return screen{text: strings.Join(lines, "\n"), rows: rows}, nil
+}
+
+func (l *listener) onlineView(ctx context.Context) (screen, error) {
+	var out struct {
+		Certificates []tally `json:"certificates"`
+	}
+	lines := []string{iconOnline + " <b>" + l.text(i18n.TelegramOnlineTitle, nil) + "</b>", ""}
+	var refused *module.CallError
+	if err := l.get(ctx, "/monitor/states", &out); errors.As(err, &refused) && refused.Status == 404 {
+		lines = append(lines, iconOff+" "+l.text(i18n.TelegramOnlineOff, nil))
+		return screen{text: strings.Join(lines, "\n"), rows: [][]button{{l.home()}}}, nil
+	} else if err != nil {
+		return screen{}, err
+	}
+	certs, err := l.certificates(ctx)
+	if err != nil {
+		return screen{}, err
+	}
+	var troubled []certificate
+	for _, t := range out.Certificates {
+		i := slices.IndexFunc(certs, func(c certificate) bool { return c.ID == t.CertificateID })
+		if i < 0 || t.Old+t.Unreachable == 0 {
+			continue
+		}
+		c := certs[i]
+		troubled = append(troubled, c)
+		name := "<b>" + html.EscapeString(primary(&c)) + "</b>"
+		if t.Old > 0 {
+			lines = append(lines, iconWarn+" "+name+" · "+l.text(i18n.TelegramOnlineProblemOld, i18n.Args{"count": t.Old}))
+		}
+		if t.Unreachable > 0 {
+			lines = append(lines, iconOff+" "+name+" · "+l.text(i18n.TelegramOnlineProblemUnreachable, i18n.Args{"count": t.Unreachable}))
+		}
+	}
+	if len(troubled) == 0 {
+		lines = append(lines, iconOK+" "+l.text(i18n.TelegramOnlineAllOk, nil))
+	}
+	rows := append(l.certButtons(troubled), []button{l.button(iconRefresh, i18n.TelegramButtonRefresh, nil, viewOnline), l.home()})
+	return screen{text: strings.Join(lines, "\n"), rows: rows}, nil
+}
+
+func (l *listener) systemView(ctx context.Context) (screen, error) {
+	var m manifest
+	if err := l.get(ctx, "/manifest", &m); err != nil {
+		return screen{}, err
+	}
+	on := 0
+	for _, mod := range m.Modules {
+		if mod.Enabled {
+			on++
+		}
+	}
+	kinds := map[string]int{}
+	for _, p := range l.names(ctx) {
+		kinds[p.Kind]++
+	}
+	zone := m.TimeZone
+	if zone == "" {
+		zone = l.m.zone().String()
+	}
+	lines := []string{
+		iconInfo + " <b>" + l.text(i18n.TelegramSystemTitle, nil) + "</b>", "",
+		l.text(i18n.TelegramSystemVersion, i18n.Args{"version": m.Version}),
+		l.text(i18n.TelegramSystemPlatform, i18n.Args{"platform": m.Platform}),
+		l.text(i18n.TelegramSystemZone, i18n.Args{"zone": zone}),
+		l.text(i18n.TelegramSystemModules, i18n.Args{"count": on}),
+		l.text(i18n.TelegramSystemProviders, i18n.Args{
+			"sources": kinds["source"], "solvers": kinds["solver"], "targets": kinds["target"], "notifiers": kinds["notifier"],
+		}),
+	}
+	if l.m.baseURL != "" {
+		lines = append(lines, l.text(i18n.TelegramSystemPanel, i18n.Args{"url": l.m.baseURL}))
+	}
+	return screen{text: strings.Join(lines, "\n"), rows: [][]button{append([]button{l.home()}, l.open("")...)}}, nil
+}
+
+func (l *listener) helpView() screen {
+	lines := []string{iconHelp + " <b>" + l.text(i18n.TelegramHelpTitle, nil) + "</b>", "", l.text(i18n.TelegramHelpIntro, nil)}
+	for _, c := range []struct {
+		name string
+		desc i18n.Key
+	}{
+		{"menu", i18n.TelegramCommandMenu}, {"certs", i18n.TelegramCommandCerts}, {"todo", i18n.TelegramCommandTodo},
+		{"recent", i18n.TelegramCommandRecent}, {"online", i18n.TelegramCommandOnline}, {"help", i18n.TelegramCommandHelp},
+	} {
+		lines = append(lines, "/"+c.name+" · "+l.text(c.desc, nil))
+	}
+	if l.bot.actions {
+		lines = append(lines, "", l.text(i18n.TelegramHelpActionsOn, nil))
+	} else {
+		lines = append(lines, "", l.text(i18n.TelegramHelpActionsOff, nil))
+	}
+	return screen{text: strings.Join(lines, "\n"), rows: [][]button{{l.home()}}}
+}
+
+// certView shows a certificate: how it is, where it comes from, where it
+// goes and what the domains serve, with what can be done to it. notice,
+// if any, goes first, as what was just done.
+func (l *listener) certView(ctx context.Context, id int64, notice string) (screen, error) {
+	c, err := l.certificate(ctx, id)
+	if err != nil {
+		return screen{}, err
+	}
+	names := l.names(ctx)
+	var lines []string
+	if notice != "" {
+		lines = append(lines, iconOK+" "+notice, "")
+	}
+	lines = append(lines, iconLock+" <b>"+html.EscapeString(primary(&c))+"</b>")
+	if len(c.Domains) > 1 {
+		lines = append(lines, l.text(i18n.TelegramCertAlso, i18n.Args{"names": strings.Join(c.Domains[1:], ", ")}))
+	}
+	lines = append(lines, icon(&c)+" "+l.text(stateText(c.State), nil)+" · "+l.life(&c))
+	switch {
+	case c.State == "issuing" && c.Issuance != nil && c.Issuance.NextAt != nil && c.Issuance.State == "waiting":
+		lines = append(lines, iconBusy+" "+l.text(i18n.TelegramCertNextLook, i18n.Args{"time": l.clock(*c.Issuance.NextAt)}))
+	case c.State == "issuing" && c.Issuance != nil && c.Issuance.NextAt != nil && c.Issuance.Error != nil:
+		lines = append(lines, iconBusy+" "+l.text(i18n.TelegramCertNextTry, i18n.Args{"time": l.clock(*c.Issuance.NextAt)}))
+	case c.Source == "provider" && c.RenewAt != nil:
+		lines = append(lines, iconClock+" "+l.text(i18n.TelegramCertRenewAt, i18n.Args{"time": l.clock(*c.RenewAt)}))
+	case c.Source != "provider":
+		lines = append(lines, iconUpload+" "+l.text(i18n.TelegramCertManual, nil))
+	}
+	if c.Source == "provider" {
+		from := l.text(i18n.TelegramCertSource, i18n.Args{"name": names[c.SourceProvider].Name})
+		if p, ok := names[c.SolverProvider]; ok {
+			from += " · " + l.text(i18n.TelegramCertSolver, i18n.Args{"name": p.Name})
+		}
+		lines = append(lines, iconSource+" "+from)
+	} else {
+		lines = append(lines, iconSource+" "+l.text(i18n.TelegramCertUpload, nil))
+	}
+	if c.Current != nil {
+		lines = append(lines, iconIssuer+" "+l.text(i18n.TelegramCertIssuer, i18n.Args{"issuer": c.Current.Issuer}))
+	}
+
+	lines = append(lines, "", "<b>"+l.text(i18n.TelegramCertDeploys, nil)+"</b>")
+	if len(c.Targets) == 0 {
+		lines = append(lines, l.text(i18n.TelegramCertNoTargets, nil))
+	}
+	for _, t := range c.Targets {
+		state, at := "none", ""
+		if i := slices.IndexFunc(c.Deployments, func(d deployment) bool { return d.Target == t }); i >= 0 {
+			d := c.Deployments[i]
+			state = d.State
+			if d.FinishedAt != nil {
+				at = " · " + l.clock(*d.FinishedAt)
+			}
+		}
+		lines = append(lines, deployIcon(state)+" "+html.EscapeString(names[t].Name)+" · "+l.text(deployStates[state], nil)+at)
+	}
+
+	monitored := false
+	var online checks
+	if c.Current != nil && l.get(ctx, "/monitor/certificates/"+strconv.FormatInt(id, 10), &online) == nil {
+		monitored = online.Tracked
+		lines = append(lines, "", "<b>"+l.text(i18n.TelegramCertOnline, nil)+"</b>")
+		if len(online.Results) == 0 {
+			lines = append(lines, l.text(i18n.TelegramCertOnlinePending, nil))
+		}
+		lines = append(lines, l.checks(online.Results)...)
+	}
+
+	if is := c.Issuance; is != nil {
+		lines = append(lines, "", "<b>"+l.text(i18n.TelegramCertLastRun, nil)+"</b>")
+		action := runActions[map[string]string{"renewal": "renew"}[is.Reason]]
+		if action == "" {
+			action = i18n.TelegramRunIssue
+		}
+		line := runIcon(is.State) + " " + l.clock(is.CreatedAt) + " " + l.text(action, nil) + " · " + l.text(runStates[is.State], nil)
+		lines = append(lines, line)
+		if is.Error != nil && is.State != "done" {
+			lines = append(lines, "    "+l.message(is.Error))
+		}
+	}
+
+	var rows [][]button
+	if l.bot.actions && c.Current != nil {
+		var row []button
+		if c.Source == "provider" && c.State != "issuing" {
+			row = append(row, l.button(iconRenew, i18n.TelegramButtonRenew, nil, askRenew+":"+strconv.FormatInt(id, 10)))
+		}
+		if len(c.Targets) > 0 && c.State != "deploying" {
+			row = append(row, l.button(iconDeploy, i18n.TelegramButtonDeploy, nil, askDeploy+":"+strconv.FormatInt(id, 10)))
+		}
+		if monitored {
+			row = append(row, l.button(iconOnline, i18n.TelegramButtonCheck, nil, doCheck+":"+strconv.FormatInt(id, 10)))
+		}
+		if len(row) > 0 {
+			rows = append(rows, row)
+		}
+	}
+	rows = append(rows,
+		[]button{l.button(iconRefresh, i18n.TelegramButtonRefresh, nil, viewCert+":"+strconv.FormatInt(id, 10))},
+		append([]button{l.button(iconBack, i18n.TelegramButtonBack, nil, viewList+":0"), l.home()}, l.open("/certificates/"+strconv.FormatInt(id, 10))...))
+	return screen{text: strings.Join(lines, "\n"), rows: rows}, nil
+}
+
+// checks tells what the domains served, one line for each outcome, as the
+// page of the certificate does.
+func (l *listener) checks(results []check) []string {
+	type outcome struct {
+		key     string
+		domains []string
+		result  check
+	}
+	var out []outcome
+	for _, r := range results {
+		key := strings.Join([]string{r.View, r.State, r.Issuer, l.day(ptrTime(r.NotAfter))}, "|")
+		if i := slices.IndexFunc(out, func(o outcome) bool { return o.key == key }); i >= 0 {
+			out[i].domains = append(out[i].domains, r.Domain)
+			continue
+		}
+		out = append(out, outcome{key: key, domains: []string{r.Domain}, result: r})
+	}
+	var lines []string
+	for _, o := range out {
+		r := o.result
+		what := ""
+		switch r.State {
+		case "ok":
+			what = l.text(i18n.TelegramOnlineOk, nil)
+		case "old":
+			what = l.text(i18n.TelegramOnlineOld, i18n.Args{"date": l.day(ptrTime(r.NotAfter))})
+		case "other":
+			what = l.text(i18n.TelegramOnlineOther, i18n.Args{"issuer": r.Issuer})
+		default:
+			what = l.text(i18n.TelegramOnlineUnreachable, nil)
+		}
+		where := html.EscapeString(strings.Join(o.domains, ", "))
+		switch r.View {
+		case "cn":
+			where += " (" + l.text(i18n.TelegramOnlineCn, nil) + ")"
+		case "global":
+			where += " (" + l.text(i18n.TelegramOnlineGlobal, nil) + ")"
+		}
+		lines = append(lines, checkIcon(r.State)+" "+where+" · "+what)
+	}
+	return lines
+}
+
+// askView asks before renewing or deploying again, saying what it does.
+func (l *listener) askView(ctx context.Context, view string, id int64) (screen, error) {
+	if !l.bot.actions {
+		return l.notAllowed(id), nil
+	}
+	c, err := l.certificate(ctx, id)
+	if err != nil {
+		return screen{}, err
+	}
+	names := l.names(ctx)
+	ref := ":" + strconv.FormatInt(id, 10)
+	var lines []string
+	var confirm button
+	if view == askRenew {
+		lines = []string{
+			iconHelp + " <b>" + l.text(i18n.TelegramActionRenewAsk, i18n.Args{"domain": primary(&c)}) + "</b>", "",
+			l.text(i18n.TelegramActionRenewDetail, i18n.Args{"source": names[c.SourceProvider].Name}),
+		}
+		confirm = l.button(iconOK, i18n.TelegramButtonConfirmRenew, nil, doRenew+ref)
+	} else {
+		var targets []string
+		for _, t := range c.Targets {
+			targets = append(targets, names[t].Name)
+		}
+		lines = []string{
+			iconHelp + " <b>" + l.text(i18n.TelegramActionDeployAsk, i18n.Args{"domain": primary(&c)}) + "</b>", "",
+			l.text(i18n.TelegramActionDeployDetail, i18n.Args{"targets": strings.Join(targets, ", ")}),
+		}
+		confirm = l.button(iconOK, i18n.TelegramButtonConfirmDeploy, nil, doDeploy+ref)
+	}
+	rows := [][]button{{confirm, l.button(iconCancel, i18n.TelegramButtonCancel, nil, viewCert+ref)}}
+	return screen{text: strings.Join(lines, "\n"), rows: rows}, nil
+}
+
+// act renews, deploys again or checks now, then shows the certificate.
+func (l *listener) act(ctx context.Context, view string, id int64) (screen, error) {
+	if !l.bot.actions {
+		return l.notAllowed(id), nil
+	}
+	ref := strconv.FormatInt(id, 10)
+	var done i18n.Key
+	var err error
+	switch view {
+	case doRenew:
+		done, err = i18n.TelegramActionRenewStarted, l.post(ctx, "/certs/certificates/"+ref+"/issue", nil)
+	case doDeploy:
+		done, err = i18n.TelegramActionDeployStarted, l.post(ctx, "/certs/certificates/"+ref+"/deploy", map[string]any{})
+	default:
+		done, err = i18n.TelegramActionCheckStarted, l.post(ctx, "/monitor/certificates/"+ref+"/check", nil)
+	}
+	if err != nil {
+		return screen{}, err
+	}
+	s, err := l.certView(ctx, id, l.text(done, nil))
+	s.toast = l.plain(done, nil)
+	return s, err
+}
+
+func (l *listener) notAllowed(id int64) screen {
+	text := l.plain(i18n.TelegramActionNotAllowed, nil)
+	return screen{
+		text:  iconOff + " " + html.EscapeString(text),
+		rows:  [][]button{{l.button(iconBack, i18n.TelegramButtonBack, nil, viewCert+":"+strconv.FormatInt(id, 10)), l.home()}},
+		toast: text,
+	}
+}
+
+// certButtons lists certificates as buttons, two to a row.
+func (l *listener) certButtons(certs []certificate) [][]button {
+	var rows [][]button
+	for i := range certs {
+		c := &certs[i]
+		b := button{Text: icon(c) + " " + primary(c), Data: viewCert + ":" + strconv.FormatInt(c.ID, 10)}
+		if i%2 == 0 {
+			rows = append(rows, []button{b})
+		} else {
+			rows[len(rows)-1] = append(rows[len(rows)-1], b)
+		}
+	}
+	return rows
+}
+
+func (l *listener) button(icon string, key i18n.Key, args i18n.Args, data string) button {
+	return button{Text: icon + " " + l.plain(key, args), Data: data}
+}
+
+func (l *listener) home() button { return l.button(iconHome, i18n.TelegramButtonMenu, nil, viewMain) }
+
+// open is the button to the page path of JEC, where Telegram can open it:
+// none without an https address.
+func (l *listener) open(path string) []button {
+	if !strings.HasPrefix(l.m.baseURL, "https://") {
+		return nil
+	}
+	return []button{{Text: iconLink + " " + l.plain(i18n.TelegramButtonOpen, nil), URL: strings.TrimRight(l.m.baseURL, "/") + path}}
+}
+
+// plain is message key in the bot's language, as plain text.
+func (l *listener) plain(key i18n.Key, args i18n.Args) string {
+	s, err := l.m.cat.Format(l.tag, key, args)
+	if err != nil {
+		l.m.log.Warn("format a Telegram message", "key", key, "err", err)
+	}
+	return s
+}
+
+// text is plain made safe for Telegram's HTML.
+func (l *listener) text(key i18n.Key, args i18n.Args) string {
+	return html.EscapeString(l.plain(key, args))
+}
+
+// message is a message of the API, made safe for Telegram's HTML.
+func (l *listener) message(m *apiMessage) string {
+	return l.text(m.Key, m.Params)
+}
+
+func (l *listener) clock(t time.Time) string { return t.In(l.m.zone()).Format("2006-01-02 15:04") }
+
+func (l *listener) day(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.In(l.m.zone()).Format(time.DateOnly)
+}
+
+// life tells how long a certificate has left, or that it has none.
+func (l *listener) life(c *certificate) string {
+	if c.Current == nil {
+		return l.text(i18n.TelegramCertPending, nil)
+	}
+	left := c.Current.NotAfter.Sub(l.m.now())
+	if left <= 0 {
+		return l.text(i18n.TelegramCertExpired, i18n.Args{"date": l.day(c.Current.NotAfter)})
+	}
+	return l.text(i18n.TelegramCertLeft, i18n.Args{"days": int(math.Floor(left.Hours() / 24)), "date": l.day(c.Current.NotAfter)})
+}
+
+// short tells how a certificate is in a few words: the days it has left,
+// or its state when that says more.
+func (l *listener) short(c *certificate) string {
+	switch {
+	case c.Current == nil || c.State != "ok" && c.State != "expiring":
+		return l.text(stateText(c.State), nil)
+	case !c.Current.NotAfter.After(l.m.now()):
+		return l.text(i18n.TelegramStateExpired, nil)
+	}
+	return l.text(i18n.TelegramListLeft, i18n.Args{"days": int(c.Current.NotAfter.Sub(l.m.now()) / dayLength)})
+}
+
+// needsAttention tells a certificate someone has to see to, as the list
+// of the web interface does: an issuance or a deployment that failed, one
+// expired, or an upload about to.
+func needsAttention(c *certificate) bool {
+	switch c.State {
+	case "failed", "deploy_failed", "expired":
+		return true
+	case "expiring":
+		return c.Source != "provider"
+	}
+	return false
+}
+
+func primary(c *certificate) string {
+	if len(c.Domains) == 0 {
+		return ""
+	}
+	return c.Domains[0]
+}
+
+// more counts the other domains of a certificate: +1.
+func more(c *certificate) string {
+	if len(c.Domains) < 2 {
+		return ""
+	}
+	return " +" + strconv.Itoa(len(c.Domains)-1)
+}
+
+func icon(c *certificate) string {
+	switch c.State {
+	case "ok":
+		return iconOK
+	case "expiring":
+		return iconWarn
+	case "issuing", "deploying":
+		return iconBusy
+	}
+	return iconFail
+}
+
+func stateText(state string) i18n.Key {
+	if k, ok := states[state]; ok {
+		return k
+	}
+	return i18n.TelegramStateOk
+}
+
+var states = map[string]i18n.Key{
+	"ok": i18n.TelegramStateOk, "expiring": i18n.TelegramStateExpiring, "expired": i18n.TelegramStateExpired,
+	"issuing": i18n.TelegramStateIssuing, "deploying": i18n.TelegramStateDeploying,
+	"failed": i18n.TelegramStateFailed, "deploy_failed": i18n.TelegramStateDeployFailed,
+}
+
+var deployStates = map[string]i18n.Key{
+	"done": i18n.TelegramDeployDone, "pending": i18n.TelegramDeployPending, "running": i18n.TelegramDeployRunning,
+	"failed": i18n.TelegramDeployFailed, "canceled": i18n.TelegramDeployCanceled, "none": i18n.TelegramDeployNone,
+}
+
+func deployIcon(state string) string {
+	switch state {
+	case "done":
+		return iconOK
+	case "pending", "running":
+		return iconBusy
+	case "failed":
+		return iconFail
+	}
+	return iconInfo
+}
+
+var runActions = map[string]i18n.Key{"issue": i18n.TelegramRunIssue, "renew": i18n.TelegramRunRenew, "deploy": i18n.TelegramRunDeploy}
+
+var runStates = map[string]i18n.Key{
+	"done": i18n.TelegramRunDone, "failed": i18n.TelegramRunFailed, "running": i18n.TelegramRunRunning,
+	"pending": i18n.TelegramRunPending, "waiting": i18n.TelegramRunWaiting, "canceled": i18n.TelegramRunCanceled,
+}
+
+func runIcon(state string) string {
+	switch state {
+	case "done":
+		return iconOK
+	case "failed":
+		return iconFail
+	case "canceled":
+		return iconInfo
+	}
+	return iconBusy
+}
+
+func checkIcon(state string) string {
+	switch state {
+	case "ok":
+		return iconOK
+	case "old":
+		return iconWarn
+	case "unreachable":
+		return iconOff
+	}
+	return iconInfo
+}
+
+func ptrTime(t *time.Time) time.Time {
+	if t == nil {
+		return time.Time{}
+	}
+	return *t
+}

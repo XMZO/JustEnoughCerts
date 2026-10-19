@@ -21,25 +21,39 @@ import (
 // defaultAPI is Telegram's Bot API server.
 const defaultAPI = "https://api.telegram.org"
 
+// botTypeID is the type of the bots.
+const botTypeID = "telegram.bot"
+
 func botType() providers.Type {
 	return providers.Type{
-		ID: "telegram.bot", Kind: providers.Notifier, Name: i18n.TelegramBotName, Description: i18n.TelegramBotDescription,
+		ID: botTypeID, Kind: providers.Notifier, Name: i18n.TelegramBotName, Description: i18n.TelegramBotDescription,
 		Tags: []string{"popular"},
 		Fields: append([]providers.Field{
 			{Key: "token", Label: i18n.TelegramFieldToken, Help: i18n.TelegramFieldTokenHelp, Kind: providers.Text, Secret: true, Required: true},
 			{Key: "chat", Label: i18n.TelegramFieldChat, Help: i18n.TelegramFieldChatHelp, Kind: providers.Text, Required: true},
+			{Key: "commands", Label: i18n.TelegramFieldCommands, Help: i18n.TelegramFieldCommandsHelp, Kind: providers.Switch, Default: "false"},
+			{Key: "actions", Label: i18n.TelegramFieldActions, Help: i18n.TelegramFieldActionsHelp, Kind: providers.Switch, Default: "false",
+				When: &providers.When{Key: "commands", Value: "true"}},
 			httpx.ProxyField(),
 			{Key: "api", Label: i18n.TelegramFieldApi, Help: i18n.TelegramFieldApiHelp, Kind: providers.URL, Default: defaultAPI, Advanced: true},
 		}, contracts.NotifierFields()...),
 	}
 }
 
-// bot sends notes to a chat through a Telegram bot.
+// bot sends notes to a chat through a Telegram bot, and answers the
+// commands of that chat when its settings ask for it (listen.go).
 type bot struct {
 	client *http.Client
 	api    string
 	token  string
 	chat   string
+
+	id       int64
+	name     string
+	locale   string
+	commands bool // answers commands with a menu
+	actions  bool // and lets the menu renew, deploy and check
+	config   map[string]string
 }
 
 var _ contracts.Notifier = (*bot)(nil)
@@ -54,6 +68,9 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 		api:    strings.TrimRight(cmp.Or(in.Config["api"], defaultAPI), "/"),
 		token:  strings.TrimSpace(in.Value("token")),
 		chat:   strings.TrimSpace(in.Config["chat"]),
+
+		id: in.ID, name: in.Name, locale: in.Config["locale"], config: in.Config,
+		commands: in.Config["commands"] == "true", actions: in.Config["actions"] == "true",
 	}, nil
 }
 
@@ -110,6 +127,40 @@ func (b *bot) Notify(ctx context.Context, n contracts.Note) error {
 		return nil
 	}
 	return explain(resp.StatusCode, r)
+}
+
+// call calls method of the Bot API with params, decoding its result into
+// out unless nil, through client, the bot's or one that waits longer.
+func (b *bot) call(ctx context.Context, client *http.Client, method string, params, out any) error {
+	body, err := json.Marshal(params)
+	if err != nil {
+		return retry.Permanent(err)
+	}
+	// The token is part of the path: no error may carry the URL.
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, b.api+"/bot"+b.token+"/"+method, bytes.NewReader(body))
+	if err != nil {
+		return retry.Permanent(&contracts.Problem{Key: i18n.TelegramErrorApiUrl, Params: map[string]any{"url": b.api}})
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return &contracts.Problem{Key: i18n.TelegramErrorNetwork, Err: httpx.Cause(err)}
+	}
+	defer func() { _ = resp.Body.Close() }()
+	var r struct {
+		reply
+		Result json.RawMessage `json:"result"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 8<<20)).Decode(&r); err != nil {
+		return &contracts.Problem{Key: i18n.TelegramErrorStatus, Params: map[string]any{"status": resp.StatusCode}, Err: err}
+	}
+	if !r.OK {
+		return explain(resp.StatusCode, r.reply)
+	}
+	if out == nil || len(r.Result) == 0 {
+		return nil
+	}
+	return json.Unmarshal(r.Result, out)
 }
 
 // explain turns a refusal of the Bot API into a Problem: one that trying
