@@ -1,4 +1,4 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/vue-query'
+import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 
 import { addMessages } from '../i18n'
@@ -50,6 +50,9 @@ export function useProviderType(id: MaybeRefOrGetter<string | undefined>) {
     queryFn: async () => withTexts(await unwrap(api.GET('/providers/types/{id}', { params: { path: { id: toValue(id) ?? '' } } }))),
     enabled: computed(() => !!toValue(id)),
     staleTime: 5 * 60_000,
+    // The type before stays while the next one loads, so that a form does
+    // not empty and fill again.
+    placeholderData: keepPreviousData,
   })
 }
 

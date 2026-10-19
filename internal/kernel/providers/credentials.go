@@ -78,20 +78,29 @@ func checkCredential(t Type) error {
 	for _, f := range t.Fields {
 		fields[f.Key] = f
 	}
-	seen := map[string]bool{}
+	// A kind may offer ways of signing in, as a select whose fields depend
+	// on it; the type's fields it fills depend on the same.
+	seen, plain := map[string]bool{}, map[string]bool{}
 	for _, f := range k.Fields {
 		target, ok := fields[u.field(f.Key)]
 		switch {
 		case !keyPattern.MatchString(f.Key) || seen[f.Key]:
 			return fmt.Errorf("provider type %s: credential kind %s: field key %q is malformed or repeated", t.ID, k.ID, f.Key)
-		case !slices.Contains(fieldKinds, f.Kind) || f.Kind == Select || f.Kind == Locale || f.When != nil:
+		case !slices.Contains(fieldKinds, f.Kind) || f.Kind == Locale || (f.Kind == Select && (f.Secret || len(f.Options) == 0)):
 			return fmt.Errorf("provider type %s: credential kind %s: field %s is of a kind credentials do not hold", t.ID, k.ID, f.Key)
+		case f.When != nil && !plain[f.When.Key]:
+			return fmt.Errorf("provider type %s: credential kind %s: field %s depends on %q, which is not a plain field before it", t.ID, k.ID, f.Key, f.When.Key)
 		case !ok:
 			return fmt.Errorf("provider type %s: credential kind %s: field %s fills no field of the type", t.ID, k.ID, f.Key)
 		case f.Secret && !target.Secret:
 			return fmt.Errorf("provider type %s: credential kind %s: secret field %s fills the plain field %s", t.ID, k.ID, f.Key, target.Key)
+		case f.Kind == Select && (target.Kind != Select || !reflect.DeepEqual(f.Options, target.Options)):
+			return fmt.Errorf("provider type %s: credential kind %s: select field %s fills %s, which offers other options", t.ID, k.ID, f.Key, target.Key)
+		case f.When != nil && (target.When == nil || *target.When != When{Key: u.field(f.When.Key), Value: f.When.Value}):
+			return fmt.Errorf("provider type %s: credential kind %s: field %s fills %s, which does not depend on the same", t.ID, k.ID, f.Key, target.Key)
 		}
 		seen[f.Key] = true
+		plain[f.Key] = !f.Secret
 	}
 	for from := range u.Fields {
 		if !seen[from] {

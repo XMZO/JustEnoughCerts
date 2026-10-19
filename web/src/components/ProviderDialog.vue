@@ -28,7 +28,9 @@ import SearchBox from './SearchBox.vue'
 // phones the choice and the form take turns. A testable type can be saved
 // and tested at once, the dialog staying open with what the test said:
 // some tests keep what they find, as a registration, so only a saved
-// provider is tested.
+// provider is tested. The dialog keeps its size as types and fields
+// change; the type before stays, dimmed, until the next one loads, which
+// then comes in gently.
 const props = defineProps<{
   kind: ProviderKind
   title: string
@@ -168,11 +170,11 @@ async function submit(andTest = false) {
 </script>
 
 <template>
-  <JecDialog v-model:open="open" :title="title" wide>
-    <div :class="['flex gap-4 max-sm:flex-col', picked || single || current ? '' : 'min-h-[min(60dvh,480px)]']">
+  <JecDialog v-model:open="open" :title="title" wide steady>
+    <div class="flex gap-4 max-sm:flex-col sm:h-full">
       <div
         v-if="!current && !single"
-        :class="['flex w-full flex-none flex-col gap-2 sm:w-[220px]', picked ? 'max-sm:hidden' : '']"
+        :class="['flex w-full flex-none flex-col gap-2 sm:min-h-0 sm:w-[220px]', picked ? 'max-sm:hidden' : '']"
         role="group"
         :aria-label="t('kernel.providers.choose')"
       >
@@ -192,7 +194,7 @@ async function submit(andTest = false) {
             {{ t(g.label) }}
           </button>
         </div>
-        <div role="listbox" :aria-label="t('kernel.providers.choose')" class="flex max-h-[min(50dvh,420px)] flex-col overflow-y-auto rounded-md border border-line">
+        <div role="listbox" :aria-label="t('kernel.providers.choose')" class="flex min-h-0 flex-col overflow-y-auto rounded-md border border-line sm:flex-1">
           <button
             v-for="s in choices"
             :key="s.id"
@@ -218,11 +220,16 @@ async function submit(andTest = false) {
       <form
         :id="`${uid}-form`"
         ref="form"
-        :class="['flex min-w-0 flex-1 flex-col gap-3', !picked && !single && !current ? 'max-sm:hidden' : '']"
+        :class="['flex min-w-0 flex-1 flex-col sm:-m-1 sm:min-h-0 sm:overflow-y-auto sm:p-1', !picked && !single && !current ? 'max-sm:hidden' : '']"
         novalidate
         @submit.prevent="submit()"
       >
-        <template v-if="type.data.value && type.data.value.id === picked">
+        <div
+          v-if="type.data.value && picked"
+          :key="type.data.value.id"
+          :inert="type.data.value.id !== picked"
+          :class="['flex animate-fade-in flex-col gap-2.5 transition-opacity sm:gap-3', type.data.value.id !== picked ? 'opacity-50' : '']"
+        >
           <button
             v-if="!current && !single"
             type="button"
@@ -239,7 +246,7 @@ async function submit(andTest = false) {
               </span>
             </div>
             <!-- A description may set out steps, a line each. -->
-            <p v-if="type.data.value.description" class="m-0 text-small whitespace-pre-line text-ink-muted">
+            <p v-if="type.data.value.description" class="m-0 text-caption whitespace-pre-line text-ink-muted sm:text-small">
               {{ t(type.data.value.description as MessageKey) }}
             </p>
             <p v-else-if="type.data.value.doc" lang="en" class="m-0 text-small text-ink-muted">{{ type.data.value.doc }}</p>
@@ -256,7 +263,7 @@ async function submit(andTest = false) {
           />
           <p v-if="typeof tested === 'string'" role="status" class="m-0 text-small text-ok-ink [overflow-wrap:anywhere]">{{ tested }}</p>
           <JecAlert v-else-if="tested" :code="tested.code" :params="tested.params" />
-        </template>
+        </div>
         <p v-else-if="!picked" class="m-0 text-ink-muted max-sm:hidden">{{ t('kernel.providers.pick_first') }}</p>
       </form>
     </div>

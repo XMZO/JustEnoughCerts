@@ -536,6 +536,7 @@ func validate(t Type, config, secrets map[string]string, credential bool) error 
 // validateFields checks config and secrets against fields, as validate
 // does; the fields filled keep no value.
 func validateFields(fields []Field, config, secrets map[string]string, filled []string) error {
+	inferChoices(fields, config, secrets, filled)
 	var errs []FieldError
 	byKey := map[string]Field{}
 	for _, f := range fields {
@@ -583,6 +584,30 @@ func validateFields(fields []Field, config, secrets map[string]string, filled []
 		return &ValidationError{errs}
 	}
 	return nil
+}
+
+// inferChoices sets the select fields left without a value, which other
+// fields depend on, to the first option whose fields hold a value: the
+// settings of a way to sign in name the way, as did those stored before
+// the choice was offered.
+func inferChoices(fields []Field, config, secrets map[string]string, filled []string) {
+	for _, f := range fields {
+		if f.Kind != Select || strings.TrimSpace(config[f.Key]) != "" || slices.Contains(filled, f.Key) {
+			continue
+		}
+		for _, o := range f.Options {
+			if slices.ContainsFunc(fields, func(g Field) bool {
+				values := config
+				if g.Secret {
+					values = secrets
+				}
+				return g.When != nil && *g.When == When{Key: f.Key, Value: o.Value} && strings.TrimSpace(values[g.Key]) != ""
+			}) {
+				config[f.Key] = o.Value
+				break
+			}
+		}
+	}
 }
 
 func valid(f Field, v string) bool {

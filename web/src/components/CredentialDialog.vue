@@ -5,6 +5,7 @@ import { computed, ref, useId, watch } from 'vue'
 import { useCreateCredential, useCredentialKinds, useUpdateCredential, type Credential, type CredentialKind } from '../api/credentials'
 import { revealError, useApiError } from '../api/errors'
 import { useT, type MessageKey } from '../i18n'
+import { applies, choice, chosen } from '../providers/fields'
 import JecAlert from './JecAlert.vue'
 import JecButton from './JecButton.vue'
 import JecDialog from './JecDialog.vue'
@@ -58,12 +59,20 @@ watch(
   (k) => {
     if (!k) return
     const v: Record<string, string> = {}
-    for (const f of k.fields) v[f.key] = f.secret ? '' : (props.credential?.config[f.key] ?? '')
+    const saved = props.credential
+    for (const f of k.fields) {
+      if (f.secret) v[f.key] = ''
+      else if (saved) v[f.key] = saved.config[f.key] ?? chosen(f, k.fields, saved.config, saved.secretKeys) ?? ''
+      else v[f.key] = f.default ?? ''
+    }
     values.value = v
     name.value = props.credential?.name ?? ''
   },
   { immediate: true },
 )
+
+// The fields of the way chosen, where the kind offers ways of signing in.
+const shown = computed(() => (kind.value ? kind.value.fields.filter((f) => applies(f, values.value, kind.value!.fields)) : []))
 
 const error = (f: CredentialKind['fields'][number]) => errors.fields.value[`${f.secret ? 'secrets' : 'config'}.${f.key}`]
 const saved = (f: CredentialKind['fields'][number]) => !!f.secret && (props.credential?.secretKeys ?? []).includes(f.key)
@@ -75,7 +84,7 @@ async function submit() {
   const secrets: Record<string, string> = {}
   for (const f of k.fields) {
     const v = values.value[f.key] ?? ''
-    if (!v.trim()) continue
+    if (!v.trim() || !applies(f, values.value, k.fields)) continue
     if (f.secret) secrets[f.key] = v
     else config[f.key] = v
   }
@@ -137,10 +146,11 @@ async function submit() {
             <JecInput :id="`${uid}-name`" v-model="name" :invalid="!!errors.fields.value.name" autocomplete="off" required />
           </JecField>
           <ProviderFieldRow
-            v-for="f in kind.fields"
+            v-for="f in shown"
             :key="f.key"
             :id-prefix="uid"
             :field="f"
+            :choice="choice(f, kind.fields)"
             :error="error(f)"
             :saved="saved(f)"
             :model-value="values[f.key] ?? ''"

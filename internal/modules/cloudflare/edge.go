@@ -71,9 +71,10 @@ func edgeType() providers.Type {
 		Name: i18n.CloudflareEdgeName, Description: i18n.CloudflareEdgeDescription,
 		Tags: []string{"http"}, Testable: true,
 		Fields: []providers.Field{
-			{Key: "api_token", Label: i18n.CloudflareFieldApiToken, Help: i18n.CloudflareFieldEdgeTokenHelp, Kind: providers.Text, Secret: true},
-			{Key: "api_email", Label: i18n.CloudflareFieldApiEmail, Help: i18n.CloudflareFieldApiEmailHelp, Kind: providers.Text},
-			{Key: "api_key", Label: i18n.CloudflareFieldApiKey, Help: i18n.CloudflareFieldApiKeyHelp, Kind: providers.Text, Secret: true},
+			credentials.CloudflareAuth,
+			{Key: "api_token", Label: i18n.CloudflareFieldApiToken, Help: i18n.CloudflareFieldEdgeTokenHelp, Kind: providers.Text, Secret: true, Required: true, When: credentials.CloudflareToken},
+			{Key: "api_email", Label: i18n.CloudflareFieldApiEmail, Help: i18n.CloudflareFieldApiEmailHelp, Kind: providers.Text, Required: true, When: credentials.CloudflareGlobal},
+			{Key: "api_key", Label: i18n.CloudflareFieldApiKey, Help: i18n.CloudflareFieldApiKeyHelp, Kind: providers.Text, Secret: true, Required: true, When: credentials.CloudflareGlobal},
 			{Key: "zone", Label: i18n.CloudflareFieldZone, Help: i18n.CloudflareFieldEdgeZoneHelp, Kind: providers.Text},
 			{Key: "domain", Label: i18n.CloudflareFieldDomain, Help: i18n.CloudflareFieldDomainHelp, Kind: providers.Text},
 			httpx.ProxyField(),

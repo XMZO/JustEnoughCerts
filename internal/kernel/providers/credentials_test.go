@@ -3,10 +3,14 @@ package providers_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"maps"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 
+	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers/providersapi"
 )
@@ -78,7 +82,13 @@ func TestCredentialChecks(t *testing.T) {
 		"maps a missing field": use(kind(fields[0]), map[string]string{"other": "secret"}),
 		"secret hint":          {Kind: providers.CredentialKind{ID: "other", Name: "x", Fields: fields, Hint: "secret"}},
 		"cloud, otherwise":     use(providers.CredentialKind{ID: "cloud", Name: "cloud.credential.name", Fields: fields}, nil),
+		"other options":        {Kind: providers.CredentialKind{ID: "other", Name: "x", Fields: []providers.Field{wayOf("a")}}},
+		"depends otherwise":    {Kind: providers.CredentialKind{ID: "other", Name: "x", Fields: []providers.Field{way, {Key: "token", Kind: providers.Text, Secret: true, When: &providers.When{Key: "way", Value: "key"}}}}},
 	} {
+		fields := fields
+		if strings.HasPrefix(name, "other options") || strings.HasPrefix(name, "depends") {
+			fields = wayFields
+		}
 		typ := providers.Type{ID: "cloud.x", Kind: providers.Target, Brand: "X", Fields: fields, Credential: u}
 		if err := s.Add(typ, factory); err == nil {
 			t.Errorf("%s: added", name)
@@ -92,6 +102,61 @@ func TestCredentialChecks(t *testing.T) {
 	}
 	if typ, _ := reg.Type("cloud.y"); typ.CredentialKind != "other" || !slices.Equal(typ.CredentialFields, []string{"id", "secret"}) {
 		t.Errorf("type %+v", typ)
+	}
+}
+
+// A kind with two ways of signing in, as Cloudflare's: a token, or an
+// account and its key.
+var (
+	way       = wayOf("token", "key")
+	wayFields = []providers.Field{
+		way,
+		{Key: "token", Kind: providers.Text, Secret: true, Required: true, When: &providers.When{Key: "way", Value: "token"}},
+		{Key: "account", Kind: providers.Text, Required: true, When: &providers.When{Key: "way", Value: "key"}},
+		{Key: "key", Kind: providers.Text, Secret: true, Required: true, When: &providers.When{Key: "way", Value: "key"}},
+	}
+	wayKind = providers.CredentialKind{ID: "ways", Name: "cloud.ways.name", Fields: wayFields}
+)
+
+func wayOf(values ...string) providers.Field {
+	f := providers.Field{Key: "way", Kind: providers.Select, Default: values[0]}
+	for _, v := range values {
+		f.Options = append(f.Options, providers.Option{Value: v, Label: i18n.Key("cloud.way." + v)})
+	}
+	return f
+}
+
+// TestCredentialWays: a kind offers ways of signing in, as a select the
+// fields of each way depend on. A credential without the choice takes the
+// way its values are of; changing the way drops the other way's values.
+func TestCredentialWays(t *testing.T) {
+	f := newFixture(t)
+	factory := func(context.Context, providers.Instance) (any, error) { return nil, nil }
+	reg := providers.New(f.db, f.box, func(string) bool { return true })
+	if err := reg.Scope("cloud").Add(providers.Type{ID: "cloud.ways", Kind: providers.Target, Brand: "W", Fields: wayFields, Credential: &providers.CredentialUse{Kind: wayKind}}, factory); err != nil {
+		t.Fatal(err)
+	}
+	ctx := t.Context()
+	id, err := reg.CreateCredential(ctx, "ways", "old", map[string]string{"account": "me"}, map[string]string{"key": "k"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := reg.LoadCredential(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Config["way"] != "key" || c.Secrets["key"] != "k" {
+		t.Errorf("without the choice %+v %v", c.Config, slices.Collect(maps.Keys(c.Secrets)))
+	}
+	if err := reg.UpdateCredential(ctx, id, nil, map[string]string{"way": "token"}, map[string]string{"token": "t"}); err != nil {
+		t.Fatal(err)
+	}
+	if c, _ = reg.LoadCredential(ctx, id); c.Config["account"] != "" || c.Secrets["key"] != "" || c.Secrets["token"] != "t" {
+		t.Errorf("after the change %+v %v", c.Config, slices.Collect(maps.Keys(c.Secrets)))
+	}
+	var fields *providers.ValidationError
+	if _, err := reg.CreateCredential(ctx, "ways", "half", map[string]string{"way": "key", "account": "me"}, nil); !errors.As(err, &fields) {
+		t.Errorf("a way half filled: %v", err)
 	}
 }
 

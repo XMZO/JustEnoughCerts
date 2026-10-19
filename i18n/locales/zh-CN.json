@@ -1065,7 +1065,7 @@
     },
     "field": {
       "api_email": "账号邮箱",
-      "api_email_help": "不用令牌时填：Cloudflare 账号的登录邮箱，和 Global API Key 一起使用。",
+      "api_email_help": "Cloudflare 账号的登录邮箱，和 Global API Key 一起使用。",
       "api_key": "Global API Key",
       "api_key_help": "在“我的个人资料 → API 令牌 → Global API Key”查看。它能操作整个账号，只给必要权限的令牌更安全。",
       "api_token": "API 令牌",
@@ -1116,7 +1116,11 @@
       "api_email": "账号邮箱",
       "api_key": "Global API Key",
       "api_token": "API 令牌",
-      "description": "API 令牌：在 Cloudflare 的“我的个人资料 → API 令牌”里创建，按要用的地方授予权限（DNS 验证要“区域 → DNS → 编辑”，自定义证书要“区域 → SSL 和证书 → 编辑”）；或者账号邮箱加 Global API Key。Global API Key 能操作整个账号，更推荐用令牌。",
+      "auth": "认证方式",
+      "auth_global": "账号邮箱 + Global API Key",
+      "auth_help": "API 令牌只给必要的权限，更安全；Global API Key 能操作整个账号。",
+      "auth_token": "API 令牌（推荐）",
+      "description": "两种方式选一种：API 令牌，在 Cloudflare 的“我的个人资料 → API 令牌”里创建，按要用的地方授予权限（DNS 验证要“区域 → DNS → 编辑”，自定义证书要“区域 → SSL 和证书 → 编辑”）；或者账号邮箱加 Global API Key。Global API Key 能操作整个账号，更推荐用令牌。",
       "name": "Cloudflare API 令牌或密钥"
     },
     "huaweicloud": {

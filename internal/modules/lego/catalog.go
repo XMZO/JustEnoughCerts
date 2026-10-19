@@ -93,8 +93,25 @@ func providerType(p catalogProvider) providers.Type {
 			Key: k.Key, Doc: k.Doc, Kind: providers.Text, Secret: k.Secret, Advanced: i >= len(p.Credentials),
 		})
 	}
+	if p.Code == "cloudflare" {
+		cloudflareWays(&t)
+	}
 	t.Credential = credentialOf(p.Code)
 	return t
+}
+
+// cloudflareWays offers Cloudflare's two ways of signing in, as JEC's own
+// Cloudflare types do: an API token, or the account's email with its
+// Global API Key. The choice is JEC's: it goes into no variable.
+func cloudflareWays(t *providers.Type) {
+	ways := map[string]*providers.When{
+		"CF_DNS_API_TOKEN": credentials.CloudflareToken, "CF_ZONE_API_TOKEN": credentials.CloudflareToken,
+		"CF_API_EMAIL": credentials.CloudflareGlobal, "CF_API_KEY": credentials.CloudflareGlobal,
+	}
+	for i := range t.Fields {
+		t.Fields[i].When = ways[t.Fields[i].Key]
+	}
+	t.Fields = append([]providers.Field{credentials.CloudflareAuth}, t.Fields...)
 }
 
 // credentialOf is how lego's provider code takes the keys of a cloud that
@@ -111,7 +128,7 @@ func credentialOf(code string) *providers.CredentialUse {
 	case "edgeone":
 		return credentials.Use(credentials.TencentCloud, "EDGEONE_SECRET_ID", "EDGEONE_SECRET_KEY")
 	case "cloudflare":
-		return credentials.Use(credentials.Cloudflare, "CF_DNS_API_TOKEN", "CF_API_EMAIL", "CF_API_KEY")
+		return credentials.Use(credentials.Cloudflare, "auth", "CF_DNS_API_TOKEN", "CF_API_EMAIL", "CF_API_KEY")
 	case "route53":
 		return credentials.Use(credentials.AWS, "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")
 	case "huaweicloud":

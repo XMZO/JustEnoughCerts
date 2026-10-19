@@ -53,6 +53,25 @@ export function typeName(type: ProviderTypeSummary | ProviderType | undefined): 
   return type.name ? { key: type.name as MessageKey } : { brand: type.id }
 }
 
+/**
+ * choice tells a select whose options other fields depend on, as ways of
+ * signing in: few enough to show side by side.
+ */
+export function choice(field: ProviderField, fields: ProviderField[]): boolean {
+  return field.kind === 'select' && (field.options?.length ?? 0) <= 3 && fields.some((f) => f.when?.key === field.key)
+}
+
+/**
+ * chosen is the option of a select that saved values left without one are
+ * of: the first whose fields hold a value, as the server infers it.
+ */
+export function chosen(field: ProviderField, fields: ProviderField[], config: Record<string, string>, secretKeys: string[] = []): string | undefined {
+  if (field.kind !== 'select') return undefined
+  return field.options?.find((o) =>
+    fields.some((f) => f.when?.key === field.key && f.when.value === o.value && (f.secret ? secretKeys.includes(f.key) : !!config[f.key])),
+  )?.value
+}
+
 /** applies tells whether a field is part of the form, given the values so far. */
 export function applies(field: ProviderField, values: Record<string, string>, fields: ProviderField[]): boolean {
   if (!field.when) return true
@@ -68,7 +87,7 @@ export function initialValues(type: ProviderType, instance?: Provider, locale?: 
   const values: Record<string, string> = {}
   for (const f of type.fields) {
     if (f.secret) values[f.key] = ''
-    else if (instance) values[f.key] = instance.config[f.key] ?? ''
+    else if (instance) values[f.key] = instance.config[f.key] ?? chosen(f, type.fields, instance.config, instance.secretKeys) ?? ''
     else values[f.key] = (f.kind === 'locale' && locale) || (f.default ?? '')
   }
   return values

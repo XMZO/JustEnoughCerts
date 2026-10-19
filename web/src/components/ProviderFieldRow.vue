@@ -6,13 +6,17 @@ import JecTextarea from './JecTextarea.vue'
 
 // One setting of a provider's form. A field with a label is JEC's own; one
 // without is a third party's setting, shown by its key with the third
-// party's own description.
+// party's own description. A choice that other fields depend on, as the
+// ways of signing in, shows its few options side by side. A field comes in
+// gently as the form changes to show it.
 const props = defineProps<{
   idPrefix: string
   field: ProviderField
   error?: MessageKey
   /** The instance being edited holds this secret already. */
   saved?: boolean
+  /** Shows a select's options as buttons side by side. */
+  choice?: boolean
 }>()
 const value = defineModel<string>({ required: true })
 
@@ -23,7 +27,7 @@ const inputType = props.field.secret ? 'password' : (types[props.field.kind] ?? 
 </script>
 
 <template>
-  <div class="grid gap-1">
+  <div class="grid animate-fade-in gap-1">
     <label v-if="field.kind === 'switch'" class="flex items-center gap-2 text-small font-semibold">
       <input
         :id="id"
@@ -35,6 +39,23 @@ const inputType = props.field.secret ? 'password' : (types[props.field.kind] ?? 
       <template v-if="field.label">{{ t(field.label as MessageKey) }}</template>
       <code v-else class="font-mono">{{ field.key }}</code>
     </label>
+    <template v-else-if="choice">
+      <span :id="`${id}-label`" class="text-small font-semibold">{{ t(field.label as MessageKey) }}</span>
+      <div :id="id" role="radiogroup" :aria-labelledby="`${id}-label`" class="flex gap-0.5 rounded-md bg-surface-sunken p-0.5">
+        <label
+          v-for="o in field.options"
+          :key="o.value"
+          :class="[
+            'flex min-h-8 min-w-0 flex-1 cursor-pointer items-center justify-center rounded-sm px-2 py-1 text-center text-small font-semibold max-sm:min-h-10',
+            'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-[color:var(--focus-ring)]',
+            value === o.value ? 'bg-surface-raised text-ink shadow-[0_0_0_1px_var(--line-strong)]' : 'text-ink-muted hover:text-ink',
+          ]"
+        >
+          <input type="radio" class="sr-only" :name="id" :value="o.value" :checked="value === o.value" @change="value = o.value" />
+          {{ t(o.label as MessageKey) }}
+        </label>
+      </div>
+    </template>
     <template v-else>
       <label :for="id" class="text-small font-semibold">
         <template v-if="field.label">{{ t(field.label as MessageKey) }}</template>

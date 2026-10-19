@@ -334,9 +334,16 @@ func TestCreateAndValidate(t *testing.T) {
 func TestConditionalFields(t *testing.T) {
 	f := newFixture(t)
 	// ADDRESS applies to an own server only: dropped otherwise, required then.
-	in := f.create(map[string]any{"type": "dns.custom", "name": "public", "config": map[string]string{"ADDRESS": "https://dns.example"}})
+	in := f.create(map[string]any{"type": "dns.custom", "name": "public", "config": map[string]string{"SERVER": "public", "ADDRESS": "https://dns.example"}})
 	if in.Config["SERVER"] != "public" || in.Config["ADDRESS"] != "" {
 		t.Errorf("created %+v", in.Config)
+	}
+	// Without SERVER, the default; with only ADDRESS, the server it is for.
+	if in := f.create(map[string]any{"type": "dns.custom", "name": "unsaid", "config": map[string]string{}}); in.Config["SERVER"] != "public" {
+		t.Errorf("created without a server %+v", in.Config)
+	}
+	if in := f.create(map[string]any{"type": "dns.custom", "name": "implied", "config": map[string]string{"ADDRESS": "https://dns.example"}}); in.Config["SERVER"] != "own" || in.Config["ADDRESS"] != "https://dns.example" {
+		t.Errorf("created with an address only %+v", in.Config)
 	}
 	// Without secrets, the list of them is empty, not missing.
 	if body := f.api.Get("/providers/" + strconv.FormatInt(in.ID, 10)).Body.String(); !strings.Contains(body, `"secretKeys":[]`) {

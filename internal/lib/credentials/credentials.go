@@ -29,15 +29,28 @@ var (
 	}
 	Cloudflare = providers.CredentialKind{
 		ID: "cloudflare", Name: i18n.CredentialsCloudflareName, Description: i18n.CredentialsCloudflareDescription,
-		// An API token, or else the email of an account with its Global
-		// API Key, which can do anything the account can.
 		Fields: []providers.Field{
-			{Key: "api_token", Label: i18n.CredentialsCloudflareApiToken, Kind: providers.Text, Secret: true},
-			{Key: "api_email", Label: i18n.CredentialsCloudflareApiEmail, Kind: providers.Text},
-			{Key: "api_key", Label: i18n.CredentialsCloudflareApiKey, Kind: providers.Text, Secret: true},
+			CloudflareAuth,
+			{Key: "api_token", Label: i18n.CredentialsCloudflareApiToken, Kind: providers.Text, Secret: true, Required: true, When: CloudflareToken},
+			{Key: "api_email", Label: i18n.CredentialsCloudflareApiEmail, Kind: providers.Text, Required: true, When: CloudflareGlobal},
+			{Key: "api_key", Label: i18n.CredentialsCloudflareApiKey, Kind: providers.Text, Secret: true, Required: true, When: CloudflareGlobal},
 		},
 	}
-	AWS = providers.CredentialKind{
+	// CloudflareAuth is how Cloudflare is signed in to: with an API token,
+	// or with the email of an account and its Global API Key, which can do
+	// anything the account can. The fields of each way depend on it, with
+	// CloudflareToken and CloudflareGlobal; the types that take the kind
+	// offer the same choice.
+	CloudflareAuth = providers.Field{
+		Key: "auth", Label: i18n.CredentialsCloudflareAuth, Help: i18n.CredentialsCloudflareAuthHelp, Kind: providers.Select, Default: "token",
+		Options: []providers.Option{
+			{Value: "token", Label: i18n.CredentialsCloudflareAuthToken},
+			{Value: "global", Label: i18n.CredentialsCloudflareAuthGlobal},
+		},
+	}
+	CloudflareToken  = &providers.When{Key: "auth", Value: "token"}
+	CloudflareGlobal = &providers.When{Key: "auth", Value: "global"}
+	AWS              = providers.CredentialKind{
 		ID: "aws", Name: i18n.CredentialsAwsName, Description: i18n.CredentialsAwsDescription, Hint: "access_key_id",
 		Fields: []providers.Field{
 			{Key: "access_key_id", Label: i18n.CredentialsAwsAccessKeyId, Kind: providers.Text, Required: true},

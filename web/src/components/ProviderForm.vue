@@ -4,7 +4,7 @@ import { computed } from 'vue'
 import { hint, useCredentialKinds, useCredentials } from '../api/credentials'
 import type { ProviderField, ProviderType } from '../api/providers'
 import { useT, type MessageKey } from '../i18n'
-import { applies, credentialChoice } from '../providers/fields'
+import { applies, choice, credentialChoice } from '../providers/fields'
 import JecField from './JecField.vue'
 import JecInput from './JecInput.vue'
 import ProviderFieldRow from './ProviderFieldRow.vue'
@@ -59,10 +59,11 @@ const main = computed(() => shown.value.filter((f) => !f.advanced))
 const advanced = computed(() => shown.value.filter((f) => f.advanced))
 
 const error = (f: ProviderField) => props.errors[`${f.secret ? 'secrets' : 'config'}.${f.key}`]
-// A field of several lines, such as a key, takes a row of its own.
-const wide = (f: ProviderField) => (f.kind === 'multiline' ? 'col-span-full' : '')
+// A field of several lines, such as a key, takes a row of its own, as a
+// choice does, so that its options read in one line.
+const wide = (f: ProviderField) => (f.kind === 'multiline' || choice(f, props.type.fields) ? 'col-span-full' : '')
 // As many columns as fit: two in a wide dialog, one on a phone.
-const grid = 'grid grid-cols-[repeat(auto-fill,minmax(min(100%,15rem),1fr))] items-start gap-x-4 gap-y-3'
+const grid = 'grid grid-cols-[repeat(auto-fill,minmax(min(100%,15rem),1fr))] items-start gap-x-4 gap-y-2.5 sm:gap-y-3'
 const saved = (f: ProviderField) => !!f.secret && (props.saved ?? []).includes(f.key)
 
 function set(key: string, value: string) {
@@ -95,6 +96,7 @@ function set(key: string, value: string) {
       :class="wide(f)"
       :id-prefix="idPrefix"
       :field="f"
+      :choice="choice(f, type.fields)"
       :error="error(f)"
       :saved="saved(f)"
       :model-value="values[f.key] ?? ''"
@@ -109,6 +111,7 @@ function set(key: string, value: string) {
           :class="wide(f)"
           :id-prefix="idPrefix"
           :field="f"
+          :choice="choice(f, type.fields)"
           :error="error(f)"
           :saved="saved(f)"
           :model-value="values[f.key] ?? ''"
