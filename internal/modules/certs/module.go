@@ -79,6 +79,7 @@ func (m *Module) Register(r *module.Registry) error {
 		{Name: "renew", Every: 5 * time.Minute, Timeout: 5 * time.Minute, Run: s.renew},
 		{Name: "check_expiry", Every: time.Hour, Timeout: 5 * time.Minute, Run: s.checkExpiry},
 		{Name: "renewal_info", Every: time.Hour, Timeout: 10 * time.Minute, Run: s.checkRenewalInfo},
+		{Name: "digest", Every: time.Hour, Timeout: 5 * time.Minute, Run: s.digest},
 	} {
 		if err := r.Jobs.Add(j); err != nil {
 			return err

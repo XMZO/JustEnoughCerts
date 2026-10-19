@@ -59,6 +59,7 @@ var NotifyEvents = []NotifyEvent{
 	{Type: CertificateServedOld, Key: "on_served_old", Label: i18n.KernelNotifyEventServedOld, Default: true},
 	{Type: CertificateIssued, Key: "on_issued", Label: i18n.KernelNotifyEventIssued},
 	{Type: CertificateDeployed, Key: "on_deployed", Label: i18n.KernelNotifyEventDeployed},
+	{Type: CertificatesDigest, Key: "on_digest", Label: i18n.KernelNotifyEventDigest},
 }
 
 // NoteLocale is the setting of a notifier that holds the language of its

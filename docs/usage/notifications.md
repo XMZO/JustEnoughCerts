@@ -17,8 +17,10 @@ message at once.
 | Old certificate still served (found by the online check) | On |
 | New certificate (issued or uploaded) | Off |
 | Deployment succeeded | Off |
+| Weekly digest, on Monday from 9:00 in the panel's time zone: certificates needing attention and renewals of the coming week | Off |
 
-Each channel has its own events and message language. Message subjects
+The weekly digest also tells that JEC is running: a week without one is
+worth a look. Each channel has its own events and message language. Message subjects
 start with "【JEC】", to stand out in group chats; when `JEC_BASE_URL` is
 set, messages link to the pages they concern. An event is never sent twice
 to the same channel, and messages not delivered within three days are

@@ -49,9 +49,19 @@ type service struct {
 // already. It fails, for the bus to try again later, while a notifier
 // failed in a way that may pass.
 func (s *service) handle(ctx context.Context, ev events.Event) error {
-	var data contracts.CertificateEvent
-	if err := ev.Decode(&data); err != nil {
-		return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
+	var write func(language.Tag) contracts.Note
+	if ev.Type == contracts.CertificatesDigest {
+		var d contracts.Digest
+		if err := ev.Decode(&d); err != nil {
+			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
+		}
+		write = func(tag language.Tag) contracts.Note { return s.digestNote(tag, ev, d) }
+	} else {
+		var data contracts.CertificateEvent
+		if err := ev.Decode(&data); err != nil {
+			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
+		}
+		write = func(tag language.Tag) contracts.Note { return s.note(ctx, tag, ev, data) }
 	}
 	list, err := s.prov.List(ctx, providers.Notifier)
 	if err != nil {
@@ -69,7 +79,7 @@ func (s *service) handle(ctx context.Context, ev events.Event) error {
 		if done {
 			continue
 		}
-		sendErr := s.send(ctx, p.ID, func(tag language.Tag) contracts.Note { return s.note(ctx, tag, ev, data) })
+		sendErr := s.send(ctx, p.ID, write)
 		if err := s.record(ctx, ev.ID, p.ID, ev.Type, sendErr); err != nil {
 			return err
 		}
@@ -281,6 +291,51 @@ func (s *service) note(ctx context.Context, tag language.Tag, ev events.Event, d
 	return n
 }
 
+// stateText names the states of a certificate, as the certs module tells
+// them.
+var stateText = map[string]i18n.Key{
+	"ok": i18n.CertsStateOk, "expiring": i18n.CertsStateExpiring, "expired": i18n.CertsStateExpired,
+	"issuing": i18n.CertsStateIssuing, "deploying": i18n.CertsStateDeploying,
+	"failed": i18n.CertsStateFailed, "deploy_failed": i18n.CertsStateDeployFailed,
+}
+
+// digestNote writes the weekly digest in the language tag: what needs
+// someone, and the renewals of the week to come.
+func (s *service) digestNote(tag language.Tag, ev events.Event, d contracts.Digest) contracts.Note {
+	w := writer{s: s, tag: tag}
+	n := contracts.Note{Event: ev.Type, Time: ev.Time, Data: ev.Data, Link: s.link("/")}
+	if len(d.Attention) == 0 {
+		n.Title = w.text(i18n.NotifyNoteDigestTitleOk, i18n.Args{"total": d.Total})
+	} else {
+		n.Title = w.text(i18n.NotifyNoteDigestTitle, i18n.Args{"total": d.Total, "attention": len(d.Attention)})
+	}
+	var lines []string
+	if len(d.Attention) > 0 {
+		lines = append(lines, w.text(i18n.NotifyNoteDigestAttention, nil))
+		for _, it := range d.Attention {
+			state := it.State
+			if key, ok := stateText[it.State]; ok {
+				state = w.text(key, nil)
+			}
+			lines = append(lines, w.text(i18n.NotifyNoteDigestItem, i18n.Args{"domain": it.Domain, "state": state}))
+		}
+	}
+	if len(d.Renewals) > 0 {
+		lines = append(lines, w.text(i18n.NotifyNoteDigestRenewals, nil))
+		for _, it := range d.Renewals {
+			lines = append(lines, w.text(i18n.NotifyNoteDigestRenewal, i18n.Args{"domain": it.Domain, "time": it.RenewAt.In(s.zone()).Format("2006-01-02 15:04")}))
+		}
+	} else {
+		lines = append(lines, w.text(i18n.NotifyNoteDigestNoRenewals, nil))
+	}
+	if n.Link != "" {
+		lines = append(lines, w.text(i18n.NotifyNoteLink, i18n.Args{"url": n.Link}))
+	}
+	n.Text = strings.Join(lines, "\n")
+	n.Subject = w.subject(n.Title)
+	return n
+}
+
 // testNote is the note a test sends.
 func (s *service) testNote(tag language.Tag) contracts.Note {
 	w := writer{s: s, tag: tag}
@@ -313,7 +368,7 @@ type Send struct {
 func (s *service) latest(ctx context.Context) ([]Send, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT provider_id, event, state, attempts, error_key, error_params, at FROM (
 		SELECT *, row_number() OVER (PARTITION BY provider_id ORDER BY at DESC) AS n FROM notify_sends
-	) WHERE n = 1 ORDER BY provider_id`)
+	) AS latest WHERE n = 1 ORDER BY provider_id`)
 	if err != nil {
 		return nil, err
 	}

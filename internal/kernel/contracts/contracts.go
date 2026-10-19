@@ -44,6 +44,32 @@ const (
 	CertificateDeployFailed = "certificate.deploy_failed"
 )
 
+// CertificatesDigest is the event of how the certificates stand, told
+// once a week, on Monday from nine in the panel's time zone. Its subject is
+// the ISO week, as 2026-W43; payload Digest.
+const CertificatesDigest = "certificates.digest"
+
+// Digest is the payload of CertificatesDigest.
+type Digest struct {
+	// Total counts the certificates; OK those in good standing.
+	Total int `json:"total"`
+	OK    int `json:"ok"`
+	// Attention lists those that need someone: whose issuance or deployment
+	// failed, that expired, or that end soon with no source to renew them.
+	Attention []DigestItem `json:"attention"`
+	// Renewals lists those whose renewal starts within a week.
+	Renewals []DigestItem `json:"renewals"`
+}
+
+// DigestItem is a certificate in a Digest.
+type DigestItem struct {
+	CertificateID int64     `json:"certificateId"`
+	Domain        string    `json:"domain"` // the primary one
+	State         string    `json:"state"`  // as the API of the certs module tells it
+	NotAfter      time.Time `json:"notAfter,omitzero"`
+	RenewAt       time.Time `json:"renewAt,omitzero"`
+}
+
 // CertificatesAnnounce asks the certs module to publish CertificateCurrent
 // for each certificate with a version, as a module that keeps track of them
 // does when it starts with nothing to go on. It has no subject or payload.

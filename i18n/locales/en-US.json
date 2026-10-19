@@ -1854,6 +1854,7 @@
       "event": {
         "deploy_failed": "When a deployment fails",
         "deployed": "When a deployment succeeds",
+        "digest": "A weekly digest, on Monday morning",
         "expiring": "When a certificate is about to expire, or has expired",
         "issue_failed": "When an issuance fails",
         "issued": "When a new certificate is issued or uploaded",
@@ -2309,6 +2310,15 @@
       },
       "deployed": {
         "title": "{domain} is deployed to {target}"
+      },
+      "digest": {
+        "attention": "Needing attention:",
+        "item": "· {domain}: {state}",
+        "no_renewals": "No renewals in the next 7 days.",
+        "renewal": "· {domain}: {time}",
+        "renewals": "Renewals in the next 7 days:",
+        "title": "This week: {total, plural, one {# certificate} other {# certificates}}, {attention, plural, one {# needs} other {# need}} attention",
+        "title_ok": "This week: {total, plural, one {# certificate} other {# certificates}}, all well"
       },
       "ended": "It ended on {date}.",
       "ends": "It ends on {date}.",

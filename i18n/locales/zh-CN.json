@@ -1854,6 +1854,7 @@
       "event": {
         "deploy_failed": "部署失败时通知",
         "deployed": "部署成功时通知",
+        "digest": "每周一上午发一份概况",
         "expiring": "证书快到期或已经过期时通知",
         "issue_failed": "签发失败时通知",
         "issued": "有新证书（签发或上传）时通知",
@@ -2309,6 +2310,15 @@
       },
       "deployed": {
         "title": "{domain} 已部署到 {target}"
+      },
+      "digest": {
+        "attention": "需要处理：",
+        "item": "· {domain}：{state}",
+        "no_renewals": "未来 7 天没有续期。",
+        "renewal": "· {domain}：{time}",
+        "renewals": "未来 7 天续期：",
+        "title": "本周概况：{total, plural, other {# 张证书}}，{attention, plural, other {# 张需要处理}}",
+        "title_ok": "本周概况：{total, plural, other {# 张证书}}，一切正常"
       },
       "ended": "已于 {date} 到期。",
       "ends": "到期时间：{date}。",

@@ -311,3 +311,39 @@ func TestWants(t *testing.T) {
 		}
 	}
 }
+
+func TestDigestNote(t *testing.T) {
+	f := newFixture(t)
+	weekly := f.notifier("weekly", map[string]string{"locale": "en-US", "on_digest": "true"})
+	quiet := f.notifier("quiet", map[string]string{"locale": "en-US"}) // digests are off by default
+	d := contracts.Digest{Total: 3, OK: 1,
+		Attention: []contracts.DigestItem{{CertificateID: 2, Domain: "b.example.com", State: "deploy_failed"}},
+		Renewals:  []contracts.DigestItem{{CertificateID: 1, Domain: "a.example.com", State: "ok", RenewAt: start.Add(48 * time.Hour)}},
+	}
+	raw, err := json.Marshal(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.svc.handle(t.Context(), events.Event{ID: 1, Type: contracts.CertificatesDigest, Source: "certs", Subject: "2026-W43", Data: raw, Time: start}); err != nil {
+		t.Fatal(err)
+	}
+	notes := f.notes(weekly)
+	if len(notes) != 1 || len(f.notes(quiet)) != 0 {
+		t.Fatalf("notes: %v, quiet %v", notes, f.notes(quiet))
+	}
+	n := notes[0]
+	want := "Needing attention:\n· b.example.com: Deployment failed\nRenewals in the next 7 days:\n· a.example.com: 2026-10-19 08:00\n" +
+		"Details: https://jec.example.com/"
+	if n.Title != "This week: 3 certificates, 1 needs attention" || n.Text != want || n.Link != "https://jec.example.com/" {
+		t.Errorf("note %q\n%s", n.Title, n.Text)
+	}
+
+	// All well, and nothing to renew.
+	raw, _ = json.Marshal(contracts.Digest{Total: 1, OK: 1})
+	if err := f.svc.handle(t.Context(), events.Event{ID: 2, Type: contracts.CertificatesDigest, Source: "certs", Subject: "2026-W44", Data: raw, Time: start}); err != nil {
+		t.Fatal(err)
+	}
+	if n := f.notes(weekly)[1]; n.Title != "This week: 1 certificate, all well" || !strings.HasPrefix(n.Text, "No renewals in the next 7 days.") {
+		t.Errorf("all well: %q\n%s", n.Title, n.Text)
+	}
+}
