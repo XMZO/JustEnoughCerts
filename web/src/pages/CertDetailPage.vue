@@ -29,7 +29,7 @@ import {
   useUploadVersion,
 } from '../api/certs'
 import { useApiError } from '../api/errors'
-import { useProviders, useProviderTypes } from '../api/providers'
+import { useProviders, useProviderTypes, useProviderTypesOf } from '../api/providers'
 import { deploymentState, failingDeployment } from '../certs/deployment'
 import { deploySteps, issuanceState, reasonText } from '../certs/issuance'
 import { certLife, colonHex, keyText } from '../certs/life'
@@ -49,7 +49,7 @@ import PemFields from '../components/PemFields.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
-import { typeName } from '../providers/fields'
+import { summary, typeName } from '../providers/fields'
 
 // A certificate (docs/design/boards/CertDetail and CertDetailMobile): its
 // validity, details, renewal settings, versions and chain, with the upload
@@ -140,17 +140,25 @@ const notifiers = useProviders('notifier')
 const noteEvents = ['on_issue_failed', 'on_deploy_failed', 'on_expiring', 'on_issued', 'on_deployed']
 const notifying = computed(() => (notifiers.data.value ?? []).filter((n) => noteEvents.some((e) => n.config[e] === 'true')).map((n) => n.name))
 const targetTypes = useProviderTypes('target')
+// Each target with its type, and the settings its card shows, as where
+// it deploys to.
+const targetOf = (id: number) => targets.data.value?.find((x) => x.id === id)
+const targetType = useProviderTypesOf(() => [...new Set((cert.value?.targets ?? []).map((id) => targetOf(id)?.type ?? ''))].filter(Boolean))
 const targetLabel = (id: number) => {
-  const p = targets.data.value?.find((x) => x.id === id)
+  const p = targetOf(id)
   const n = typeName(targetTypes.data.value?.find((x) => x.id === p?.type))
-  return { name: p?.name ?? '', type: n.key ? t(n.key) : (n.brand ?? '') }
+  return { name: p?.name ?? '', type: n.key ? t(n.key) : (n.brand ?? ''), brand: !n.key }
 }
 const deployRows = computed(() =>
-  (cert.value?.targets ?? []).map((target) => ({
-    target,
-    label: targetLabel(target),
-    d: cert.value?.deployments.find((x) => x.target === target),
-  })),
+  (cert.value?.targets ?? []).map((target) => {
+    const p = targetOf(target)
+    return {
+      target,
+      label: targetLabel(target),
+      shown: p ? summary(targetType(p.type), p) : [],
+      d: cert.value?.deployments.find((x) => x.target === target),
+    }
+  }),
 )
 const deployInk = { pending: 'text-ink-muted', running: 'text-info-ink', done: 'text-ok-ink', failed: 'text-danger-ink', canceled: 'text-ink-muted' } as const
 const failing = computed(() => (cert.value?.state === 'deploy_failed' ? failingDeployment(cert.value) : undefined))
@@ -432,7 +440,14 @@ async function confirmDelete() {
                 >
                   <span class="min-w-[8rem] flex-1 [overflow-wrap:anywhere]">
                     <span class="font-semibold" translate="no">{{ r.label.name }}</span>
-                    <span class="ml-1.5 text-ink-muted" translate="no">{{ r.label.type }}</span>
+                    <span class="ml-1.5 text-ink-muted" :translate="r.label.brand ? 'no' : undefined">{{ r.label.type }}</span>
+                    <span v-if="r.shown.length" class="block text-caption text-ink-muted">
+                      <span v-for="s in r.shown" :key="s.key" class="not-first:before:mx-1.5 not-first:before:content-['·']">
+                        <template v-if="s.label">{{ t(s.label) }} </template>
+                        <template v-if="s.option">{{ t(s.option) }}</template>
+                        <span v-else translate="no">{{ s.value }}</span>
+                      </span>
+                    </span>
                   </span>
                   <time v-if="r.d.finishedAt" :datetime="r.d.finishedAt" class="flex-none text-ink-muted tabular-nums">{{ intl.dateTime(r.d.finishedAt) }}</time>
                   <span :class="['flex-none font-semibold', deployInk[r.d.state]]">{{ t(deploymentState(r.d)) }}</span>
@@ -440,7 +455,14 @@ async function confirmDelete() {
                 <div v-else class="flex min-h-11 min-w-[12rem] flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 py-2">
                   <span class="min-w-[8rem] flex-1 [overflow-wrap:anywhere]">
                     <span class="font-semibold" translate="no">{{ r.label.name }}</span>
-                    <span class="ml-1.5 text-ink-muted" translate="no">{{ r.label.type }}</span>
+                    <span class="ml-1.5 text-ink-muted" :translate="r.label.brand ? 'no' : undefined">{{ r.label.type }}</span>
+                    <span v-if="r.shown.length" class="block text-caption text-ink-muted">
+                      <span v-for="s in r.shown" :key="s.key" class="not-first:before:mx-1.5 not-first:before:content-['·']">
+                        <template v-if="s.label">{{ t(s.label) }} </template>
+                        <template v-if="s.option">{{ t(s.option) }}</template>
+                        <span v-else translate="no">{{ s.value }}</span>
+                      </span>
+                    </span>
                   </span>
                   <span class="flex-none text-ink-muted">{{ t('certs.deployment.state.none') }}</span>
                 </div>

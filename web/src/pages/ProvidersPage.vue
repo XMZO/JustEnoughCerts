@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import { CircleCheck, Pencil, PlugZap, Plus, Send, Trash2, TriangleAlert } from '@lucide/vue'
-import { useQueries } from '@tanstack/vue-query'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { useCertificates, useRuns } from '../api/certs'
 import { useCredentials } from '../api/credentials'
 import { useManifest } from '../api/manifest'
-import { api, ApiError, networkError, unwrap } from '../api/client'
+import { ApiError, networkError } from '../api/client'
 import { useApiError } from '../api/errors'
 import { useSends, useSendTest } from '../api/notify'
-import { useDeleteProvider, useProviders, useProviderTest, useProviderTypes, type Provider } from '../api/providers'
+import { useDeleteProvider, useProviders, useProviderTest, useProviderTypes, useProviderTypesOf, type Provider } from '../api/providers'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
@@ -41,17 +40,7 @@ const runs = useRuns(30, () => props.kind === 'target')
 const loadError = useApiError(computed(() => list.error.value))
 
 // The full types of the instances, for the settings their cards show.
-const typeIds = computed(() => [...new Set((list.data.value ?? []).map((p) => p.type))])
-const fullTypes = useQueries({
-  queries: computed(() =>
-    typeIds.value.map((id) => ({
-      queryKey: ['providers', 'type', id] as const,
-      queryFn: () => unwrap(api.GET('/providers/types/{id}', { params: { path: { id } } })),
-      staleTime: 5 * 60_000,
-    })),
-  ),
-})
-const fullType = (id: string) => fullTypes.value.find((q) => q.data?.id === id)?.data
+const fullType = useProviderTypesOf(() => [...new Set((list.data.value ?? []).map((p) => p.type))])
 
 // Notifiers: what they tell about, by the switches every notifier type
 // has, and a test on demand, while the notify module, which sends the

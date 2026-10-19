@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 
 import { addMessages } from '../i18n'
@@ -51,6 +51,20 @@ export function useProviderType(id: MaybeRefOrGetter<string | undefined>) {
     enabled: computed(() => !!toValue(id)),
     staleTime: 5 * 60_000,
   })
+}
+
+/** The full types of ids, each its own query as useProviderType has it, as a lookup by ID. */
+export function useProviderTypesOf(ids: MaybeRefOrGetter<string[]>) {
+  const queries = useQueries({
+    queries: computed(() =>
+      toValue(ids).map((id) => ({
+        queryKey: [...all, 'type', id] as const,
+        queryFn: async () => withTexts(await unwrap(api.GET('/providers/types/{id}', { params: { path: { id } } }))),
+        staleTime: 5 * 60_000,
+      })),
+    ),
+  })
+  return (id: string | undefined) => queries.value.find((q) => q.data?.id === id)?.data
 }
 
 /** The configured providers of kind. */
