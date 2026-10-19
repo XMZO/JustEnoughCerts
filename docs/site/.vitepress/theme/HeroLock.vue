@@ -9,7 +9,8 @@ import { dark, facePixels } from './creeper'
 // The pixel lock of the home page, drawn from public/jec-hero.svg, with an
 // easter egg in it: mined with clicks, as a block is in Minecraft, the lock
 // cracks and opens, shows the face of a creeper, hisses and blows up, then
-// mends, and a toast says so, with the sounds of Minecraft (sounds.mjs
+// mends. As a challenge of Minecraft does, it then shows a toast, says so
+// in the chat and rewards experience, with the game's sounds (sounds.mjs
 // fetches them for the build).
 
 type Pixel = { x: number; y: number; fill: string }
@@ -70,13 +71,23 @@ const lift = computed(() => (open.value ? 2 : stage.value * 2 > cracks.length ? 
 const svg = ref<SVGSVGElement>()
 const all = ref<SVGGElement>()
 const toast = ref(false)
+const chat = ref(false)
 const mounted = ref(false)
 const { lang } = useData()
 const zh = computed(() => lang.value.startsWith('zh'))
+const challenge = computed(() => (zh.value ? '嘶嘶嘶……证书毫发无损' : 'Sssss… your certs are still green'))
+
+// The experience the challenges have rewarded on this page, and the bar
+// that shows it, as above the hotbar.
+const xp = ref(false)
+const level = ref(0)
+const progress = ref(0)
+const snap = ref(false)
 
 let still = false
 let timer: ReturnType<typeof setTimeout> | undefined
 let toastTimer: ReturnType<typeof setTimeout> | undefined
+let chatTimer: ReturnType<typeof setTimeout> | undefined
 
 onMounted(() => {
   mounted.value = true
@@ -86,6 +97,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   clearTimeout(timer)
   clearTimeout(toastTimer)
+  clearTimeout(chatTimer)
 })
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -94,7 +106,7 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 // browsers let pages play sound only after the visitor did something. A
 // sound that does not load or decode, as Ogg on some browsers, stays
 // silent.
-const sounds = ['fuse', 'explode1', 'explode2', 'explode3', 'explode4', 'advancement']
+const sounds = ['fuse', 'explode1', 'explode2', 'explode3', 'explode4', 'advancement', 'levelup']
 let audio: AudioContext | undefined
 const buffers = new Map<string, Promise<AudioBuffer | undefined>>()
 
@@ -181,9 +193,38 @@ async function blowUp() {
   container?.classList.remove('jec-egg')
   busy.value = false
   toast.value = true
+  chat.value = true
   void play('advancement', 0.35)
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => (toast.value = false), 5000)
+  clearTimeout(chatTimer)
+  chatTimer = setTimeout(() => (chat.value = xp.value = false), 10000)
+  void reward(100)
+}
+
+// The points a level takes, as in Minecraft.
+const needs = (n: number) => (n < 16 ? 2 * n + 7 : n < 31 ? 5 * n - 38 : 9 * n - 158)
+
+// reward adds experience, the bar filling level after level; every fifth
+// level rings.
+async function reward(gained: number) {
+  xp.value = true
+  let left = gained
+  while (left > 0) {
+    const need = needs(level.value)
+    const step = Math.min(left, need - Math.round(progress.value * need))
+    left -= step
+    progress.value += step / need
+    if (!still) await wait(130)
+    if (progress.value >= 1 - 1e-9) {
+      snap.value = true
+      level.value++
+      progress.value = 0
+      await nextTick()
+      snap.value = false
+      if (level.value % 5 === 0 && !still) void play('levelup', 0.5)
+    }
+  }
 }
 
 function reset() {
@@ -301,12 +342,23 @@ async function fly(flights: Flight[]) {
         <div v-if="toast" class="jec-toast">
           <CreeperFace class="icon" />
           <div>
-            <p class="title">{{ zh ? '进度已达成！' : 'Advancement Made!' }}</p>
-            <p class="text">{{ zh ? '嘶嘶嘶……证书毫发无损' : 'Sssss… your certs are still green' }}</p>
+            <p class="title">{{ zh ? '挑战已完成！' : 'Challenge Complete!' }}</p>
+            <p class="text">{{ challenge }}</p>
           </div>
         </div>
       </Transition>
     </div>
+    <Transition name="jec-fade">
+      <p v-if="chat" class="jec-chat" aria-hidden="true">
+        {{ zh ? '你完成了挑战' : 'You have completed the challenge ' }}<span class="name">[{{ challenge }}]</span>
+      </p>
+    </Transition>
+    <Transition name="jec-fade">
+      <div v-if="xp" class="jec-xp" aria-hidden="true">
+        <span class="level">{{ level }}</span>
+        <div class="bar"><div class="fill" :class="{ snap }" :style="{ width: `${progress * 100}%` }" /></div>
+      </div>
+    </Transition>
   </Teleport>
 </template>
 
@@ -330,7 +382,7 @@ async function fly(flights: Flight[]) {
   transform-origin: center;
 }
 
-/* As an advancement is announced in Minecraft. */
+/* As a challenge is announced in Minecraft. */
 .jec-toast {
   position: fixed;
   top: calc(var(--vp-nav-height) + 16px);
@@ -364,8 +416,85 @@ async function fly(flights: Flight[]) {
 }
 
 .jec-toast .title {
-  color: #ffff55;
+  color: #ff88ff;
   font-weight: 600;
+}
+
+/* A line of the chat, at the bottom left. */
+.jec-chat {
+  position: fixed;
+  left: 16px;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  z-index: 100;
+  max-width: calc(100vw - 32px);
+  margin: 0;
+  padding: 2px 6px;
+  background: rgb(0 0 0 / 0.75);
+  /* The page behind would show through, unlike a game world. */
+  backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.5;
+  text-shadow: 2px 2px 0 #3f3f3f;
+  pointer-events: none;
+}
+
+.jec-chat .name {
+  color: #aa00aa;
+  text-shadow: 2px 2px 0 #2a002a;
+}
+
+/* The experience bar, at the bottom in the middle, its level above it. */
+.jec-xp {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  z-index: 100;
+  width: min(364px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.jec-xp .level {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #80ff20;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow:
+    2px 0 #000,
+    -2px 0 #000,
+    0 2px #000,
+    0 -2px #000;
+}
+
+.jec-xp .bar {
+  height: 10px;
+  border: 2px solid #000;
+  background: #1f3a0f;
+}
+
+.jec-xp .fill {
+  height: 100%;
+  background: linear-gradient(#b4ff5a, #6fd51f);
+  transition: width 0.12s linear;
+}
+
+.jec-xp .fill.snap {
+  transition: none;
+}
+
+.jec-fade-enter-active,
+.jec-fade-leave-active {
+  transition: opacity 0.6s;
+}
+
+.jec-fade-enter-from,
+.jec-fade-leave-to {
+  opacity: 0;
 }
 
 .jec-toast-enter-active,
@@ -385,6 +514,10 @@ async function fly(flights: Flight[]) {
   .jec-toast-enter-from,
   .jec-toast-leave-to {
     transform: none;
+  }
+
+  .jec-xp .fill {
+    transition: none;
   }
 }
 </style>

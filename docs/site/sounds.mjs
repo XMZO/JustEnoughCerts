@@ -25,6 +25,7 @@ const sounds = {
   explode3: ['random/explode3.ogg', '3a92d0fd263265719532041f6f2ea44c7ba2f2e2'],
   explode4: ['random/explode4.ogg', '09835e0c3138faf6047506a2b6f1da087c082d2e'],
   advancement: ['ui/toast/challenge_complete.ogg', 'bd01dff39a7bd1e0e7f6847f7aee981f157e4f94'],
+  levelup: ['random/levelup.ogg', '19034765ba8ba5389b35804ab213537ab5cf706f'],
 }
 
 const sha1 = (data) => createHash('sha1').update(data).digest('hex')
