@@ -370,6 +370,7 @@ DNS 验证分成两种能力，实现方式不同：
 - **SSH 网站目录**（`ssh.webroot`）：经 SSH 写到远程服务器的网站目录，连接设置和 SSH 部署目标一样（主机公钥一定核对），一次签发里第一次用到时连接，之后复用。
 - **JEC 自己应答**（`wellknown.answer`，模块 `wellknown`）：不碰网站的文件，验证文件存在模块自己的表里，由 JEC 回答 `/.well-known/` 下的请求；要在网站的反向代理（如 nginx 的 `location /.well-known/`）或 CDN（如阿里云 ESA 的回源规则）上把这个路径转给 JEC。内核给模块开了一个口子 `r.WellKnown`：根路径 `/.well-known/` 下的请求（不管 JEC 是不是在子路径下）不需要登录，按顺序交给打开着的模块，回 404 就交给下一个。按请求的 Host 和路径找文件，Host 被代理改过时只按路径找；回答不让缓存。可以填一个“用来测试的域名”：测试连接时 JEC 放一个临时文件，再从外网经这个域名取回来，确认请求真的转到了 JEC。
 - **ESA 边缘应答**（`esa.edge`，模块 `esa`）：网站在阿里云 ESA 上时不经过源站：验证文件存进 ESA 的边缘 KV，由 JEC 自动部署到账号里的边缘函数在边缘回答，见 5.4。
+- **Cloudflare 边缘应答**（`cloudflare.edge`，模块 `cloudflare`）：网站经 Cloudflare 代理时同样不经过源站：文件存进 Workers KV（命名空间 `jec_validation`，键是主机加路径），由 JEC 上传的 Worker（`jec-validation`，代码 `cloudflare/worker.js`，没有的文件照常回源）回答。路由先按主机建 `<域名>/.well-known/*`，区域不接受时（Cloudflare for SaaS 的自定义主机名）退回 `*/.well-known/*`；别的 Worker 占着的路由不动。再在区域自定义规则的最前面放一条 `ref` 为 `jec_validation` 的跳过规则，表达式只含 JEC 验证过的主机和 `/.well-known/`，跳过其余自定义规则和安全级别、浏览器完整性检查等，套餐不允许的跳过项逐步去掉重试；令牌没有 WAF 权限时不报错，拿不到文件时再提示可能是安全设置拦的（Bot Fight Mode 无法跳过）。区域可以填（SaaS 区域），不填按域名逐级查找。只用替身测过。
 
 #### 5.3.3 部署目标
 

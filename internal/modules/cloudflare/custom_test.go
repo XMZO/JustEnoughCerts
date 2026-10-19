@@ -244,7 +244,7 @@ func TestAnswer(t *testing.T) {
 		_, _ = io.WriteString(w, `{"success":false,"errors":[{"code":1228,"message":"You must have a Business plan"}],"result":null}`)
 	}))
 	defer srv.Close()
-	z := &zone{client: srv.Client(), base: srv.URL, token: "t", zone: zoneOne}
+	z := &zone{rest: rest{client: srv.Client(), base: srv.URL, token: "t"}, zone: zoneOne}
 	_, err := z.call(t.Context(), http.MethodGet, "/x", nil, nil)
 	var p *contracts.Problem
 	if e := explain(err); !errors.As(e, &p) || p.Params["code"] != 1228 || p.Params["message"] != "You must have a Business plan" || !retry.IsPermanent(e) {

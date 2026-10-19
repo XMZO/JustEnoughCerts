@@ -44,6 +44,7 @@ Reports of results with real accounts are welcome.
 | `ssh.webroot` | A website directory over SSH | An SSH server in the test |
 | `wellknown.answer` | JEC answering `/.well-known/` requests itself | Real HTTP |
 | `esa.edge` | Answers at Alibaba Cloud ESA's edge, through Edge KV and an Edge Routine | Fake API; the routine's code runs in Node.js |
+| `cloudflare.edge` | Answers at Cloudflare's edge, through Workers KV and a Worker | Fake API |
 | `plugins.*` | Plugins | Real programs |
 
 ## Deploy targets
@@ -125,7 +126,8 @@ interfaces are optional modules.
   after deploying a new one. Edge answers (`esa.edge`) require a plan with
   Functions and Pages, and Edge KV.
 - **Cloudflare custom certificates** (`cloudflare.custom`): Business and
-  Enterprise plans only.
+  Enterprise plans only. Edge answers (`cloudflare.edge`) work on every
+  plan, within the daily quotas of Workers and Workers KV.
 - **UPYUN** (`upyun.cdn`, experimental): signs in to the console with the
   account's password, so accounts with two-step verification are not
   supported.

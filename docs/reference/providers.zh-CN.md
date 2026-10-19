@@ -39,6 +39,7 @@
 | `ssh.webroot` | 经 SSH 访问的网站目录 | 测试内置的 SSH 服务器 |
 | `wellknown.answer` | 由 JEC 应答 `/.well-known/` 请求 | 真实 HTTP |
 | `esa.edge` | 阿里云 ESA 边缘应答（边缘 KV 与边缘函数） | 替身接口；函数代码在 Node.js 中实际运行 |
+| `cloudflare.edge` | Cloudflare 边缘应答（Workers KV 与 Worker） | 替身接口 |
 | `plugins.*` | 插件 | 真实程序 |
 
 ## 部署目标
@@ -99,6 +100,6 @@
 - **阿里云个人测试证书**（`aliyun.apply`）：DigiCert DV，有效期 3 个月，每年 20 张，仅限中国站；须先在数字证书管理服务控制台领取额度。其他 DV 资源包的用法相同。
 - **腾讯云免费证书**（`tencentcloud.free`）：TrustAsia DV，有效期 3 个月，每张仅含一个域名且不支持通配符；域名须托管于同一账号的 DNSPod，由腾讯云自动完成验证；每个账号的申请数量有上限。
 - **阿里云 ESA**（`esa.site`）：免费版每个站点最多 2 张自定义证书，因此 JEC 在部署新证书后删除被替换的证书。边缘应答（`esa.edge`）要求套餐包含“函数和 Pages”与“边缘 KV”。
-- **Cloudflare 自定义证书**（`cloudflare.custom`）：仅限 Business 与 Enterprise 套餐。
+- **Cloudflare 自定义证书**（`cloudflare.custom`）：仅限 Business 与 Enterprise 套餐。边缘应答（`cloudflare.edge`）适用于所有套餐，受 Workers 与 Workers KV 每日免费额度的限制。
 - **又拍云**（`upyun.cdn`，实验性）：使用账号密码登录控制台，不支持已开启两步验证的账号。
 - **群晖 DSM**（`synology.dsm`）：须使用管理员账号；已开启两步验证的账号须提供其密钥，由 JEC 生成验证码。

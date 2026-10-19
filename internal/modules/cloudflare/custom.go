@@ -1,12 +1,9 @@
 package cloudflare
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -15,7 +12,6 @@ import (
 	"time"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
-	"github.com/XMZO/JustEnoughCerts/internal/kernel/buildinfo"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
@@ -23,9 +19,6 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
-
-// api is the address of Cloudflare's API.
-const api = "https://api.cloudflare.com/client/v4"
 
 func customType() providers.Type {
 	return providers.Type{
@@ -46,9 +39,7 @@ var zoneID = regexp.MustCompile(`^[0-9a-f]{32}$`)
 
 // zone is a zone of Cloudflare, with its custom certificates.
 type zone struct {
-	client *http.Client
-	base   string
-	token  string
+	rest
 	// zone is the zone's ID, or its name until resolve looks the ID up.
 	zone string
 	// certificate is the custom certificate set to be updated; "" for one
@@ -68,7 +59,7 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 	}
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	return &zone{
-		client: client, base: api, token: strings.TrimSpace(in.Value("api_token")),
+		rest:        rest{client: client, base: api, token: strings.TrimSpace(in.Value("api_token"))},
 		zone:        strings.ToLower(strings.TrimSuffix(strings.TrimSpace(in.Config["zone"]), ".")),
 		certificate: strings.TrimSpace(in.Config["certificate_id"]),
 	}, nil
@@ -78,107 +69,6 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 func (z *zone) Close() error {
 	z.client.CloseIdleConnections()
 	return nil
-}
-
-// apiError is an error the API answered.
-type apiError struct {
-	status  int
-	code    int
-	message string
-	after   time.Duration // as Retry-After asks, for 429
-}
-
-func (e *apiError) Error() string {
-	return fmt.Sprintf("cloudflare: HTTP %d: [%d] %s", e.status, e.code, e.message)
-}
-
-// envelope is what every answer of the API comes in.
-type envelope struct {
-	Success bool `json:"success"`
-	Errors  []struct {
-		Code    int    `json:"code"`
-		Message string `json:"message"`
-	} `json:"errors"`
-	Result     json.RawMessage `json:"result"`
-	ResultInfo struct {
-		TotalCount int `json:"total_count"`
-	} `json:"result_info"`
-}
-
-// call sends a request to path below the API, with body as JSON unless
-// nil, and decodes the result into out unless nil. It returns the whole
-// envelope too.
-func (z *zone) call(ctx context.Context, method, path string, body, out any) (*envelope, error) {
-	var r io.Reader
-	if body != nil {
-		b, err := json.Marshal(body)
-		if err != nil {
-			return nil, retry.Permanent(err)
-		}
-		r = bytes.NewReader(b)
-	}
-	req, err := http.NewRequestWithContext(ctx, method, z.base+path, r)
-	if err != nil {
-		return nil, retry.Permanent(err)
-	}
-	req.Header.Set("Authorization", "Bearer "+z.token)
-	req.Header.Set("User-Agent", "JEC/"+buildinfo.Get().Version)
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	resp, err := z.client.Do(req)
-	if err != nil {
-		return nil, explain(err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	var env envelope
-	data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return nil, explain(err)
-	}
-	if json.Unmarshal(data, &env) != nil || !env.Success || resp.StatusCode >= 300 {
-		e := &apiError{status: resp.StatusCode, message: http.StatusText(resp.StatusCode)}
-		if len(env.Errors) > 0 {
-			e.code, e.message = env.Errors[0].Code, env.Errors[0].Message
-		}
-		if d, ok := retry.ParseRetryAfter(resp.Header.Get("Retry-After"), time.Now()); ok {
-			e.after = d
-		}
-		return nil, e
-	}
-	if out != nil {
-		if err := json.Unmarshal(env.Result, out); err != nil {
-			return nil, fmt.Errorf("cloudflare: %s %s: %w", method, path, err)
-		}
-	}
-	return &env, nil
-}
-
-// explain turns an error of a call into a Problem: one that trying again
-// cannot fix, such as a token Cloudflare refuses, ends the attempts.
-func explain(err error) error {
-	var e *apiError
-	if !errors.As(err, &e) {
-		if errors.Is(err, httpx.ErrNotPublic) {
-			return retry.Permanent(&contracts.Problem{Key: i18n.CloudflareErrorNetwork, Err: err})
-		}
-		return &contracts.Problem{Key: i18n.CloudflareErrorNetwork, Err: httpx.Cause(err)}
-	}
-	switch {
-	case e.status == http.StatusTooManyRequests:
-		p := &contracts.Problem{Key: i18n.CloudflareErrorThrottled, Err: err}
-		if e.after > 0 {
-			return retry.After(p, e.after)
-		}
-		return p
-	case e.status == http.StatusUnauthorized, e.status == http.StatusForbidden, e.code == 10000, e.code == 9109:
-		return retry.Permanent(&contracts.Problem{Key: i18n.CloudflareErrorAuth, Params: map[string]any{"message": e.message}, Err: err})
-	}
-	p := &contracts.Problem{Key: i18n.CloudflareErrorApi, Params: map[string]any{"code": e.code, "message": e.message}, Err: err}
-	if e.status >= 500 {
-		return p
-	}
-	return retry.Permanent(p)
 }
 
 // resolve finds the zone's ID when it was given by name.

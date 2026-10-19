@@ -69,6 +69,25 @@ origin. On first use, JEC creates the Edge KV namespace `jec_validation`,
 the Edge Routine `jec-validation` and the site's route for `/.well-known/`.
 The ESA plan must include Functions and Pages, and Edge KV.
 
+## Answered at Cloudflare's edge
+
+For websites Cloudflare proxies, including custom hostnames of Cloudflare
+for SaaS, a Worker deployed by JEC answers the validation requests from
+Workers KV at the edge, without reaching the origin; the website's server
+needs no change. On first use, JEC creates the Workers KV namespace
+`jec_validation`, the Worker `jec-validation`, a route of the domain's
+`/.well-known/` to it (for a custom hostname, of `/.well-known/` on every
+host of the SaaS zone, which passes what it has no file for on to the
+origin), and a custom rule, first in the zone, that lets the requests for
+these files past the zone's security, which certificate authorities and
+vendors such as Namecheap would otherwise be challenged by.
+
+The API token needs Workers Scripts and Workers KV Storage of the account
+and Workers Routes and Zone of the zone, to edit, and Zone WAF of the zone,
+to edit, for the rule. Bot Fight Mode cannot be skipped by a rule; turn it
+off if the zone has it on. For a custom hostname, enter the SaaS zone as
+the zone.
+
 ## Plugins
 
 Plugins can provide new validation methods, both DNS methods, which may

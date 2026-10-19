@@ -38,6 +38,12 @@ JEC 通过 [lego](https://github.com/go-acme/lego) 支持 221 家 DNS 服务商�
 
 网站托管于阿里云 ESA 时，由 JEC 部署的边缘函数从边缘 KV 直接应答验证请求，不经过源站。首次使用时，JEC 自动创建边缘 KV 命名空间 `jec_validation`、边缘函数 `jec-validation` 以及站点上 `/.well-known/` 的路由。该方式要求 ESA 套餐包含“函数和 Pages”与“边缘 KV”。
 
+## Cloudflare 边缘应答
+
+网站经 Cloudflare 代理时（包括 Cloudflare for SaaS 的自定义主机名），由 JEC 部署的 Worker 从 Workers KV 直接应答验证请求，不经过源站，网站服务器无需任何改动。首次使用时，JEC 自动创建 Workers KV 命名空间 `jec_validation`、Worker `jec-validation`、域名 `/.well-known/` 到它的路由（自定义主机名则是 SaaS 区域所有主机的 `/.well-known/`，没有对应文件的请求照常转给源站），以及一条排在区域最前面的自定义规则，让这些文件的请求通过区域的安全设置，否则证书颁发机构和 Namecheap 等厂商的检查可能被质询拦下。
+
+API 令牌需要账户的 Workers 脚本、Workers KV 存储，以及区域的 Workers 路由、区域的编辑权限；添加上述规则另需区域 WAF 的编辑权限。Bot Fight Mode 无法用规则放行，区域开启了它时须关闭。网站是自定义主机名时，“区域”填写 SaaS 的区域。
+
 ## 插件
 
 插件可提供新的验证方式，包括 DNS 验证（可声明支持任意记录）与 HTTP 验证，参见[插件](../development/plugins.zh-CN.md)。

@@ -1028,10 +1028,20 @@
       "description": "Puts each new certificate in a custom certificate of a zone, which serves it for the hosts it covers, replaced in place at each renewal. Needs a Business or Enterprise plan.",
       "name": "Cloudflare custom certificate"
     },
+    "edge": {
+      "description": "Validates domains over HTTP, with a Worker of JEC's answering at Cloudflare's edge: the requests never reach the website's server, which needs no change. On first use, JEC creates the Workers KV namespace jec_validation, the Worker jec-validation, a route of the domain's /.well-known/ to it, and a rule that lets these requests past the zone's security. For websites Cloudflare proxies, also as custom hostnames of Cloudflare for SaaS.",
+      "name": "Answered at Cloudflare's edge"
+    },
     "error": {
       "api": "Cloudflare returned the error {code}: {message}",
       "auth": "Cloudflare refused the API token, or it lacks the permission needed: {message}",
+      "edge_zone": "No Cloudflare zone of {domain} was found. For a custom hostname of Cloudflare for SaaS, enter the SaaS zone as the zone.",
+      "file_path": "The validation file {path} is not under /.well-known/.",
       "network": "Could not reach Cloudflare's API.",
+      "no_domain": "Enter the domain to test with first.",
+      "not_served": "{url} does not serve the validation file from the internet. Check that Cloudflare proxies the domain, and the zone's security settings.",
+      "not_served_closed": "{url} does not serve the validation file from the internet. JEC could not add the rule that lets these requests past the zone's security, as the token may lack Zone WAF to edit, so Cloudflare may stop the fetches; Bot Fight Mode cannot be skipped by a rule at all.",
+      "route_taken": "Another Worker, {script}, handles {pattern}; JEC leaves it alone.",
       "throttled": "Cloudflare refused for now: too many requests. JEC tries again later.",
       "zone": "The token sees no zone {zone}."
     },
@@ -1040,6 +1050,10 @@
       "api_token_help": "Made under My Profile, API Tokens, with the permission Zone, SSL and Certificates, Edit; and Zone, Zone, Read to name the zone by its domain.",
       "certificate_id": "Custom certificate ID",
       "certificate_id_help": "To replace a custom certificate the zone has already. Left empty, JEC adds one of its own the first time, and replaces that one afterwards.",
+      "domain": "Domain to test with",
+      "domain_help": "Test fetches a temporary file through this domain from the internet, to confirm that the answers at the edge work.",
+      "edge_token_help": "An API token with Workers Scripts and Workers KV Storage of the account, and Workers Routes and Zone of the zone, to edit; add Zone WAF of the zone, to edit, for JEC to let the requests under /.well-known/ past the zone's security.",
+      "edge_zone_help": "The zone the website goes through. For a custom hostname of Cloudflare for SaaS, the SaaS zone, such as saas.example.net. Empty to find it by the domain.",
       "zone": "Zone",
       "zone_help": "The zone's ID, on the right of its overview, or its domain."
     },
@@ -1049,10 +1063,11 @@
       "replace": "Replacing the custom certificate {id}"
     },
     "module": {
-      "description": "Deploys certificates to Cloudflare zones as custom certificates.",
+      "description": "Deploys certificates to Cloudflare zones as custom certificates, and answers HTTP validations at Cloudflare's edge.",
       "name": "Cloudflare"
     },
     "test": {
+      "edge_ok": "Cloudflare's edge answers with validation files: {url}",
       "ok": "Found the zone {zone}, with {count, plural, one {# custom certificate} other {# custom certificates}}."
     }
   },
@@ -2015,7 +2030,7 @@
       "confirm_failed": "Could not tell Namecheap the certificate is installed, which changes nothing here",
       "issued": "Namecheap issued the certificate",
       "mark_failed": "Could not put SSL Manager's markers on {domain}, without which Namecheap shows no certificate. JEC tries again at its next look.",
-      "mark_needs_files": "Namecheap shows the certificate only once it finds {url}, and the validation method chosen cannot put files on the website. Choose one that can, such as Website directory over SSH or Answered at ESA's edge.",
+      "mark_needs_files": "Namecheap shows the certificate only once it finds {url}, and the validation method chosen cannot put files on the website. Choose one that can, such as Answered at Cloudflare's edge, Answered at ESA's edge or Website directory over SSH.",
       "marked": "Put SSL Manager's marker on the website, which Namecheap looks for before it shows the certificate: {url}",
       "marker_not_served": "{url} cannot be fetched from here, so Namecheap may not find it either. Have the website and its CDN serve the files under /.well-known/.",
       "next": "Namecheap's newest certificate for {domain} is still the one before; waiting for Namecheap to ready the next one.",
@@ -2039,7 +2054,7 @@
       "name": "Namecheap"
     },
     "ssl_manager": {
-      "description": "JEC acts as the client of Namecheap's server-side automation (SSL Manager) and gets each certificate of the subscription. The API is not public and may break at any time.\n1. In Namecheap's panel, activate or reissue the certificate with Server-side automation, enter the one-time token it shows (valid for 24 hours) below, save, and press Test to register.\n2. Add the certificate, with this as its source and a validation method that puts files on the website: Website directory over SSH (with a password or a key), Answered at ESA's edge, Website directory or Answered by JEC. The website need not run on JEC's server.\n3. JEC does the rest: it puts /.well-known/ssl-manager/installed.txt, which Namecheap looks for, on the website; once Namecheap shows the certificate, it sends the CSR, puts the validation files, downloads the certificate and deploys it. The website and its CDN have to serve the files under /.well-known/.",
+      "description": "JEC acts as the client of Namecheap's server-side automation (SSL Manager) and gets each certificate of the subscription. The API is not public and may break at any time.\n1. In Namecheap's panel, activate or reissue the certificate with Server-side automation, enter the one-time token it shows (valid for 24 hours) below, save, and press Test to register.\n2. Add the certificate, with this as its source and a validation method that puts files on the website: Answered at Cloudflare's edge or Answered at ESA's edge for a website behind them, which leaves its server alone, or else Website directory over SSH (with a password or a key), Website directory or Answered by JEC. The website need not run on JEC's server.\n3. JEC does the rest: it puts /.well-known/ssl-manager/installed.txt, which Namecheap looks for, on the website; once Namecheap shows the certificate, it sends the CSR, puts the validation files, downloads the certificate and deploys it. The website and its CDN have to serve the files under /.well-known/.",
       "name": "Namecheap SSL Manager"
     },
     "test": {
