@@ -96,7 +96,7 @@
 部分证书来源与部署目标须满足厂商的条件方可使用。证书颁发机构支持 ACME（需要账号时提供 External Account Binding）的，建议优先使用 ACME，或手动上传其签发的证书；厂商专有接口均为可选模块。
 
 - **Namecheap SSL Manager**（`namecheap.ssl_manager`，实验性）：仅适用于直接在 Namecheap 购买的证书。每张证书须在 Namecheap 控制台激活或重签时选择 Server-side automation，以获取有效期 24 小时的一次性令牌。仅支持单域名证书，签发的证书同时包含 `www`；Namecheap 通过网站文件验证主域名与 `www`。
-- **Namecheap 官方 API**（尚未实现）：账号须满足以下条件之一：拥有 20 个域名、余额达到 50 美元、近两年消费满 50 美元；并且仅允许从账号白名单中的 IPv4 地址调用。
+- **Namecheap 官方 API**（暂无计划，Namecheap 的证书请使用 SSL Manager）：账号须满足以下条件之一：拥有 20 个域名、余额达到 50 美元、近两年消费满 50 美元；并且仅允许从账号白名单中的 IPv4 地址调用。
 - **阿里云个人测试证书**（`aliyun.apply`）：DigiCert DV，有效期 3 个月，每年 20 张，仅限中国站；须先在数字证书管理服务控制台领取额度。其他 DV 资源包的用法相同。
 - **腾讯云免费证书**（`tencentcloud.free`）：TrustAsia DV，有效期 3 个月，每张仅含一个域名且不支持通配符；域名须托管于同一账号的 DNSPod，由腾讯云自动完成验证；每个账号的申请数量有上限。
 - **阿里云 ESA**（`esa.site`）：免费版每个站点最多 2 张自定义证书，因此 JEC 在部署新证书后删除被替换的证书。边缘应答（`esa.edge`）要求套餐包含“函数和 Pages”与“边缘 KV”。

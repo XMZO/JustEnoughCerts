@@ -109,7 +109,8 @@ interfaces are optional modules.
   automation, which provides a one-time token valid for 24 hours.
   Single-domain certificates only, which also cover `www`; Namecheap
   validates the domain and `www` by files on the website.
-- **Namecheap's own API** (not yet implemented): available to accounts
+- **Namecheap's own API** (not planned; use SSL Manager for Namecheap's
+  certificates): available to accounts
   with 20 domains, a balance of $50 or $50 spent in the last two years,
   and only from IPv4 addresses on the account's allowlist.
 - **Alibaba Cloud personal test certificates** (`aliyun.apply`): DigiCert
