@@ -361,7 +361,7 @@ DNS 验证分成两种能力，实现方式不同：
 - 补不到的服务商用**手动模式**（模块 `manual`，验证类型 `manual.dns`）：签发日志列出每条要加的记录（ACME 来源给所有 DNS 验证都记这一行），用户在 DNS 服务商那里添加，JEC 查权威 DNS，查到就继续，不用点“已添加”。ACME 最多等设置的分钟数（默认 20，最多 25，在一次尝试 30 分钟的时限内）；厂商来源跨多次检查一直等。每次续期都要重新添加，签发失败的通知会提醒；手动加的记录由用户自己删，日志会提示。
 - 注意：付费证书的验证记录名由 CSR 计算得出，每次重签都会变，所以不能像 ACME 那样把记录永久 CNAME 委派到别处。
 
-**③ CNAME 委派（仅 ACME）**：把 `_acme-challenge.example.com` 永久 CNAME 到一个有 API 的域，以后签发都在那个域里操作。这样即使域名所在的 DNS 没有 API，也能全自动。
+**③ CNAME 委派（仅 ACME，已支持）**：把 `_acme-challenge.example.com` 永久 CNAME 到一个有 API 的域，以后签发都在那个域里操作。这样即使域名所在的 DNS 没有 API，也能全自动。靠 lego 实现：lego 的 DNS 服务商（在子进程里）和检查记录是否生效都跟随 `_acme-challenge` 的 CNAME，把 TXT 记录加在 CNAME 指向的名字上，所以证书的验证方式选管得了那个域的 DNS 服务商即可。
 
 **④ HTTP 文件验证（M2，已实现）**：验证方式的另一类是把文件放到域名的网站上（`contracts.FileSolver`：`PutFile`、`RemoveFile`），用于 ACME 的 http-01 和厂商来源（如 Namecheap SSL Manager）的文件验证。验证类型声明 `challenge`（`dns` 或 `http`），来源类型声明 `challenges`（它能用的验证方式，ACME 能用 `dns` 和 `http`，Namecheap 能用 `http` 和 ② 的 `record`）；添加证书时只列出合用的验证方式，接口也会核对；通配符证书不能用 HTTP 验证。为了不让来源改动网站的页面，文件只能放在 `/.well-known/` 下，路径只能由字母、数字和 `-._~/` 组成，不能有 `..`。JEC 从外网取回验证文件核对时和 CA 一样跟随跳转，跳到 HTTPS 时不校验证书（`httpx` 的 `SkipVerify`）：网站上可能还是快过期或已经过期的旧证书。几种实现：
 
