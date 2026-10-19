@@ -583,6 +583,15 @@ test('every page is translated and fits', async ({ page }, info) => {
   await days.fill('30')
   await days.blur()
   await expect(days).not.toHaveAttribute('aria-invalid')
+  // More retries than the server allows, then the default again.
+  const retries = page.locator('#retries')
+  await retries.fill('25')
+  await retries.blur()
+  await expect(retries).toHaveAttribute('aria-invalid', 'true')
+  expect.soft(await problems(page), 'too many retries').toEqual([])
+  await retries.fill('7')
+  await retries.blur()
+  await expect(retries).not.toHaveAttribute('aria-invalid')
   // Changing the password: two new passwords that differ stop it before the
   // server, where a wrong current password would count toward the lockout.
   await page.getByRole('button', { name: label('kernel.settings.change_password') }).click()

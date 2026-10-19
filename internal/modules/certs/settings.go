@@ -24,16 +24,20 @@ type Settings struct {
 	// CheckTime is the time of day renewals start, in minutes after
 	// midnight in the time zone chosen for JEC.
 	CheckTime int
+	// Retries is how many times a failed issuance or deployment is tried
+	// again on its own, after waits that double.
+	Retries int
 }
 
 // defaults are the settings no one changed.
-var defaults = Settings{RenewBeforeDays: defaultRenewBeforeDays, KeyType: defaultKeyType, CheckTime: 2 * 60}
+var defaults = Settings{RenewBeforeDays: defaultRenewBeforeDays, KeyType: defaultKeyType, CheckTime: 2 * 60, Retries: defaultRetries}
 
 // Keys of the settings in certs_settings.
 const (
 	settingRenewBeforeDays = "renew_before_days"
 	settingKeyType         = "key_type"
 	settingCheckTime       = "check_time"
+	settingRetries         = "retries"
 )
 
 // settings returns the module's settings, with the defaults of those not
@@ -66,6 +70,10 @@ func settingsFrom(ctx context.Context, q querier) (Settings, error) {
 			if m, ok := parseClock(value); ok {
 				st.CheckTime = m
 			}
+		case settingRetries:
+			if n, err := strconv.Atoi(value); err == nil && n >= 0 && n <= maxRetries {
+				st.Retries = n
+			}
 		}
 	}
 	return st, rows.Err()
@@ -89,6 +97,7 @@ func saveSettingsTx(ctx context.Context, tx *sql.Tx, st Settings) error {
 		settingRenewBeforeDays: strconv.Itoa(st.RenewBeforeDays),
 		settingKeyType:         st.KeyType,
 		settingCheckTime:       formatClock(st.CheckTime),
+		settingRetries:         strconv.Itoa(st.Retries),
 	} {
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO certs_settings (key, value) VALUES (?, ?)
@@ -115,6 +124,17 @@ func formatClock(minutes int) string { return fmt.Sprintf("%02d:%02d", minutes/6
 type schedule struct {
 	checkTime int // minutes after midnight in loc
 	loc       *time.Location
+}
+
+// retries is how many times the settings let a failed issuance or
+// deployment be tried again; the default when they cannot be read.
+func (s *service) retries(ctx context.Context) int {
+	st, err := s.settings(ctx)
+	if err != nil {
+		s.log.Error("read the settings", "err", err)
+		return defaultRetries
+	}
+	return st.Retries
 }
 
 func (s *service) schedule(ctx context.Context) (schedule, error) {
@@ -154,6 +174,7 @@ type CertSettingsBody struct {
 	KeyType         string `json:"keyType" enum:"ecdsa-p256,ecdsa-p384,rsa-2048,rsa-3072,rsa-4096" doc:"The key type of new certificates with a source, unless set otherwise"`
 	CheckTime       string `json:"checkTime" pattern:"^([01][0-9]|2[0-3]):[0-5][0-9]$" doc:"The time of day, HH:MM in timeZone, renewals start once certificates enter their renewal window; with a week or less left, they start at once"`
 	TimeZone        string `json:"timeZone" readOnly:"true" doc:"The time zone of checkTime: the one chosen for JEC, or the server's, which the TZ environment variable sets"`
+	Retries         int    `json:"retries" minimum:"0" maximum:"20" doc:"How many times a failed issuance or deployment is tried again on its own; the waits start at 10 minutes and double up to 12 hours"`
 }
 
 type certSettingsOutput struct{ Body CertSettingsBody }
@@ -163,12 +184,14 @@ type certSettingsInput struct {
 		RenewBeforeDays int    `json:"renewBeforeDays" minimum:"1" maximum:"365"`
 		KeyType         string `json:"keyType" enum:"ecdsa-p256,ecdsa-p384,rsa-2048,rsa-3072,rsa-4096"`
 		CheckTime       string `json:"checkTime" pattern:"^([01][0-9]|2[0-3]):[0-5][0-9]$"`
+		Retries         *int   `json:"retries,omitempty" minimum:"0" maximum:"20" doc:"Unless given, it stays as it is"`
 	}
 }
 
 func (s *service) settingsBody(st Settings) CertSettingsBody {
 	return CertSettingsBody{
 		RenewBeforeDays: st.RenewBeforeDays, KeyType: st.KeyType, CheckTime: formatClock(st.CheckTime), TimeZone: s.zone().String(),
+		Retries: st.Retries,
 	}
 }
 
@@ -193,7 +216,14 @@ func registerSettingsAPI(a huma.API, s *service) {
 			return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil).
 				WithField("body.checkTime", i18n.KernelErrorInvalidField)
 		}
-		st := Settings{RenewBeforeDays: in.Body.RenewBeforeDays, KeyType: in.Body.KeyType, CheckTime: minutes}
+		had, err := s.settings(ctx)
+		if err != nil {
+			return nil, err
+		}
+		st := Settings{RenewBeforeDays: in.Body.RenewBeforeDays, KeyType: in.Body.KeyType, CheckTime: minutes, Retries: had.Retries}
+		if in.Body.Retries != nil {
+			st.Retries = *in.Body.Retries
+		}
 		if err := s.saveSettings(ctx, st); err != nil {
 			return nil, err
 		}

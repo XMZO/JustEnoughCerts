@@ -27,6 +27,8 @@ type renewalEntry struct {
 	RenewBeforeDays int    `yaml:"renew_before_days,omitempty"`
 	CheckTime       string `yaml:"check_time,omitempty"`
 	KeyType         string `yaml:"key_type,omitempty"`
+	// Retries is a pointer, as 0 is one of its values.
+	Retries *int `yaml:"retries,omitempty"`
 }
 
 // certificateEntry is a certificate in a file. Left out, the key type and
@@ -63,7 +65,7 @@ func (s *service) exportRenewal(ctx context.Context, _ configfile.Export) (any, 
 	if err != nil {
 		return nil, err
 	}
-	return &renewalEntry{RenewBeforeDays: st.RenewBeforeDays, CheckTime: formatClock(st.CheckTime), KeyType: st.KeyType}, nil
+	return &renewalEntry{RenewBeforeDays: st.RenewBeforeDays, CheckTime: formatClock(st.CheckTime), KeyType: st.KeyType, Retries: &st.Retries}, nil
 }
 
 func (s *service) importRenewal(ctx context.Context, tx *sql.Tx, v any, in *configfile.Import) (func(), error) {
@@ -94,6 +96,12 @@ func (s *service) importRenewal(ctx context.Context, tx *sql.Tx, v any, in *conf
 		st.KeyType = e.KeyType
 		if !slices.Contains(cryptox.KeyTypes, e.KeyType) {
 			invalid("key_type")
+		}
+	}
+	if e.Retries != nil {
+		st.Retries = *e.Retries
+		if *e.Retries < 0 || *e.Retries > maxRetries {
+			invalid("retries")
 		}
 	}
 	switch {

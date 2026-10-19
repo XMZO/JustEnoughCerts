@@ -620,6 +620,9 @@
       "days_help": "The default of new certificates; each certificate can have its own.",
       "key_type": "Default key type",
       "key_type_help": "New certificates from a source use it unless set otherwise.",
+      "retries": "Retries after a failure",
+      "retries_help": "Failed issuances and deployments are tried again on their own, the waits doubling from 10 minutes up to 12 hours; 0 for none.",
+      "retries_unit": "{count, plural, one {time} other {times}}",
       "title": "Renewal defaults"
     },
     "delete": {

@@ -1003,6 +1003,11 @@ export interface components {
              * @description How many days before the end new certificates renew, or remind, unless set otherwise
              */
             renewBeforeDays: number;
+            /**
+             * Format: int64
+             * @description How many times a failed issuance or deployment is tried again on its own; the waits start at 10 minutes and double up to 12 hours
+             */
+            retries: number;
             /** @description The time zone of checkTime: the one chosen for JEC, or the server's, which the TZ environment variable sets */
             readonly timeZone: string;
         };
@@ -1012,6 +1017,11 @@ export interface components {
             keyType: "ecdsa-p256" | "ecdsa-p384" | "rsa-2048" | "rsa-3072" | "rsa-4096";
             /** Format: int64 */
             renewBeforeDays: number;
+            /**
+             * Format: int64
+             * @description Unless given, it stays as it is
+             */
+            retries?: number;
         };
         CertificateBody: {
             /** Format: date-time */

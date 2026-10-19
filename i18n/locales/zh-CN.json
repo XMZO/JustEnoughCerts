@@ -620,6 +620,9 @@
       "days_help": "新证书的默认值，单张证书可以单独改",
       "key_type": "默认密钥类型",
       "key_type_help": "用证书来源签发的新证书默认用它",
+      "retries": "失败后重试",
+      "retries_help": "签发和部署失败后自动重试，间隔从 10 分钟起逐次加倍，最长 12 小时；填 0 就不重试。",
+      "retries_unit": "{count, plural, other {次}}",
       "title": "续期默认值"
     },
     "delete": {

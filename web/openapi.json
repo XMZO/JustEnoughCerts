@@ -135,6 +135,13 @@
             "minimum": 1,
             "type": "integer"
           },
+          "retries": {
+            "description": "How many times a failed issuance or deployment is tried again on its own; the waits start at 10 minutes and double up to 12 hours",
+            "format": "int64",
+            "maximum": 20,
+            "minimum": 0,
+            "type": "integer"
+          },
           "timeZone": {
             "description": "The time zone of checkTime: the one chosen for JEC, or the server's, which the TZ environment variable sets",
             "readOnly": true,
@@ -145,7 +152,8 @@
           "renewBeforeDays",
           "keyType",
           "checkTime",
-          "timeZone"
+          "timeZone",
+          "retries"
         ],
         "type": "object"
       },
@@ -170,6 +178,13 @@
             "format": "int64",
             "maximum": 365,
             "minimum": 1,
+            "type": "integer"
+          },
+          "retries": {
+            "description": "Unless given, it stays as it is",
+            "format": "int64",
+            "maximum": 20,
+            "minimum": 0,
             "type": "integer"
           }
         },

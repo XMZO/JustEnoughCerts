@@ -508,6 +508,7 @@ func TestIssueGivesUp(t *testing.T) {
 	f := newFixture(t)
 	c := f.issueNew("example.com")
 	f.failWith(&contracts.Problem{Key: i18n.AcmeErrorEabRequired})
+	const maxAttempts = defaultRetries + 1
 	for range maxAttempts {
 		f.run()
 		is := f.certificate(c.ID).Issuance

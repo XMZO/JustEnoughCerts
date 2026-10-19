@@ -480,7 +480,7 @@ func (s *service) failDeployment(ctx context.Context, c *deployClaim, cause erro
 	msg, detail := explain(cause, i18n.CertsErrorDeployFailed)
 	log.add(contracts.LogLine{Level: contracts.Error, Step: log.current(), Key: msg.Key, Params: msg.Params, Detail: detail})
 	now := s.now()
-	final, next := nextAttempt(c.attempt, cause, now)
+	final, next := nextAttempt(c.attempt, s.retries(ctx), cause, now)
 	params := ""
 	if len(msg.Params) > 0 {
 		b, _ := json.Marshal(msg.Params)
@@ -548,9 +548,10 @@ func (s *service) failDeployment(ctx context.Context, c *deployClaim, cause erro
 }
 
 // nextAttempt says, after attempt failed with cause at now, whether no
-// attempt follows, or when the next one starts.
-func nextAttempt(attempt int, cause error, now time.Time) (final bool, next time.Time) {
-	if retry.IsPermanent(cause) || attempt >= maxAttempts {
+// attempt follows, as after the retries the settings allow, or when the
+// next one starts.
+func nextAttempt(attempt, retries int, cause error, now time.Time) (final bool, next time.Time) {
+	if retry.IsPermanent(cause) || attempt > retries {
 		return true, time.Time{}
 	}
 	wait := retry.Backoff(attempt, retryBase, retryLimit)

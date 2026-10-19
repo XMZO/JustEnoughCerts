@@ -82,7 +82,7 @@ const saveError = useApiError(computed(() => save.error.value))
 const form = ref<CertSettingsInput>()
 watchEffect(() => {
   const st = settings.data.value
-  if (st && !form.value) form.value = { renewBeforeDays: st.renewBeforeDays, keyType: st.keyType, checkTime: st.checkTime }
+  if (st && !form.value) form.value = { renewBeforeDays: st.renewBeforeDays, keyType: st.keyType, checkTime: st.checkTime, retries: st.retries }
 })
 const keyTypes: KeyType[] = ['rsa-2048', 'ecdsa-p256', 'ecdsa-p384', 'rsa-3072', 'rsa-4096']
 const keyLabel = (k: string) => {
@@ -532,6 +532,29 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
             :class="[control, 'w-28 flex-none tabular-nums']"
             @change="store"
           />
+        </div>
+        <div :class="row">
+          <div class="min-w-0 flex-1">
+            <label for="retries" class="block font-semibold">{{ t('certs.defaults.retries') }}</label>
+            <span id="retries-help" class="block text-caption leading-[18px] text-ink-muted">
+              {{ saveError.fields.value.retries ? t(saveError.fields.value.retries) : t('certs.defaults.retries_help') }}
+            </span>
+          </div>
+          <span class="flex flex-none items-center gap-2">
+            <input
+              id="retries"
+              v-model.number="form.retries"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              max="20"
+              aria-describedby="retries-help"
+              :aria-invalid="!!saveError.fields.value.retries || undefined"
+              :class="[control, 'w-20 tabular-nums']"
+              @change="store"
+            />
+            <span>{{ t('certs.defaults.retries_unit', { count: form.retries ?? 0 }) }}</span>
+          </span>
         </div>
         <div :class="row">
           <div class="min-w-0 flex-1">

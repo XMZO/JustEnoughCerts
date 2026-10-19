@@ -85,7 +85,8 @@ func TestConfigExport(t *testing.T) {
 		{Domains: []string{"example.com", "*.example.com"}, Source: "Let's Encrypt", Solver: "DNSPod", KeyType: "ecdsa-p384", RenewBeforeDays: 20, Targets: []string{"CDN"}},
 		{Domains: []string{"upload.example.com"}, RenewBeforeDays: 25, Targets: []string{"CDN"}},
 	}
-	if got.Renewal != (renewalEntry{RenewBeforeDays: 25, CheckTime: "03:30", KeyType: "rsa-3072"}) || len(got.Certificates) != 2 ||
+	if r := got.Renewal; r.RenewBeforeDays != 25 || r.CheckTime != "03:30" || r.KeyType != "rsa-3072" || r.Retries == nil || *r.Retries != defaultRetries ||
+		len(got.Certificates) != 2 ||
 		!slices.EqualFunc(got.Certificates, want, func(a, b certificateEntry) bool {
 			return slices.Equal(a.Domains, b.Domains) && a.Source == b.Source && a.Solver == b.Solver && a.KeyType == b.KeyType &&
 				a.RenewBeforeDays == b.RenewBeforeDays && slices.Equal(a.Targets, b.Targets)

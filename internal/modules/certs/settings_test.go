@@ -1,9 +1,13 @@
 package certs
 
 import (
+	"errors"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/XMZO/JustEnoughCerts/i18n"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 )
 
 func TestRenewAt(t *testing.T) {
@@ -44,11 +48,11 @@ func TestSettings(t *testing.T) {
 	f := newFixture(t)
 	var st CertSettingsBody
 	f.call(f.api.Get("/settings"), http.StatusOK, &st)
-	if st != (CertSettingsBody{RenewBeforeDays: 30, KeyType: "rsa-2048", CheckTime: "02:00", TimeZone: "UTC"}) {
+	if st != (CertSettingsBody{RenewBeforeDays: 30, KeyType: "rsa-2048", CheckTime: "02:00", TimeZone: "UTC", Retries: defaultRetries}) {
 		t.Errorf("defaults %+v", st)
 	}
-	want := CertSettingsBody{RenewBeforeDays: 45, KeyType: "ecdsa-p384", CheckTime: "23:30", TimeZone: "UTC"}
-	f.call(f.api.Put("/settings", map[string]any{"renewBeforeDays": 45, "keyType": "ecdsa-p384", "checkTime": "23:30"}), http.StatusOK, &st)
+	want := CertSettingsBody{RenewBeforeDays: 45, KeyType: "ecdsa-p384", CheckTime: "23:30", TimeZone: "UTC", Retries: 3}
+	f.call(f.api.Put("/settings", map[string]any{"renewBeforeDays": 45, "keyType": "ecdsa-p384", "checkTime": "23:30", "retries": 3}), http.StatusOK, &st)
 	if st != want {
 		t.Errorf("saved %+v", st)
 	}
@@ -56,12 +60,19 @@ func TestSettings(t *testing.T) {
 	if st != want {
 		t.Errorf("then %+v", st)
 	}
+	// Left out, the retries stay as they are.
+	f.call(f.api.Put("/settings", map[string]any{"renewBeforeDays": 45, "keyType": "ecdsa-p384", "checkTime": "23:30"}), http.StatusOK, &st)
+	if st != want {
+		t.Errorf("without the retries %+v", st)
+	}
 	for _, bad := range []map[string]any{
 		{"renewBeforeDays": 45, "keyType": "ecdsa-p384", "checkTime": "24:00"},
 		{"renewBeforeDays": 45, "keyType": "ecdsa-p384", "checkTime": "3:30"},
 		{"renewBeforeDays": 0, "keyType": "ecdsa-p384", "checkTime": "03:30"},
 		{"renewBeforeDays": 45, "keyType": "dsa", "checkTime": "03:30"},
 		{"renewBeforeDays": 45, "keyType": "ecdsa-p384"},
+		{"renewBeforeDays": 45, "keyType": "ecdsa-p384", "checkTime": "03:30", "retries": -1},
+		{"renewBeforeDays": 45, "keyType": "ecdsa-p384", "checkTime": "03:30", "retries": maxRetries + 1},
 	} {
 		f.call(f.api.Put("/settings", bad), http.StatusUnprocessableEntity, nil)
 	}
@@ -104,5 +115,32 @@ func TestRenewAtCheckTime(t *testing.T) {
 	}
 	if got := f.certificate(c.ID).Issuance; got.Reason != "renewal" {
 		t.Errorf("at the check time: %+v", got)
+	}
+}
+
+func TestRetriesSetting(t *testing.T) {
+	f := newFixture(t)
+	f.call(f.api.Put("/settings", map[string]any{"renewBeforeDays": 30, "keyType": "rsa-2048", "checkTime": "02:00", "retries": 1}), http.StatusOK, nil)
+	c := f.issueNew("example.com")
+	f.failWith(&contracts.Problem{Key: i18n.AcmeErrorEabRequired})
+	f.run()
+	is := f.certificate(c.ID).Issuance
+	if is.State != "pending" || is.NextAt == nil {
+		t.Fatalf("after the first attempt: %+v", is)
+	}
+	f.now = *is.NextAt
+	f.run()
+	if is := f.certificate(c.ID).Issuance; is.State != "failed" || is.Attempts != 2 {
+		t.Errorf("after the one retry: %+v", is)
+	}
+
+	// None at all.
+	final, _ := nextAttempt(1, 0, errors.New("down"), f.now)
+	if !final {
+		t.Error("retried with no retries")
+	}
+	// The wait is the backoff's, which takes off up to half at random.
+	if final, next := nextAttempt(1, 1, errors.New("down"), f.now); final || next.Before(f.now.Add(retryBase/2)) || next.After(f.now.Add(retryBase)) {
+		t.Errorf("the one retry: %v at %v", final, next)
 	}
 }

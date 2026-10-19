@@ -40,7 +40,11 @@ const (
 const (
 	maxRunning     = 2                // attempts under way at once
 	attemptTimeout = 30 * time.Minute // bounds an attempt
-	maxAttempts    = 8                // of an issuance before it fails for good
+	// defaultRetries is how many times a failed issuance or deployment is
+	// tried again on its own, unless the settings say otherwise; it fails
+	// for good after that. maxRetries bounds what they may say.
+	defaultRetries = 7
+	maxRetries     = 20
 	retryBase      = 10 * time.Minute // the wait after the first failed attempt, doubled after each
 	retryLimit     = 12 * time.Hour
 	retryAfterMax  = 24 * time.Hour // the longest wait a source may ask for
@@ -607,7 +611,7 @@ func (s *service) fail(ctx context.Context, c *claimed, cause error, log *taskLo
 	log.add(contracts.LogLine{Level: contracts.Error, Step: log.current(), Key: msg.Key, Params: msg.Params, Detail: detail})
 
 	now := s.now()
-	final, next := nextAttempt(c.attempt, cause, now)
+	final, next := nextAttempt(c.attempt, s.retries(ctx), cause, now)
 	recorded, err := s.recordFailure(ctx, c, msg, now, next, contracts.IsRestart(cause), contracts.KeptState(cause))
 	if err != nil {
 		s.log.Error("record failed issuance", "issuance", c.id, "err", err)
