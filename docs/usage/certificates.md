@@ -27,6 +27,8 @@ Domains are handled as follows:
   Punycode, and duplicates are removed.
 - Wildcard certificates require DNS validation; with `*.example.com` alone,
   the page offers to add `example.com` itself.
+- The page starts from the source, DNS provider and targets the last
+  certificate was added with, as this browser remembers them.
 - With Tencent Cloud DNSPod, Alibaba Cloud DNS, Cloudflare or Huawei Cloud
   DNS, the page checks that the account holds each domain, and says so
   when one is missing, before an issuance fails over it.

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { CircleCheck, CircleX, Plus, Save, ShieldCheck, TriangleAlert } from '@lucide/vue'
-import { computed, ref, watchEffect } from 'vue'
+import { computed, ref, watch, watchEffect } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
 import { useAddCertificate, useCertSettings, useIssueCertificate, type KeyType } from '../api/certs'
 import { revealError, useApiError } from '../api/errors'
 import { useProviders, useProviderTypes, useZones, type Provider } from '../api/providers'
+import { loadLastChoice, saveLastChoice } from '../certs/lastChoice'
 import { keyText } from '../certs/life'
 import DomainInput from '../components/DomainInput.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -37,14 +38,26 @@ const solverTypes = useProviderTypes('solver')
 const targets = useProviders('target')
 const targetTypes = useProviderTypes('target')
 const chosenTargets = ref<number[]>([])
+// What the last certificate was added with, in this browser: the targets
+// start from those still there.
+const last = loadLastChoice()
+watch(
+  () => targets.data.value,
+  (list, before) => {
+    if (list && !before && last.targets) chosenTargets.value = last.targets.filter((id) => list.some((p) => p.id === id))
+  },
+  { immediate: true },
+)
 
-// The choice of source: the first configured one until someone picks, or
-// an upload when the link asks for one, as importing does.
+// The choice of source: the one the last certificate was added with, or
+// the first configured one, until someone picks; or an upload when the
+// link asks for one, as importing does.
 const picked = ref<'upload' | number | undefined>(route.query.source === 'upload' ? 'upload' : undefined)
 const source = computed<'upload' | number | undefined>(() => {
   if (picked.value !== undefined) return picked.value
   if (!sources.isSuccess.value) return undefined
-  return sources.data.value?.[0]?.id ?? 'upload'
+  const list = sources.data.value ?? []
+  return list.find((p) => p.id === last.source)?.id ?? list[0]?.id ?? 'upload'
 })
 const provider = computed(() => (typeof source.value === 'number' ? sources.data.value?.find((p) => p.id === source.value) : undefined))
 const sourceType = computed(() => sourceTypes.data.value?.find((s) => s.id === provider.value?.type))
@@ -110,7 +123,9 @@ interface Outcome {
 const refused = ref<Outcome[]>([])
 const adding = ref(false)
 const pickedSolver = ref<number>()
-const solver = computed(() => usable.value.find((p) => p.id === pickedSolver.value)?.id ?? usable.value[0]?.id)
+const solver = computed(
+  () => usable.value.find((p) => p.id === (pickedSolver.value ?? last.solver))?.id ?? usable.value[0]?.id,
+)
 const solverProvider = computed(() => usable.value.find((p) => p.id === solver.value))
 // Whether the solver's account holds the zones of the domains, for a type
 // that can tell: a domain it cannot prove fails the issuance.
@@ -201,6 +216,10 @@ const plan = computed(() => {
 
 const form = ref<HTMLFormElement>()
 
+// Keeps what this certificate is added with, for the next one.
+const remember = () =>
+  saveLastChoice({ source: typeof source.value === 'number' ? source.value : undefined, solver: needsSolver.value ? solver.value : undefined, targets: chosenTargets.value })
+
 async function submit() {
   if (uploading.value) {
     let created
@@ -222,9 +241,11 @@ async function submit() {
   }
   if (typeof source.value !== 'number') return
   if (bulk.value) {
+    remember()
     await submitBatch(source.value)
     return
   }
+  remember()
   let created
   try {
     created = await issue.mutateAsync({
