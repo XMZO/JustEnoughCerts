@@ -478,11 +478,12 @@ async function confirmDelete() {
       <!-- Where it is now (deployments, online checks), its history
            (issuances, versions) and what it is (details, renewal settings):
            from 768px the first two on the left, from 1280px each in a
-           column of its own, so that the page fits a screen. -->
+           column of its own, so that the page fits a screen. The last card
+           of each group stretches, so that the columns end together. -->
       <div
-        class="grid items-start gap-3 sm:gap-4 md:grid-cols-[minmax(0,1fr)_17rem] md:grid-rows-[auto_1fr] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_18rem] xl:grid-rows-1"
+        class="grid gap-3 sm:gap-4 md:grid-cols-[minmax(0,1fr)_17rem] md:grid-rows-[auto_1fr] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_18rem] xl:grid-rows-1"
       >
-        <div class="flex min-w-0 flex-col gap-3 sm:gap-4 md:col-start-1 md:row-start-1">
+        <div class="flex min-w-0 flex-col gap-3 sm:gap-4 md:col-start-1 md:row-start-1 [&>*:last-child]:flex-1">
           <section aria-labelledby="deploys" class="flex flex-col gap-1.5 rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <h2 id="deploys" class="m-0 text-heading sm:text-section-title font-semibold">{{ t('certs.detail.deploys') }}</h2>
@@ -542,7 +543,7 @@ async function confirmDelete() {
           <MonitorSection v-if="current" :id="cert.id" />
         </div>
 
-        <div class="flex min-w-0 flex-col gap-3 sm:gap-4 md:col-start-1 md:row-start-2 xl:col-start-2 xl:row-start-1">
+        <div class="flex min-w-0 flex-col gap-3 sm:gap-4 md:col-start-1 md:row-start-2 xl:col-start-2 xl:row-start-1 [&>*:last-child]:flex-1">
           <section v-if="issued" aria-labelledby="issuances" class="flex flex-col gap-2 rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
             <h2 id="issuances" class="m-0 text-heading sm:text-section-title font-semibold">{{ t('certs.detail.issuances') }}</h2>
             <div v-if="lastRun.data.value" class="flex flex-col gap-1.5 rounded-md bg-surface-sunken px-3 py-2.5">
@@ -609,7 +610,7 @@ async function confirmDelete() {
 
         </div>
 
-        <div class="flex min-w-0 flex-col gap-3 sm:gap-4 md:col-start-2 md:row-span-2 md:row-start-1 xl:col-start-3 xl:row-span-1">
+        <div class="flex min-w-0 flex-col gap-3 sm:gap-4 md:col-start-2 md:row-span-2 md:row-start-1 xl:col-start-3 xl:row-span-1 [&>*:last-child]:flex-1">
           <section aria-labelledby="info" class="rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
             <h2 id="info" class="m-0 mb-1 text-heading sm:text-section-title font-semibold">{{ t('certs.info.title') }}</h2>
             <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-small">
@@ -702,16 +703,16 @@ async function confirmDelete() {
             </form>
           </section>
 
-          <div class="flex flex-wrap gap-2 sm:hidden">
-            <JecButton v-if="issued" variant="primary" :busy="issueNow.isPending.value" class="flex-[1_1_auto]" @click="startIssue">
-              <ShieldCheck class="size-4" aria-hidden="true" />{{ t(issueLabel) }}
-            </JecButton>
-            <JecButton v-if="current" class="flex-[1_1_auto]" @click="startDownload(current.id)">
-              <Download class="size-4" aria-hidden="true" />{{ t('certs.action.download') }}
-            </JecButton>
-            <JecButton class="flex-[1_1_auto]" @click="deleting = true"><Trash2 class="size-4" aria-hidden="true" />{{ t('certs.action.delete') }}</JecButton>
-          </div>
         </div>
+      </div>
+      <div class="flex flex-wrap gap-2 sm:hidden">
+        <JecButton v-if="issued" variant="primary" :busy="issueNow.isPending.value" class="flex-[1_1_auto]" @click="startIssue">
+          <ShieldCheck class="size-4" aria-hidden="true" />{{ t(issueLabel) }}
+        </JecButton>
+        <JecButton v-if="current" class="flex-[1_1_auto]" @click="startDownload(current.id)">
+          <Download class="size-4" aria-hidden="true" />{{ t('certs.action.download') }}
+        </JecButton>
+        <JecButton class="flex-[1_1_auto]" @click="deleting = true"><Trash2 class="size-4" aria-hidden="true" />{{ t('certs.action.delete') }}</JecButton>
       </div>
     </template>
   </div>
