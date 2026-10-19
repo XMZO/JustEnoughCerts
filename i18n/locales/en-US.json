@@ -40,6 +40,8 @@
       "rate_limited": "The certificate authority refused for now: too many requests. JEC tries again when it allows.",
       "register": "The certificate authority did not accept the account. Check its settings, such as the EAB and the email.",
       "rejected": "The certificate authority does not issue certificates for these domains.",
+      "revoke": "The certificate authority did not revoke the certificate: {detail}",
+      "revoke_reason": "The certificate authority does not accept this reason for revoking. Choose another one.",
       "user_action": "The certificate authority asks you to do something on its site first: {url}",
       "validation": "The certificate authority could not validate the domains. Check that the DNS provider is the one that serves them."
     },
@@ -257,6 +259,7 @@
       "certs_download": "Download a private key",
       "certs_issue": "Issue a certificate now",
       "certs_issue_new": "Add a certificate to issue",
+      "certs_revoke": "Revoke a certificate version",
       "certs_save_settings": "Change the renewal defaults",
       "certs_update": "Change a certificate",
       "certs_upload": "Upload a new version",
@@ -535,6 +538,8 @@
       "redeploy_to": "Deploy again to {target}",
       "renew_now": "Renew now",
       "retry": "Try again",
+      "revoke": "Revoke",
+      "revoke_version": "Revoke the version valid {range}",
       "save": "Save certificate",
       "upload": "Upload new certificate",
       "upload_short": "Upload"
@@ -733,6 +738,11 @@
       "pfx_password": "The password of the PFX file is wrong.",
       "provider_missing": "A provider this certificate uses was deleted.",
       "provider_unavailable": "A provider this certificate uses is not available; its module may be off. Retries go on once the module is back.",
+      "revoke_current": "This is the version in use. Issue or upload a new version first, then revoke this one.",
+      "revoke_expired": "This version has expired, and certificate authorities do not revoke expired certificates.",
+      "revoke_source": "JEC can only revoke versions that a source which supports it, such as an ACME account, issued. Revoke other certificates where you got them.",
+      "revoke_source_gone": "The source that issued this version was deleted, or its module is off, so JEC cannot have it revoked.",
+      "revoked": "This version has been revoked already.",
       "several_keys": "More than one private key was pasted. Keep only the key of this certificate.",
       "solver_challenge": "This source cannot have the domains validated this way.",
       "unsupported_key": "This type of private key is not supported. Use an RSA, ECDSA or Ed25519 key.",
@@ -767,6 +777,8 @@
       "current": "Current",
       "range": "{from} to {to}",
       "replaced": "Replaced on {date}",
+      "revoke_hint": "To revoke the version in use, issue a new version first; once it is deployed, revoke the old one here.",
+      "revoked": "Revoked on {date}: {reason}",
       "title": "Versions"
     },
     "info": {
@@ -895,6 +907,15 @@
     "renewal": {
       "suggested": "The CA suggests {start} to {end}",
       "why": "Why"
+    },
+    "revoke": {
+      "intro": "The certificate authority puts the certificate valid {range} on its revocation list, and browsers that check the list stop trusting it. This cannot be undone.",
+      "reason": "Reason",
+      "reason_cessation_of_operation": "Its domains are no longer in use",
+      "reason_key_compromise": "Its private key has leaked",
+      "reason_superseded": "A newer certificate replaces it",
+      "reason_unspecified": "No particular reason",
+      "title": "Revoke this version"
     },
     "runs": {
       "action": {

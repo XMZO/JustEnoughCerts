@@ -100,6 +100,27 @@ type RenewalInfo struct {
 // suggestions about renewing.
 var ErrNoRenewalInfo = errors.New("contracts: the CA makes no suggestions about renewing")
 
+// Revoker is a Source that can have the certificates it issued revoked, as
+// an ACME account can (RFC 8555 7.6). Its type sets providers.Type's
+// Revocable.
+type Revoker interface {
+	// Revoke asks the CA to revoke leaf, which the source issued, for
+	// reason. A certificate the CA has revoked already is no error.
+	Revoke(ctx context.Context, leaf *x509.Certificate, reason RevocationReason) error
+}
+
+// RevocationReason is why a certificate is revoked: a reason code of RFC
+// 5280 5.3.1 that CAs take from subscribers.
+type RevocationReason int
+
+// The reasons a subscriber may give.
+const (
+	ReasonUnspecified          RevocationReason = 0
+	ReasonKeyCompromise        RevocationReason = 1
+	ReasonSuperseded           RevocationReason = 4
+	ReasonCessationOfOperation RevocationReason = 5
+)
+
 // Source gets certificates, such as an ACME account. The providers of kind
 // "source" make Sources.
 type Source interface {

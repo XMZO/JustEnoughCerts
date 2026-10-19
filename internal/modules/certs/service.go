@@ -149,6 +149,10 @@ type Version struct {
 	// until it answered (renewal.go); RenewalCheck is when to ask again.
 	Renewal      *RenewalWindow
 	RenewalCheck time.Time
+	// RevokedAt is when JEC had the version revoked, zero if it has not,
+	// and RevokeReason the reason it gave (revoke.go).
+	RevokedAt    time.Time
+	RevokeReason string
 }
 
 // RenewalWindow is the window a CA suggests renewing a version in, and the
@@ -458,7 +462,8 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 // versions returns every version of certificate id, the newest first.
 func (s *service) versions(ctx context.Context, id int64) ([]*Version, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, origin, names, serial, fingerprint, issuer, key_type, not_before, not_after, chain, created_at
+		`SELECT id, origin, names, serial, fingerprint, issuer, key_type, not_before, not_after, chain, created_at,
+		 source_provider, revoked_at, revoke_reason
 		 FROM certs_versions WHERE certificate_id = ? ORDER BY created_at DESC, id DESC`, id)
 	if err != nil {
 		return nil, err
@@ -469,9 +474,13 @@ func (s *service) versions(ctx context.Context, id int64) ([]*Version, error) {
 		v := &Version{}
 		var names string
 		var notBefore, notAfter, created int64
+		var revoked sql.NullInt64
 		if err := rows.Scan(&v.ID, &v.Origin, &names, &v.Serial, &v.Fingerprint, &v.Issuer, &v.KeyType,
-			&notBefore, &notAfter, &v.Chain, &created); err != nil {
+			&notBefore, &notAfter, &v.Chain, &created, &v.SourceProvider, &revoked, &v.RevokeReason); err != nil {
 			return nil, err
+		}
+		if revoked.Valid {
+			v.RevokedAt = time.UnixMilli(revoked.Int64).UTC()
 		}
 		if err := json.Unmarshal([]byte(names), &v.Names); err != nil {
 			return nil, err

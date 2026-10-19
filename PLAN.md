@@ -223,6 +223,7 @@ stateDiagram-v2
 - **上传**：`POST /api/v1/certs/certificates` 接收 PEM 证书（顺序随意，可以带私钥）和私钥；`cryptox.ParseBundle` 找出和私钥匹配的证书，按签发关系排好中间证书，去掉自签名的根证书。常见错误（没有私钥、私钥加密了、私钥和证书不匹配等）返回各自的错误码，并指出是哪个输入框。上传新版本时，新证书必须包含原来的主域名，而且到期时间要比当前版本晚。
 - **事件**（类型和数据结构在 `internal/kernel/contracts`）：新版本成为当前版本时发 `certificate.issued`；删除时发 `certificate.deleted`；每小时的 `certs.check_expiry` 任务在当前版本进入续期窗口、只剩 7 天、已过期时各发一次 `certificate.expiring`（重启或停机跳过的级别不补发）。
 - **事件里的指纹**：`certificate.issued`、`certificate.deployed` 带版本叶子证书的 SHA-256 指纹（`Fingerprint`）。别的模块发 `certificates.announce` 时，证书模块给每张有版本的证书发一条 `certificate.current`（数据同 `issued`），供后来启用、或者错过了事件的模块补齐。
+- **吊销**（`revoke.go`）：`POST /api/v1/certs/certificates/{id}/versions/{version}/revoke`（要再输一次密码，原因是 `unspecified`、`key_compromise`、`superseded`、`cessation_of_operation` 之一）请签发这个版本的来源吊销它：来源实现 `contracts.Revoker`，类型标 `Revocable`（目前是 ACME 账号，用账号密钥签名，CA 回答“已经吊销”也算成功；CI 的 Pebble 测试覆盖）。只吊销不是当前版本、没过期、还没吊销的版本：吊销正在用的版本前要先签发并部署新版本，免得网站用着已吊销的证书（界面在历史版本下面写明）。吊销时间和原因存在 `certs_versions` 的 `revoked_at`、`revoke_reason`；详情接口的每个版本带 `revocable`、`revokedAt`、`revokeReason`。审计日志按 `certs-revoke` 记下。
 
 ### 4.7 线上巡检
 

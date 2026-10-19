@@ -92,4 +92,12 @@ func TestPebble(t *testing.T) {
 			t.Errorf("round %d: steps %v", round, steps)
 		}
 	}
+
+	// The first certificate, replaced, is revoked; asking again is no
+	// error, as Pebble says it has been revoked already.
+	for range 2 {
+		if err := src.Revoke(t.Context(), first, contracts.ReasonSuperseded); err != nil {
+			t.Errorf("revoke: %v", err)
+		}
+	}
 }

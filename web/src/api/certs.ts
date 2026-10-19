@@ -198,6 +198,21 @@ export function useDeleteCertificate(id: MaybeRefOrGetter<number>) {
   return useCertsMutation(() => unwrap(api.DELETE('/certs/certificates/{id}', { params: { path: { id: toValue(id) } } })))
 }
 
+/** The reasons a version can be revoked for. */
+export type RevokeReason = 'unspecified' | 'key_compromise' | 'superseded' | 'cessation_of_operation'
+
+/** useRevoke has a version of certificate id revoked at its CA, once the password is confirmed. */
+export function useRevoke(id: MaybeRefOrGetter<number>) {
+  return useCertsMutation(({ version, password, reason }: { version: number; password: string; reason: RevokeReason }) =>
+    unwrap(
+      api.POST('/certs/certificates/{id}/versions/{version}/revoke', {
+        params: { path: { id: toValue(id), version } },
+        body: { password, reason },
+      }),
+    ),
+  )
+}
+
 /**
  * useDownload fetches a version of certificate id with its private key, as
  * the ZIP the server names, once the password is confirmed.

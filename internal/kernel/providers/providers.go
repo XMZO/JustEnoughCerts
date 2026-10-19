@@ -125,6 +125,9 @@ type Type struct {
 	// OwnKey is set on a source whose certificates come with their own
 	// private key (contracts.KeySource): no key type to choose.
 	OwnKey bool `json:"ownKey,omitempty"`
+	// Revocable is set on a source whose providers can have the
+	// certificates they issued revoked (contracts.Revoker).
+	Revocable bool `json:"revocable,omitempty"`
 	// Challenge is how the providers of a solver type prove control of a
 	// domain, ChallengeDNS when left out.
 	Challenge string `json:"challenge,omitempty" enum:"dns,http"`
@@ -313,6 +316,8 @@ func (s *Scope) Add(t Type, f Factory) error {
 		return fmt.Errorf("provider type %s: records are for solvers of DNS", t.ID)
 	case t.OwnKey && (t.Kind != Source || t.NeedsSolver):
 		return fmt.Errorf("provider type %s: own keys are for sources that need no solver", t.ID)
+	case t.Revocable && t.Kind != Source:
+		return fmt.Errorf("provider type %s: revoking is for sources", t.ID)
 	}
 	texts := make(map[string]map[i18n.Key]string, len(t.Texts))
 	for tag, messages := range t.Texts {

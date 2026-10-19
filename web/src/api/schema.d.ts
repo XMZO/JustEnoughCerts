@@ -295,6 +295,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certs/certificates/{id}/versions/{version}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Have a version revoked at its CA, once the password is confirmed
+         * @description Only a version that a source which revokes, such as an ACME account, issued, which has not expired and is not the version in use: a new version replaces that one first.
+         */
+        post: operations["certs-revoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/certs/deployments/{id}": {
         parameters: {
             query?: never;
@@ -1650,6 +1670,15 @@ export interface components {
             /** @description The sections the file has, in its order */
             sections: components["schemas"]["SectionReport"][];
         };
+        RevokeInputBody: {
+            /** @description The password of the signed-in account, asked again before revoking */
+            password: string;
+            /**
+             * @description Why, as RFC 5280 names it
+             * @enum {string}
+             */
+            reason: "unspecified" | "key_compromise" | "superseded" | "cessation_of_operation";
+        };
         RunBody: {
             /**
              * @description renew: an issuance because the current version entered its renewal window
@@ -1853,6 +1882,7 @@ export interface components {
             needsSolver?: boolean;
             ownKey?: boolean;
             records?: boolean;
+            revocable?: boolean;
             tags?: string[];
             testable?: boolean;
             texts?: {
@@ -1888,6 +1918,8 @@ export interface components {
             ownKey?: boolean;
             /** @description For a solver of DNS: it adds records of any type too, as some sources ask */
             records?: boolean;
+            /** @description For a source: it can have the certificates it issued revoked */
+            revocable?: boolean;
             /** @description The groups of the type in the UI; a solver that adds records of any type is in records too */
             tags?: string[];
             /** @description Its instances can be tested */
@@ -1971,6 +2003,15 @@ export interface components {
              * @enum {string}
              */
             origin: "upload" | "issued";
+            /** @description JEC can have the version revoked at its CA now */
+            revocable?: boolean;
+            /** @enum {string} */
+            revokeReason?: "unspecified" | "key_compromise" | "superseded" | "cessation_of_operation";
+            /**
+             * Format: date-time
+             * @description When JEC had the version revoked
+             */
+            revokedAt?: string;
             /** @description Serial number, lowercase hex */
             serial: string;
         };
@@ -2621,6 +2662,40 @@ export interface operations {
                 content: {
                     "application/zip": string;
                 };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevokeInputBody"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Error */
             default: {

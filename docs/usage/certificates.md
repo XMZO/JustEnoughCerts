@@ -53,6 +53,26 @@ The certificate's page shows:
 | Choose targets | Adds or removes deploy targets. A new target receives the current version at once |
 | Deploy now / Deploy again | Deploys the current version again, to every target or to one |
 | Download | Downloads a ZIP file with `cert.pem`, `chain.pem`, `fullchain.pem` and `privkey.pem`. As it contains the private key, the password is required first |
+| Revoke | Has an earlier version revoked at its CA, from the version history, with a reason; the password is required first. See below |
 | Delete certificate | Deletes every version and private key of the certificate. Copies already deployed elsewhere are not affected |
 
 Each row of the certificate list also offers the common actions in a menu.
+
+## Revoking
+
+A version can be revoked when an ACME account issued it, it has not
+expired, and it is not the version in use. The CA then lists it as
+revoked, and clients that check revocation stop trusting it; this cannot
+be undone. To revoke the version in use, for example when its private key
+has leaked, choose **Issue now** first, and revoke the old version once
+the new one is deployed: the sites never serve a revoked certificate.
+
+| Reason | When |
+|---|---|
+| A newer certificate replaces it | The usual reason for an earlier version |
+| Its private key has leaked | The private key was exposed; JEC uses a new key for every version |
+| Its domains are no longer in use | The domains were given up |
+| No particular reason | None of the above |
+
+Certificates from other sources, such as uploads or vendors' services,
+are revoked where they were obtained.

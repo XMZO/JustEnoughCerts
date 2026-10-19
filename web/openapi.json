@@ -1943,6 +1943,32 @@
         ],
         "type": "object"
       },
+      "RevokeInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "description": "The password of the signed-in account, asked again before revoking",
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why, as RFC 5280 names it",
+            "enum": [
+              "unspecified",
+              "key_compromise",
+              "superseded",
+              "cessation_of_operation"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "password",
+          "reason"
+        ],
+        "type": "object"
+      },
       "RunBody": {
         "additionalProperties": false,
         "properties": {
@@ -2521,6 +2547,9 @@
           "records": {
             "type": "boolean"
           },
+          "revocable": {
+            "type": "boolean"
+          },
           "tags": {
             "items": {
               "type": "string"
@@ -2617,6 +2646,10 @@
           },
           "records": {
             "description": "For a solver of DNS: it adds records of any type too, as some sources ask",
+            "type": "boolean"
+          },
+          "revocable": {
+            "description": "For a source: it can have the certificates it issued revoked",
             "type": "boolean"
           },
           "tags": {
@@ -2816,6 +2849,24 @@
               "upload",
               "issued"
             ],
+            "type": "string"
+          },
+          "revocable": {
+            "description": "JEC can have the version revoked at its CA now",
+            "type": "boolean"
+          },
+          "revokeReason": {
+            "enum": [
+              "unspecified",
+              "key_compromise",
+              "superseded",
+              "cessation_of_operation"
+            ],
+            "type": "string"
+          },
+          "revokedAt": {
+            "description": "When JEC had the version revoked",
+            "format": "date-time",
             "type": "string"
           },
           "serial": {
@@ -3722,6 +3773,61 @@
           }
         },
         "summary": "Download a version with its private key, as a ZIP of PEM files",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/certificates/{id}/versions/{version}/revoke": {
+      "post": {
+        "description": "Only a version that a source which revokes, such as an ACME account, issued, which has not expired and is not the version in use: a new version replaces that one first.",
+        "operationId": "certs-revoke",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Have a version revoked at its CA, once the password is confirmed",
         "tags": [
           "certs"
         ]

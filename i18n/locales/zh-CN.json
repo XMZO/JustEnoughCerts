@@ -40,6 +40,8 @@
       "rate_limited": "请求太频繁，证书颁发机构暂时拒绝了。JEC 会按它要求的时间再试。",
       "register": "证书颁发机构没有接受账号注册。请检查账号设置，比如 EAB 和邮箱。",
       "rejected": "证书颁发机构不为这些域名签发证书。",
+      "revoke": "证书颁发机构没有吊销该证书：{detail}",
+      "revoke_reason": "证书颁发机构不接受这个吊销原因，请换一个。",
       "user_action": "证书颁发机构要求先在它的网站上处理一件事：{url}",
       "validation": "证书颁发机构没能验证域名。请确认 DNS 服务商管理的正是这些域名。"
     },
@@ -257,6 +259,7 @@
       "certs_download": "下载私钥",
       "certs_issue": "立即签发证书",
       "certs_issue_new": "添加要签发的证书",
+      "certs_revoke": "吊销证书版本",
       "certs_save_settings": "修改续期默认值",
       "certs_update": "修改证书设置",
       "certs_upload": "上传新版本",
@@ -535,6 +538,8 @@
       "redeploy_to": "重新部署到 {target}",
       "renew_now": "立即续期",
       "retry": "重试",
+      "revoke": "吊销",
+      "revoke_version": "吊销有效期为 {range} 的版本",
       "save": "保存证书",
       "upload": "上传新证书",
       "upload_short": "上传"
@@ -733,6 +738,11 @@
       "pfx_password": "PFX 文件的密码不对。",
       "provider_missing": "证书用到的服务已被删除。",
       "provider_unavailable": "证书用到的服务现在不能用，它所属的模块可能已经停用。模块重新启用后会继续重试。",
+      "revoke_current": "这是正在使用的版本。请先签发或上传新版本，再吊销这一版。",
+      "revoke_expired": "这一版已经过期，证书颁发机构不吊销过期的证书。",
+      "revoke_source": "JEC 只能吊销由支持吊销的来源（如 ACME 账号）签发的版本。其他证书请在获取它的地方吊销。",
+      "revoke_source_gone": "签发这一版的来源已被删除或其模块已停用，JEC 无法吊销它。",
+      "revoked": "这一版已经吊销过了。",
       "several_keys": "粘贴了不止一个私钥。只保留这张证书的私钥。",
       "solver_challenge": "这个证书来源不能用这种方式验证域名。",
       "unsupported_key": "不支持这种私钥。请使用 RSA、ECDSA 或 Ed25519 私钥。",
@@ -767,6 +777,8 @@
       "current": "当前",
       "range": "{from} 至 {to}",
       "replaced": "{date} 被替换",
+      "revoke_hint": "要吊销正在使用的版本，请先签发新版本，部署完成后再在这里吊销旧版本。",
+      "revoked": "{date} 吊销：{reason}",
       "title": "历史版本"
     },
     "info": {
@@ -895,6 +907,15 @@
     "renewal": {
       "suggested": "CA 建议 {start} 至 {end}",
       "why": "原因"
+    },
+    "revoke": {
+      "intro": "证书颁发机构会将有效期为 {range} 的证书列入吊销列表，检查吊销列表的浏览器将不再信任它。此操作无法撤销。",
+      "reason": "原因",
+      "reason_cessation_of_operation": "其域名已不再使用",
+      "reason_key_compromise": "私钥已泄露",
+      "reason_superseded": "已有新证书取代它",
+      "reason_unspecified": "不说明原因",
+      "title": "吊销此版本"
     },
     "runs": {
       "action": {

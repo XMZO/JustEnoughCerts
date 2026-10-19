@@ -539,6 +539,53 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page).toHaveURL(/\/certificates\/\d+$/)
   await expect(page.getByRole('heading', { name: label('certs.detail.last_issuance') })).toBeVisible()
   expect.soft(await problems(page), 'a certificate whose issuance failed').toEqual([])
+
+  // Revoking. There is no CA to have issued versions, so the page is shown
+  // made-up ones: the one in use, one it can revoke and one revoked. The
+  // server knows none of them, and refuses.
+  const issuedId = /\/certificates\/(\d+)$/.exec(page.url())?.[1] ?? ''
+  const day = 24 * 3600 * 1000
+  const at = (days: number) => new Date(Date.now() + days * day).toISOString()
+  const madeUp = (id: number, from: number, to: number, extra: Record<string, unknown>) => ({
+    id,
+    origin: 'issued',
+    names: ['issued.example.com', '*.issued.example.com'],
+    serial: id.toString(16),
+    fingerprint: id.toString(16).padStart(64, '0'),
+    issuer: 'Fake CA',
+    keyType: 'ecdsa-p256',
+    notBefore: at(from),
+    notAfter: at(to),
+    createdAt: at(from),
+    ...extra,
+  })
+  const detailRoute = `**/api/v1/certs/certificates/${issuedId}`
+  await page.route(detailRoute, async (route) => {
+    const res = await route.fetch()
+    const body = (await res.json()) as { certificate: Record<string, unknown>; versions: unknown[] }
+    const versions = [
+      madeUp(9003, -10, 80, {}),
+      madeUp(9002, -40, 50, { revocable: true }),
+      madeUp(9001, -70, 20, { revokedAt: at(-40), revokeReason: 'key_compromise' }),
+    ]
+    body.certificate.current = versions[0]
+    body.versions = versions
+    await route.fulfill({ response: res, json: body })
+  })
+  await page.reload()
+  const versionRows = page.locator('section[aria-labelledby=versions] li')
+  await expect(versionRows).toHaveCount(3)
+  expect.soft(await problems(page), 'versions, one revocable and one revoked').toEqual([])
+  await versionRows.nth(1).getByRole('button').first().click()
+  await expect(page.locator('dialog[open]')).toBeVisible()
+  expect.soft(await problems(page), 'revoke a version').toEqual([])
+  await page.locator('#revoke-password').fill('correct horse')
+  await page.locator('button[form=revoke-form]').click()
+  await expect(page.locator('dialog[open]').getByRole('alert')).toBeVisible()
+  expect.soft(await problems(page), 'revoke a version, refused').toEqual([])
+  await page.keyboard.press('Escape')
+  await page.unroute(detailRoute)
+
   await page.goto('./certificates')
   expect.soft(await problems(page), 'certificates with a failed one').toEqual([])
   await page.goto('./')

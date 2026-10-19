@@ -9,6 +9,7 @@ import {
   RotateCw,
   Send,
   ShieldCheck,
+  ShieldX,
   Trash2,
   Upload,
 } from '@lucide/vue'
@@ -25,8 +26,10 @@ import {
   useIssuance,
   useIssuances,
   useIssueNow,
+  useRevoke,
   useUpdateCertificate,
   useUploadVersion,
+  type RevokeReason,
 } from '../api/certs'
 import { useApiError } from '../api/errors'
 import { useProviders, useProviderTypes, useProviderTypesOf } from '../api/providers'
@@ -88,10 +91,11 @@ const solvers = useProviders('solver')
 const sourceName = computed(() => sources.data.value?.find((p) => p.id === cert.value?.sourceProvider)?.name)
 // A source with keys of its own is not asked to issue: it is looked at.
 const sourceTypes = useProviderTypes('source')
-const ownKey = computed(() => {
+const sourceType = computed(() => {
   const type = sources.data.value?.find((p) => p.id === cert.value?.sourceProvider)?.type
-  return !!sourceTypes.data.value?.find((s) => s.id === type)?.ownKey
+  return sourceTypes.data.value?.find((s) => s.id === type)
 })
+const ownKey = computed(() => !!sourceType.value?.ownKey)
 const solverName = computed(() => solvers.data.value?.find((p) => p.id === cert.value?.solverProvider)?.name)
 const issuances = useIssuances(() => props.id, issued)
 
@@ -279,6 +283,42 @@ async function submitDownload() {
     return // shown in the dialog
   }
   downloading.value = null
+}
+
+// Revoking a version that a newer one replaced, after the password once
+// more. The one in use is replaced first: the history says so.
+const reasons: { value: RevokeReason; label: MessageKey }[] = [
+  { value: 'superseded', label: 'certs.revoke.reason_superseded' },
+  { value: 'key_compromise', label: 'certs.revoke.reason_key_compromise' },
+  { value: 'cessation_of_operation', label: 'certs.revoke.reason_cessation_of_operation' },
+  { value: 'unspecified', label: 'certs.revoke.reason_unspecified' },
+]
+const reasonLabel = (reason?: string): MessageKey => reasons.find((r) => r.value === reason)?.label ?? 'certs.revoke.reason_unspecified'
+const revoking = ref<{ id: number; range: string } | null>(null)
+const revokeOpen = computed({
+  get: () => revoking.value !== null,
+  set: (open) => {
+    if (!open) revoking.value = null
+  },
+})
+const revokeReason = ref<RevokeReason>('superseded')
+const revokePassword = ref('')
+const revoke = useRevoke(() => props.id)
+const revokeError = useApiError(revoke.error)
+function startRevoke(version: number, range: string) {
+  revokePassword.value = ''
+  revokeReason.value = 'superseded'
+  revoke.reset()
+  revoking.value = { id: version, range }
+}
+async function submitRevoke() {
+  if (!revoking.value) return
+  try {
+    await revoke.mutateAsync({ version: revoking.value.id, password: revokePassword.value, reason: revokeReason.value })
+  } catch {
+    return // shown in the dialog
+  }
+  revoking.value = null
 }
 
 const deleting = ref(false)
@@ -520,7 +560,21 @@ async function confirmDelete() {
                 <div class="min-w-0 flex-1">
                   <div class="tabular-nums">{{ h.range }}</div>
                   <div class="text-ink-muted">{{ h.note }}</div>
+                  <div v-if="h.version.revokedAt" class="flex items-start gap-1 font-semibold text-danger-ink">
+                    <ShieldX class="mt-0.5 size-4 flex-none" aria-hidden="true" />
+                    {{ t('certs.history.revoked', { date: intl.date(h.version.revokedAt), reason: t(reasonLabel(h.version.revokeReason)) }) }}
+                  </div>
                 </div>
+                <button
+                  v-if="h.version.revocable"
+                  type="button"
+                  :aria-label="t('certs.action.revoke_version', { range: h.range })"
+                  :title="t('certs.action.revoke_version', { range: h.range })"
+                  class="grid size-11 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-danger-ink sm:size-8"
+                  @click="startRevoke(h.version.id, h.range)"
+                >
+                  <ShieldX class="size-4" aria-hidden="true" />
+                </button>
                 <button
                   type="button"
                   :aria-label="t('certs.action.download_version', { range: h.range })"
@@ -532,6 +586,7 @@ async function confirmDelete() {
                 </button>
               </li>
             </ol>
+            <p v-if="sourceType?.revocable" class="m-0 mt-2 text-small text-ink-muted">{{ t('certs.history.revoke_hint') }}</p>
           </section>
 
           <section v-if="chain.length" aria-labelledby="chain" class="rounded-lg border border-line bg-surface-raised p-4">
@@ -683,6 +738,34 @@ async function confirmDelete() {
       <JecButton @click="downloadOpen = false">{{ t('kernel.action.cancel') }}</JecButton>
       <JecButton type="submit" form="download-form" variant="primary" :busy="download.isPending.value" :disabled="!password">
         <Download class="size-4" aria-hidden="true" />{{ t('certs.action.download') }}
+      </JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-if="cert" v-model:open="revokeOpen" :title="t('certs.revoke.title')" small>
+    <form id="revoke-form" class="flex flex-col gap-3" novalidate @submit.prevent="submitRevoke">
+      <p class="m-0">{{ t('certs.revoke.intro', { range: revoking?.range ?? '' }) }}</p>
+      <JecAlert v-if="revokeError.alert.value" :code="revokeError.alert.value.code" :params="revokeError.alert.value.params" />
+      <JecField id="revoke-reason" label="certs.revoke.reason">
+        <select id="revoke-reason" v-model="revokeReason" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
+          <option v-for="r in reasons" :key="r.value" :value="r.value">{{ t(r.label) }}</option>
+        </select>
+      </JecField>
+      <JecField id="revoke-password" label="kernel.account.confirm_password" :error="revokeError.fields.value.password">
+        <JecInput
+          id="revoke-password"
+          v-model="revokePassword"
+          type="password"
+          autocomplete="current-password"
+          :invalid="!!revokeError.fields.value.password"
+          required
+        />
+      </JecField>
+    </form>
+    <template #footer>
+      <JecButton @click="revokeOpen = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton type="submit" form="revoke-form" variant="danger" :busy="revoke.isPending.value" :disabled="!revokePassword">
+        <ShieldX class="size-4" aria-hidden="true" />{{ t('certs.action.revoke') }}
       </JecButton>
     </template>
   </JecDialog>

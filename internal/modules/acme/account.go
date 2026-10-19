@@ -61,7 +61,7 @@ func accountType() providers.Type {
 			{Key: "eab_hmac", Label: i18n.AcmeFieldEabHmac, Help: i18n.AcmeFieldEabHmacHelp, Kind: providers.Text, Secret: true},
 			httpx.ProxyField(),
 		},
-		NeedsSolver: true, Challenges: []string{providers.ChallengeDNS, providers.ChallengeHTTP}, Testable: true,
+		NeedsSolver: true, Challenges: []string{providers.ChallengeDNS, providers.ChallengeHTTP}, Testable: true, Revocable: true,
 	}
 }
 

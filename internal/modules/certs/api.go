@@ -11,6 +11,8 @@ import (
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
 
@@ -45,6 +47,11 @@ type VersionBody struct {
 	NotBefore   time.Time `json:"notBefore"`
 	NotAfter    time.Time `json:"notAfter"`
 	CreatedAt   time.Time `json:"createdAt"`
+	// Revocable, RevokedAt and RevokeReason are only in the versions of a
+	// certificate's details.
+	Revocable    bool       `json:"revocable,omitempty" doc:"JEC can have the version revoked at its CA now"`
+	RevokedAt    *time.Time `json:"revokedAt,omitempty" doc:"When JEC had the version revoked"`
+	RevokeReason string     `json:"revokeReason,omitempty" enum:"unspecified,key_compromise,superseded,cessation_of_operation"`
 }
 
 // RenewalBody is the window a CA suggests renewing a version in.
@@ -90,10 +97,15 @@ func certificateBody(c *Certificate, now time.Time, sch schedule) CertificateBod
 }
 
 func versionBody(v *Version) VersionBody {
-	return VersionBody{
+	b := VersionBody{
 		ID: v.ID, Origin: v.Origin, Names: v.Names, Serial: v.Serial, Fingerprint: v.Fingerprint,
 		Issuer: v.Issuer, KeyType: v.KeyType, NotBefore: v.NotBefore, NotAfter: v.NotAfter, CreatedAt: v.CreatedAt,
 	}
+	if !v.RevokedAt.IsZero() {
+		at := v.RevokedAt
+		b.RevokedAt, b.RevokeReason = &at, v.RevokeReason
+	}
+	return b
 }
 
 type idInput struct {
@@ -144,6 +156,15 @@ type downloadInput struct {
 	Version int64 `path:"version"`
 	Body    struct {
 		Password string `json:"password" minLength:"1" maxLength:"1024" doc:"The password of the signed-in account, asked again before a private key leaves JEC"`
+	}
+}
+
+type revokeInput struct {
+	ID      int64 `path:"id"`
+	Version int64 `path:"version"`
+	Body    struct {
+		Password string `json:"password" minLength:"1" maxLength:"1024" doc:"The password of the signed-in account, asked again before revoking"`
+		Reason   string `json:"reason" enum:"unspecified,key_compromise,superseded,cessation_of_operation" doc:"Why, as RFC 5280 names it"`
 	}
 }
 
@@ -225,8 +246,11 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			return nil, err
 		}
 		out.Body.Versions = make([]VersionBody, 0, len(versions))
+		typeOf := s.typeCache(ctx)
 		for _, v := range versions {
-			out.Body.Versions = append(out.Body.Versions, versionBody(v))
+			b := versionBody(v)
+			b.Revocable = revocable(c, v, s.now(), typeOf) == nil
+			out.Body.Versions = append(out.Body.Versions, b)
 		}
 		out.Body.Chain = []ChainEntry{}
 		if c.Current != nil {
@@ -297,6 +321,22 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			CacheControl:       "no-store",
 			Body:               data,
 		}, nil
+	})
+
+	huma.Register(a, huma.Operation{
+		OperationID: "certs-revoke", Method: http.MethodPost, Path: "/certificates/{id}/versions/{version}/revoke",
+		DefaultStatus: http.StatusNoContent,
+		Summary:       "Have a version revoked at its CA, once the password is confirmed",
+		Description: "Only a version that a source which revokes, such as an ACME account, issued, which has not expired " +
+			"and is not the version in use: a new version replaces that one first.",
+	}, func(ctx context.Context, in *revokeInput) (*struct{}, error) {
+		if err := confirm(ctx, in.Body.Password); err != nil {
+			return nil, err
+		}
+		if err := s.revoke(ctx, in.ID, in.Version, in.Body.Reason); err != nil {
+			return nil, revokeError(err)
+		}
+		return nil, nil
 	})
 
 	huma.Register(a, huma.Operation{
@@ -400,4 +440,25 @@ func serviceError(err error) error {
 		return api.NewError(http.StatusConflict, i18n.CertsErrorNoVersion, nil)
 	}
 	return err
+}
+
+// revokeError turns an error of revoking into a response.
+func revokeError(err error) error {
+	var problem *contracts.Problem
+	switch {
+	case errors.Is(err, errRevokeCurrent):
+		return api.NewError(http.StatusConflict, i18n.CertsErrorRevokeCurrent, nil)
+	case errors.Is(err, errRevokeSource):
+		return api.NewError(http.StatusConflict, i18n.CertsErrorRevokeSource, nil)
+	case errors.Is(err, errRevokeExpired):
+		return api.NewError(http.StatusConflict, i18n.CertsErrorRevokeExpired, nil)
+	case errors.Is(err, errRevoked):
+		return api.NewError(http.StatusConflict, i18n.CertsErrorRevoked, nil)
+	case errors.Is(err, providers.ErrNotFound), errors.Is(err, providers.ErrUnavailable):
+		return api.NewError(http.StatusConflict, i18n.CertsErrorRevokeSourceGone, nil)
+	case errors.As(err, &problem):
+		// What the CA or the source said.
+		return api.NewError(http.StatusBadGateway, problem.Key, problem.Params)
+	}
+	return serviceError(err)
 }

@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"strconv"
@@ -37,6 +38,10 @@ type fakes struct {
 	// asked counts the questions.
 	renewal func(leaf *x509.Certificate) (contracts.RenewalInfo, error)
 	asked   int
+	// revoke replaces the revoking CA's answer when not nil; revoked lists
+	// the serials it revoked, with the reasons.
+	revoke  func(leaf *x509.Certificate, reason contracts.RevocationReason) error
+	revoked []string
 }
 
 func (f *fixture) addFakes() {
@@ -51,6 +56,7 @@ func (f *fixture) addFakes() {
 		{ID: "fake.web", Kind: providers.Solver, Brand: "Fake web root", Challenge: providers.ChallengeHTTP},
 		{ID: "fake.hook", Kind: providers.Target, Brand: "Fake target"},
 		{ID: "fake.files", Kind: providers.Source, Brand: "Fake files of another client", OwnKey: true},
+		{ID: "fake.acme", Kind: providers.Source, Brand: "Fake CA that revokes", NeedsSolver: true, Revocable: true},
 	} {
 		err := scope.Add(typ, func(context.Context, providers.Instance) (any, error) {
 			f.fake.mu.Lock()
@@ -59,6 +65,8 @@ func (f *fixture) addFakes() {
 			switch {
 			case typ.OwnKey:
 				return &fakeKeySource{f}, nil
+			case typ.Revocable:
+				return &fakeRevoker{fakeSource{f}}, nil
 			case typ.Kind == providers.Source:
 				return &fakeSource{f}, nil
 			case typ.Challenge == providers.ChallengeHTTP:
@@ -110,6 +118,21 @@ func (s *fakeSource) RenewalInfo(_ context.Context, leaf *x509.Certificate) (con
 		return contracts.RenewalInfo{}, contracts.ErrNoRenewalInfo
 	}
 	return s.f.fake.renewal(leaf)
+}
+
+// fakeRevoker is a fake CA that revokes too.
+type fakeRevoker struct{ fakeSource }
+
+func (s *fakeRevoker) Revoke(_ context.Context, leaf *x509.Certificate, reason contracts.RevocationReason) error {
+	s.f.fake.mu.Lock()
+	defer s.f.fake.mu.Unlock()
+	if s.f.fake.revoke != nil {
+		if err := s.f.fake.revoke(leaf, reason); err != nil {
+			return err
+		}
+	}
+	s.f.fake.revoked = append(s.f.fake.revoked, fmt.Sprintf("%x %d", leaf.SerialNumber, reason))
+	return nil
 }
 
 type fakeKeySource struct{ f *fixture }

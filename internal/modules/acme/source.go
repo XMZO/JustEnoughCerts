@@ -142,6 +142,30 @@ func (s *source) RenewalInfo(ctx context.Context, leaf *x509.Certificate) (contr
 		ExplanationURL: info.ExplanationURL, RetryAfter: info.RetryAfter}, nil
 }
 
+// Revoke has the CA revoke leaf, which this account issued (RFC 8555 7.6),
+// signing the request with the account's key. One the CA has revoked
+// already is no error.
+func (s *source) Revoke(ctx context.Context, leaf *x509.Certificate, reason contracts.RevocationReason) error {
+	client, _, err := s.connect(ctx, func(contracts.LogLine) {})
+	if err != nil {
+		return err
+	}
+	code := uint(reason)
+	err = client.Certificate.RevokeWithReason(ctx, cryptox.EncodeCertificates(leaf), &code)
+	var pd *legoacme.ProblemDetails
+	switch {
+	case err == nil:
+		return nil
+	case errors.As(err, &pd) && pd.Type == legoacme.AlreadyRevokedErrorType:
+		return nil
+	case errors.As(err, &pd) && pd.Type == legoacme.BadRevocationReasonErrorType:
+		return &contracts.Problem{Key: i18n.AcmeErrorRevokeReason, Err: err}
+	case errors.As(err, &pd):
+		return &contracts.Problem{Key: i18n.AcmeErrorRevoke, Params: map[string]any{"detail": pd.Detail}, Err: err}
+	}
+	return err
+}
+
 // Test reaches the CA and registers the account if it is new, as the
 // first issuance would.
 func (s *source) Test(ctx context.Context) (contracts.Message, error) {
