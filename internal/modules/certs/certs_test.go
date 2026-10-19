@@ -452,6 +452,29 @@ func TestDownload(t *testing.T) {
 	if last := evs[len(evs)-1]; last.typ != contracts.CertificateKeyDownloaded || last.data.VersionID != c.Current.ID {
 		t.Errorf("events %+v", evs)
 	}
+
+	// With a PFX file, sealed with its own password, or none.
+	for _, password := range []string{"pfx secret", ""} {
+		resp = f.api.Post(path, map[string]any{"password": testPassword, "pfx": true, "pfxPassword": password, "pfxLegacy": password != ""})
+		zr, err = zip.NewReader(bytes.NewReader(resp.Body.Bytes()), int64(resp.Body.Len()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var pfx []byte
+		for _, zf := range zr.File {
+			if zf.Name == "certificate.pfx" {
+				r, _ := zf.Open()
+				var b bytes.Buffer
+				_, _ = b.ReadFrom(r)
+				_ = r.Close()
+				pfx = b.Bytes()
+			}
+		}
+		b, err := cryptox.ParsePFX(pfx, password)
+		if len(zr.File) != 5 || err != nil || b.Leaf.SerialNumber.Text(16) != c.Current.Serial || len(b.Chain) != 1 {
+			t.Errorf("with a PFX (%q): %d files, %v", password, len(zr.File), err)
+		}
+	}
 }
 
 // pfx is u as a PKCS #12 file, sealed with password.

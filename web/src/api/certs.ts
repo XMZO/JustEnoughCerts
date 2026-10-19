@@ -270,12 +270,12 @@ export function useRevoke(id: MaybeRefOrGetter<number>) {
  */
 export function useDownload(id: MaybeRefOrGetter<number>) {
   return useMutation({
-    mutationFn: async ({ version, password }: { version: number; password: string }) => {
+    mutationFn: async ({ version, ...body }: { version: number; password: string; pfx?: boolean; pfxPassword?: string; pfxLegacy?: boolean }) => {
       let result
       try {
         result = await api.POST('/certs/certificates/{id}/versions/{version}/download', {
           params: { path: { id: toValue(id), version } },
-          body: { password },
+          body,
           parseAs: 'blob',
         })
       } catch {

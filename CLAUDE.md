@@ -125,6 +125,7 @@
 - 又加了：证书列表导出 CSV、批量添加证书（添加页“多张证书”，每行一张，逐张提交，失败的行连同原因留下）、证书备注（`certs_certificates.note`，`PATCH` 的 `note`，详情页“证书信息”里编辑，列表显示、搜索、导出，配置文件的 `note`）、Telegram 的 `/sites`。
 - 运行状况：`GET /api/v1/system/health`（`system/health.go`）给出各后台任务上次运行的结果（`jobs.Scheduler.Status`，只含启用的模块）和数据目录的剩余空间（`disk_unix.go`，linux/darwin 用 `syscall.Statfs`）；设置页“关于”里一行“后台任务”（失败数，点“查看”出列表）和“数据目录剩余空间”（少于 1 GB 或 5% 变警告色）；Prometheus 指标 `jec_job_failed`、`jec_data_free_bytes`、`jec_data_size_bytes`。
 - 吊销检查（`certs/revocation.go`，`PLAN.md` 4.6）：任务 `certs.revocation` 每 12 小时经 OCSP（没有时用 CRL，按下次更新时间缓存，每次都核对签名）查当前版本是否被 CA 吊销（版本的 `ca_revoked_at`、`ca_revoke_reason`、`status_check`）；被吊销时证书状态是 `revoked`，发 `certificate.revoked`（`contracts.Revocation`，通知默认开），有来源的立即续期（`schedule.due`）。测试用 `cryptoxtest.CA.Sign`/`Signer` 做带 OCSP、CRL 地址的证书和应答。
+- 搜索跳转（`web/src/components/QuickJump.vue`）：Ctrl/⌘+K、侧栏“搜索”、平板顶栏、手机“更多”打开（`shell.ts` 的 `jumpOpen`），找证书（`certs/search.ts` 的 `matches`）、页面、服务商（跳到 `?edit=<id>`，服务商页据此打开编辑框），第一次打开才挂载。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

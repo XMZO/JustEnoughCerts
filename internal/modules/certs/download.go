@@ -16,10 +16,17 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
 
+// pfxOptions ask for a PKCS #12 file beside the PEM files.
+type pfxOptions struct {
+	password string // "" for none
+	legacy   bool   // 3DES rather than AES-256
+}
+
 // download returns version of certificate id as a ZIP of PEM files, laid
-// out as certbot does, and a file name for it. It publishes
-// certificate.key_downloaded, for the audit trail.
-func (s *service) download(ctx context.Context, id, version int64, username string) ([]byte, string, error) {
+// out as certbot does, with certificate.pfx when pfx is not nil, and a file
+// name for it. It publishes certificate.key_downloaded, for the audit
+// trail.
+func (s *service) download(ctx context.Context, id, version int64, username string, pfx *pfxOptions) ([]byte, string, error) {
 	var chain, fingerprint, names string
 	var sealed []byte
 	var notAfter int64
@@ -45,10 +52,7 @@ func (s *service) download(ctx context.Context, id, version int64, username stri
 		return nil, "", err
 	}
 
-	var buf bytes.Buffer
-	zw := zip.NewWriter(&buf)
-	now := s.now()
-	for _, f := range []struct {
+	files := []struct {
 		name string
 		data []byte
 	}{
@@ -56,7 +60,26 @@ func (s *service) download(ctx context.Context, id, version int64, username stri
 		{"chain.pem", cryptox.EncodeCertificates(certs[1:]...)},
 		{"fullchain.pem", []byte(chain)},
 		{"privkey.pem", key},
-	} {
+	}
+	if pfx != nil {
+		signer, err := cryptox.ParseKey(key)
+		if err != nil {
+			return nil, "", err
+		}
+		data, err := cryptox.EncodePFX(certs, signer, pfx.password, pfx.legacy)
+		if err != nil {
+			return nil, "", err
+		}
+		files = append(files, struct {
+			name string
+			data []byte
+		}{"certificate.pfx", data})
+	}
+
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	now := s.now()
+	for _, f := range files {
 		if len(f.data) == 0 {
 			continue // no intermediates
 		}

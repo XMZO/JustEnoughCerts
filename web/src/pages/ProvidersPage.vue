@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { CircleCheck, Pencil, PlugZap, Plus, Send, Trash2, TriangleAlert } from '@lucide/vue'
-import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { useCertificates, useRuns } from '../api/certs'
 import { useCredentials } from '../api/credentials'
@@ -157,6 +157,19 @@ const editOpen = computed({
     if (!open) editing.value = undefined
   },
 })
+// A link to one of them, ?edit=<id> as the quick jump makes, opens it.
+const route = useRoute()
+const router = useRouter()
+watch(
+  [() => route.query.edit, () => list.data.value],
+  ([edit, providers]) => {
+    if (typeof edit !== 'string' || !providers) return
+    const p = providers.find((x) => String(x.id) === edit)
+    if (p) editing.value = p
+    void router.replace({ query: { ...route.query, edit: undefined } })
+  },
+  { immediate: true },
+)
 
 const deleting = ref<Provider>()
 const deleteOpen = computed({

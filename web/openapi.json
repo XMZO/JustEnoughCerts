@@ -1290,6 +1290,19 @@
             "maxLength": 1024,
             "minLength": 1,
             "type": "string"
+          },
+          "pfx": {
+            "description": "Add certificate.pfx, the certificate, its chain and its key as PKCS #12",
+            "type": "boolean"
+          },
+          "pfxLegacy": {
+            "description": "Encrypt certificate.pfx with 3DES, as Windows Server 2016 and Java 8 need, rather than AES-256",
+            "type": "boolean"
+          },
+          "pfxPassword": {
+            "description": "The password of certificate.pfx; empty leaves it unencrypted",
+            "maxLength": 128,
+            "type": "string"
           }
         },
         "required": [
@@ -4660,7 +4673,7 @@
                 }
               }
             },
-            "description": "cert.pem, chain.pem (when there are intermediates), fullchain.pem and privkey.pem",
+            "description": "cert.pem, chain.pem (when there are intermediates), fullchain.pem and privkey.pem, and certificate.pfx when asked for",
             "headers": {
               "Cache-Control": {
                 "schema": {

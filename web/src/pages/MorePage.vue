@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Blocks, ChevronRight, Globe, KeyRound, LogOut, Package, Radar, ScrollText, Server, Settings } from '@lucide/vue'
+import { Bell, Blocks, ChevronRight, Globe, KeyRound, LogOut, Package, Radar, ScrollText, Search, Server, Settings } from '@lucide/vue'
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
@@ -10,6 +10,7 @@ import { useProviders } from '../api/providers'
 import JecButton from '../components/JecButton.vue'
 import LanguageSwitch from '../components/LanguageSwitch.vue'
 import PageHeader from '../components/PageHeader.vue'
+import { jumpOpen } from '../shell'
 import { useT } from '../i18n'
 
 // The phone tab "More": what the sidebar holds on wider screens.
@@ -39,6 +40,9 @@ const modulesOn = computed(() => manifest.data.value?.modules.filter((m) => m.re
 const audited = computed(() => manifest.data.value?.modules.some((m) => m.id === 'audit' && m.enabled) ?? false)
 const watching = computed(() => manifest.data.value?.modules.some((m) => m.id === 'watch' && m.enabled) ?? false)
 
+// The quick jump of the shell, which phones have here.
+const openJump = () => (jumpOpen.value = true)
+
 const signedIn = computed(() => (session.data.value ? t('kernel.shell.signed_in', { username: session.data.value.username }) : ''))
 
 async function leave() {
@@ -54,6 +58,14 @@ async function leave() {
   <PageHeader :title="t('kernel.shell.more')" />
 
   <div class="flex flex-col gap-3 px-4 pt-3 sm:mt-4 sm:gap-4 sm:p-0">
+    <button
+      type="button"
+      class="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border border-line bg-surface-sunken px-4 text-left text-ink-muted hover:text-ink"
+      @click="openJump"
+    >
+      <Search class="size-5 flex-none" aria-hidden="true" />
+      <span class="min-w-0 flex-1">{{ t('kernel.jump.title') }}</span>
+    </button>
     <RouterLink
       v-if="watching"
       to="/sites"

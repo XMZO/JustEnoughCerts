@@ -1,3 +1,5 @@
+import { ref } from 'vue'
+
 import type { MessageKey } from './i18n'
 
 /**
@@ -5,3 +7,6 @@ import type { MessageKey } from './i18n'
  * the sidebar lists on wider screens: a back button on phones only.
  */
 export const fromMore: { to: string; label: MessageKey } = { to: '/more', label: 'kernel.shell.more' }
+
+/** jumpOpen opens the quick jump of the shell, as Ctrl+K does: from the phone's More tab too. */
+export const jumpOpen = ref(false)

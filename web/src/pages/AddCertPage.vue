@@ -86,6 +86,12 @@ const pem = ref({ certificate: '', privateKey: '', pfx: '', pfxPassword: '' })
 // Issue.
 const issue = useIssueCertificate()
 const domains = ref<string[]>([])
+// A wildcard covers the names under a domain, not the domain itself: the
+// page offers to add those left out, a common slip.
+const missingApex = computed(() =>
+  domains.value.filter((d) => d.startsWith('*.') && !domains.value.includes(d.slice(2))).map((d) => d.slice(2)),
+)
+const addApex = () => (domains.value = [...domains.value, ...missingApex.value])
 // Or several at once: a certificate a line, its domains apart by spaces or
 // commas, all else alike.
 const bulk = ref(false)
@@ -366,6 +372,10 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
             <p v-if="badDomains.length" id="domains-help" class="m-0 text-small text-danger-ink">{{ t('certs.error.bad_domain') }}</p>
             <p v-else-if="fieldError('domains')" id="domains-help" class="m-0 text-small text-danger-ink">{{ t(fieldError('domains')!) }}</p>
             <p v-else id="domains-help" class="m-0 text-small text-ink-muted">{{ t('certs.add.domains_help') }}</p>
+            <p v-if="missingApex.length" role="status" class="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 text-small">
+              <span class="[overflow-wrap:anywhere]">{{ t('certs.add.apex_hint', { names: intl.list(missingApex) }) }}</span>
+              <JecButton size="sm" @click="addApex"><Plus class="size-4" aria-hidden="true" />{{ t('certs.add.apex_add') }}</JecButton>
+            </p>
           </div>
         </section>
 

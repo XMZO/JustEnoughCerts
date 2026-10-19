@@ -371,17 +371,24 @@ const downloadOpen = computed({
   },
 })
 const password = ref('')
+// A PKCS #12 file too, for Windows, IIS and Java, with a password of its own.
+const pfx = ref({ on: false, password: '', legacy: false })
 const download = useDownload(() => props.id)
 const downloadError = useApiError(download.error)
 function startDownload(version: number) {
   password.value = ''
+  pfx.value = { on: false, password: '', legacy: false }
   download.reset()
   downloading.value = version
 }
 async function submitDownload() {
   if (downloading.value === null) return
   try {
-    const file = await download.mutateAsync({ version: downloading.value, password: password.value })
+    const file = await download.mutateAsync({
+      version: downloading.value,
+      password: password.value,
+      ...(pfx.value.on ? { pfx: true, pfxPassword: pfx.value.password, pfxLegacy: pfx.value.legacy } : {}),
+    })
     saveFile(file.blob, file.name)
   } catch {
     return // shown in the dialog
@@ -966,6 +973,25 @@ async function confirmDelete() {
           required
         />
       </JecField>
+      <label class="flex cursor-pointer items-start gap-2">
+        <input v-model="pfx.on" type="checkbox" class="mt-1 size-4 flex-none accent-brand" />
+        <span class="min-w-0">
+          <span class="block font-semibold">{{ t('certs.download.pfx') }}</span>
+          <span class="block text-small text-ink-muted">{{ t('certs.download.pfx_help') }}</span>
+        </span>
+      </label>
+      <template v-if="pfx.on">
+        <JecField id="pfx-password" label="certs.download.pfx_password" hint="certs.download.pfx_password_help" :error="downloadError.fields.value.pfxPassword">
+          <JecInput id="pfx-password" v-model="pfx.password" type="password" autocomplete="new-password" />
+        </JecField>
+        <label v-if="pfx.password" class="flex cursor-pointer items-start gap-2">
+          <input v-model="pfx.legacy" type="checkbox" class="mt-1 size-4 flex-none accent-brand" />
+          <span class="min-w-0">
+            <span class="block font-semibold">{{ t('certs.download.pfx_legacy') }}</span>
+            <span class="block text-small text-ink-muted">{{ t('certs.download.pfx_legacy_help') }}</span>
+          </span>
+        </label>
+      </template>
     </form>
     <template #footer>
       <JecButton @click="downloadOpen = false">{{ t('kernel.action.cancel') }}</JecButton>

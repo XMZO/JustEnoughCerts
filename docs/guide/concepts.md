@@ -66,6 +66,11 @@ renewal and deployment.
 | Issuance failed | The latest issuance failed, and no newer version exists |
 | Deploying | A deployment is under way |
 | Deployment failed | The latest deployment to one of the targets failed |
+| Revoked | The certificate authority revoked the current version (see [Revocation checks](../usage/renewal.md#revocation-checks)) |
+
+On any page, Ctrl+K (⌘K on a Mac), or Search in the sidebar (under More on
+phones), finds certificates by domain or note, pages and providers by name,
+and goes to the one chosen.
 
 ## Modules and plugins
 

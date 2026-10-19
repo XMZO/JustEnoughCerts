@@ -218,6 +218,10 @@ type downloadInput struct {
 	Version int64 `path:"version"`
 	Body    struct {
 		Password string `json:"password" minLength:"1" maxLength:"1024" doc:"The password of the signed-in account, asked again before a private key leaves JEC"`
+		// PFX adds certificate.pfx, for Windows, IIS, Azure and Java.
+		PFX         bool   `json:"pfx,omitempty" doc:"Add certificate.pfx, the certificate, its chain and its key as PKCS #12"`
+		PFXPassword string `json:"pfxPassword,omitempty" maxLength:"128" doc:"The password of certificate.pfx; empty leaves it unencrypted"`
+		PFXLegacy   bool   `json:"pfxLegacy,omitempty" doc:"Encrypt certificate.pfx with 3DES, as Windows Server 2016 and Java 8 need, rather than AES-256"`
 	}
 }
 
@@ -386,7 +390,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 		OperationID: "certs-download", Method: http.MethodPost, Path: "/certificates/{id}/versions/{version}/download",
 		Summary: "Download a version with its private key, as a ZIP of PEM files",
 		Responses: map[string]*huma.Response{"200": {
-			Description: "cert.pem, chain.pem (when there are intermediates), fullchain.pem and privkey.pem",
+			Description: "cert.pem, chain.pem (when there are intermediates), fullchain.pem and privkey.pem, and certificate.pfx when asked for",
 			Content:     map[string]*huma.MediaType{"application/zip": {Schema: &huma.Schema{Type: huma.TypeString, Format: "binary"}}},
 		}},
 	}, func(ctx context.Context, in *downloadInput) (*downloadOutput, error) {
@@ -394,7 +398,11 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			return nil, err
 		}
 		user, _ := auth.UserFrom(ctx)
-		data, name, err := s.download(ctx, in.ID, in.Version, user.Username)
+		var pfx *pfxOptions
+		if in.Body.PFX {
+			pfx = &pfxOptions{password: in.Body.PFXPassword, legacy: in.Body.PFXLegacy}
+		}
+		data, name, err := s.download(ctx, in.ID, in.Version, user.Username, pfx)
 		if err != nil {
 			return nil, serviceError(err)
 		}

@@ -318,6 +318,11 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.getByRole('button', { name: label('certs.action.download') }).filter({ visible: true }).first().click()
   await expect(page.locator('dialog[open]')).toBeVisible()
   expect.soft(await problems(page), 'download a certificate').toEqual([])
+  // With a PFX file, sealed with a password, for older systems.
+  await page.getByLabel(label('certs.download.pfx')).check()
+  await page.locator('#pfx-password').fill('pfx secret')
+  await page.getByLabel(label('certs.download.pfx_legacy')).check()
+  expect.soft(await problems(page), 'download a certificate with a PFX file').toEqual([])
   await page.keyboard.press('Escape')
   await expect(page.locator('dialog[open]')).toHaveCount(0)
 
@@ -641,10 +646,13 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.locator('#bulk-input').fill('a.example.com www.a.example.com\nb.example.com')
   expect.soft(await problems(page), 'add several certificates').toEqual([])
   await page.getByRole('button', { name: label('certs.add.bulk_one') }).click()
-  await page.locator('#domain-input').fill('issued.example.com')
-  await page.locator('#domain-input').press('Enter')
+  // A wildcard alone: the page offers its domain too.
   await page.locator('#domain-input').fill('*.issued.example.com')
   await page.locator('#domain-input').press('Enter')
+  await expect(page.getByRole('button', { name: label('certs.add.apex_add') })).toBeVisible()
+  expect.soft(await problems(page), 'a wildcard without its domain').toEqual([])
+  await page.getByRole('button', { name: label('certs.add.apex_add') }).click()
+  await expect(page.getByRole('button', { name: label('certs.add.apex_add') })).toHaveCount(0)
   await page.locator('button[form=add-form]').click()
   await expect(page).toHaveURL(/\/certificates\/\d+\/issuances\/\d+$/)
   await expect(page.getByText(label('certs.issuance.next_try')).first()).toBeVisible() // the first attempt failed
@@ -717,6 +725,23 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.getByRole('searchbox').fill('nothing.example')
   await expect(page.getByText(label('certs.runs.no_match'))).toBeVisible()
   expect.soft(await problems(page), 'history with no match').toEqual([])
+
+  // The quick jump: Ctrl+K, a domain typed, Enter goes to its certificate;
+  // then a search that finds nothing.
+  await page.goto('./')
+  await page.keyboard.press('Control+k')
+  const jump = page.locator('dialog[open]')
+  await expect(jump).toBeVisible()
+  await jump.getByRole('combobox').fill('issued.example')
+  await expect(jump.getByRole('option').first()).toContainText('issued.example.com')
+  expect.soft(await problems(page), 'the quick jump').toEqual([])
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/\/certificates\/\d+$/)
+  await page.keyboard.press('Control+k')
+  await jump.getByRole('combobox').fill('nothing.example')
+  await expect(jump.getByRole('status')).toBeVisible()
+  expect.soft(await problems(page), 'the quick jump, nothing found').toEqual([])
+  await page.keyboard.press('Escape')
 
   // The modules: one switched off and on again, then a search that finds none.
   await page.goto('./modules')

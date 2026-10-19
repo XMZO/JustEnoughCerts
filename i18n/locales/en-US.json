@@ -610,6 +610,8 @@
       "title": "Recent activity"
     },
     "add": {
+      "apex_add": "Add it",
+      "apex_hint": "A wildcard does not cover {names} itself.",
       "bulk_failed": "{count, plural, one {# certificate was not added} other {# certificates were not added}}; fix and add again:",
       "bulk_help": "A certificate a line, its domains apart by spaces or commas, the first its primary; the rest of the form is for each. {count, plural, one {# certificate} other {# certificates}}.",
       "bulk_label": "A certificate a line",
@@ -814,6 +816,12 @@
     "download": {
       "files": "A ZIP file with cert.pem, chain.pem, fullchain.pem and privkey.pem, the format most web servers take.",
       "intro": "The download holds the private key. Enter your password to go on.",
+      "pfx": "Add a PFX file",
+      "pfx_help": "certificate.pfx, to import into Windows, IIS, Azure or Java.",
+      "pfx_legacy": "For older systems",
+      "pfx_legacy_help": "Encrypt with 3DES, as Windows Server 2016 and Java 8 need, rather than AES-256.",
+      "pfx_password": "PFX password",
+      "pfx_password_help": "Asked for on import; leave it empty for none.",
       "title": "Download the certificate"
     },
     "eku": {
@@ -1882,6 +1890,14 @@
       "state_never": "Not run yet",
       "state_ok": "Last run fine",
       "state_running": "Running"
+    },
+    "jump": {
+      "label": "Search certificates, pages and providers",
+      "none": "Nothing matches “{query}”.",
+      "page": "Page",
+      "results": "Results",
+      "title": "Search",
+      "with_key": "Search ({key})"
     },
     "login": {
       "code": "Code from your authenticator app",

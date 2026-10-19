@@ -1682,6 +1682,12 @@ export interface components {
         DownloadInputBody: {
             /** @description The password of the signed-in account, asked again before a private key leaves JEC */
             password: string;
+            /** @description Add certificate.pfx, the certificate, its chain and its key as PKCS #12 */
+            pfx?: boolean;
+            /** @description Encrypt certificate.pfx with 3DES, as Windows Server 2016 and Java 8 need, rather than AES-256 */
+            pfxLegacy?: boolean;
+            /** @description The password of certificate.pfx; empty leaves it unencrypted */
+            pfxPassword?: string;
         };
         EntriesOutputBody: {
             counts: components["schemas"]["CountsBody"];
@@ -3298,7 +3304,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description cert.pem, chain.pem (when there are intermediates), fullchain.pem and privkey.pem */
+            /** @description cert.pem, chain.pem (when there are intermediates), fullchain.pem and privkey.pem, and certificate.pfx when asked for */
             200: {
                 headers: {
                     "Cache-Control"?: string;

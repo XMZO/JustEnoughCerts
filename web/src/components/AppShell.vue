@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Bell, Blocks, Ellipsis, Globe, History, KeyRound, LayoutGrid, LogOut, Menu, Package, Radar, ScrollText, Server, Settings, ShieldCheck, X } from '@lucide/vue'
-import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
+import { Bell, Blocks, Ellipsis, Globe, History, KeyRound, LayoutGrid, LogOut, Menu, Package, Radar, ScrollText, Search, Server, Settings, ShieldCheck, X } from '@lucide/vue'
+import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import { useSession, useSignOut } from '../api/account'
@@ -10,9 +10,11 @@ import { needsAttention } from '../certs/life'
 import { useManifest } from '../api/manifest'
 import { useT, type MessageKey } from '../i18n'
 import { attention } from '../router'
+import { jumpOpen } from '../shell'
 import { setZone } from '../zone'
 import JecMark from './JecMark.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
+import QuickJump from './QuickJump.vue'
 
 // The frame of every signed-in page: from 1024px a sidebar that stays, from
 // 640px one that opens from the menu button, and below that a tab bar at
@@ -77,6 +79,27 @@ const system = computed<Link[]>(() => [
 
 const current = (to: string) => (to === '/' ? route.path === '/' : route.path === to || route.path.startsWith(`${to}/`))
 
+// The quick jump, over every page above, opened by Ctrl+K (⌘K on a Mac) or
+// its buttons; mounted once first opened.
+const pages = computed(() => [...main.value, ...config, ...system.value])
+const jumpMounted = ref(false)
+watch(jumpOpen, (open) => (jumpMounted.value ||= open))
+const mac = /Mac|iPhone|iPad/.test(navigator.platform)
+const shortcut = mac ? '⌘K' : 'Ctrl K'
+function openJump() {
+  drawer.value = false
+  jumpOpen.value = true
+}
+const setJump = (open: boolean) => (jumpOpen.value = open)
+function onKey(e: KeyboardEvent) {
+  if ((mac ? e.metaKey : e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
+    e.preventDefault()
+    openJump()
+  }
+}
+onMounted(() => window.addEventListener('keydown', onKey))
+onUnmounted(() => window.removeEventListener('keydown', onKey))
+
 const drawer = ref(false)
 watch(() => route.fullPath, () => (drawer.value = false))
 
@@ -105,7 +128,16 @@ async function leave() {
         <Menu class="size-5" aria-hidden="true" />
       </button>
       <JecMark :size="32" />
-      <span class="font-semibold">{{ t('kernel.app.name') }}</span>
+      <span class="flex-1 font-semibold">{{ t('kernel.app.name') }}</span>
+      <button
+        type="button"
+        :aria-label="t('kernel.jump.title')"
+        :title="t('kernel.jump.with_key', { key: shortcut })"
+        class="grid size-11 cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink hover:bg-surface-sunken"
+        @click="openJump"
+      >
+        <Search class="size-5" aria-hidden="true" />
+      </button>
     </div>
 
     <div v-if="drawer" class="fixed inset-0 z-30 bg-[color-mix(in_srgb,var(--ink)_45%,transparent)] lg:hidden" @click="drawer = false" />
@@ -130,6 +162,15 @@ async function leave() {
           <X class="size-4" aria-hidden="true" />
         </button>
       </div>
+      <button
+        type="button"
+        class="-my-1 flex h-9 cursor-pointer items-center gap-2.5 rounded-md border border-line bg-surface-sunken px-2.5 text-left text-ink-muted hover:text-ink"
+        @click="openJump"
+      >
+        <Search class="size-4 flex-none" aria-hidden="true" />
+        <span class="min-w-0 flex-1 truncate">{{ t('kernel.jump.title') }}</span>
+        <kbd class="flex-none font-sans text-caption" translate="no">{{ shortcut }}</kbd>
+      </button>
       <nav :aria-label="t('kernel.shell.navigation')" class="flex flex-col gap-0.5">
         <RouterLink
           v-for="link in main"
@@ -198,6 +239,7 @@ async function leave() {
     <main class="mx-auto w-full max-w-[1184px] min-w-0 flex-1 pb-24 sm:px-8 sm:pt-6 sm:pb-8">
       <RouterView />
     </main>
+    <QuickJump v-if="jumpMounted" :open="jumpOpen" :pages="pages" @update:open="setJump" />
 
     <!-- Phones: the tab bar. -->
     <nav

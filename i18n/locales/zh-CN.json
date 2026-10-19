@@ -610,6 +610,8 @@
       "title": "最近动态"
     },
     "add": {
+      "apex_add": "加上",
+      "apex_hint": "通配符不包含 {names} 本身。",
       "bulk_failed": "{count, plural, other {# 张证书}}没有添加，原因如下；改好后可以再次提交：",
       "bulk_help": "每行一张证书，同一行的多个域名用空格或逗号分隔，第一个是主域名；表单里的其余设置对每张都一样。共 {count, plural, other {# 张}}。",
       "bulk_label": "每行一张证书",
@@ -814,6 +816,12 @@
     "download": {
       "files": "ZIP 文件，内含 cert.pem、chain.pem、fullchain.pem 和 privkey.pem，大多数 Web 服务器都能直接用。",
       "intro": "下载的文件里有私钥。请输入登录密码继续。",
+      "pfx": "同时生成 PFX 文件",
+      "pfx_help": "certificate.pfx，供 Windows、IIS、Azure 和 Java 导入。",
+      "pfx_legacy": "兼容旧系统",
+      "pfx_legacy_help": "用 3DES 加密，Windows Server 2016 和 Java 8 需要；其他情况用 AES-256。",
+      "pfx_password": "PFX 密码",
+      "pfx_password_help": "导入时要输入；留空则不加密。",
       "title": "下载证书"
     },
     "eku": {
@@ -1882,6 +1890,14 @@
       "state_never": "还没有运行过",
       "state_ok": "上次运行正常",
       "state_running": "正在运行"
+    },
+    "jump": {
+      "label": "搜索证书、页面和服务商",
+      "none": "没有找到“{query}”。",
+      "page": "页面",
+      "results": "搜索结果",
+      "title": "搜索",
+      "with_key": "搜索（{key}）"
     },
     "login": {
       "code": "验证器 App 里的验证码",
