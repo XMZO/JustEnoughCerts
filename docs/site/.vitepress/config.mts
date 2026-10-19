@@ -4,9 +4,14 @@ import { sections, source, titleOf } from '../pages.mjs'
 
 // The documentation site (PLAN.md 11): the guides of docs/, as pages.mjs
 // puts them together in src/, in English and in Chinese. It is published
-// to GitHub Pages under the repository's path.
+// to GitHub Pages.
 
 const repo = 'https://github.com/XMZO/JustEnoughCerts'
+
+// The path the site is published under, as the workflow learns it from
+// GitHub Pages (.github/workflows/docs.yml): "/" on the custom domain and
+// when built here.
+const base = process.env.DOCS_BASE || '/'
 
 type Lang = 'en' | 'zh-CN'
 
@@ -58,7 +63,7 @@ function nav(lang: Lang, text: { guide: string; reference: string; development: 
 
 export default defineConfig({
   srcDir: 'src',
-  base: '/JustEnoughCerts/',
+  base,
   title: 'Just Enough Certs',
   cleanUrls: true,
   markdown: {
@@ -70,7 +75,7 @@ export default defineConfig({
     },
   },
   head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/JustEnoughCerts/jec-mark.svg' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: `${base}jec-mark.svg` }],
     ['meta', { name: 'theme-color', content: '#2a7a2e' }],
   ],
   themeConfig: {
