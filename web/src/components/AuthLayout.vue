@@ -3,6 +3,11 @@ import { useT } from '../i18n'
 import JecMark from './JecMark.vue'
 
 const { t } = useT()
+
+// A hotbar under the form, a picture only (docs/design/boards/Login): a few
+// slots with their durability bars, then empty ones. Nine slots do not fit
+// a phone, which goes without.
+const hotbar = [{ pct: 84 }, { pct: 65 }, { pct: 12, warn: true }, { pct: 92 }, { pct: 48 }, null, null, null, null]
 </script>
 
 <template>
@@ -18,5 +23,16 @@ const { t } = useT()
         <slot name="footer" />
       </div>
     </main>
+    <div class="hidden gap-1 rounded-md border border-line bg-surface-raised p-1 sm:flex" aria-hidden="true">
+      <span
+        v-for="(s, i) in hotbar"
+        :key="i"
+        :class="['relative size-12 flex-none rounded-sm', s ? 'bg-surface-sunken shadow-slot' : 'shadow-[inset_0_0_0_1px_var(--line-strong)]']"
+      >
+        <span v-if="s" class="absolute right-1.5 bottom-[5px] left-1.5 h-1 bg-bar-track p-px shadow-[0_0_0_1px_var(--bar-edge)]">
+          <span :class="['block h-full', s.warn ? 'bg-warn-fill' : 'bg-ok-fill']" :style="{ width: `${s.pct}%` }" />
+        </span>
+      </span>
+    </div>
   </div>
 </template>
