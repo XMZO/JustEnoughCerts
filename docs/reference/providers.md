@@ -24,7 +24,7 @@ Reports of results with real accounts are welcome.
 
 | Type | Description | Tested with |
 |---|---|---|
-| `acme.account` | Any ACME CA, with External Account Binding | Emulator: Pebble, in CI |
+| `acme.account` | Any ACME CA, with External Account Binding; renewal information (ARI) and revocation | Emulator: Pebble, in CI |
 | `namecheap.ssl_manager` | Namecheap SSL Manager (experimental) | Fake, written after its official client |
 | `files.watch` | Certificates another client renews on this machine | The file system |
 | `aliyun.fetch` | Certificates issued by Alibaba Cloud Certificate Management Service | Fake |
