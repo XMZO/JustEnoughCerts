@@ -69,11 +69,12 @@ func Main(ctx context.Context) int {
 }
 
 // passed are the variables a child gets from the parent's environment
-// besides the ones it is started with: proxies and certificate locations,
-// which networking code needs to work as the server does.
+// besides the ones it is started with: proxies, certificate locations and
+// the DNS resolvers set for JEC, which networking code needs to work as
+// the server does.
 var passed = []string{
 	"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "no_proxy",
-	"SSL_CERT_FILE", "SSL_CERT_DIR",
+	"SSL_CERT_FILE", "SSL_CERT_DIR", "JEC_DNS_RESOLVERS",
 }
 
 // Child is a running child process.

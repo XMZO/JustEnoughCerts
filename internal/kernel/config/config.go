@@ -44,6 +44,10 @@ type Config struct {
 	// the client of a request: addresses and CIDR ranges, separated by
 	// commas. Empty trusts none, and the client is the peer.
 	TrustedProxies string `yaml:"trusted_proxies"`
+	// DNSResolvers are the recursive resolvers that find the zones of DNS
+	// records when they are checked: addresses with a port or not,
+	// separated by commas. Empty uses the system's.
+	DNSResolvers string `yaml:"dns_resolvers"`
 	// Log configures the process log.
 	Log Log `yaml:"log"`
 	// SecretKey is the master key sealing the stored secrets, base64 of 32
@@ -103,6 +107,7 @@ var settings = []setting{
 	{"base-url", "JEC_BASE_URL", "URL users open in the browser, if it differs from what the server sees", func(c *Config) *string { return &c.BaseURL }},
 	{"hsts", "JEC_HSTS", "true to send Strict-Transport-Security, when the panel is reached over HTTPS alone", func(c *Config) *string { return &c.HSTS }},
 	{"trusted-proxies", "JEC_TRUSTED_PROXIES", "addresses or CIDR ranges of the reverse proxies whose X-Forwarded-For to trust", func(c *Config) *string { return &c.TrustedProxies }},
+	{"dns-resolvers", "JEC_DNS_RESOLVERS", "DNS resolvers that find the zones of records being checked, separated by commas; the system's by default", func(c *Config) *string { return &c.DNSResolvers }},
 	{"log-level", "JEC_LOG_LEVEL", "log level: debug, info, warn or error", func(c *Config) *string { return &c.Log.Level }},
 	{"log-format", "JEC_LOG_FORMAT", "log format: text or json", func(c *Config) *string { return &c.Log.Format }},
 }

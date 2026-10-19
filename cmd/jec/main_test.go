@@ -15,7 +15,7 @@ import (
 // clearEnv hides the developer's own JEC_* variables from the commands.
 func clearEnv(t *testing.T) {
 	t.Helper()
-	for _, key := range []string{"JEC_CONFIG", "JEC_DATA_DIR", "JEC_LISTEN", "JEC_BASE_URL", "JEC_LOG_LEVEL", "JEC_LOG_FORMAT"} {
+	for _, key := range []string{"JEC_CONFIG", "JEC_DATA_DIR", "JEC_LISTEN", "JEC_BASE_URL", "JEC_LOG_LEVEL", "JEC_LOG_FORMAT", "JEC_DNS_RESOLVERS"} {
 		t.Setenv(key, "") // empty counts as unset
 	}
 }
@@ -85,6 +85,9 @@ func TestBadFlags(t *testing.T) {
 	}
 	if code, _, stderr := runCLI(t.Context(), "serve", "--listen", "nope"); code != exitError || !strings.Contains(stderr, "listen") {
 		t.Errorf("serve with a bad listen address: exit %d, stderr %q", code, stderr)
+	}
+	if code, _, stderr := runCLI(t.Context(), "serve", "--dns-resolvers", "223.5.5.5,1.2.3.4:dns"); code != exitError || !strings.Contains(stderr, "1.2.3.4:dns") {
+		t.Errorf("serve with a bad DNS resolver: exit %d, stderr %q", code, stderr)
 	}
 }
 

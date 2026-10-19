@@ -232,6 +232,7 @@ the config file, an environment variable and a command-line flag.
 | `-base-url` | `JEC_BASE_URL` | `base_url` | the address the server sees |
 | `-hsts` | `JEC_HSTS` | `hsts` | `false` |
 | `-trusted-proxies` | `JEC_TRUSTED_PROXIES` | `trusted_proxies` | none |
+| `-dns-resolvers` | `JEC_DNS_RESOLVERS` | `dns_resolvers` | the system's |
 | `-log-level` | `JEC_LOG_LEVEL` | `log.level` | `info` |
 | `-log-format` | `JEC_LOG_FORMAT` | `log.format` | `text` (or `json`) |
 | `-config` | `JEC_CONFIG` | | `<data-dir>/config.yaml`, if it exists |
@@ -239,6 +240,11 @@ the config file, an environment variable and a command-line flag.
 
 Set `JEC_HSTS` to `true` only when the panel is reached over HTTPS alone:
 browsers then refuse plain HTTP to it for a year.
+
+`JEC_DNS_RESOLVERS` lists the DNS resolvers, such as
+`223.5.5.5,119.29.29.29`, that find the zone of a validation record
+before its authoritative servers are asked for it: for a machine whose
+own resolver answers wrongly, as a split-horizon one does.
 
 `JEC_SECRET_KEY` is base64 of 32 random bytes, as from
 `openssl rand -base64 32`. It can only come from the environment, and JEC

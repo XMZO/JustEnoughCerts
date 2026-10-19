@@ -15,6 +15,7 @@ import (
 	_ "golang.org/x/crypto/x509roots/fallback" // CA roots, for the same reason
 
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/children"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/dnscheck"
 )
 
 // Exit codes.
@@ -62,7 +63,11 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	case "-version", "--version":
 		return runVersion(ctx, nil, stdout, stderr)
 	case children.Command:
-		// Not in the usage: the server starts these itself.
+		// Not in the usage: the server starts these itself, with its DNS
+		// resolvers, if any.
+		if servers, err := dnscheck.ParseResolvers(os.Getenv(dnscheck.ResolversEnv)); err == nil {
+			dnscheck.UseResolvers(servers)
+		}
 		return children.Main(ctx)
 	}
 	for _, c := range commands() {

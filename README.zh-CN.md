@@ -127,12 +127,15 @@ certificates:
 | `-base-url` | `JEC_BASE_URL` | `base_url` | 服务端看到的地址 |
 | `-hsts` | `JEC_HSTS` | `hsts` | `false` |
 | `-trusted-proxies` | `JEC_TRUSTED_PROXIES` | `trusted_proxies` | 无 |
+| `-dns-resolvers` | `JEC_DNS_RESOLVERS` | `dns_resolvers` | 系统的 |
 | `-log-level` | `JEC_LOG_LEVEL` | `log.level` | `info` |
 | `-log-format` | `JEC_LOG_FORMAT` | `log.format` | `text`（或 `json`） |
 | `-config` | `JEC_CONFIG` | | `<data-dir>/config.yaml`（存在时） |
 | | `JEC_SECRET_KEY` | | `<data-dir>/secret.key` |
 
 只有面板始终经 HTTPS 访问时才把 `JEC_HSTS` 设为 `true`：设置后浏览器一年内都不肯再用 HTTP 打开它。
+
+`JEC_DNS_RESOLVERS` 列出 DNS 解析服务器，例如 `223.5.5.5,119.29.29.29`：查验证记录之前先用它们找到记录所在的域，再去问权威 DNS。本机的解析服务器答得不对时（比如内外网解析不一样）才需要设。
 
 `JEC_SECRET_KEY` 是 32 个随机字节的 base64，可以用 `openssl rand -base64 32` 生成。它只能通过环境变量传入；如果和加密数据库时用的密钥不一致，JEC 会拒绝启动。
 

@@ -9,12 +9,14 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"strings"
 	"sync/atomic"
 
 	"github.com/XMZO/JustEnoughCerts/internal/kernel"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/buildinfo"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/config"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/httpserver"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/dnscheck"
 )
 
 func runServe(ctx context.Context, args []string, _, stderr io.Writer) int {
@@ -26,6 +28,10 @@ func runServe(ctx context.Context, args []string, _, stderr io.Writer) int {
 	}
 	cfg, err := loader.Load(os.LookupEnv)
 	if err != nil {
+		fmt.Fprintln(stderr, "jec serve:", err)
+		return exitError
+	}
+	if err := useResolvers(cfg.DNSResolvers); err != nil {
 		fmt.Fprintln(stderr, "jec serve:", err)
 		return exitError
 	}
@@ -119,4 +125,17 @@ func checkDataDir(dir string) error {
 		return fmt.Errorf("data directory: %w", err)
 	}
 	return os.Remove(name)
+}
+
+// useResolvers makes the DNS resolvers set for JEC the ones that find the
+// zones of records, here and in the child processes of lego's DNS
+// providers, which get them through the environment; none keeps the
+// system's.
+func useResolvers(list string) error {
+	servers, err := dnscheck.ParseResolvers(list)
+	if err != nil || len(servers) == 0 {
+		return err
+	}
+	dnscheck.UseResolvers(servers)
+	return os.Setenv(dnscheck.ResolversEnv, strings.Join(servers, ","))
 }
