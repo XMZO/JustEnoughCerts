@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Download } from '@lucide/vue'
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import { saveFile, type LogLine } from '../api/certs'
 import { useT, type MessageKey, type Params } from '../i18n'
@@ -10,7 +10,7 @@ import JecButton from './JecButton.vue'
 // The log of an issuance or a deployment (docs/design/system/components/
 // LogView.md): a time and a sentence a line, colored by level, following
 // new lines unless someone scrolled up to read; the raw details on
-// request, and the whole log as a download.
+// request, when a line has any, and the whole log as a download.
 const props = defineProps<{
   lines: LogLine[]
   /** Shows the cursor of a log still growing. */
@@ -39,6 +39,7 @@ watch(
   },
 )
 const showDetail = ref(false)
+const hasDetail = computed(() => props.lines.some((l) => l.detail))
 
 /** The full log as text: every line with its time, attempt, level and raw detail. */
 function download() {
@@ -57,7 +58,7 @@ function download() {
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h2 id="log-title" class="m-0 text-section-title font-semibold">{{ t('certs.issuance.log') }}</h2>
       <div class="flex flex-wrap items-center gap-2">
-        <label class="flex min-h-9 items-center gap-1.5 text-small">
+        <label v-if="hasDetail" class="flex min-h-9 items-center gap-1.5 text-small">
           <input v-model="showDetail" type="checkbox" class="size-4 accent-brand" />{{ t('certs.issuance.show_detail') }}
         </label>
         <JecButton size="sm" :disabled="!lines.length" @click="download">
