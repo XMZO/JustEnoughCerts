@@ -411,6 +411,12 @@ test('every page is translated and fits', async ({ page }, info) => {
     await expect(page.getByText(label('certs.deployment.state.done')).first()).toBeVisible({ timeout: 1000 })
   }).toPass({ timeout: 20_000 })
   expect.soft(await problems(page), 'a certificate deployed').toEqual([])
+  // Deploying it there again asks first.
+  await page.getByRole('button', { name: message('certs.action.redeploy_to', { target: 'e2e files' }) }).click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'deploy again, asked first').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
   await page.getByRole('link', { name: /e2e files/ }).click()
   await expect(page).toHaveURL(/\/deployments\/\d+$/)
   await expect(page.getByText(label('certs.deployment.done')).first()).toBeVisible()

@@ -11,6 +11,7 @@ import { useCertActions } from '../certs/actions'
 import { failingDeployment, useDeployNote } from '../certs/deployment'
 import { runAt, runLink, runResult, useRunText } from '../certs/runs'
 import { certLife, lifeText, needsAttention, type Life } from '../certs/life'
+import CertActionDialog, { type CertAsk } from '../components/CertActionDialog.vue'
 import CertSlot from '../components/CertSlot.vue'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
@@ -71,10 +72,12 @@ const subtitle = computed(() => {
 })
 
 // What the buttons do: issue a certificate now, or deploy it again.
-const { issue, deploy, primary } = useCertActions()
+// Renewing certificates that work asks first.
+const { issue, deploy, primary, ask } = useCertActions()
+const asking = ref<CertAsk>()
 const actionError = useApiError(computed(() => issue.error.value ?? deploy.error.value))
-const busy = ref<number | 'renewing' | null>(null)
-async function act(run: () => Promise<unknown>, who: number | 'renewing') {
+const busy = ref<number | null>(null)
+async function act(run: () => Promise<unknown>, who: number) {
   busy.value = who
   try {
     await run()
@@ -84,10 +87,20 @@ async function act(run: () => Promise<unknown>, who: number | 'renewing') {
     busy.value = null
   }
 }
-const renewAll = () => act(() => Promise.all(renewing.value.map((c) => issue.mutateAsync(c.id))), 'renewing')
+function renewAll() {
+  const certs = [...renewing.value]
+  const [only] = certs
+  asking.value =
+    only && certs.length === 1 ? ask(only) : { kind: 'issue', certs, run: () => Promise.all(certs.map((c) => issue.mutateAsync(c.id))) }
+}
 
 // The summary's first button does the main thing for the certificate.
 const selectedPrimary = computed(() => (selected.value ? primary(selected.value) : null))
+function runPrimary(c: Certificate) {
+  const main = primary(c)
+  if (main?.confirm) asking.value = ask(c, main)
+  else if (main?.run) void act(main.run, c.id)
+}
 
 const order: CertificateState[] = ['failed', 'deploy_failed', 'expired', 'expiring', 'issuing', 'deploying', 'ok']
 const counts = computed(() =>
@@ -326,7 +339,7 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
               size="sm"
               :busy="busy === selected.id"
               class="max-sm:flex-1"
-              @click="act(selectedPrimary.run, selected.id)"
+              @click="runPrimary(selected)"
             >
               {{ t(selectedPrimary.label) }}
             </JecButton>
@@ -345,7 +358,7 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
               <div class="font-semibold [overflow-wrap:anywhere]">{{ t('certs.attention.renewal_group', { count: renewing.length }) }}</div>
               <div class="text-small text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.attention.renewal_detail', { time: firstRenewal }) }}</div>
             </div>
-            <JecButton variant="ghost" size="sm" :busy="busy === 'renewing'" @click="renewAll">{{ t('certs.action.renew_now') }}</JecButton>
+            <JecButton variant="ghost" size="sm" @click="renewAll">{{ t('certs.action.renew_now') }}</JecButton>
           </div>
           <div
             v-for="item in todo"
@@ -428,4 +441,6 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
       </div>
     </template>
   </div>
+
+  <CertActionDialog v-model:ask="asking" />
 </template>

@@ -649,6 +649,20 @@
         "renewal": "Renewal defaults"
       }
     },
+    "confirm": {
+      "collect": "JEC looks at {source} for a newer certificate now, and takes it in if there is one.",
+      "collect_schedule": "The current certificate expires on {expiry}; JEC checks on its own on {date}.",
+      "collect_title": "Check {domain} now?",
+      "redeploy": "JEC deploys the current certificate, which expires on {expiry}, to {targets} again, without getting a new one. The reloads or restarts set up for the targets run again too.",
+      "redeploy_title": "Deploy {domain} again?",
+      "redeploy_to_title": "Deploy again to {target}?",
+      "renew": "JEC asks {source} for a new certificate now.",
+      "renew_all": "These certificates are due for renewal, which JEC starts on its own at {time}. Renewing now asks their sources for new certificates at once, deployed once issued:",
+      "renew_all_title": "{count, plural, one {Renew # certificate now?} other {Renew # certificates now?}}",
+      "renew_schedule": "The current certificate expires on {expiry}, and JEC renews it on its own on {date}; there is usually no need to renew by hand.",
+      "renew_title": "Renew {domain} now?",
+      "then_deploy": "The new certificate is then deployed to {targets}; until then, the current one stays in use."
+    },
     "defaults": {
       "check_time": "Daily check time",
       "check_time_help": "Certificates in their renewal window start renewing at this time, in the panel's time zone ({zone}); with a week or less left, at once.",
@@ -855,7 +869,10 @@
       "take_over": "Picking up the order the last issuance left, with its private key"
     },
     "menu": {
-      "label": "More for {domain}"
+      "collect_hint": "Looks for a newer certificate at the source",
+      "label": "More for {domain}",
+      "redeploy_hint": "Deploys the current certificate again, without a new one",
+      "renew_hint": "Gets a new certificate, then deploys it"
     },
     "module": {
       "description": "Keeps track of each certificate and its versions, and warns before one expires.",

@@ -649,6 +649,20 @@
         "renewal": "续期默认值"
       }
     },
+    "confirm": {
+      "collect": "JEC 会马上到 {source} 查看有没有更新的证书，有就取回。",
+      "collect_schedule": "现在这张证书 {expiry} 到期，JEC 会在 {date} 自动检查。",
+      "collect_title": "立即检查 {domain}？",
+      "redeploy": "JEC 会把现在这张证书（{expiry} 到期）重新部署到 {targets}，不申请新证书。部署目标设置的重载或重启也会再执行一次。",
+      "redeploy_title": "重新部署 {domain}？",
+      "redeploy_to_title": "重新部署到 {target}？",
+      "renew": "JEC 会马上向 {source} 申请一张新证书。",
+      "renew_all": "这些证书已进入续期窗口，JEC 会在 {time} 自动续期。现在续期会马上向各自的来源申请新证书，签好后部署：",
+      "renew_all_title": "立即续期 {count, plural, other {# 张证书}}？",
+      "renew_schedule": "现在这张证书 {expiry} 到期，JEC 会在 {date} 自动续期，平时不需要手动续期。",
+      "renew_title": "立即续期 {domain}？",
+      "then_deploy": "新证书会部署到 {targets}；在那之前，现在这张证书照常使用。"
+    },
     "defaults": {
       "check_time": "每天检查时间",
       "check_time_help": "进入续期窗口的证书在这个时间开始续期，按面板的时区（{zone}）；只剩一周或更少时立即续期。",
@@ -855,7 +869,10 @@
       "take_over": "接着做上一次签发留下的订单，用它的私钥"
     },
     "menu": {
-      "label": "{domain} 的更多操作"
+      "collect_hint": "到来源查看有没有更新的证书",
+      "label": "{domain} 的更多操作",
+      "redeploy_hint": "不申请新证书，把现在这张再部署一次",
+      "renew_hint": "申请一张新证书，签好后部署"
     },
     "module": {
       "description": "记录每张证书和它的各个版本，到期前发出提醒。",

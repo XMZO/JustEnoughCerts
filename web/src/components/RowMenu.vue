@@ -7,10 +7,12 @@ import { RouterLink, type RouteLocationRaw } from 'vue-router'
 // row's actions in a popover on the top layer, where no table clips it,
 // under the button, or above it when there is no room below. The arrow
 // keys, Home and End move between the items; Escape or a click elsewhere
-// closes it, and the focus goes back to the button.
+// closes it, and the focus goes back to the button. An item easy to take
+// for another says under its label what it does.
 export interface MenuItem {
   key: string
   label: string
+  hint?: string
   icon?: Component
   danger?: boolean
   to?: RouteLocationRaw
@@ -62,7 +64,8 @@ function choose(item: MenuItem) {
 }
 
 const itemClass = (item: MenuItem) => [
-  'flex min-h-9 w-full cursor-pointer items-center gap-2 rounded-sm border-0 bg-transparent px-2.5 text-left text-body whitespace-nowrap no-underline',
+  'flex min-h-9 w-full cursor-pointer gap-2 rounded-sm border-0 bg-transparent px-2.5 text-left text-body whitespace-nowrap no-underline',
+  item.hint ? 'items-start py-1.5' : 'items-center',
   'hover:bg-surface-sunken focus-visible:bg-surface-sunken focus-visible:outline-none',
   item.danger ? 'text-danger-ink hover:text-danger-ink' : 'text-ink hover:text-ink',
 ]
@@ -87,7 +90,7 @@ const itemClass = (item: MenuItem) => [
     popover="auto"
     role="menu"
     :aria-label="label"
-    class="fixed inset-auto m-0 min-w-44 flex-col gap-0.5 rounded-md border border-line bg-surface-raised p-1 text-ink shadow-popover [&:popover-open]:flex"
+    class="fixed inset-auto m-0 max-w-72 min-w-44 flex-col gap-0.5 rounded-md border border-line bg-surface-raised p-1 text-ink shadow-popover [&:popover-open]:flex"
     @beforetoggle="beforeToggle"
     @toggle="toggled"
     @keydown="move"
@@ -97,7 +100,11 @@ const itemClass = (item: MenuItem) => [
         <component :is="item.icon" v-if="item.icon" class="size-4 flex-none" aria-hidden="true" />{{ item.label }}
       </RouterLink>
       <button v-else type="button" role="menuitem" tabindex="-1" :class="itemClass(item)" @click="choose(item)">
-        <component :is="item.icon" v-if="item.icon" class="size-4 flex-none" aria-hidden="true" />{{ item.label }}
+        <component :is="item.icon" v-if="item.icon" :class="['size-4 flex-none', item.hint && 'mt-[3px]']" aria-hidden="true" />
+        <span v-if="item.hint" class="grid">
+          {{ item.label }}<span class="text-small whitespace-normal text-ink-muted">{{ item.hint }}</span>
+        </span>
+        <template v-else>{{ item.label }}</template>
       </button>
     </template>
   </div>

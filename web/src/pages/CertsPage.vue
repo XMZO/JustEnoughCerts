@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Activity, CircleCheck, CircleX, FileDown, LoaderCircle, OctagonX, Plus, RefreshCw, Send, Trash2, TriangleAlert, Upload } from '@lucide/vue'
+import { Activity, CircleCheck, CircleX, Eye, FileDown, LoaderCircle, OctagonX, Plus, RefreshCw, Send, Trash2, TriangleAlert, Upload } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
@@ -11,6 +11,7 @@ import { useProviders } from '../api/providers'
 import { useCertActions } from '../certs/actions'
 import { useDeployNote } from '../certs/deployment'
 import { barPercent, certLife, lifeText, needsAttention, stateText } from '../certs/life'
+import CertActionDialog, { type CertAsk } from '../components/CertActionDialog.vue'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
@@ -140,9 +141,11 @@ const rows = computed<Row[]>(() =>
   }),
 )
 
-// The menu of each row of the table: the main thing to do, deploying
-// again, a new version of an upload, and deletion, once confirmed.
-const { deploy, primary } = useCertActions()
+// The menu of each row of the table: the details, the main thing to do,
+// deploying again, a new version of an upload, and deletion. Renewing a
+// certificate that works, deploying it again and deleting it ask first.
+const { primary, ask, askDeploy } = useCertActions()
+const asking = ref<CertAsk>()
 // What went wrong with the last action, above the table.
 const failure = ref<unknown>()
 const actionError = useApiError(failure)
@@ -155,14 +158,21 @@ async function act(run: () => Promise<unknown>) {
   }
 }
 function menu(c: Certificate): MenuItem[] {
-  const items: MenuItem[] = []
+  const items: MenuItem[] = [{ key: 'details', label: t('certs.action.details'), icon: Eye, to: `/certificates/${c.id}` }]
   const main = primary(c)
   if (main) {
     const run = main.run
-    items.push({ key: 'main', label: t(main.label), icon: main.to ? Activity : RefreshCw, to: main.to, run: run && (() => void act(run)) })
+    items.push({
+      key: 'main',
+      label: t(main.label),
+      hint: main.hint && t(main.hint),
+      icon: main.to ? Activity : RefreshCw,
+      to: main.to,
+      run: run && (() => (main.confirm ? (asking.value = ask(c, main)) : void act(run))),
+    })
   }
   if (c.current && c.targets.length && c.state !== 'deploy_failed' && c.state !== 'deploying') {
-    items.push({ key: 'deploy', label: t('certs.action.redeploy'), icon: Send, run: () => void act(() => deploy.mutateAsync(c.id)) })
+    items.push({ key: 'deploy', label: t('certs.action.redeploy'), hint: t('certs.menu.redeploy_hint'), icon: Send, run: () => (asking.value = askDeploy(c)) })
   }
   if (c.source !== 'provider') items.push({ key: 'upload', label: t('certs.action.upload'), icon: Upload, to: `/certificates/${c.id}?upload=1` })
   items.push({ key: 'delete', label: t('certs.action.delete'), icon: Trash2, danger: true, run: () => (deleting.value = c) })
@@ -393,6 +403,8 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
       </section>
     </template>
   </div>
+
+  <CertActionDialog v-model:ask="asking" />
 
   <JecDialog v-model:open="deleteOpen" :title="t('certs.delete.title', { domain: deleting?.domains[0] ?? '' })" small>
     <div class="flex flex-col gap-3">

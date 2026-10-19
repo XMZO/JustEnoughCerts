@@ -37,6 +37,7 @@ import { deploymentState, failingDeployment } from '../certs/deployment'
 import { deploySteps, issuanceState, reasonText } from '../certs/issuance'
 import { certLife, colonHex, keyText } from '../certs/life'
 import { useDurationText } from '../certs/runs'
+import CertActionDialog, { type CertAsk } from '../components/CertActionDialog.vue'
 import CertSlot from '../components/CertSlot.vue'
 import CopyButton from '../components/CopyButton.vue'
 import IssuanceSteps from '../components/IssuanceSteps.vue'
@@ -125,14 +126,18 @@ const runSummary = computed(() => {
 })
 const issueNow = useIssueNow(() => props.id)
 const issueError = useApiError(issueNow.error)
-async function startIssue() {
-  let next
-  try {
-    next = await issueNow.mutateAsync(undefined)
-  } catch {
-    return // shown under the header
-  }
+// Renewing a certificate that works, and deploying it again where it
+// went well, ask first.
+const asking = ref<CertAsk>()
+const renews = computed(() => !!current.value && cert.value?.state !== 'failed' && cert.value?.state !== 'issuing')
+const issueLabel = computed(() => (ownKey.value ? 'certs.action.collect_now' : current.value ? 'certs.action.renew_now' : 'certs.action.issue_now'))
+async function issueAndShow() {
+  const next = await issueNow.mutateAsync(undefined)
   await router.push(`/certificates/${props.id}/issuances/${next.id}`)
+}
+function startIssue() {
+  if (renews.value && cert.value) asking.value = { kind: 'issue', certs: [cert.value], collects: ownKey.value, run: issueAndShow }
+  else issueAndShow().catch(() => {}) // shown under the header
 }
 const errorText = (e?: { key: string; params?: Record<string, unknown> }) => (e ? t(e.key as MessageKey, (e.params ?? {}) as Params) : '')
 
@@ -181,6 +186,11 @@ async function deployTo(target?: number) {
   }
 }
 const deployAll = () => deployTo()
+/** redeployTo deploys to target again, asking first where the last deployment there went well. */
+function redeployTo(target: number, last?: string) {
+  if (last === 'done' && cert.value) asking.value = { kind: 'deploy', certs: [cert.value], target, run: () => deployNow.mutateAsync(target) }
+  else void deployTo(target)
+}
 
 // Choosing the targets, in a dialog.
 const choosing = ref(false)
@@ -363,7 +373,7 @@ async function confirmDelete() {
         <Upload class="size-4" aria-hidden="true" />{{ t('certs.action.upload') }}
       </JecButton>
       <JecButton v-if="issued" variant="primary" :busy="issueNow.isPending.value" @click="startIssue">
-        <ShieldCheck class="size-4" aria-hidden="true" />{{ t(ownKey ? 'certs.action.collect_now' : 'certs.action.issue_now') }}
+        <ShieldCheck class="size-4" aria-hidden="true" />{{ t(issueLabel) }}
       </JecButton>
     </template>
   </PageHeader>
@@ -513,7 +523,7 @@ async function confirmDelete() {
                   class="mb-2 ml-auto flex-none sm:mb-0"
                   :busy="deploying === r.target"
                   :aria-label="t(r.d ? 'certs.action.redeploy_to' : 'certs.action.deploy_to', { target: r.label.name })"
-                  @click="deployTo(r.target)"
+                  @click="redeployTo(r.target, r.d?.state)"
                 >
                   <RotateCw class="size-4" aria-hidden="true" />{{ t(r.d ? 'certs.action.redeploy' : 'certs.action.deploy_now') }}
                 </JecButton>
@@ -685,7 +695,7 @@ async function confirmDelete() {
 
           <div class="flex flex-col gap-2 sm:hidden">
             <JecButton v-if="issued" variant="primary" :busy="issueNow.isPending.value" @click="startIssue">
-              <ShieldCheck class="size-4" aria-hidden="true" />{{ t(ownKey ? 'certs.action.collect_now' : 'certs.action.issue_now') }}
+              <ShieldCheck class="size-4" aria-hidden="true" />{{ t(issueLabel) }}
             </JecButton>
             <JecButton v-if="current" @click="startDownload(current.id)">
               <Download class="size-4" aria-hidden="true" />{{ t('certs.action.download') }}
@@ -696,6 +706,8 @@ async function confirmDelete() {
       </div>
     </template>
   </div>
+
+  <CertActionDialog v-model:ask="asking" />
 
   <JecDialog v-if="cert" v-model:open="uploading" :title="t('certs.upload.title')">
     <form id="upload-form" class="flex flex-col gap-3" novalidate @submit.prevent="submitUpload">
