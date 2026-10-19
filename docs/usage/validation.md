@@ -56,8 +56,10 @@ the validation.
 JEC answers the validation requests under `/.well-known/` itself, without
 a website directory. The website's reverse proxy or CDN must forward the
 `/.well-known/` requests of these domains to JEC, without requiring a
-sign-in. The connection test fetches a temporary file from the internet
-through the test domain, to confirm that the forwarding works.
+sign-in; [Reverse proxy and CDN](../operations/reverse-proxy.md#validation-files-answered-by-jec)
+has the configurations for Caddy and nginx. The connection test fetches a
+temporary file from the internet through the test domain, to confirm that
+the forwarding works.
 
 ## Answered at ESA's edge
 

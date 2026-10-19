@@ -38,13 +38,17 @@ log:
 
 ## Behind a reverse proxy
 
+[Reverse proxy and CDN](reverse-proxy.md) has complete configurations for
+Caddy and nginx, also behind a CDN.
+
 - `JEC_BASE_URL`: the URL users open, such as `https://certs.example.com`,
   or `https://example.com/certs/` for a sub-path. With an `https` URL, the
   session cookie is sent over HTTPS only. Notifications link to the pages
   they concern only when this is set.
 - `JEC_TRUSTED_PROXIES`: the addresses or CIDR ranges of the reverse
-  proxies, separated by commas, such as `127.0.0.1` or the container
-  network `172.16.0.0/12`. For requests from them, JEC reads the client
+  proxies, separated by commas, such as `127.0.0.1`, or `172.16.0.0/12`
+  for the networks of containers, as `docker-compose.yml` sets by default.
+  For requests from them, JEC reads the client
   address from `X-Forwarded-For`; without it, everyone behind the proxy
   shares the proxy's address, and one person's failed sign-ins lock out
   everyone.

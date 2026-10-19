@@ -32,8 +32,17 @@ The last command prints the setup token from the log, the part after
 
 ## 2. Create the administrator account
 
-Open `http://<host>:8080` in a browser, enter the setup token, a user name
-and a password, and choose Create account. Until the account exists, the
+JEC listens on `127.0.0.1:8080` of the server only. Set up HTTPS access as
+[Reverse proxy and CDN](../operations/reverse-proxy.md) describes and open
+the panel's address, or, for a first look, keep an SSH tunnel open from
+your own computer and open `http://localhost:8080`:
+
+```sh
+ssh -N -L 8080:127.0.0.1:8080 <user>@<host>
+```
+
+Enter the setup token, a user name and a password, and choose Create
+account. Until the account exists, the
 server generates a new token at each start, so only someone with access to
 the logs can complete the setup.
 

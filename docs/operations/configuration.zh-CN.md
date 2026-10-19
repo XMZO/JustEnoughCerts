@@ -33,8 +33,10 @@ log:
 
 ## 反向代理
 
+Caddy 与 nginx 的完整配置（含前置 CDN 的情形）见[反向代理与 CDN](reverse-proxy.zh-CN.md)。
+
 - `JEC_BASE_URL`：设为用户访问的地址，例如 `https://certs.example.com`，或子路径 `https://example.com/certs/`。使用 `https` 地址时，会话 Cookie 仅经 HTTPS 发送；设置后，通知中会附带对应页面的链接。
-- `JEC_TRUSTED_PROXIES`：设为反向代理的地址或 CIDR 网段，多个以逗号分隔，例如 `127.0.0.1` 或容器网段 `172.16.0.0/12`。来自这些地址的请求，JEC 从 `X-Forwarded-For` 读取客户端地址；未设置时，代理之后的全部用户共用代理的地址，一人连续输错密码将导致所有人被锁定。
+- `JEC_TRUSTED_PROXIES`：设为反向代理的地址或 CIDR 网段，多个以逗号分隔，例如 `127.0.0.1`，或容器网段 `172.16.0.0/12`（`docker-compose.yml` 的默认设置）。来自这些地址的请求，JEC 从 `X-Forwarded-For` 读取客户端地址；未设置时，代理之后的全部用户共用代理的地址，一人连续输错密码将导致所有人被锁定。
 - `JEC_HSTS`：仅当面板始终经 HTTPS 访问时设为 `true`；启用后，浏览器在一年内拒绝以 HTTP 访问该地址。
 
 ## DNS 解析服务器

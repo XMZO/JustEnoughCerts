@@ -6,6 +6,10 @@
 
 只要证书颁发机构提供 ACME，就优先使用 ACME：Let's Encrypt 等免费 CA 的证书可全程自动签发与续期。付费证书优先使用 CA 提供的 ACME 服务（配合 External Account Binding），或 JEC 支持的厂商服务；都不适用时，再手动上传证书。参见[证书来源](../usage/sources.zh-CN.md)。
 
+## 无法通过 `http://<服务器>:8080` 打开面板
+
+`docker-compose.yml` 仅在 `127.0.0.1:8080` 上发布 JEC，只能从服务器本机访问。请经配置了 HTTPS 的反向代理或 SSH 隧道打开面板，参见[反向代理与 CDN](../operations/reverse-proxy.zh-CN.md)。
+
 ## 签发失败，如何查找原因？
 
 打开证书，再打开最近一次签发：页面列出每个步骤及其日志，勾选“显示原始信息”可查看原始错误。常见原因包括：DNS 服务商的凭据没有添加记录的权限、所选 DNS 服务商并不负责该域名的解析、CAA 记录不允许该 CA，以及 CA 的频率限制。失败后 JEC 会自动重试，参见[失败与重试](../usage/renewal.zh-CN.md#失败与重试)。

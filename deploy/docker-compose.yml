@@ -5,6 +5,10 @@
 #
 # The container runs as 65532:65532 and keeps everything in ./data, so that
 # directory must be writable by that user, or set "user:" to its owner.
+#
+# JEC is reachable from this machine only, on 127.0.0.1:8080: a reverse
+# proxy here, such as Caddy or nginx, serves it over HTTPS, as
+# https://xmzo.github.io/JustEnoughCerts/operations/reverse-proxy describes.
 services:
   jec:
     # beta is the newest test release; latest, the newest stable one, comes
@@ -15,16 +19,19 @@ services:
     # Run as the owner of ./data instead of 65532:65532.
     # user: "1000:1000"
     ports:
-      - "8080:8080"
+      # "8080:8080" would open plain HTTP to every network instead.
+      - "127.0.0.1:8080:8080"
     environment:
       TZ: Asia/Shanghai
-      # The URL users open, when it differs from http://<host>:8080: behind a
-      # reverse proxy or under a sub-path. With https the session cookie is
+      # The URL users open through the reverse proxy, also under a sub-path
+      # such as https://example.com/certs/. With https the session cookie is
       # sent over HTTPS only.
       # JEC_BASE_URL: "https://certs.example.com"
-      # The reverse proxy, whose X-Forwarded-For tells who signs in: an
-      # address or a range, such as that of the networks of containers.
-      # JEC_TRUSTED_PROXIES: "172.16.0.0/12"
+      # The reverse proxy reaches JEC from the gateway of the container's
+      # network, in Docker's private ranges; its X-Forwarded-For then tells
+      # who signs in. Should the audit log show one address for everyone,
+      # put the subnet "docker network inspect jec_default" prints here.
+      JEC_TRUSTED_PROXIES: "172.16.0.0/12"
       # Only when the panel is reached over HTTPS alone: browsers then refuse
       # plain HTTP to it for a year.
       # JEC_HSTS: "true"

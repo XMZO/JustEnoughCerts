@@ -15,7 +15,7 @@ docker compose up -d
 
 - **镜像**：`ghcr.io/xmzo/justenoughcerts`，支持 linux/amd64、linux/arm64，以及自 0.1.0-alpha.6 起支持 linux/arm/v7（32 位 ARM，如运行 32 位系统的树莓派）。标签 `latest` 为最新正式版，`beta` 为最新测试版，也可指定版本号（如 `0.1.0-alpha.6`）。正式版发布前，`docker-compose.yml` 使用 `beta`。
 - **运行用户**：容器默认以 65532:65532 运行，`./data` 须对该用户可写。如需以现有目录的属主运行，请在 `docker-compose.yml` 中设置 `user:`；启动时若目录不可写，JEC 会给出明确的错误提示。
-- **端口**：默认监听 8080，可通过 `JEC_LISTEN` 修改，参见[配置参考](../operations/configuration.zh-CN.md)。
+- **端口**：`docker-compose.yml` 仅在 `127.0.0.1:8080` 上发布 JEC，只能从服务器本机访问，由反向代理对外提供，参见[反向代理与 CDN](../operations/reverse-proxy.zh-CN.md)。容器内默认监听 8080，可通过 `JEC_LISTEN` 修改，参见[配置参考](../operations/configuration.zh-CN.md)。
 - **时区**：`docker-compose.yml` 默认设置 `TZ: Asia/Shanghai`；面板的时区也可在设置页单独选择。
 
 ### 可选挂载

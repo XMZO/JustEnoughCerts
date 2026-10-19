@@ -24,8 +24,11 @@ docker compose up -d
   be writable by that user. To run as the owner of an existing directory
   instead, set `user:` in `docker-compose.yml`; if the directory is not
   writable, JEC reports it clearly at startup.
-- **Port**: JEC listens on 8080 by default; `JEC_LISTEN` changes it (see
-  the [Configuration reference](../operations/configuration.md)).
+- **Port**: `docker-compose.yml` publishes JEC on `127.0.0.1:8080`, which
+  only the server itself reaches; a reverse proxy serves it to the network
+  (see [Reverse proxy and CDN](../operations/reverse-proxy.md)). Within
+  the container, JEC listens on 8080; `JEC_LISTEN` changes it (see the
+  [Configuration reference](../operations/configuration.md)).
 - **Time zone**: `docker-compose.yml` sets `TZ: Asia/Shanghai` by default;
   the panel's own time zone can also be chosen on the Settings page.
 

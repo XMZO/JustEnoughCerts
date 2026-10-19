@@ -32,7 +32,7 @@ JEC 通过 [lego](https://github.com/go-acme/lego) 支持 221 家 DNS 服务商�
 
 ## JEC 自己应答
 
-由 JEC 直接响应 `/.well-known/` 下的验证请求，无需访问网站目录。前提是网站的反向代理或 CDN 将这些域名的 `/.well-known/` 请求转发至 JEC，且转发时不要求登录。测试连接会从公网经所填的测试域名取回一个临时文件，以确认转发配置有效。
+由 JEC 直接响应 `/.well-known/` 下的验证请求，无需访问网站目录。前提是网站的反向代理或 CDN 将这些域名的 `/.well-known/` 请求转发至 JEC，且转发时不要求登录；Caddy 与 nginx 的配置见[反向代理与 CDN](../operations/reverse-proxy.zh-CN.md#由-jec-应答验证文件)。测试连接会从公网经所填的测试域名取回一个临时文件，以确认转发配置有效。
 
 ## ESA 边缘应答
 

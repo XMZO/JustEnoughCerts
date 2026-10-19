@@ -34,7 +34,7 @@ docker compose up -d
 docker logs jec 2>&1 | grep setup_token
 ```
 
-在浏览器中打开 `http://<主机>:8080`，填写日志中的初始化令牌并创建管理员账号。正式版发布前，该文件使用最新测试版（镜像标签 `beta`）。签发第一张证书的步骤见[快速开始](https://xmzo.github.io/JustEnoughCerts/zh-CN/guide/getting-started)。
+JEC 仅监听服务器本机的 `127.0.0.1:8080`：按[反向代理与 CDN](https://xmzo.github.io/JustEnoughCerts/zh-CN/operations/reverse-proxy)经反向代理以 HTTPS 访问；或先试用时，在自己的电脑上执行 `ssh -N -L 8080:127.0.0.1:8080 <用户>@<主机>`，再打开 `http://localhost:8080`。填写日志中的初始化令牌并创建管理员账号。正式版发布前，该文件使用最新测试版（镜像标签 `beta`）。签发第一张证书的步骤见[快速开始](https://xmzo.github.io/JustEnoughCerts/zh-CN/guide/getting-started)。
 
 ## 文档
 
@@ -42,7 +42,7 @@ docker logs jec 2>&1 | grep setup_token
 |---|---|
 | [指南](https://xmzo.github.io/JustEnoughCerts/zh-CN/guide/introduction) | 介绍、快速开始、安装与升级、核心概念 |
 | [使用](https://xmzo.github.io/JustEnoughCerts/zh-CN/usage/certificates) | 证书、证书来源、域名验证、部署目标、续期、通知 |
-| [运维](https://xmzo.github.io/JustEnoughCerts/zh-CN/operations/configuration) | 配置参考、数据与备份、账号与安全、配置导入导出、校验发布文件 |
+| [运维](https://xmzo.github.io/JustEnoughCerts/zh-CN/operations/configuration) | 配置参考、反向代理与 CDN、数据与备份、账号与安全、配置导入导出、校验发布文件 |
 | [参考](https://xmzo.github.io/JustEnoughCerts/zh-CN/reference/providers) | 服务商支持与测试情况、API |
 | [开发](https://xmzo.github.io/JustEnoughCerts/zh-CN/development/contributing) | 参与开发、插件、翻译指南、真实账号测试 |
 

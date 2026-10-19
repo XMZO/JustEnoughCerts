@@ -141,7 +141,7 @@ jobs:
       - name: actionlint
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
       - name: shellcheck
-        run: docker run --rm -v "$PWD:/repo" -w /repo --entrypoint shellcheck rhysd/actionlint:1.7.12 scripts/*.sh
+        run: docker run --rm -v "$PWD:/repo" -w /repo --entrypoint shellcheck rhysd/actionlint:1.7.12 scripts/*.sh deploy/reverse-proxy/*.sh
 
   web:
     name: web UI

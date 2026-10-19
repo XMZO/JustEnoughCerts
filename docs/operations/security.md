@@ -10,10 +10,10 @@ page.
 
 - The password is stored as an argon2id hash.
 - After five failed sign-ins in a row from one client, that client is
-  locked out for 15 minutes. Behind a reverse proxy, set
-  `JEC_TRUSTED_PROXIES`, or the lockout applies to everyone behind the
-  proxy; see the
-  [Configuration reference](configuration.md#behind-a-reverse-proxy).
+  locked out for 15 minutes. Behind a reverse proxy, `JEC_TRUSTED_PROXIES`
+  has to name it, as `docker-compose.yml` does by default, or the lockout
+  applies to everyone behind the proxy; see
+  [Reverse proxy and CDN](reverse-proxy.md).
 - Sign-ins last one, seven or 30 days, seven by default.
 - Changing the password signs the account out everywhere else.
 

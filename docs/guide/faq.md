@@ -10,6 +10,12 @@ step. For paid certificates, use the CA's ACME service with External
 Account Binding where it has one, or a vendor's service that JEC supports;
 otherwise upload the certificates. See [Certificate sources](../usage/sources.md).
 
+## The panel does not open at `http://<server>:8080`
+
+`docker-compose.yml` publishes JEC on `127.0.0.1:8080`, which only the
+server itself reaches. Open the panel through a reverse proxy with HTTPS,
+or through an SSH tunnel; see [Reverse proxy and CDN](../operations/reverse-proxy.md).
+
 ## An issuance failed. How do I find out why?
 
 Open the certificate, then the latest issuance: its page lists each step
