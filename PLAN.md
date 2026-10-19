@@ -243,6 +243,8 @@ Provider 是模块的一种：每个 Provider 都是一个独立模块，按 4.2
 
 **站点监控**（模块 `watch`，`internal/modules/watch`）：不由 JEC 管理的网站证书（合作方、其他团队的站点）也能盯着：填主机名（可带端口）或网址，JEC 只做 TLS 握手、不校验地拿到证书链，再用系统根证书和主机名做一次 `x509.Verify` 判断是否可信；每 6 小时一次，连不上 1 小时后再试，最多 8 个同时连。到期前 3 周、1 周和过期后各通知一次（事件 `site.expiring`，默认开），站点换了证书重新计。页面 `/sites`，接口 `/api/v1/watch/sites`，Prometheus 指标 `jec_site_*`。
 
+**域名注册到期**（同在 `watch` 模块，页面改名“到期监控”）：证书和监控站点所在的注册域名（`publicsuffix` 取 ICANN 部分，私有后缀如 `github.io` 不算；IP、内网名称、RFC 2606 的示例域名跳过）由任务 `watch.domains` 每 10 分钟经 `Registry.Call` 列证书同步到 `watch_domains`（证书模块停用时保留原有的证书引用），也可手动添加。经 RDAP（RFC 9082/9083；服务器按 IANA 的 `dns.json`，内存缓存一天）查 `expiration` 事件和注册商：正常每天一次，30 天内每 12 小时，查不到到期时间（无 RDAP 或不公开，如 .de、.cn）7 天后再查，失败 2 小时后再试。到期前 30 天、7 天和过期后各通知一次（`domain.expiring`，`contracts.DomainEvent`，默认开），续费后重新计。接口 `/api/v1/watch/domains`，证书详情显示所在域名的到期日，Prometheus 指标 `jec_domain_*`，日历订阅和 Telegram `/sites` 也带上。
+
 ### 5.1 接口草图
 
 ```go

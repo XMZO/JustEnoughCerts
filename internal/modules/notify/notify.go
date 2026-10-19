@@ -65,6 +65,12 @@ func (s *service) handle(ctx context.Context, ev events.Event) error {
 			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
 		}
 		write = func(tag language.Tag) contracts.Note { return s.siteNote(tag, ev, d) }
+	case contracts.DomainExpiring:
+		var d contracts.DomainEvent
+		if err := ev.Decode(&d); err != nil {
+			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
+		}
+		write = func(tag language.Tag) contracts.Note { return s.domainNote(tag, ev, d) }
 	default:
 		var data contracts.CertificateEvent
 		if err := ev.Decode(&data); err != nil {
@@ -363,6 +369,32 @@ func (s *service) siteNote(tag language.Tag, ev events.Event, d contracts.SiteEv
 		n.Title = w.text(i18n.NotifyNoteSiteExpiringTitle, i18n.Args{"site": site, "days": days})
 	}
 	lines := []string{w.text(i18n.NotifyNoteSiteEnds, i18n.Args{"date": w.day(d.NotAfter), "issuer": d.Issuer})}
+	if n.Link != "" {
+		lines = append(lines, w.text(i18n.NotifyNoteLink, i18n.Args{"url": n.Link}))
+	}
+	n.Text = strings.Join(lines, "\n")
+	n.Subject = w.subject(n.Title)
+	return n
+}
+
+// domainNote writes the note about the registration of a domain.
+func (s *service) domainNote(tag language.Tag, ev events.Event, d contracts.DomainEvent) contracts.Note {
+	w := writer{s: s, tag: tag}
+	n := contracts.Note{Event: ev.Type, Time: ev.Time, Data: ev.Data, Link: s.link("/sites")}
+	if d.Expiry == contracts.ExpiryExpired {
+		n.Title = w.text(i18n.NotifyNoteDomainExpiredTitle, i18n.Args{"domain": d.Domain})
+	} else {
+		days := max(int(d.ExpiresAt.Sub(s.now())/(24*time.Hour)), 0)
+		n.Title = w.text(i18n.NotifyNoteDomainExpiringTitle, i18n.Args{"domain": d.Domain, "days": days})
+	}
+	ends := w.text(i18n.NotifyNoteDomainEnds, i18n.Args{"date": w.day(d.ExpiresAt)})
+	if d.Registrar != "" {
+		ends = w.text(i18n.NotifyNoteDomainEndsAt, i18n.Args{"date": w.day(d.ExpiresAt), "registrar": d.Registrar})
+	}
+	lines := []string{ends}
+	if len(d.Certificates) > 0 {
+		lines = append(lines, w.text(i18n.NotifyNoteDomainCertificates, i18n.Args{"count": len(d.Certificates)}))
+	}
 	if n.Link != "" {
 		lines = append(lines, w.text(i18n.NotifyNoteLink, i18n.Args{"url": n.Link}))
 	}

@@ -52,6 +52,21 @@
         ],
         "type": "object"
       },
+      "AddDomainInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "A domain or a name under it, or a URL; the registered domain is watched",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
       "AddInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -1108,6 +1123,77 @@
         ],
         "type": "object"
       },
+      "DomainBody": {
+        "additionalProperties": false,
+        "properties": {
+          "certificates": {
+            "description": "The certificates with names under the domain",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "checkAt": {
+            "description": "When the next lookup comes",
+            "format": "date-time",
+            "type": "string"
+          },
+          "checkedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "error": {
+            "description": "Why the last lookup told no end, as the lookup said it",
+            "type": "string"
+          },
+          "expiresAt": {
+            "description": "When the registration ends, as the registry told",
+            "format": "date-time",
+            "type": "string"
+          },
+          "manual": {
+            "description": "Added by hand; the others come and go with the certificates and sites under them",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "The registered domain, as example.com",
+            "type": "string"
+          },
+          "registrar": {
+            "type": "string"
+          },
+          "sites": {
+            "description": "The sites watched under the domain",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "state": {
+            "description": "pending: not looked up yet; expiring: ends within 30 days; unknown: the registry tells no end, or has no RDAP; failed: the last lookup failed, what was told before kept",
+            "enum": [
+              "pending",
+              "ok",
+              "expiring",
+              "expired",
+              "unknown",
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "manual",
+          "certificates",
+          "sites",
+          "state",
+          "checkAt"
+        ],
+        "type": "object"
+      },
       "DomainCheckBody": {
         "additionalProperties": false,
         "properties": {
@@ -1158,6 +1244,21 @@
           "domain",
           "state",
           "checkedAt"
+        ],
+        "type": "object"
+      },
+      "DomainsOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "domains": {
+            "items": {
+              "$ref": "#/components/schemas/DomainBody"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "domains"
         ],
         "type": "object"
       },
@@ -6579,6 +6680,158 @@
         "summary": "Choose the time zone JEC tells times in, or go back to the server's",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/watch/domains": {
+      "get": {
+        "operationId": "watch-domains",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainsOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the domains whose registration is watched",
+        "tags": [
+          "watch",
+          "watch"
+        ]
+      },
+      "post": {
+        "operationId": "watch-add-domain",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddDomainInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Watch the registration of a domain, which is looked up at once",
+        "tags": [
+          "watch",
+          "watch"
+        ]
+      }
+    },
+    "/watch/domains/{name}": {
+      "delete": {
+        "description": "A domain that a certificate or a site is under stays watched.",
+        "operationId": "watch-delete-domain",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "maxLength": 300,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Stop watching a domain added by hand",
+        "tags": [
+          "watch",
+          "watch"
+        ]
+      }
+    },
+    "/watch/domains/{name}/check": {
+      "post": {
+        "operationId": "watch-check-domain",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "maxLength": 300,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Look up the registration of a domain now",
+        "tags": [
+          "watch",
+          "watch"
         ]
       }
     },

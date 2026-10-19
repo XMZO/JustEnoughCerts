@@ -507,6 +507,7 @@
   },
   "calendar": {
     "event": {
+      "domain_ends": "Registration of {domain} ends",
       "domains": "Domains: {domains}",
       "ends": "Certificate of {domain} ends",
       "renews": "Renewal of {domain} starts",
@@ -1885,6 +1886,7 @@
         "deploy_failed": "When a deployment fails",
         "deployed": "When a deployment succeeds",
         "digest": "A weekly digest, on Monday morning",
+        "domain_expiring": "A domain registration ends soon or ended",
         "expiring": "When a certificate is about to expire, or has expired",
         "issue_failed": "When an issuance fails",
         "issued": "When a new certificate is issued or uploaded",
@@ -2350,6 +2352,13 @@
         "renewals": "Renewals in the next 7 days:",
         "title": "This week: {total, plural, one {# certificate} other {# certificates}}, {attention, plural, one {# needs} other {# need}} attention",
         "title_ok": "This week: {total, plural, one {# certificate} other {# certificates}}, all well"
+      },
+      "domain": {
+        "certificates": "{count, plural, one {# certificate} other {# certificates}} JEC manages {count, plural, one {is} other {are}} under this domain.",
+        "ends": "It ends on {date}.",
+        "ends_at": "It ends on {date} (registrar: {registrar}); renew it there.",
+        "expired_title": "The registration of {domain} has ended",
+        "expiring_title": "The registration of {domain} ends in {days, plural, =0 {less than a day} one {# day} other {# days}}"
       },
       "ended": "It ended on {date}.",
       "ends": "It ends on {date}.",
@@ -2960,7 +2969,7 @@
       "recent": "Recent activity",
       "refresh": "Refresh",
       "renew": "Renew now",
-      "sites": "Sites",
+      "sites": "Expiry watch",
       "system": "System",
       "todo": "Need attention ({count})"
     },
@@ -2992,7 +3001,7 @@
       "menu": "Open the menu",
       "online": "Online checks",
       "recent": "Recent activity",
-      "sites": "Watched sites",
+      "sites": "Watched sites and domains",
       "todo": "Certificates needing attention"
     },
     "deploy": {
@@ -3077,9 +3086,10 @@
       "waiting": "waiting on the source"
     },
     "sites": {
-      "none": "No site is watched yet. Add one in JEC.",
-      "off": "The site watch module is off.",
-      "title": "Site watch"
+      "more": "{count, plural, one {…and # more} other {…and # more}}",
+      "none": "No sites or domains watched yet. Add some in JEC.",
+      "off": "The expiry watch module is off.",
+      "title": "Expiry watch"
     },
     "state": {
       "deploy_failed": "Deployment failed",
@@ -3284,9 +3294,42 @@
       "site": "Site",
       "state": "State"
     },
+    "domain": {
+      "add": "Add a domain",
+      "cert_row": "Domain registration",
+      "check": "Look up {domain} now",
+      "column": {
+        "checked": "Looked up",
+        "name": "Domain",
+        "registrar": "Registrar",
+        "uses": "Used by"
+      },
+      "delete": "Stop watching {domain}",
+      "delete_body": "JEC no longer looks up the registration of this domain. The domain itself is not affected.",
+      "empty": "The domains of your certificates and watched sites appear here by themselves. Other domains can be added by hand.",
+      "field": {
+        "name": "Domain",
+        "name_help": "Such as example.com. For a subdomain or a URL, the registered domain it is under is watched."
+      },
+      "foot": "The domains of your certificates and watched sites are added by themselves. Each is looked up with its registry through RDAP once a day; reminders go out 30 days and 7 days before the end through the notification channels set for this event. The registries of some TLDs, such as .de and .cn, tell no end.",
+      "manual": "Added by hand",
+      "sites": "{count, plural, one {# watched site} other {# watched sites}}",
+      "state": {
+        "expired": "Ended",
+        "expiring": "Ends soon",
+        "failed": "Lookup failed",
+        "ok": "OK",
+        "pending": "Waiting",
+        "unknown": "End not told"
+      },
+      "title": "Domain registrations"
+    },
     "error": {
+      "domain": "Enter a domain, such as example.com. Addresses and names of private networks have no registration.",
+      "domain_watched": "This domain is watched already.",
       "host": "Enter a host name or an address, with a port when it is not 443, or a URL.",
       "too_many": "JEC watches {max} sites at most.",
+      "too_many_domains": "At most {max} domains can be added by hand.",
       "watched": "This site is watched already."
     },
     "field": {
@@ -3296,12 +3339,13 @@
       "name_help": "Optional, to tell it apart."
     },
     "module": {
-      "description": "Watches the certificates of sites JEC does not manage, and tells before they end.",
-      "name": "Site watch"
+      "description": "Watches the certificates of sites JEC does not manage, and domain registrations, with reminders before they end. Domains are looked up with their registries through RDAP.",
+      "name": "Expiry watch"
     },
     "overview": {
+      "domains": "{count, plural, one {# domain registration ends soon} other {# domain registrations end soon}}",
       "more": "{names} and {count} more",
-      "open": "Site watch",
+      "open": "Expiry watch",
       "title": "{count, plural, one {# watched site to look at} other {# watched sites to look at}}"
     },
     "page": {
@@ -3313,8 +3357,9 @@
       "delete_body": "JEC stops checking the site; nothing changes there.",
       "empty": "No site watched yet. Add a partner's or another team's site to hear before its certificate ends.",
       "foot": "Checked every 6 hours, an hour after a site did not answer. Notes come three weeks and a week before an end, through the channels set for it.",
-      "intro": "The certificates of sites JEC does not manage: when they end, and whether they are trusted.",
-      "title": "Site watch",
+      "intro": "Watch the certificates of sites JEC does not manage, and when the registrations of the domains of your certificates and sites end.",
+      "sites": "Site certificates",
+      "title": "Expiry watch",
       "unknown": "Unknown"
     },
     "state": {

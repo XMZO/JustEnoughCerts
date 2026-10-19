@@ -44,6 +44,8 @@ domain.
 | `jec_build_info` | The version of JEC, in the label `version` |
 | `jec_site_expiry_timestamp_seconds` | When the certificate a [watched site](../usage/sites.md) served last ends; labels `host` and `port` |
 | `jec_site_state` | 1 for the state a watched site is in (label `state`), 0 for the others |
+| `jec_domain_expiry_timestamp_seconds` | When a [domain registration](../usage/sites.md#domain-registrations) ends; label `domain` |
+| `jec_domain_state` | 1 for the state a domain is in (label `state`), 0 for the others |
 
 An alert for certificates that end within 14 days:
 

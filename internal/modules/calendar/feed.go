@@ -250,21 +250,11 @@ func (m *Module) render(ctx context.Context, lang string) ([]byte, error) {
 	if err != nil && (!errors.As(err, &ce) || ce.Status != http.StatusNotFound) {
 		return nil, err
 	}
-	for _, s := range watched.Sites {
-		if s.NotAfter == nil {
-			continue
-		}
-		site := s.Host
-		if s.Port != 443 {
-			site = net.JoinHostPort(s.Host, strconv.Itoa(s.Port))
-		}
-		if s.Name != "" {
-			site = s.Name + " (" + site + ")"
-		}
-		end := s.NotAfter.In(zone)
-		summary := text(i18n.CalendarEventSiteEnds, i18n.Args{"site": site})
+	// An end, all day, with a reminder before it.
+	ends := func(uid string, at time.Time, summary string) {
+		end := at.In(zone)
 		w.line("BEGIN:VEVENT")
-		w.prop("UID", "jec-site-"+strconv.FormatInt(s.ID, 10)+"-end-"+strconv.FormatInt(s.NotAfter.Unix(), 10))
+		w.prop("UID", uid)
 		w.line("DTSTAMP:" + stamp)
 		w.line("DTSTART;VALUE=DATE:" + end.Format("20060102"))
 		w.line("DTEND;VALUE=DATE:" + end.AddDate(0, 0, 1).Format("20060102"))
@@ -279,6 +269,38 @@ func (m *Module) render(ctx context.Context, lang string) ([]byte, error) {
 		w.prop("DESCRIPTION", summary)
 		w.line("END:VALARM")
 		w.line("END:VEVENT")
+	}
+	for _, s := range watched.Sites {
+		if s.NotAfter == nil {
+			continue
+		}
+		site := s.Host
+		if s.Port != 443 {
+			site = net.JoinHostPort(s.Host, strconv.Itoa(s.Port))
+		}
+		if s.Name != "" {
+			site = s.Name + " (" + site + ")"
+		}
+		ends("jec-site-"+strconv.FormatInt(s.ID, 10)+"-end-"+strconv.FormatInt(s.NotAfter.Unix(), 10), *s.NotAfter,
+			text(i18n.CalendarEventSiteEnds, i18n.Args{"site": site}))
+	}
+	// And the ends of the domain registrations, of the same module.
+	if err == nil {
+		var registrations struct {
+			Domains []struct {
+				Name      string     `json:"name"`
+				ExpiresAt *time.Time `json:"expiresAt"`
+			} `json:"domains"`
+		}
+		if err := m.call(ctx, via, http.MethodGet, "/watch/domains", nil, &registrations); err != nil {
+			return nil, err
+		}
+		for _, d := range registrations.Domains {
+			if d.ExpiresAt != nil {
+				ends("jec-domain-"+d.Name+"-end-"+strconv.FormatInt(d.ExpiresAt.Unix(), 10), *d.ExpiresAt,
+					text(i18n.CalendarEventDomainEnds, i18n.Args{"domain": d.Name}))
+			}
+		}
 	}
 	w.line("END:VCALENDAR")
 	return []byte(w.String()), nil

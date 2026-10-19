@@ -1072,6 +1072,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/watch/domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the domains whose registration is watched */
+        get: operations["watch-domains"];
+        put?: never;
+        /** Watch the registration of a domain, which is looked up at once */
+        post: operations["watch-add-domain"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watch/domains/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Stop watching a domain added by hand
+         * @description A domain that a certificate or a site is under stays watched.
+         */
+        delete: operations["watch-delete-domain"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watch/domains/{name}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Look up the registration of a domain now */
+        post: operations["watch-check-domain"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/watch/sites": {
         parameters: {
             query?: never;
@@ -1152,6 +1207,10 @@ export interface components {
              * @enum {integer}
              */
             sessionDays: 1 | 7 | 30;
+        };
+        AddDomainInputBody: {
+            /** @description A domain or a name under it, or a URL; the registered domain is watched */
+            name: string;
         };
         AddInputBody: {
             /** @description PEM certificates: the leaf and its intermediates, in any order. The private key may come along. Left out with pfx. */
@@ -1535,6 +1594,36 @@ export interface components {
              */
             validation?: "dv" | "ov" | "iv" | "ev";
         };
+        DomainBody: {
+            /** @description The certificates with names under the domain */
+            certificates: number[];
+            /**
+             * Format: date-time
+             * @description When the next lookup comes
+             */
+            checkAt: string;
+            /** Format: date-time */
+            checkedAt?: string;
+            /** @description Why the last lookup told no end, as the lookup said it */
+            error?: string;
+            /**
+             * Format: date-time
+             * @description When the registration ends, as the registry told
+             */
+            expiresAt?: string;
+            /** @description Added by hand; the others come and go with the certificates and sites under them */
+            manual: boolean;
+            /** @description The registered domain, as example.com */
+            name: string;
+            registrar?: string;
+            /** @description The sites watched under the domain */
+            sites: number[];
+            /**
+             * @description pending: not looked up yet; expiring: ends within 30 days; unknown: the registry tells no end, or has no RDAP; failed: the last lookup failed, what was told before kept
+             * @enum {string}
+             */
+            state: "pending" | "ok" | "expiring" | "expired" | "unknown" | "failed";
+        };
         DomainCheckBody: {
             /** Format: date-time */
             checkedAt: string;
@@ -1560,6 +1649,9 @@ export interface components {
              * @enum {string}
              */
             view?: "cn" | "global";
+        };
+        DomainsOutputBody: {
+            domains: components["schemas"]["DomainBody"][];
         };
         DownloadInputBody: {
             /** @description The password of the signed-in account, asked again before a private key leaves JEC */
@@ -4706,6 +4798,128 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RuntimeBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "watch-domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DomainsOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "watch-add-domain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddDomainInputBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DomainBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "watch-delete-domain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "watch-check-domain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DomainBody"];
                 };
             };
             /** @description Error */

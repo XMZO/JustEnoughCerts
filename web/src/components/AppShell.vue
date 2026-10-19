@@ -5,7 +5,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import { useSession, useSignOut } from '../api/account'
 import { useCertificates } from '../api/certs'
-import { needsLook, useSites } from '../api/watch'
+import { domainNeedsLook, needsLook, useDomains, useSites } from '../api/watch'
 import { needsAttention } from '../certs/life'
 import { useManifest } from '../api/manifest'
 import { useT, type MessageKey } from '../i18n'
@@ -49,11 +49,13 @@ const tabs = computed<Link[]>(() => [...links.value, { to: '/more', label: 'kern
 const watching = computed(() => manifest.data.value?.modules.some((m) => m.id === 'watch' && m.enabled) ?? false)
 const main = computed<Link[]>(() => [...links.value, ...(watching.value ? [{ to: '/sites', label: 'watch.page.title', icon: Radar } satisfies Link] : [])])
 const sites = useSites(watching)
+const domains = useDomains(watching)
 // The tab's title leads with how many need someone: certificates, and the
-// watched sites to look at.
+// watched sites and domain registrations to look at.
 watchEffect(() => {
   const certs = (certificates.data.value ?? []).filter(needsAttention).length
-  attention.value = certs + (watching.value ? (sites.data.value ?? []).filter(needsLook).length : 0)
+  const watched = (sites.data.value ?? []).filter(needsLook).length + (domains.data.value ?? []).filter(domainNeedsLook).length
+  attention.value = certs + (watching.value ? watched : 0)
 })
 // Where providers are configured, with the credentials they share; on
 // phones, the More tab lists them.

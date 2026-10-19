@@ -46,6 +46,9 @@ func newModule(t *testing.T) (*Module, humatest.TestAPI) {
 			return json.Unmarshal([]byte(`{"sites": [{"id": 7, "host": "partner.example.com", "port": 8443, "name": "Partner",
 				"notAfter": "2027-02-01T00:00:00Z"}, {"id": 8, "host": "down.example.com", "port": 443}]}`), out)
 		}
+		if path == "/watch/domains" {
+			return json.Unmarshal([]byte(`{"domains": [{"name": "shop.com", "expiresAt": "2027-03-01T00:00:00Z"}, {"name": "shop.de"}]}`), out)
+		}
 		return json.Unmarshal([]byte(`{"certificates": [
 			{"id": 3, "domains": ["example.com", "*.example.com", "`+long+`"], "renewAt": "2026-12-01T18:00:00Z",
 			 "current": {"notAfter": "2026-12-31T20:00:00Z"}},
@@ -107,6 +110,7 @@ func TestFeed(t *testing.T) {
 		"URL:https://certs.example.com/certificates/3\r\n",
 		"UID:jec-3-end-1798747200\r\n",
 		"UID:jec-site-7-end-1801440000\r\n", "DTSTART;VALUE=DATE:20270201\r\n",
+		"UID:jec-domain-shop.com-end-1803859200\r\n", "DTSTART;VALUE=DATE:20270301\r\n",
 	} {
 		if !strings.Contains(ics, want) {
 			t.Errorf("no %q in:\n%s", want, ics)

@@ -56,6 +56,16 @@ type site struct {
 // The states of a watched site, as the API tells them.
 var siteStates = []string{"pending", "ok", "expiring", "expired", "invalid", "unreachable"}
 
+// domain is a domain whose registration the watch module watches.
+type domain struct {
+	Name      string     `json:"name"`
+	State     string     `json:"state"`
+	ExpiresAt *time.Time `json:"expiresAt"`
+}
+
+// The states of a watched domain, as the API tells them.
+var domainStates = []string{"pending", "ok", "expiring", "expired", "unknown", "failed"}
+
 type tally struct {
 	CertificateID int64 `json:"certificateId"`
 	Old           int   `json:"old"`
@@ -191,6 +201,25 @@ func (m *Module) render(ctx context.Context) ([]byte, error) {
 		for _, s := range watched.Sites {
 			for _, st := range siteStates {
 				fmt.Fprintf(&b, "jec_site_state{%s,state=%s} %d\n", siteLabels(s), quote(st), bit(s.State == st))
+			}
+		}
+		// And the domain registrations, of the same module.
+		var registrations struct {
+			Domains []domain `json:"domains"`
+		}
+		if err := m.call(ctx, via, http.MethodGet, "/watch/domains", nil, &registrations); err != nil {
+			return nil, fmt.Errorf("metrics: the domains: %w", err)
+		}
+		family("jec_domain_expiry_timestamp_seconds", "gauge", "When the registration of a domain ends, as its registry told, in Unix seconds.")
+		for _, d := range registrations.Domains {
+			if d.ExpiresAt != nil {
+				fmt.Fprintf(&b, "jec_domain_expiry_timestamp_seconds{domain=%s} %d\n", quote(d.Name), d.ExpiresAt.Unix())
+			}
+		}
+		family("jec_domain_state", "gauge", "1 for the state a watched domain is in, 0 for the others.")
+		for _, d := range registrations.Domains {
+			for _, st := range domainStates {
+				fmt.Fprintf(&b, "jec_domain_state{domain=%s,state=%s} %d\n", quote(d.Name), quote(st), bit(d.State == st))
 			}
 		}
 	}

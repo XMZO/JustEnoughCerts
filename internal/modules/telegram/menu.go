@@ -333,6 +333,21 @@ var siteStates = map[string]i18n.Key{
 	"expired": i18n.WatchStateExpired, "invalid": i18n.WatchStateInvalid, "unreachable": i18n.WatchStateUnreachable,
 }
 
+// domain is a domain registration as the watch module tells it.
+type domain struct {
+	Name      string     `json:"name"`
+	State     string     `json:"state"`
+	ExpiresAt *time.Time `json:"expiresAt"`
+}
+
+var domainStates = map[string]i18n.Key{
+	"pending": i18n.WatchDomainStatePending, "ok": i18n.WatchDomainStateOk, "expiring": i18n.WatchDomainStateExpiring,
+	"expired": i18n.WatchDomainStateExpired, "unknown": i18n.WatchDomainStateUnknown, "failed": i18n.WatchDomainStateFailed,
+}
+
+// maxDomains bounds the domains listed, as a message has a size.
+const maxDomains = 20
+
 // sitesView shows the sites watched, those to look at first.
 func (l *listener) sitesView(ctx context.Context) (screen, error) {
 	var out struct {
@@ -346,12 +361,28 @@ func (l *listener) sitesView(ctx context.Context) (screen, error) {
 	} else if err != nil {
 		return screen{}, err
 	}
-	if len(out.Sites) == 0 {
+	var registrations struct {
+		Domains []domain `json:"domains"`
+	}
+	if err := l.get(ctx, "/watch/domains", &registrations); err != nil {
+		return screen{}, err
+	}
+	if len(out.Sites) == 0 && len(registrations.Domains) == 0 {
 		lines = append(lines, l.text(i18n.TelegramSitesNone, nil))
+	}
+	if len(out.Sites) > 0 {
+		lines = append(lines, "<b>"+l.text(i18n.WatchPageSites, nil)+"</b>")
 	}
 	rank := map[string]int{"expired": 0, "invalid": 1, "unreachable": 2, "expiring": 3, "pending": 4, "ok": 5}
 	slices.SortStableFunc(out.Sites, func(a, b site) int { return rank[a.State] - rank[b.State] })
 	now := l.m.now()
+	left := func(t time.Time) string {
+		days := int(math.Floor(t.Sub(now).Hours() / 24))
+		if days < 0 {
+			return l.text(i18n.WatchPageDaysAgo, i18n.Args{"days": -days})
+		}
+		return l.text(i18n.WatchPageDaysLeft, i18n.Args{"days": days})
+	}
 	for _, s := range out.Sites {
 		icon := iconOK
 		switch s.State {
@@ -373,12 +404,46 @@ func (l *listener) sitesView(ctx context.Context) (screen, error) {
 		}
 		line := icon + " <b>" + html.EscapeString(name) + "</b> · " + l.text(siteStates[s.State], nil)
 		if s.NotAfter != nil {
-			days := int(math.Floor(s.NotAfter.Sub(now).Hours() / 24))
-			left := l.text(i18n.WatchPageDaysLeft, i18n.Args{"days": days})
-			if days < 0 {
-				left = l.text(i18n.WatchPageDaysAgo, i18n.Args{"days": -days})
-			}
-			line += " · " + l.day(*s.NotAfter) + " · " + left
+			line += " · " + l.day(*s.NotAfter) + " · " + left(*s.NotAfter)
+		}
+		lines = append(lines, line)
+	}
+	// The domain registrations: those to look at first, then by their end.
+	if len(registrations.Domains) > 0 {
+		if len(out.Sites) > 0 {
+			lines = append(lines, "")
+		}
+		lines = append(lines, "<b>"+l.text(i18n.WatchDomainTitle, nil)+"</b>")
+	}
+	order := map[string]int{"expired": 0, "expiring": 1, "failed": 2, "pending": 3, "ok": 4, "unknown": 5}
+	slices.SortStableFunc(registrations.Domains, func(a, b domain) int {
+		if c := order[a.State] - order[b.State]; c != 0 {
+			return c
+		}
+		if a.ExpiresAt == nil || b.ExpiresAt == nil {
+			return 0
+		}
+		return a.ExpiresAt.Compare(*b.ExpiresAt)
+	})
+	for i, d := range registrations.Domains {
+		if i == maxDomains {
+			lines = append(lines, l.text(i18n.TelegramSitesMore, i18n.Args{"count": len(registrations.Domains) - maxDomains}))
+			break
+		}
+		icon := iconOK
+		switch d.State {
+		case "expired":
+			icon = iconFail
+		case "expiring":
+			icon = iconWarn
+		case "failed", "unknown":
+			icon = iconOff
+		case "pending":
+			icon = iconBusy
+		}
+		line := icon + " <b>" + html.EscapeString(d.Name) + "</b> · " + l.text(domainStates[d.State], nil)
+		if d.ExpiresAt != nil {
+			line += " · " + l.day(*d.ExpiresAt) + " · " + left(*d.ExpiresAt)
 		}
 		lines = append(lines, line)
 	}

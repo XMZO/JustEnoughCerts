@@ -102,6 +102,7 @@ func registerAPI(a huma.API, m *Module) {
 		if err := m.check(ctx, id); err != nil {
 			return nil, err
 		}
+		m.trigger("domains")
 		return m.one(ctx, id)
 	})
 	huma.Register(a, huma.Operation{
@@ -115,6 +116,7 @@ func registerAPI(a huma.API, m *Module) {
 		if n, _ := res.RowsAffected(); n == 0 {
 			return nil, api.NewError(http.StatusNotFound, i18n.KernelErrorNotFound, nil)
 		}
+		m.trigger("domains")
 		return nil, nil
 	})
 	huma.Register(a, huma.Operation{
@@ -128,6 +130,7 @@ func registerAPI(a huma.API, m *Module) {
 		}
 		return m.one(ctx, in.ID)
 	})
+	registerDomainsAPI(a, m)
 }
 
 func (m *Module) one(ctx context.Context, id int64) (*siteOutput, error) {

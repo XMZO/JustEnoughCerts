@@ -15,7 +15,8 @@ message at once.
 | Deployment failed | On |
 | Certificate expiring or expired | On |
 | Old certificate still served (found by the online check) | On |
-| A watched site's certificate ends soon or ended (see [Site watch](sites.md)) | On |
+| A watched site's certificate ends soon or ended (see [Expiry watch](sites.md)) | On |
+| A domain registration ends soon or ended (likewise) | On |
 | New certificate (issued or uploaded) | Off |
 | Deployment succeeded | Off |
 | Weekly digest, on Monday from 9:00 in the panel's time zone: certificates needing attention and renewals of the coming week | Off |
@@ -67,7 +68,7 @@ chat:
 | `/todo` | The certificates that need attention, and why |
 | `/recent` | The issuances, renewals and deployments of the last 7 days |
 | `/online` | What the online checks found wrong |
-| `/sites` | The [watched sites](sites.md), those to look at first |
+| `/sites` | The [watched sites and domain registrations](sites.md), those to look at first |
 | `/help` | How to use it |
 
 A certificate's page shows its state, the days it has left, its renewal,
@@ -104,7 +105,8 @@ The script channel integrates other systems:
 At the bottom of the Notifications page, the calendar feed shows when
 certificates end, with a reminder a week before, and when their next
 renewal starts, in calendar apps such as those of Apple, Google and
-Microsoft.
+Microsoft. With the expiry watch module on, it also shows when the
+certificates of watched sites and domain registrations end.
 
 1. Turn the calendar feed on: JEC shows its URL.
 2. Choose Add to calendar on the device, or copy the URL and add it as a

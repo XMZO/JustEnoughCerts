@@ -91,6 +91,10 @@ const (
 	// SiteExpiring: the certificate a site serves ends within three weeks,
 	// within a week, or ended; see Expiry. Payload SiteEvent.
 	SiteExpiring = "site.expiring"
+	// DomainExpiring: the registration of a domain ends within 30 days,
+	// within a week, or ended, as its registry tells through RDAP; see
+	// Expiry. The subject is the domain. Payload DomainEvent.
+	DomainExpiring = "domain.expiring"
 )
 
 // SiteEvent is the payload of the events of the sites module.
@@ -102,6 +106,15 @@ type SiteEvent struct {
 	NotAfter time.Time `json:"notAfter"`
 	Expiry   Expiry    `json:"expiry"`
 	Issuer   string    `json:"issuer"`
+}
+
+// DomainEvent is the payload of DomainExpiring.
+type DomainEvent struct {
+	Domain       string    `json:"domain"` // the registered domain, as example.com
+	ExpiresAt    time.Time `json:"expiresAt"`
+	Expiry       Expiry    `json:"expiry"`
+	Registrar    string    `json:"registrar,omitempty"`
+	Certificates []int64   `json:"certificates"` // those with names under the domain
 }
 
 // Expiry says how close a certificate is to its end, in increasing order of

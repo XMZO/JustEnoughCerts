@@ -34,6 +34,7 @@ import {
 } from '../api/certs'
 import { useApiError } from '../api/errors'
 import { useProviders, useProviderTypes, useProviderTypesOf } from '../api/providers'
+import { domainNeedsLook, useDomains, useWatching } from '../api/watch'
 import { deploymentState, failingDeployment } from '../certs/deployment'
 import { deploySteps, issuanceState, reasonText } from '../certs/issuance'
 import { certLife, colonHex, keyText } from '../certs/life'
@@ -79,6 +80,10 @@ const current = computed(() => cert.value?.current ?? null)
 const life = computed(() => (cert.value ? certLife(cert.value) : null))
 const domain = computed(() => cert.value?.domains[0] ?? '')
 const also = computed(() => (cert.value && cert.value.domains.length > 1 ? intl.list(cert.value.domains.slice(1)) : ''))
+// The registrations of the domains it is under, while the watch module is on.
+const watching = useWatching()
+const domainList = useDomains(watching)
+const registrations = computed(() => (watching.value ? (domainList.data.value ?? []).filter((d) => d.certificates.includes(props.id)) : []))
 
 const day = 86_400_000
 const validityDays = computed(() =>
@@ -723,6 +728,23 @@ async function confirmDelete() {
               <dd class="m-0 [overflow-wrap:anywhere]" translate="no">
                 <span v-for="d in cert.domains" :key="d" class="block">{{ d }}</span>
               </dd>
+              <template v-if="registrations.length">
+                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('watch.domain.cert_row') }}</dt>
+                <dd class="m-0 flex min-w-0 flex-col gap-0.5">
+                  <RouterLink
+                    v-for="d in registrations"
+                    :key="d.name"
+                    to="/sites"
+                    :class="['[overflow-wrap:anywhere]', domainNeedsLook(d) ? 'font-semibold text-warn-ink' : 'text-ink']"
+                  >
+                    <span translate="no">{{ d.name }}</span>
+                    <template v-if="d.expiresAt">
+                      · <time :datetime="d.expiresAt">{{ intl.date(d.expiresAt) }}</time>
+                    </template>
+                    <template v-else> · {{ t(d.state === 'pending' ? 'watch.domain.state.pending' : 'watch.domain.state.unknown') }}</template>
+                  </RouterLink>
+                </dd>
+              </template>
               <template v-if="details && details.subject !== `CN=${cert.domains[0]}`">
                 <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.subject') }}</dt>
                 <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ details.subject }}</dd>

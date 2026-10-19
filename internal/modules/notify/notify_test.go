@@ -367,3 +367,30 @@ func TestSiteNote(t *testing.T) {
 		t.Errorf("note %q\n%s\n%s", n.Title, n.Text, n.Link)
 	}
 }
+
+func TestDomainNote(t *testing.T) {
+	f := newFixture(t)
+	en := f.notifier("ops", map[string]string{"locale": "en-US"}) // domain notes are on by default
+	off := f.notifier("quiet", map[string]string{"locale": "en-US", "on_domain_expiring": "false"})
+	for i, d := range []contracts.DomainEvent{
+		{Domain: "example.com", ExpiresAt: start.Add(20*24*time.Hour + time.Hour), Expiry: contracts.ExpiryWindow, Registrar: "NameCheap, Inc.", Certificates: []int64{1, 4}},
+		{Domain: "example.org", ExpiresAt: start.Add(-time.Hour), Expiry: contracts.ExpiryExpired, Certificates: []int64{}},
+	} {
+		raw, _ := json.Marshal(d)
+		ev := events.Event{ID: int64(i + 1), Type: contracts.DomainExpiring, Source: "watch", Subject: d.Domain, Data: raw, Time: start}
+		if err := f.svc.handle(t.Context(), ev); err != nil {
+			t.Fatal(err)
+		}
+	}
+	notes := f.notes(en)
+	if len(notes) != 2 || len(f.notes(off)) != 0 {
+		t.Fatalf("notes %v, quiet %v", notes, f.notes(off))
+	}
+	if n := notes[0]; n.Title != "The registration of example.com ends in 20 days" ||
+		n.Text != "It ends on 2026-11-06 (registrar: NameCheap, Inc.); renew it there.\n2 certificates JEC manages are under this domain.\nDetails: https://jec.example.com/sites" {
+		t.Errorf("note %q\n%s", n.Title, n.Text)
+	}
+	if n := notes[1]; n.Title != "The registration of example.org has ended" || !strings.HasPrefix(n.Text, "It ends on 2026-10-17.\nDetails:") {
+		t.Errorf("note %q\n%s", n.Title, n.Text)
+	}
+}

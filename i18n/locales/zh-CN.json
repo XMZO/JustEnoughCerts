@@ -507,6 +507,7 @@
   },
   "calendar": {
     "event": {
+      "domain_ends": "域名 {domain} 的注册到期",
       "domains": "域名：{domains}",
       "ends": "{domain} 的证书到期",
       "renews": "{domain} 开始续期",
@@ -1885,6 +1886,7 @@
         "deploy_failed": "部署失败时通知",
         "deployed": "部署成功时通知",
         "digest": "每周一上午发一份概况",
+        "domain_expiring": "域名注册快到期或已经过期时通知",
         "expiring": "证书快到期或已经过期时通知",
         "issue_failed": "签发失败时通知",
         "issued": "有新证书（签发或上传）时通知",
@@ -2350,6 +2352,13 @@
         "renewals": "未来 7 天续期：",
         "title": "本周概况：{total, plural, other {# 张证书}}，{attention, plural, other {# 张需要处理}}",
         "title_ok": "本周概况：{total, plural, other {# 张证书}}，一切正常"
+      },
+      "domain": {
+        "certificates": "JEC 管理的 {count, plural, other {# 张证书}}在这个域名下。",
+        "ends": "到期日 {date}。",
+        "ends_at": "到期日 {date}（注册商：{registrar}），请在注册商处续费。",
+        "expired_title": "域名 {domain} 的注册已经到期",
+        "expiring_title": "域名 {domain} 的注册{days, plural, =0 {不到一天} other {# 天}}后到期"
       },
       "ended": "已于 {date} 到期。",
       "ends": "到期时间：{date}。",
@@ -2960,7 +2969,7 @@
       "recent": "最近动态",
       "refresh": "刷新",
       "renew": "立即续期",
-      "sites": "站点",
+      "sites": "到期监控",
       "system": "系统信息",
       "todo": "需要处理（{count}）"
     },
@@ -2992,7 +3001,7 @@
       "menu": "打开菜单",
       "online": "线上检查",
       "recent": "最近动态",
-      "sites": "监控的站点",
+      "sites": "监控的站点和域名",
       "todo": "需要处理的证书"
     },
     "deploy": {
@@ -3077,9 +3086,10 @@
       "waiting": "等待来源"
     },
     "sites": {
-      "none": "还没有监控的站点，可以在 JEC 里添加。",
-      "off": "站点监控模块已停用。",
-      "title": "站点监控"
+      "more": "…还有 {count, plural, other {# 个}}",
+      "none": "还没有监控的站点和域名。可以在 JEC 里添加。",
+      "off": "到期监控模块已停用。",
+      "title": "到期监控"
     },
     "state": {
       "deploy_failed": "部署失败",
@@ -3284,9 +3294,42 @@
       "site": "站点",
       "state": "状态"
     },
+    "domain": {
+      "add": "添加域名",
+      "cert_row": "域名注册",
+      "check": "立即查询 {domain}",
+      "column": {
+        "checked": "查询时间",
+        "name": "域名",
+        "registrar": "注册商",
+        "uses": "用于"
+      },
+      "delete": "停止监控 {domain}",
+      "delete_body": "JEC 不再查询这个域名的注册信息，域名本身不受影响。",
+      "empty": "证书和监控的站点所在的域名会自动出现在这里，也可以手动添加其他域名。",
+      "field": {
+        "name": "域名",
+        "name_help": "如 example.com。填写子域名或网址时，监控它所在的注册域名。"
+      },
+      "foot": "证书和监控的站点所在的域名自动加入。每天经 RDAP 向注册局查询一次，到期前 30 天和 7 天经设置了此事件的通知渠道提醒。部分后缀（如 .de、.cn）的注册局不提供到期时间。",
+      "manual": "手动添加",
+      "sites": "{count, plural, other {# 个监控的站点}}",
+      "state": {
+        "expired": "已到期",
+        "expiring": "即将到期",
+        "failed": "查询失败",
+        "ok": "正常",
+        "pending": "等待查询",
+        "unknown": "查不到到期时间"
+      },
+      "title": "域名注册"
+    },
     "error": {
+      "domain": "请填写域名，如 example.com。IP 地址和内网名称没有注册信息。",
+      "domain_watched": "已经在监控这个域名了。",
       "host": "请填写主机名或地址（端口不是 443 时带上端口），或者网址。",
       "too_many": "最多监控 {max} 个站点。",
+      "too_many_domains": "最多手动添加 {max} 个域名。",
       "watched": "已经在监控这个站点了。"
     },
     "field": {
@@ -3296,12 +3339,13 @@
       "name_help": "可选，便于区分。"
     },
     "module": {
-      "description": "监控不由 JEC 管理的网站证书，到期前提醒。",
-      "name": "站点监控"
+      "description": "监控不由 JEC 管理的网站证书和域名注册，到期前提醒。域名经 RDAP 向注册局查询。",
+      "name": "到期监控"
     },
     "overview": {
+      "domains": "{count, plural, other {# 个域名的注册快到期}}",
       "more": "{names} 等 {count} 个",
-      "open": "站点监控",
+      "open": "到期监控",
       "title": "{count, plural, other {# 个监控的站点需要留意}}"
     },
     "page": {
@@ -3313,8 +3357,9 @@
       "delete_body": "JEC 不再检查这个站点，站点本身不受影响。",
       "empty": "还没有监控的站点。添加合作方或其他团队的网站，在证书到期前得到提醒。",
       "foot": "每 6 小时检查一次，连不上时 1 小时后再试。到期前 3 周和 1 周经设置了此事件的通知渠道提醒。",
-      "intro": "监控不由 JEC 管理的网站证书：何时到期、是否可信。",
-      "title": "站点监控",
+      "intro": "监控不由 JEC 管理的网站证书，以及证书和站点所在域名的注册到期时间。",
+      "sites": "站点证书",
+      "title": "到期监控",
       "unknown": "未知"
     },
     "state": {

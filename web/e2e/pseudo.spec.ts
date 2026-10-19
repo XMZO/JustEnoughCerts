@@ -567,6 +567,43 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'stop watching a site').toEqual([])
   await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
 
+  // Domain registrations: no lookup reaches a registry here, so the list is
+  // made up, with each kind of row; a name with no registration is refused.
+  const later = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString()
+  await page.route('**/api/v1/watch/domains', (route) =>
+    route.request().method() !== 'GET'
+      ? route.continue()
+      : route.fulfill({
+          json: {
+            domains: [
+              {
+                name: 'e2e-shop.com', manual: true, certificates: [], sites: [], state: 'expiring', expiresAt: later(12),
+                registrar: 'Example Registrar, Inc.', checkedAt: later(0), checkAt: later(0.5),
+              },
+              {
+                name: 'e2e-shop.de', manual: false, certificates: [], sites: [1], state: 'unknown',
+                error: 'the registry of this TLD has no RDAP service', checkedAt: later(0), checkAt: later(7),
+              },
+            ],
+          },
+        }),
+  )
+  await page.reload()
+  await expect(page.getByText('e2e-shop.de').filter({ visible: true })).toBeVisible()
+  expect.soft(await problems(page), 'domain registrations').toEqual([])
+  await page.getByRole('button', { name: message('watch.domain.delete', { domain: 'e2e-shop.com' }) }).filter({ visible: true }).first().click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'stop watching a domain').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
+  await page.getByRole('button', { name: label('watch.domain.add') }).filter({ visible: true }).first().click()
+  await expect(dialog).toBeVisible()
+  await dialog.getByLabel(label('watch.domain.field.name')).fill('nas.lan')
+  await dialog.locator('button[type=submit]').click()
+  await expect(dialog.getByText(label('watch.error.domain'))).toBeVisible()
+  expect.soft(await problems(page), 'a domain with no registration').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
+  await page.unroute('**/api/v1/watch/domains')
+
   // Credentials: the page, a new one, and a provider that takes its keys
   // from it, whose fields for them then go.
   await page.goto('./credentials')

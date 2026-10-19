@@ -39,6 +39,8 @@ scrape_configs:
 | `jec_build_info` | JEC 的版本（标签 `version`） |
 | `jec_site_expiry_timestamp_seconds` | [监控的站点](../usage/sites.zh-CN.md)上次所见证书的到期时间，标签为 `host` 与 `port` |
 | `jec_site_state` | 监控站点所处状态（标签 `state`）为 1，其余为 0 |
+| `jec_domain_expiry_timestamp_seconds` | [域名注册](../usage/sites.zh-CN.md#域名注册)的到期时间，标签为 `domain` |
+| `jec_domain_state` | 域名所处状态（标签 `state`）为 1，其余为 0 |
 
 证书在 14 天内到期时告警的示例：
 

@@ -161,6 +161,13 @@ func (j *jecAPI) call(_ context.Context, via, method, path string, _, out any) e
 			{Host: "ok.example.org", Port: 443, State: "ok", NotAfter: &end},
 			{Host: "partner.example.org", Port: 8443, Name: "Partner", State: "invalid", NotAfter: &end},
 		}}
+	case "/watch/domains":
+		soon, later := renew.Add(-20*24*time.Hour), renew.Add(300*24*time.Hour)
+		body = map[string]any{"domains": []domain{
+			{Name: "fine.org", State: "ok", ExpiresAt: &later},
+			{Name: "shop.de", State: "unknown"},
+			{Name: "ending.org", State: "expiring", ExpiresAt: &soon},
+		}}
 	default:
 		return &module.CallError{Status: http.StatusNotFound, Code: i18n.KernelErrorNotFound}
 	}
@@ -252,8 +259,10 @@ func TestMenu(t *testing.T) {
 
 	// The watched sites, those to look at first.
 	a.push(update{Message: &message{ID: 2, Chat: ours, Text: "/sites"}})
-	if s := text(t, a.wait("sendMessage")); !strings.Contains(s, "Site watch") ||
-		strings.Index(s, "Partner (partner.example.org:8443)") > strings.Index(s, "ok.example.org") || !strings.Contains(s, "Not trusted") {
+	if s := text(t, a.wait("sendMessage")); !strings.Contains(s, "Expiry watch") ||
+		strings.Index(s, "Partner (partner.example.org:8443)") > strings.Index(s, "ok.example.org") || !strings.Contains(s, "Not trusted") ||
+		!strings.Contains(s, "Domain registrations") || strings.Index(s, "ending.org") > strings.Index(s, "fine.org") ||
+		strings.Index(s, "fine.org") > strings.Index(s, "shop.de") || !strings.Contains(s, "ending.org</b> · Ends soon") {
 		t.Errorf("sites %q", s)
 	}
 
