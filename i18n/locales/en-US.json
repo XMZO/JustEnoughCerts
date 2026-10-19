@@ -253,6 +253,8 @@
     },
     "op": {
       "backup": "Download a backup",
+      "calendar_rotate": "Move the calendar feed",
+      "calendar_switch": "Turn the calendar feed on or off",
       "certs_add": "Upload a certificate",
       "certs_delete": "Delete a certificate",
       "certs_deploy": "Deploy a certificate now",
@@ -496,6 +498,29 @@
     },
     "test": {
       "ok": "Connected to Caddy's admin API at {url}."
+    }
+  },
+  "calendar": {
+    "event": {
+      "domains": "Domains: {domains}",
+      "ends": "Certificate of {domain} ends",
+      "renews": "Renewal of {domain} starts"
+    },
+    "feed": {
+      "name": "JEC certificates"
+    },
+    "module": {
+      "description": "Shows when certificates end and renew in calendar apps, through a secret URL to subscribe to.",
+      "name": "Calendar feed"
+    },
+    "page": {
+      "copy": "Copy the URL of the feed",
+      "intro": "Subscribe in a calendar app to see when certificates end, with a reminder a week before, and when they renew.",
+      "rotate": "New URL",
+      "rotate_confirm": "Subscriptions stop: confirm",
+      "secret": "Anyone with this URL sees the domains and dates: keep it to yourself. A new URL stops the old one.",
+      "subscribe": "Add to calendar",
+      "title": "Calendar feed"
     }
   },
   "certfiles": {

@@ -1271,6 +1271,22 @@
         ],
         "type": "object"
       },
+      "FeedBody": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "path": {
+            "description": "The path of the feed, from the panel's root, such as /api/v1/calendar/ics/\u003ckey\u003e; secret",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "type": "object"
+      },
       "Field": {
         "additionalProperties": false,
         "properties": {
@@ -2632,6 +2648,18 @@
         ],
         "type": "object"
       },
+      "SwitchInputBody1": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "type": "object"
+      },
       "TestBody": {
         "additionalProperties": false,
         "properties": {
@@ -3605,6 +3633,174 @@
         "summary": "List what was done",
         "tags": [
           "audit"
+        ]
+      }
+    },
+    "/calendar/feed": {
+      "get": {
+        "operationId": "calendar-feed",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Tell whether the calendar feed is on, and its URL",
+        "tags": [
+          "calendar",
+          "calendar"
+        ]
+      },
+      "put": {
+        "operationId": "calendar-switch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchInputBody1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Turn the calendar feed on, at a new secret URL, or off",
+        "tags": [
+          "calendar",
+          "calendar"
+        ]
+      }
+    },
+    "/calendar/feed/rotate": {
+      "post": {
+        "operationId": "calendar-rotate",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Move the calendar feed to a new secret URL: the old one stops working",
+        "tags": [
+          "calendar",
+          "calendar"
+        ]
+      }
+    },
+    "/calendar/ics/{key}": {
+      "get": {
+        "description": "When each certificate ends, with a reminder a week before, and when its next renewal starts, in iCalendar.",
+        "operationId": "calendar-ics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "description": "The language of the events, such as zh-CN; English when left out",
+            "explode": false,
+            "in": "query",
+            "name": "lang",
+            "schema": {
+              "description": "The language of the events, such as zh-CN; English when left out",
+              "maxLength": 35,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/calendar": {}
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [],
+        "summary": "The calendar feed, for calendar apps to subscribe to",
+        "tags": [
+          "calendar",
+          "calendar"
         ]
       }
     },

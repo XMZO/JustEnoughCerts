@@ -533,6 +533,10 @@ test('every page is translated and fits', async ({ page }, info) => {
   await script.getByRole('button', { name: label('notify.action.test') }).click()
   await expect(script.getByRole('alert')).toHaveText(message('hooks.error.status_output', { status: '1', output: 'no route from notify.test' }))
   expect.soft(await problems(page), 'a script whose test failed').toEqual([])
+  // The calendar feed, turned on: its secret URL shows.
+  await page.getByRole('switch', { name: label('calendar.page.title') }).click()
+  await expect(page.getByRole('link', { name: label('calendar.page.subscribe') })).toBeVisible()
+  expect.soft(await problems(page), 'the calendar feed').toEqual([])
 
   // Credentials: the page, a new one, and a provider that takes its keys
   // from it, whose fields for them then go.

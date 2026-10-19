@@ -95,6 +95,24 @@ The script channel integrates other systems:
 - Exit status 0 means success; 75 means a temporary failure, retried
   later; any other status, a syntax error or a timeout is not retried.
 
+## Calendar feed
+
+At the bottom of the Notifications page, the calendar feed shows when
+certificates end, with a reminder a week before, and when their next
+renewal starts, in calendar apps such as those of Apple, Google and
+Microsoft.
+
+1. Turn the calendar feed on: JEC shows its URL.
+2. Choose Add to calendar on the device, or copy the URL and add it as a
+   subscription by URL in the calendar app. The events are in the language
+   of the interface when the URL was copied; `lang=en-US` or `lang=zh-CN`
+   at its end chooses another.
+
+The URL holds a secret key, as calendar apps cannot sign in: anyone with
+it sees the domains and dates. New URL makes another key, after which the
+old URL stops working; turning the feed off stops it too. The module
+"Calendar feed" provides it and can be switched off on the Modules page.
+
 ## Plugins
 
 Plugins can provide new notification channels; see

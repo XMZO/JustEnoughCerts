@@ -253,6 +253,8 @@
     },
     "op": {
       "backup": "下载备份",
+      "calendar_rotate": "更换日历订阅地址",
+      "calendar_switch": "开关日历订阅",
       "certs_add": "上传证书",
       "certs_delete": "删除证书",
       "certs_deploy": "立即部署证书",
@@ -496,6 +498,29 @@
     },
     "test": {
       "ok": "已连上 Caddy 的管理接口 {url}。"
+    }
+  },
+  "calendar": {
+    "event": {
+      "domains": "域名：{domains}",
+      "ends": "{domain} 的证书到期",
+      "renews": "{domain} 开始续期"
+    },
+    "feed": {
+      "name": "JEC 证书"
+    },
+    "module": {
+      "description": "通过私密的订阅地址，在日历应用中显示证书的到期和续期时间。",
+      "name": "日历订阅"
+    },
+    "page": {
+      "copy": "复制订阅地址",
+      "intro": "在日历应用中订阅后，可看到证书的到期时间（提前 7 天提醒）和续期时间。",
+      "rotate": "换新地址",
+      "rotate_confirm": "旧订阅将失效，再点一次确认",
+      "secret": "知道此地址的人都能看到域名和日期，请勿外传。换新地址后旧地址失效。",
+      "subscribe": "添加到日历",
+      "title": "日历订阅"
     }
   },
   "certfiles": {

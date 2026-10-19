@@ -14,6 +14,7 @@ import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
 import PageHeader from '../components/PageHeader.vue'
+import CalendarFeed from '../components/CalendarFeed.vue'
 import ProviderDialog from '../components/ProviderDialog.vue'
 import TypeTags from '../components/TypeTags.vue'
 import { useT, type MessageKey, type Params } from '../i18n'
@@ -286,6 +287,8 @@ async function confirmDelete() {
       {{ t(page.foot, { count: types.data.value.length }) }}
       <RouterLink to="/modules" class="whitespace-nowrap underline underline-offset-2">{{ t('kernel.providers.manage_modules') }}</RouterLink>
     </p>
+
+    <CalendarFeed v-if="notifiers" />
   </div>
 
   <ProviderDialog v-model:open="adding" :kind="kind" :title="t(page.add)" />
