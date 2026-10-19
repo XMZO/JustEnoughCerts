@@ -408,18 +408,25 @@ function pickLocale(e: Event) {
   void setLocale((e.target as HTMLSelectElement).value as Locale)
 }
 
-// The repository's name is data, not words to translate.
+// The repository's name is data, not words to translate, as are the
+// variables that set how the panel runs.
 const repository = { name: 'XMZO/JustEnoughCerts', url: 'https://github.com/XMZO/JustEnoughCerts' }
+const variables = { baseURL: 'JEC_BASE_URL', listen: 'JEC_LISTEN', trustedProxies: 'JEC_TRUSTED_PROXIES', hsts: 'JEC_HSTS' }
 
-const panel = 'flex flex-col rounded-lg border border-line bg-surface-raised px-3 py-2 sm:p-4'
-const row = 'flex min-h-[52px] items-center gap-3 border-b border-line py-2 last:border-b-0'
+// The cards flow into as many columns as fit, each packed from the top, so
+// that short ones leave no gaps.
+const panel = 'flex flex-col rounded-lg border border-line bg-surface-raised px-3 py-2 sm:mb-4 sm:break-inside-avoid sm:px-4 sm:py-3'
+const row = 'flex min-h-11 items-center gap-3 border-b border-line py-1.5 last:border-b-0'
+// The read-only facts of the about card, a line each.
+const fact = 'm-0 min-w-0 text-right [overflow-wrap:anywhere]'
 const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2 text-ink aria-invalid:border-danger-ink max-sm:h-11'
 </script>
 
 <template>
   <PageHeader :title="t('kernel.settings.title')" :subtitle="t('kernel.settings.intro')" :phone-back="fromMore" />
 
-  <div class="grid grid-cols-[minmax(0,1fr)] items-start gap-3 px-4 pt-3 sm:mt-4 sm:grid-cols-[repeat(auto-fill,minmax(420px,1fr))] sm:gap-4 sm:p-0">
+  <!-- In this order, two columns come out about as tall: what JEC does and keeps on the left, the account and JEC itself on the right. -->
+  <div class="flex flex-col gap-3 px-4 pt-3 sm:mt-4 sm:block sm:columns-[24rem] sm:gap-4 sm:p-0">
     <p class="m-0 text-ink-muted sm:hidden">{{ t('kernel.settings.intro') }}</p>
 
     <section aria-labelledby="appearance" :class="panel">
@@ -533,7 +540,7 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
             required
             aria-describedby="check-help"
             :aria-invalid="!!saveError.fields.value.checkTime || undefined"
-            :class="[control, 'w-28 flex-none tabular-nums']"
+            :class="[control, 'w-32 flex-none tabular-nums']"
             @change="store"
           />
         </div>
@@ -570,6 +577,58 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           </select>
         </div>
       </template>
+    </section>
+
+    <section v-if="system.data.value" aria-labelledby="data" :class="panel">
+      <h2 id="data" class="m-0 mb-1 text-heading font-semibold sm:text-section-title">{{ t('kernel.settings.data') }}</h2>
+      <div :class="[row, 'flex-wrap']">
+        <div class="min-w-0 flex-[1_1_12rem]">
+          <span class="block font-semibold">{{ t('kernel.settings.backup') }}</span>
+          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.backup_help') }}</span>
+        </div>
+        <div class="ml-auto flex max-w-full min-w-0 flex-wrap justify-end gap-2">
+          <JecButton size="sm" @click="backingUp = true">
+            <Download class="size-4" aria-hidden="true" />{{ t('kernel.settings.backup_download') }}
+          </JecButton>
+          <JecButton size="sm" @click="restoring = true">
+            <RotateCcw class="size-4" aria-hidden="true" />{{ t('kernel.settings.restore') }}
+          </JecButton>
+        </div>
+      </div>
+      <div :class="[row, 'flex-wrap']">
+        <!-- Three buttons leave the words too little room beside them: they go below. -->
+        <div class="min-w-0 flex-[1_1_18rem]">
+          <span class="block font-semibold">{{ t('kernel.settings.config') }}</span>
+          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.config_help') }}</span>
+          <span v-if="imported" role="status" class="mt-1 block text-small font-semibold text-ok-ink">{{ t('kernel.settings.config_imported') }}</span>
+          <JecAlert
+            v-if="exportError.alert.value && !exportingSecrets"
+            class="mt-2"
+            :code="exportError.alert.value.code"
+            :params="exportError.alert.value.params"
+          />
+        </div>
+        <div class="ml-auto flex max-w-full min-w-0 flex-wrap justify-end gap-2">
+          <JecButton size="sm" :busy="exportConfig.isPending.value && !exportingSecrets" @click="downloadConfig()">
+            <Download class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_export') }}
+          </JecButton>
+          <JecButton size="sm" @click="exportingSecrets = true">
+            <KeyRound class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_export_secrets') }}
+          </JecButton>
+          <JecButton size="sm" @click="importing = true">
+            <Upload class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_import') }}
+          </JecButton>
+        </div>
+      </div>
+      <div :class="row">
+        <div class="min-w-0 flex-1">
+          <span class="block font-semibold">{{ t('kernel.settings.secret_key') }}</span>
+          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.secret_key_help') }}</span>
+        </div>
+        <span class="min-w-0 max-w-[60%] text-right text-small">
+          {{ t(system.data.value.secretKey === 'env' ? 'kernel.settings.secret_key_env' : 'kernel.settings.secret_key_file') }}
+        </span>
+      </div>
     </section>
 
     <section v-if="session.data.value" aria-labelledby="account" :class="panel">
@@ -647,134 +706,53 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
       </div>
     </section>
 
-    <section v-if="system.data.value" aria-labelledby="access" :class="panel">
-      <h2 id="access" class="m-0 mb-1 text-heading font-semibold sm:text-section-title">{{ t('kernel.settings.access') }}</h2>
-      <div :class="row">
-        <div class="min-w-0 flex-1">
-          <span class="block font-semibold">{{ t('kernel.settings.base_url') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.base_url_help') }}</span>
-        </div>
-        <span v-if="system.data.value.baseURL" class="min-w-0 max-w-[60%] text-right font-mono text-small [overflow-wrap:anywhere]" translate="no">
-          {{ system.data.value.baseURL }}
-        </span>
-        <span v-else class="flex-none text-ink-muted">{{ t('kernel.settings.not_set') }}</span>
-      </div>
-      <div :class="row">
-        <div class="min-w-0 flex-1">
-          <span class="block font-semibold">{{ t('kernel.settings.listen') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.listen_help') }}</span>
-        </div>
-        <span class="min-w-0 max-w-[60%] text-right font-mono text-small [overflow-wrap:anywhere]" translate="no">{{ system.data.value.listen }}</span>
-      </div>
-      <div :class="row">
-        <div class="min-w-0 flex-1">
-          <span class="block font-semibold">{{ t('kernel.settings.trusted_proxies') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.trusted_proxies_help') }}</span>
-        </div>
-        <span
-          v-if="system.data.value.trustedProxies"
-          class="min-w-0 max-w-[60%] text-right font-mono text-small [overflow-wrap:anywhere]"
-          translate="no"
-        >
-          {{ system.data.value.trustedProxies }}
-        </span>
-        <span v-else class="flex-none text-ink-muted">{{ t('kernel.settings.not_set') }}</span>
-      </div>
-      <div :class="row">
-        <div class="min-w-0 flex-1">
-          <span class="block font-semibold">{{ t('kernel.settings.hsts') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.hsts_help') }}</span>
-        </div>
-        <span :class="['flex-none', system.data.value.hsts ? 'font-semibold text-ok-ink' : 'text-ink-muted']">{{
-          t(system.data.value.hsts ? 'kernel.settings.hsts_on' : 'kernel.settings.hsts_off')
-        }}</span>
-      </div>
-    </section>
-
-    <section v-if="system.data.value" aria-labelledby="data" :class="panel">
-      <h2 id="data" class="m-0 mb-1 text-heading font-semibold sm:text-section-title">{{ t('kernel.settings.data') }}</h2>
-      <div :class="row">
-        <div class="min-w-0 flex-1">
-          <span class="block font-semibold">{{ t('kernel.settings.data_dir') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.data_dir_help') }}</span>
-        </div>
-        <span class="min-w-0 max-w-[60%] text-right font-mono text-small [overflow-wrap:anywhere]" translate="no">{{ system.data.value.dataDir }}</span>
-      </div>
-      <div :class="[row, 'flex-wrap']">
-        <div class="min-w-0 flex-[1_1_12rem]">
-          <span class="block font-semibold">{{ t('kernel.settings.backup') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.backup_help') }}</span>
-        </div>
-        <div class="ml-auto flex max-w-full min-w-0 flex-wrap justify-end gap-2">
-          <JecButton size="sm" @click="backingUp = true">
-            <Download class="size-4" aria-hidden="true" />{{ t('kernel.settings.backup_download') }}
-          </JecButton>
-          <JecButton size="sm" @click="restoring = true">
-            <RotateCcw class="size-4" aria-hidden="true" />{{ t('kernel.settings.restore') }}
-          </JecButton>
-        </div>
-      </div>
-      <div :class="[row, 'flex-wrap']">
-        <div class="min-w-0 flex-[1_1_12rem]">
-          <span class="block font-semibold">{{ t('kernel.settings.config') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.config_help') }}</span>
-          <span v-if="imported" role="status" class="mt-1 block text-small font-semibold text-ok-ink">{{ t('kernel.settings.config_imported') }}</span>
-          <JecAlert
-            v-if="exportError.alert.value && !exportingSecrets"
-            class="mt-2"
-            :code="exportError.alert.value.code"
-            :params="exportError.alert.value.params"
-          />
-        </div>
-        <div class="ml-auto flex max-w-full min-w-0 flex-wrap justify-end gap-2">
-          <JecButton size="sm" :busy="exportConfig.isPending.value && !exportingSecrets" @click="downloadConfig()">
-            <Download class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_export') }}
-          </JecButton>
-          <JecButton size="sm" @click="exportingSecrets = true">
-            <KeyRound class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_export_secrets') }}
-          </JecButton>
-          <JecButton size="sm" @click="importing = true">
-            <Upload class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_import') }}
-          </JecButton>
-        </div>
-      </div>
-      <div :class="row">
-        <div class="min-w-0 flex-1">
-          <span class="block font-semibold">{{ t('kernel.settings.secret_key') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.secret_key_help') }}</span>
-        </div>
-        <span class="min-w-0 max-w-[60%] text-right text-small">
-          {{ t(system.data.value.secretKey === 'env' ? 'kernel.settings.secret_key_env' : 'kernel.settings.secret_key_file') }}
-        </span>
-      </div>
-    </section>
-
     <section v-if="manifest.data.value" aria-labelledby="about" :class="panel">
       <h2 id="about" class="m-0 mb-1 text-heading font-semibold sm:text-section-title">{{ t('kernel.settings.about') }}</h2>
-      <dl class="m-0">
+      <!-- What this JEC is and how it runs, a line each; the variables that set them are data. -->
+      <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 gap-y-2 border-b border-line py-2 text-small">
+        <dt class="font-semibold">{{ t('kernel.settings.version') }}</dt>
         <!-- A build from source has a long version: it wraps. -->
-        <div :class="row">
-          <dt class="flex-none font-semibold">{{ t('kernel.settings.version') }}</dt>
-          <dd class="m-0 min-w-0 flex-1 text-right font-mono text-small [overflow-wrap:anywhere]">
-            <data :value="manifest.data.value.version">{{ manifest.data.value.version }}</data>
-          </dd>
-        </div>
-        <div :class="row">
-          <dt class="flex-none font-semibold">{{ t('kernel.settings.build') }}</dt>
-          <dd class="m-0 flex min-w-0 flex-1 flex-wrap justify-end gap-x-2 text-small text-ink-muted">
-            <time v-if="manifest.data.value.date" :datetime="manifest.data.value.date">{{ intl.date(manifest.data.value.date) }}</time>
-            <data :value="manifest.data.value.platform" class="font-mono">{{ manifest.data.value.platform }}</data>
-          </dd>
-        </div>
-        <div :class="row">
-          <dt class="min-w-0 flex-1">
-            <span class="block font-semibold">{{ t('kernel.settings.source') }}</span>
-            <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.license') }}</span>
+        <dd :class="[fact, 'font-mono']">
+          <data :value="manifest.data.value.version">{{ manifest.data.value.version }}</data>
+        </dd>
+        <dt class="font-semibold">{{ t('kernel.settings.build') }}</dt>
+        <dd :class="[fact, 'flex flex-wrap justify-end gap-x-2 text-ink-muted']">
+          <time v-if="manifest.data.value.date" :datetime="manifest.data.value.date">{{ intl.date(manifest.data.value.date) }}</time>
+          <data :value="manifest.data.value.platform" class="font-mono">{{ manifest.data.value.platform }}</data>
+        </dd>
+        <dt class="font-semibold">{{ t('kernel.settings.source') }}</dt>
+        <dd :class="[fact, 'flex flex-wrap justify-end gap-x-2']">
+          <a :href="repository.url" target="_blank" rel="noopener" translate="no">{{ repository.name }}</a>
+          <span class="text-ink-muted">{{ t('kernel.settings.license') }}</span>
+        </dd>
+        <template v-if="system.data.value">
+          <dt class="font-semibold">{{ t('kernel.settings.data_dir') }}</dt>
+          <dd :class="[fact, 'font-mono']" translate="no">{{ system.data.value.dataDir }}</dd>
+          <dt>
+            <span class="block font-semibold">{{ t('kernel.settings.base_url') }}</span>
+            <code class="block text-caption text-ink-muted" translate="no">{{ variables.baseURL }}</code>
           </dt>
-          <dd class="m-0 flex-none">
-            <a :href="repository.url" target="_blank" rel="noopener" translate="no">{{ repository.name }}</a>
+          <dd v-if="system.data.value.baseURL" :class="[fact, 'font-mono']" translate="no">{{ system.data.value.baseURL }}</dd>
+          <dd v-else :class="[fact, 'text-ink-muted']">{{ t('kernel.settings.not_set') }}</dd>
+          <dt>
+            <span class="block font-semibold">{{ t('kernel.settings.listen') }}</span>
+            <code class="block text-caption text-ink-muted" translate="no">{{ variables.listen }}</code>
+          </dt>
+          <dd :class="[fact, 'font-mono']" translate="no">{{ system.data.value.listen }}</dd>
+          <dt>
+            <span class="block font-semibold">{{ t('kernel.settings.trusted_proxies') }}</span>
+            <code class="block text-caption text-ink-muted" translate="no">{{ variables.trustedProxies }}</code>
+          </dt>
+          <dd v-if="system.data.value.trustedProxies" :class="[fact, 'font-mono']" translate="no">{{ system.data.value.trustedProxies }}</dd>
+          <dd v-else :class="[fact, 'text-ink-muted']">{{ t('kernel.settings.not_set') }}</dd>
+          <dt>
+            <span class="block font-semibold">{{ t('kernel.settings.hsts') }}</span>
+            <code class="block text-caption text-ink-muted" translate="no">{{ variables.hsts }}</code>
+          </dt>
+          <dd :class="[fact, system.data.value.hsts ? 'font-semibold text-ok-ink' : 'text-ink-muted']">
+            {{ t(system.data.value.hsts ? 'kernel.settings.hsts_on' : 'kernel.settings.hsts_off') }}
           </dd>
-        </div>
+        </template>
       </dl>
       <div :class="[row, 'flex-wrap']">
         <div class="min-w-0 flex-[1_1_12rem]">
