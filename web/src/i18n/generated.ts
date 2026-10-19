@@ -608,6 +608,7 @@ export type MessageKey =
   | "certs.history.title"
   | "certs.info.title"
   | "certs.issuance.background"
+  | "certs.issuance.check_now"
   | "certs.issuance.deploy_step"
   | "certs.issuance.done"
   | "certs.issuance.done_deployed"

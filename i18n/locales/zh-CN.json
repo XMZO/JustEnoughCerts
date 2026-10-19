@@ -786,6 +786,7 @@
     },
     "issuance": {
       "background": "在后台继续",
+      "check_now": "立即查看",
       "deploy_step": "部署到 {target}",
       "done": "证书已签发",
       "done_deployed": "已签发，并部署到 {count, plural, other {# 个目标}}",

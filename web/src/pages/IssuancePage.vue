@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleCheck, CircleX, Hourglass, RotateCw, TriangleAlert } from '@lucide/vue'
+import { CircleCheck, CircleX, Hourglass, RefreshCw, RotateCw, TriangleAlert } from '@lucide/vue'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -115,14 +115,18 @@ async function retry() {
         </div>
         <LifeBar v-if="life" :life="life" class="w-40 flex-none" />
       </section>
-      <section v-else-if="is.state === 'waiting'" role="status" class="flex gap-3 rounded-lg border border-line bg-info-soft p-4">
+      <section v-else-if="is.state === 'waiting'" role="status" class="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-info-soft p-4">
         <Hourglass class="size-6 flex-none text-info-ink" aria-hidden="true" />
-        <div class="flex min-w-0 flex-col gap-0.5">
+        <div class="flex min-w-0 flex-[1_1_240px] flex-col gap-0.5">
           <strong class="text-heading text-info-ink [overflow-wrap:anywhere]">{{ t('certs.issuance.waiting', { source }) }}</strong>
           <span v-if="is.nextAt" class="text-small text-ink-muted">
             {{ t('certs.issuance.next_check') }} <time :datetime="is.nextAt">{{ intl.dateTime(is.nextAt) }}</time>
           </span>
         </div>
+        <!-- Once something was done at the source, such as in its panel, rather than waiting for the next look. -->
+        <JecButton size="sm" class="flex-none" :busy="issueNow.isPending.value" @click="retry">
+          <RefreshCw class="size-4" aria-hidden="true" />{{ t('certs.issuance.check_now') }}
+        </JecButton>
       </section>
       <section v-else-if="retrying" role="status" class="flex gap-3 rounded-lg border border-line bg-warn-soft p-4">
         <TriangleAlert class="size-6 flex-none text-warn-ink" aria-hidden="true" />
