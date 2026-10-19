@@ -3,12 +3,17 @@ package certs
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/x509"
 	"encoding/base64"
 	"net/http"
+	"net/http/httptest"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox/cryptoxtest"
 )
 
 func TestImport(t *testing.T) {
@@ -94,5 +99,27 @@ func TestExportAll(t *testing.T) {
 	// Each key that left is in the audit trail.
 	if n := len(f.events()) - before; n != 2 {
 		t.Errorf("%d events", n)
+	}
+}
+
+func TestUploadCompletesChain(t *testing.T) {
+	f := newFixture(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(f.ca.Intermediate.Raw) }))
+	defer srv.Close()
+	f.svc.issuers = srv.Client()
+	key := cryptoxtest.NewKey(t)
+	leaf := f.ca.Sign(t, key, &x509.Certificate{
+		DNSNames: []string{"aia.example.com"}, NotBefore: f.now.Add(-time.Hour), NotAfter: f.now.Add(60 * day),
+		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		IssuingCertificateURL: []string{srv.URL + "/inter.der"},
+	})
+	// The leaf alone, as copied from a CA's email.
+	c := f.add(upload{cryptoxtest.CertPEM(leaf), cryptoxtest.KeyPEM(t, key), key})
+	var d struct {
+		Chain []ChainEntry `json:"chain"`
+	}
+	f.call(f.api.Get("/certificates/"+strconv.FormatInt(c.ID, 10)), http.StatusOK, &d)
+	if len(d.Chain) < 2 || d.Chain[1].Subject != "Test Intermediate" {
+		t.Errorf("chain %+v", d.Chain)
 	}
 }

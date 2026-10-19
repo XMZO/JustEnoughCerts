@@ -65,6 +65,7 @@ func (m *Module) Register(r *module.Registry) error {
 		return err
 	}
 	s.status = &statusChecker{client: client, now: m.now}
+	s.issuers = client
 	s.issuing.trigger = func() { r.Jobs.Trigger("issue") }
 	s.deploying.trigger = func() { r.Jobs.Trigger("deploy") }
 	registerAPI(r.API, s, r.ConfirmPassword)

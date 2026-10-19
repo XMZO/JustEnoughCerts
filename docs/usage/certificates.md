@@ -45,6 +45,11 @@ The key type is RSA 2048, 3072 or 4096, or ECDSA P-256 or P-384; the
 default is set under Renewal defaults on the Settings page. Every renewal
 generates a new private key.
 
+When a certificate is uploaded without its intermediates, as when copied
+from a CA's email, JEC fetches them from the issuer address the
+certificate names (AIA) to complete the chain, which some clients, such
+as Android and curl, need once it is deployed.
+
 Download all, on the certificate list, packs the version in use of every
 certificate with its private key into one ZIP, a folder each, to keep
 offline or to move elsewhere; it asks for the password first, and the

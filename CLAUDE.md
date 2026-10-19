@@ -130,6 +130,7 @@
 - DNS 区域预检：`dnsrecord.API.Holds`（四家各自按名字查一个域名）和 `dnsrecord.ZoneOf`（先按 SOA 找区域）；验证类型标 `Zones`、实例实现 `contracts.ZoneHolder`（lego 模块的这四家），接口 `GET /api/v1/providers/{id}/zones?domain=…`（GET，不进审计）；添加证书页在 DNS 服务商下面提示不在账号里的域名。
 - 证书的修改域名（`PUT /api/v1/certs/certificates/{id}/domains`，`setDomains`）：只限有来源的证书，签发进行中拒绝（`certs.error.issuing_now`），丢弃失败签发留下的订单状态后立即签发。续期窗口和紧急期按有效期封顶（`limits`：2/3 和 1/3），短期证书不会刚签好就再续。ACME 账号可选证书配置（`profile`，测试连接列出 CA 提供的）；证书可以是 IP 地址（只能 HTTP 验证），Pebble 测试覆盖 shortlived 和 IP。
 - 又加了：ZeroSSL 不填 EAB 时注册前用邮箱向 `api.zerossl.com` 领取（经账号的代理，`acme.Module.zeroSSL` 可替换）；“以此为模板添加”（添加页 `?from=<id>`，没有时用浏览器记住的上次选择）；多文件导入（`POST /api/v1/certs/certificates/import`，`cryptox.FindPairs` 按公钥配对、补链，界面在“手动上传”的“多个文件”）；“下载全部证书”（`POST /api/v1/certs/certificates/export`，要密码，每张发一次 `certificate.key_downloaded`）；设置入口在后台任务失败或磁盘空间不足时显示警告（`healthTrouble`）。vue-tsc 不报模板里没导入的组件，新用到 `JecField` 之类要自己检查导入。
+- 上传（含多文件导入）的证书没有中间证书时按 AIA 补链（`cryptox.CompleteChain`，DER、PEM、PKCS #7 的 `.p7c` 都能读，补不全就保留已取到的；证书模块的 `issuers` 客户端，测试里为空就不补）。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

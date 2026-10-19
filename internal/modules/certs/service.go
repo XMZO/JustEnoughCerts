@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"net/http"
 	"slices"
 	"strconv"
 	"strings"
@@ -91,6 +92,8 @@ type service struct {
 
 	// status asks CAs whether they revoked versions; nil to not ask.
 	status *statusChecker
+	// issuers fetches the intermediates an upload lacks; nil to not.
+	issuers *http.Client
 
 	issuing   *queue[claimed]
 	deploying *queue[deployClaim]
@@ -216,8 +219,23 @@ func (c *Certificate) state(now time.Time) string {
 	return stateOK
 }
 
+// completeChain fetches the intermediates of an upload that came without
+// them, as a leaf copied from a CA's email does, which some clients could
+// not trust once deployed. One that cannot be completed stays as it is.
+func (s *service) completeChain(ctx context.Context, b *cryptox.Bundle) {
+	if s.issuers == nil || len(b.Chain) > 0 {
+		return
+	}
+	if err := cryptox.CompleteChain(ctx, s.issuers, b); err != nil {
+		s.log.Warn("complete the chain of an upload", "domains", cryptox.Names(b.Leaf), "err", err)
+	} else if len(b.Chain) > 0 {
+		s.log.Info("completed the chain of an upload", "domains", cryptox.Names(b.Leaf), "intermediates", len(b.Chain))
+	}
+}
+
 // add stores b as a new certificate, deployed to targets.
 func (s *service) add(ctx context.Context, b *cryptox.Bundle, renewBeforeDays int, targets []int64) (int64, error) {
+	s.completeChain(ctx, b)
 	if renewBeforeDays == 0 {
 		st, err := s.settings(ctx)
 		if err != nil {
@@ -255,6 +273,7 @@ func (s *service) add(ctx context.Context, b *cryptox.Bundle, renewBeforeDays in
 
 // upload adds b as the new current version of certificate id.
 func (s *service) upload(ctx context.Context, id int64, b *cryptox.Bundle) error {
+	s.completeChain(ctx, b)
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
