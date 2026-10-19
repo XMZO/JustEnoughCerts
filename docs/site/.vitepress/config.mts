@@ -4,7 +4,7 @@ import { sections, source, titleOf } from '../pages.mjs'
 
 // The documentation site (PLAN.md 11): the guides of docs/, as pages.mjs
 // puts them together in src/, in English and in Chinese. It is published
-// to GitHub Pages.
+// to GitHub Pages at https://getjec.dev/.
 
 const repo = 'https://github.com/XMZO/JustEnoughCerts'
 

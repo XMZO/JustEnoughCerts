@@ -13,7 +13,7 @@
 
 [Unit]
 Description=Just Enough Certs
-Documentation=https://xmzo.github.io/JustEnoughCerts/guide/installation
+Documentation=https://getjec.dev/guide/installation
 Wants=network-online.target
 After=network-online.target
 

@@ -2,7 +2,7 @@
 
 *Just enough certs to keep your site green.*
 
-[English](README.md) · [在线文档](https://xmzo.github.io/JustEnoughCerts/zh-CN/)
+[English](README.md) · [在线文档](https://getjec.dev/zh-CN/)
 
 Just Enough Certs（JEC）是一款自托管的 SSL/TLS 证书管理面板，负责从各类来源获取证书、自动完成域名验证、将证书部署到 CDN 与服务器，并在到期前自动续期。项目名称与视觉风格致敬 Minecraft 模组 JEI。
 
@@ -34,17 +34,17 @@ docker compose up -d
 docker logs jec 2>&1 | grep setup_token
 ```
 
-JEC 仅监听服务器本机的 `127.0.0.1:8080`：按[反向代理与 CDN](https://xmzo.github.io/JustEnoughCerts/zh-CN/operations/reverse-proxy)经反向代理以 HTTPS 访问；或先试用时，在自己的电脑上执行 `ssh -N -L 8080:127.0.0.1:8080 <用户>@<主机>`，再打开 `http://localhost:8080`。填写日志中的初始化令牌并创建管理员账号。正式版发布前，该文件使用最新测试版（镜像标签 `beta`）。签发第一张证书的步骤见[快速开始](https://xmzo.github.io/JustEnoughCerts/zh-CN/guide/getting-started)。
+JEC 仅监听服务器本机的 `127.0.0.1:8080`：按[反向代理与 CDN](https://getjec.dev/zh-CN/operations/reverse-proxy)经反向代理以 HTTPS 访问；或先试用时，在自己的电脑上执行 `ssh -N -L 8080:127.0.0.1:8080 <用户>@<主机>`，再打开 `http://localhost:8080`。填写日志中的初始化令牌并创建管理员账号。正式版发布前，该文件使用最新测试版（镜像标签 `beta`）。签发第一张证书的步骤见[快速开始](https://getjec.dev/zh-CN/guide/getting-started)。
 
 ## 文档
 
 | 部分 | 内容 |
 |---|---|
-| [指南](https://xmzo.github.io/JustEnoughCerts/zh-CN/guide/introduction) | 介绍、快速开始、安装与升级、核心概念 |
-| [使用](https://xmzo.github.io/JustEnoughCerts/zh-CN/usage/certificates) | 证书、证书来源、域名验证、部署目标、续期、通知 |
-| [运维](https://xmzo.github.io/JustEnoughCerts/zh-CN/operations/configuration) | 配置参考、反向代理与 CDN、数据与备份、账号与安全、配置导入导出、校验发布文件 |
-| [参考](https://xmzo.github.io/JustEnoughCerts/zh-CN/reference/providers) | 服务商支持与测试情况、API |
-| [开发](https://xmzo.github.io/JustEnoughCerts/zh-CN/development/contributing) | 参与开发、插件、翻译指南、真实账号测试 |
+| [指南](https://getjec.dev/zh-CN/guide/introduction) | 介绍、快速开始、安装与升级、核心概念 |
+| [使用](https://getjec.dev/zh-CN/usage/certificates) | 证书、证书来源、域名验证、部署目标、续期、通知 |
+| [运维](https://getjec.dev/zh-CN/operations/configuration) | 配置参考、反向代理与 CDN、数据与备份、账号与安全、配置导入导出、校验发布文件 |
+| [参考](https://getjec.dev/zh-CN/reference/providers) | 服务商支持与测试情况、API |
+| [开发](https://getjec.dev/zh-CN/development/contributing) | 参与开发、插件、翻译指南、真实账号测试 |
 
 文档页面位于 [docs/](docs)；架构与路线图见 [PLAN.md](PLAN.md)。
 

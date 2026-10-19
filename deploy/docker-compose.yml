@@ -8,7 +8,7 @@
 #
 # JEC is reachable from this machine only, on 127.0.0.1:8080: a reverse
 # proxy here, such as Caddy or nginx, serves it over HTTPS, as
-# https://xmzo.github.io/JustEnoughCerts/operations/reverse-proxy describes.
+# https://getjec.dev/operations/reverse-proxy describes.
 services:
   jec:
     # beta is the newest test release; latest, the newest stable one, comes

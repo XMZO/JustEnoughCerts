@@ -2,7 +2,7 @@
 
 *Just enough certs to keep your site green.*
 
-[简体中文](README.zh-CN.md) · [Documentation](https://xmzo.github.io/JustEnoughCerts/)
+[简体中文](README.zh-CN.md) · [Documentation](https://getjec.dev/)
 
 Just Enough Certs (JEC) is a self-hosted SSL/TLS certificate manager. It
 obtains certificates from a range of sources, completes domain validation
@@ -62,24 +62,24 @@ docker logs jec 2>&1 | grep setup_token
 
 JEC listens on `127.0.0.1:8080` of the server only: serve it over HTTPS
 through a reverse proxy, as
-[Reverse proxy and CDN](https://xmzo.github.io/JustEnoughCerts/operations/reverse-proxy)
+[Reverse proxy and CDN](https://getjec.dev/operations/reverse-proxy)
 describes, or, for a first look, run
 `ssh -N -L 8080:127.0.0.1:8080 <user>@<host>` on your own computer and
 open `http://localhost:8080`. Enter the setup token from the log and
 create the administrator account; until the first stable release, the
 compose file runs the newest test release, the image tag `beta`.
-[Getting started](https://xmzo.github.io/JustEnoughCerts/guide/getting-started)
+[Getting started](https://getjec.dev/guide/getting-started)
 continues with the first certificate.
 
 ## Documentation
 
 | Section | Contents |
 |---|---|
-| [Guide](https://xmzo.github.io/JustEnoughCerts/guide/introduction) | Introduction, getting started, installation and upgrades, concepts |
-| [Usage](https://xmzo.github.io/JustEnoughCerts/usage/certificates) | Certificates, certificate sources, domain validation, deploy targets, renewal, notifications |
-| [Operations](https://xmzo.github.io/JustEnoughCerts/operations/configuration) | Configuration, reverse proxy and CDN, data and backups, accounts and security, the configuration file, verifying releases |
-| [Reference](https://xmzo.github.io/JustEnoughCerts/reference/providers) | Providers and their test coverage, the API |
-| [Development](https://xmzo.github.io/JustEnoughCerts/development/contributing) | Contributing, plugins, translation, testing with real accounts |
+| [Guide](https://getjec.dev/guide/introduction) | Introduction, getting started, installation and upgrades, concepts |
+| [Usage](https://getjec.dev/usage/certificates) | Certificates, certificate sources, domain validation, deploy targets, renewal, notifications |
+| [Operations](https://getjec.dev/operations/configuration) | Configuration, reverse proxy and CDN, data and backups, accounts and security, the configuration file, verifying releases |
+| [Reference](https://getjec.dev/reference/providers) | Providers and their test coverage, the API |
+| [Development](https://getjec.dev/development/contributing) | Contributing, plugins, translation, testing with real accounts |
 
 The pages of the documentation are in [docs/](docs); [PLAN.md](PLAN.md)
 describes the architecture and the roadmap.

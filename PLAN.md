@@ -843,7 +843,7 @@ services:
 ### 9.3 其他
 
 - Dependabot 每周更新依赖，Actions 的版本包括 `.github/actions/` 下组合动作里的。
-- 文档站（`docs.yml`）：https://xmzo.github.io/JustEnoughCerts/ ，内容就是 README 和 `docs/` 里给用户看的几篇指南（试用、服务商、插件、翻译），英文在根路径、中文在 `/zh-CN/`。`docs/site/pages.mjs` 把它们拼进 `docs/site/src/`：页面之间的链接改成站内链接（链接文字是文件名的换成页面标题），指向仓库里其他文件的改成 GitHub 链接，去掉开头切换语言的那一行，GitHub 的提示块换成带本语言标题的 VitePress 提示框；再用 VitePress（1.6，本地搜索，品牌色取自设计 token）构建，站内链接失效时构建失败。改了 README 或 `docs/` 就在 PR 里构建检查，推到 main 时发布到 GitHub Pages（来源设为 GitHub Actions）。设计稿、`PLAN.md` 不上站。
+- 文档站（`docs.yml`）：https://getjec.dev/ ，内容就是 README 和 `docs/` 里给用户看的几篇指南（试用、服务商、插件、翻译），英文在根路径、中文在 `/zh-CN/`。`docs/site/pages.mjs` 把它们拼进 `docs/site/src/`：页面之间的链接改成站内链接（链接文字是文件名的换成页面标题），指向仓库里其他文件的改成 GitHub 链接，去掉开头切换语言的那一行，GitHub 的提示块换成带本语言标题的 VitePress 提示框；再用 VitePress（1.6，本地搜索，品牌色取自设计 token）构建，站内链接失效时构建失败。改了 README 或 `docs/` 就在 PR 里构建检查，推到 main 时发布到 GitHub Pages（来源设为 GitHub Actions）。设计稿、`PLAN.md` 不上站。
 - 版本号遵循 SemVer；`jec version` 显示版本号、提交哈希和构建时间。
 
 ## 10. 安全

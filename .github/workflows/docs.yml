@@ -1,9 +1,8 @@
 name: docs
 
 # Builds the documentation site (docs/site, PLAN.md 11) and, from main,
-# publishes it to GitHub Pages at https://xmzo.github.io/JustEnoughCerts/.
-# A pull request only builds it, which also checks the links between the
-# pages.
+# publishes it to GitHub Pages at https://getjec.dev/. A pull request only
+# builds it, which also checks the links between the pages.
 
 on:
   push:
