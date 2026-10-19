@@ -69,8 +69,25 @@ async function problems(page: Page): Promise<string[]> {
   return [...(await textProblems(page)), ...(await axeProblems(page))]
 }
 
+/**
+ * settle waits for the animations and transitions under way to end, as a
+ * button's turning to its confirming colors: axe would see colors halfway.
+ * Endless ones, such as a spinner, are left running.
+ */
+async function settle(page: Page): Promise<void> {
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => Number.isFinite(a.effect?.getComputedTiming().endTime ?? Infinity))
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  )
+}
+
 /** axeProblems lists the violations axe finds, each with the first elements it is about. */
 async function axeProblems(page: Page): Promise<string[]> {
+  await settle(page)
   const { violations } = await new AxeBuilder({ page }).analyze()
   return violations.map(
     (v) => `axe ${v.id} (${v.impact ?? 'unknown'}): ${v.help}, in ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(', ')}`,
@@ -858,6 +875,7 @@ test('the dark theme keeps its contrast', async ({ page }) => {
     await page.goto(path)
     await page.waitForLoadState('networkidle')
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+    await settle(page)
     const { violations } = await new AxeBuilder({ page }).withRules(['color-contrast', 'link-in-text-block']).analyze()
     expect
       .soft(
