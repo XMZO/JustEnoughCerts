@@ -68,6 +68,7 @@ Reports of results with real accounts are welcome.
 | `baiducloud.cdn` | Baidu AI Cloud CDN | Fake; signatures checked against the official SDK's |
 | `aws.acm` | AWS Certificate Manager, for CloudFront and load balancers | Emulator: moto |
 | `aws.cloudfront` | AWS CloudFront distributions, through ACM in us-east-1 | Fake |
+| `gcore.cdn` | Gcore CDN resources | Fake |
 | `baota.site` | BaoTa (aaPanel) websites | Fake |
 | `onepanel.certificate` | 1Panel certificates | Fake |
 | `npm.certificate` | Nginx Proxy Manager | Real software: NPM 2.16 |

@@ -9,7 +9,7 @@
 | 类别 | 目标 |
 |---|---|
 | 阿里云 | ESA、CDN、全站加速（DCDN）、数字证书管理服务、OSS 自定义域名、传统型负载均衡（CLB）、应用型负载均衡（ALB） |
-| 其他云服务 | 腾讯云 SSL 证书服务（更新 CDN、EdgeOne、CLB 等资源）、华为云 CDN、七牛云 CDN、火山引擎 CDN、百度智能云 CDN、又拍云 CDN（实验性）、Cloudflare 自定义证书、AWS Certificate Manager |
+| 其他云服务 | 腾讯云 SSL 证书服务（更新 CDN、EdgeOne、CLB 等资源）、直接部署到腾讯云 CDN 和 EdgeOne、华为云 CDN、七牛云 CDN、火山引擎 CDN、百度智能云 CDN、又拍云 CDN（实验性）、Cloudflare 自定义证书、AWS Certificate Manager、AWS CloudFront、Gcore CDN |
 | 面板与服务器软件 | 宝塔面板（aaPanel）、1Panel、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Caddy（经管理接口） |
 | 文件与容器 | 本地目录、SSH 服务器、Docker 容器、Kubernetes TLS Secret |
 | 自定义 | Webhook 部署、插件 |

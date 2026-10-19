@@ -78,6 +78,12 @@ var (
 			{Key: "secret_key", Label: i18n.CredentialsBaiducloudSecretKey, Kind: providers.Text, Secret: true, Required: true},
 		},
 	}
+	Gcore = providers.CredentialKind{
+		ID: "gcore", Name: i18n.CredentialsGcoreName, Description: i18n.CredentialsGcoreDescription,
+		Fields: []providers.Field{
+			{Key: "api_token", Label: i18n.CredentialsGcoreApiToken, Kind: providers.Text, Secret: true, Required: true},
+		},
+	}
 	SSHKey = providers.CredentialKind{
 		ID: "ssh_key", Name: i18n.CredentialsSshKeyName, Description: i18n.CredentialsSshKeyDescription,
 		Fields: []providers.Field{

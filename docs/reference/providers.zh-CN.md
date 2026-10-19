@@ -63,6 +63,7 @@
 | `baiducloud.cdn` | 百度智能云 CDN | 替身；签名已与官方 SDK 核对 |
 | `aws.acm` | AWS Certificate Manager，供 CloudFront 与负载均衡使用 | 模拟器：moto |
 | `aws.cloudfront` | AWS CloudFront 分发：导入 us-east-1 的 ACM 并设为分发的证书 | 替身 |
+| `gcore.cdn` | Gcore CDN 资源 | 替身 |
 | `baota.site` | 宝塔面板（aaPanel）网站 | 替身 |
 | `onepanel.certificate` | 1Panel 证书 | 替身 |
 | `npm.certificate` | Nginx Proxy Manager | 真实软件：NPM 2.16 |

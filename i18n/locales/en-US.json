@@ -1182,6 +1182,11 @@
       "description": "One of two ways: an API token, made under My Profile → API Tokens at Cloudflare with the rights of what uses it (Zone → DNS → Edit for DNS validation, Zone → SSL and Certificates → Edit for custom certificates); or else the account's email with its Global API Key, which can do anything the account can, so a token is safer.",
       "name": "Cloudflare API token or key"
     },
+    "gcore": {
+      "api_token": "API token",
+      "description": "A permanent API token of the Gcore Customer Portal, for DNS validation and the CDN alike.",
+      "name": "Gcore API token"
+    },
     "huaweicloud": {
       "access_key_id": "Access Key ID (AK)",
       "description": "Best made for a user in Huawei Cloud's IAM that has only the rights the services you use need: an access key (AK/SK).",
@@ -1502,6 +1507,44 @@
       "name": "Website directory",
       "per_domain": "Each domain has a subdirectory named after it",
       "shared": "This directory serves every domain"
+    }
+  },
+  "gcore": {
+    "cdn": {
+      "description": "Uploads each new version to the SSL certificates of Gcore's CDN and has the CDN resources serve it, turning HTTPS on where it is off.",
+      "name": "Gcore CDN"
+    },
+    "error": {
+      "api": "Gcore refused: {message} (HTTP {status})",
+      "network": "Could not reach Gcore.",
+      "resource": "This Gcore account has no CDN resource {id}.",
+      "resources": "{value} is no CDN resource ID: enter the numeric IDs, separated by commas.",
+      "status": "The answer of Gcore made no sense (HTTP {status}).",
+      "token": "Gcore refused the API token: {message}"
+    },
+    "field": {
+      "api_token": "API token",
+      "api_token_help": "A permanent API token, made under Profile → API tokens in the Gcore Customer Portal, of a user who may manage the CDN.",
+      "delete_old": "Delete old certificates",
+      "delete_old_help": "Once the resources serve the new version, delete the certificates JEC uploaded before.",
+      "resources": "CDN resource IDs",
+      "resources_help": "The IDs of the CDN resources, as the CDN section of the portal shows them, separated by commas. Every domain of each resource has to be in the certificate."
+    },
+    "log": {
+      "attach": "Setting the certificate on {name}",
+      "current": "{name} serves the certificate already",
+      "found": "An earlier attempt uploaded it already, as certificate {id}",
+      "remove_failed": "Could not delete the certificate {id} of an earlier deployment; JEC tries again next time",
+      "removed": "Deleted the certificate {id} of an earlier deployment",
+      "upload": "Uploading the certificate as {name}",
+      "uploaded": "Uploaded, as certificate {id}"
+    },
+    "module": {
+      "description": "Deploys certificates to the CDN of Gcore.",
+      "name": "Gcore"
+    },
+    "test": {
+      "ok": "Found the CDN resources {names}."
     }
   },
   "gotify": {

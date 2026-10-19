@@ -137,6 +137,8 @@ func credentialOf(code string) *providers.CredentialUse {
 		return credentials.Use(credentials.Volcengine, "VOLC_ACCESSKEY", "VOLC_SECRETKEY")
 	case "baiducloud":
 		return credentials.Use(credentials.BaiduCloud, "BAIDUCLOUD_ACCESS_KEY_ID", "BAIDUCLOUD_SECRET_ACCESS_KEY")
+	case "gcore":
+		return credentials.Use(credentials.Gcore, "GCORE_PERMANENT_API_TOKEN")
 	}
 	return nil
 }

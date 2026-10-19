@@ -1182,6 +1182,11 @@
       "description": "两种方式选一种：API 令牌，在 Cloudflare 的“我的个人资料 → API 令牌”里创建，按要用的地方授予权限（DNS 验证要“区域 → DNS → 编辑”，自定义证书要“区域 → SSL 和证书 → 编辑”）；或者账号邮箱加 Global API Key。Global API Key 能操作整个账号，更推荐用令牌。",
       "name": "Cloudflare API 令牌或密钥"
     },
+    "gcore": {
+      "api_token": "API 令牌",
+      "description": "Gcore 客户门户的永久 API 令牌，DNS 验证和 CDN 都能用。",
+      "name": "Gcore API 令牌"
+    },
     "huaweicloud": {
       "access_key_id": "Access Key ID（AK）",
       "description": "建议在华为云的统一身份认证（IAM）里建一个用户，只授予要用的服务需要的权限，再为它创建访问密钥（AK/SK）。",
@@ -1502,6 +1507,44 @@
       "name": "网站目录",
       "per_domain": "每个域名一个子目录，以域名命名",
       "shared": "所有域名都用这个目录"
+    }
+  },
+  "gcore": {
+    "cdn": {
+      "description": "把每个新版本上传到 Gcore CDN 的 SSL 证书，并让 CDN 资源使用它；没开 HTTPS 的资源会顺便开启。",
+      "name": "Gcore CDN"
+    },
+    "error": {
+      "api": "Gcore 拒绝了：{message}（HTTP {status}）",
+      "network": "连不上 Gcore。",
+      "resource": "这个 Gcore 账号里没有 CDN 资源 {id}。",
+      "resources": "{value} 不是 CDN 资源 ID：请填写数字 ID，用逗号分隔。",
+      "status": "Gcore 的回应看不懂（HTTP {status}）。",
+      "token": "Gcore 拒绝了 API 令牌：{message}"
+    },
+    "field": {
+      "api_token": "API 令牌",
+      "api_token_help": "在 Gcore 客户门户的 个人资料 → API 令牌 里创建的永久令牌，所属用户要能管理 CDN。",
+      "delete_old": "删除旧证书",
+      "delete_old_help": "CDN 资源换上新版本后，删除 JEC 以前上传的证书。",
+      "resources": "CDN 资源 ID",
+      "resources_help": "门户 CDN 部分里资源的 ID，用逗号分隔。每个资源的域名都要在证书里。"
+    },
+    "log": {
+      "attach": "把证书设置到 {name}",
+      "current": "{name} 已经在用这张证书",
+      "found": "之前的尝试已经上传过，证书 ID 为 {id}",
+      "remove_failed": "没能删除以前部署的证书 {id}，下次部署时再删",
+      "removed": "删除了以前部署的证书 {id}",
+      "upload": "上传证书，名为 {name}",
+      "uploaded": "已上传，证书 ID 为 {id}"
+    },
+    "module": {
+      "description": "把证书部署到 Gcore CDN。",
+      "name": "Gcore"
+    },
+    "test": {
+      "ok": "找到了 CDN 资源 {names}。"
     }
   },
   "gotify": {
