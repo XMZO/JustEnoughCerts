@@ -44,10 +44,11 @@ Minecraft mod JEI.
   certificate each domain serves.
 - **Notifications**: 14 channels, such as email, Telegram, DingTalk,
   Feishu, WeCom, Discord, Slack, Bark, ntfy, webhooks and scripts, each
-  with its own events and language.
+  with its own events and language, and a weekly digest; a calendar feed
+  of the ends and renewals; metrics for Prometheus.
 - **Security**: encrypted secrets, two-factor authentication, OpenID
-  Connect single sign-on, API tokens, an audit log, and revocation of
-  issued certificates at their CA.
+  Connect single sign-on, API tokens, an audit log, daily backups, and
+  revocation of issued certificates at their CA.
 - **Lightweight**: a single static binary or a small container image, with
   data in SQLite, or PostgreSQL; every feature outside the kernel is a
   module, and plugins can be written in any language.

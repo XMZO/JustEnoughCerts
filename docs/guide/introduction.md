@@ -50,7 +50,8 @@ and servers, and renews them before they expire.
 - [Renewal](../usage/renewal.md): renewal windows and a daily check time,
   ACME Renewal Information (ARI), automatic retries and online checks.
 - [Notifications](../usage/notifications.md): 14 notification channels,
-  each with its own language and events.
+  each with its own language and events, and a weekly digest; a calendar
+  feed of the ends and renewals; [Prometheus metrics](../operations/monitoring.md).
 - [Accounts and security](../operations/security.md): encrypted secrets,
   two-factor authentication, single sign-on, API tokens and an audit log;
   issued certificates can be [revoked](../usage/certificates.md#revoking).

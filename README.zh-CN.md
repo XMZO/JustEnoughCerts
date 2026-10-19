@@ -20,8 +20,8 @@ Just Enough Certs（JEC）是一款自托管的 SSL/TLS 证书管理面板，负
 - **域名验证**：[lego](https://github.com/go-acme/lego) 支持的 221 家 DNS 服务商、手动添加记录与 CNAME 委派；HTTP 验证可写入网站目录，或由 JEC 自身、阿里云 ESA 或 Cloudflare 边缘应答。
 - **部署目标**：31 种，包括阿里云（ESA、CDN、OSS、负载均衡）、腾讯云（CDN、EdgeOne）、华为云（CDN、ELB）、Cloudflare、AWS（Certificate Manager、CloudFront）、Gcore、宝塔面板、1Panel、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Caddy、本地目录、SSH 服务器、Docker 容器、Kubernetes 与 Webhook。
 - **续期**：续期窗口与每日检查时间、ACME 续期信息（ARI）、失败按退避重试，并核对各域名实际提供的证书。
-- **通知**：14 种渠道，如邮件、Telegram、钉钉、飞书、企业微信、Discord、Slack、Bark、ntfy、Webhook 与脚本，可分别设置事件与语言。
-- **安全**：密钥加密存储、两步验证、OpenID Connect 单点登录、API 令牌与审计日志，可在证书颁发机构吊销已签发的证书。
+- **通知**：14 种渠道，如邮件、Telegram、钉钉、飞书、企业微信、Discord、Slack、Bark、ntfy、Webhook 与脚本，可分别设置事件与语言，并可每周发送概况；证书到期与续期的日历订阅；Prometheus 指标。
+- **安全**：密钥加密存储、两步验证、OpenID Connect 单点登录、API 令牌、审计日志与每日自动备份，可在证书颁发机构吊销已签发的证书。
 - **轻量**：单个静态二进制文件或小体积容器镜像，数据存储于 SQLite（也可使用 PostgreSQL）；内核以外的功能均为模块，插件可用任意语言编写。
 
 ## 快速开始
