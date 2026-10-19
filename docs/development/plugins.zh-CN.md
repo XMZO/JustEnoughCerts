@@ -57,7 +57,7 @@ JEC 启动时向每个插件发送 `{"protocol": 1, "action": "describe"}`。应
 - 文字可以是字符串（适用于所有语言），也可以是以语言标签为键的对象。JEC 按以下顺序选用：用户语言的文字、同一语言其他地区的文字、通用字符串、英文、第一项。文字按原样显示，不解析任何标记。
 - `kind` 的取值：`source`（签发或取回证书）、`target`（部署证书）、`notifier`（发送通知）、`solver`（验证域名）。
 - 验证方式的 `challenge` 为 `dns`（默认，添加 TXT 记录）或 `http`（在网站上放置文件）。DNS 验证方式可声明记录生效的超时时间与查询间隔（单位为秒）：`"wait": {"timeout": 300, "interval": 10}`，省略时分别为 120 与 5。声明 `"records": true` 的 DNS 验证方式还可添加任意类型的记录，即部分证书厂商用于验证域名的 TXT、CNAME 记录，可供 Namecheap、阿里云等证书来源使用。
-- 证书来源依据 CSR 签发证书，私钥由 JEC 生成。如其 CA 通过网站文件或 DNS 记录验证域名，须在 `challenges` 中声明 `http`、`record` 或两者；使用该来源的证书须选择能够满足要求的验证方式，JEC 按插件的要求放置文件或记录（参见 `issue`）。声明 `"own_key": true` 的来源提供自带私钥的现成证书，例如取自证书仓库或其他工具，不经 JEC 验证域名。
+- 证书来源依据 CSR 签发证书，私钥由 JEC 生成。如其 CA 通过网站文件或 DNS 记录验证域名，须在 `challenges` 中声明 `http`、`record` 或两者；使用该来源的证书须选择能够满足要求的验证方式，JEC 按插件的要求放置文件或记录（参见 `issue`）。声明 `"own_key": true` 的来源提供自带私钥的现成证书，例如取自证书仓库或其他工具，不经 JEC 验证域名。声明 `"revocable": true` 的来源可以吊销自己提供的证书（参见 `revoke`）。
 - 字段须包含 `key`（字母、数字与 `_`，以字母开头）与 `kind`：`text`、`multiline`、`number`、`url`、`email`、`select` 或 `switch`（取值为 `"true"` 或 `"false"`）。可选属性：`label`、显示在字段下方的 `help`、`default`、选择框的 `options`、`required`（必填）、`secret`（加密保存，保存后不再显示）、`advanced`（在表单中归入高级设置），以及 `when`（仅当前面某个普通字段等于指定值时显示）。
 - 通知渠道自动附加 JEC 的公共字段：消息语言与要发送的事件。JEC 按所选语言生成通知内容后交给插件。
 - 每个插件最多提供 32 种类型，每种类型最多 64 个字段。类型 ID 的规则与插件 ID 相同；类型在 JEC 中的完整名称为 `plugins.<插件>.<类型>`。类型与字段的 ID 一经使用不应再修改，因为用户保存的设置引用这些 ID。
@@ -76,6 +76,7 @@ JEC 启动时向每个插件发送 `{"protocol": 1, "action": "describe"}`。应
 | `file_put`、`file_remove` | `file` | |
 | `issue` | `issue` | `chain` 或 `wait` |
 | `collect` | `collect` | `chain` 与 `key`，或 `wait` |
+| `revoke` | `revoke` | |
 
 - `test`：仅发送给声明了 `testable` 的类型，由卡片上的“测试连接”按钮触发；只检查设置，不做任何修改。
 - `deploy`：安装新版本。`certificate` 包含 `id`、`domains`（主域名在前）、`serial`（十六进制）、`fingerprint`（叶子证书的 SHA-256，十六进制）、`not_before` 与 `not_after`（RFC 3339），以及 PEM 格式的 `cert`、`chain`、`fullchain`、`privkey`（与 certbot 的文件同名）。`previous` 为该证书此前部署到此实例时应答的 `ref`，按时间倒序排列。应答中的 `ref` 标识目标当前保存的内容（例如 CDN 上的证书 ID），下次部署时出现在 `previous` 中；`removed` 列出插件已删除的 `previous` 条目。
@@ -85,6 +86,7 @@ JEC 启动时向每个插件发送 `{"protocol": 1, "action": "describe"}`。应
 - `file_put`、`file_remove`：分别放置、删除网站须在 `http://<domain><path>` 提供的文件。`file` 包含 `domain`、`path`（位于 `/.well-known/` 下）与 `content`。
 - `issue`：向证书来源请求证书。`issue` 包含 `domains`（主域名在前，通配符写作 `*.example.com`）与 PEM 格式的 `csr`；CSR 由 JEC 为本次签发生成的私钥签署，主题为主域名，名称列表包含全部域名。同一次签发的每次尝试使用同一私钥，因此插件可继续使用此前创建的订单。等待之后的请求中，`issue` 另含该次等待返回的 `state`、JEC 已放置的 `files`（`domain` 与 `path`）以及已添加的 `records`（`name`、`type`、`value` 与 `visible`；`visible` 表示域名所在区域的权威 DNS 服务器是否已可查到该记录）。应答包含 PEM 格式的 `chain`（叶子证书在前，对应 CSR 的私钥，覆盖全部域名），或 `wait`（参见下文）。
 - `collect`：向声明了 `own_key` 的来源请求比当前所用证书更新的证书。`collect` 包含 `domains`；已有证书在用时，另含 `current`（叶子证书的 SHA-256，十六进制）与 `current_end`（到期时间，RFC 3339）；等待之后的请求另含 `state`。应答包含 PEM 格式的 `chain` 与证书私钥 `key`；没有更新的证书时应答 `wait`。
+- `revoke`：仅发送给声明了 `revocable` 的来源，在用户吊销该来源提供的证书版本时发送。`revoke` 包含 PEM 格式的 `certificate`（叶子证书）、`serial`（序列号，十六进制）、`fingerprint`（SHA-256，十六进制）与 `reason`（原因）：`unspecified`、`key_compromise`、`superseded` 或 `cessation_of_operation`。证书已被吊销不算错误。应答失败时，其 `error` 显示给用户。
 
 ## 等待
 

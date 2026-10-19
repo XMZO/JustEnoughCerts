@@ -60,8 +60,9 @@ Each row of the certificate list also offers the common actions in a menu.
 
 ## Revoking
 
-A version can be revoked when an ACME account issued it, it has not
-expired, and it is not the version in use. The CA then lists it as
+A version can be revoked when an ACME account, or a plugin's source that
+supports it, issued it, it has not expired, and it is not the version in
+use. The CA then lists it as
 revoked, and clients that check revocation stop trusting it; this cannot
 be undone. To revoke the version in use, for example when its private key
 has leaked, choose **Issue now** first, and revoke the old version once

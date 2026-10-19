@@ -33,6 +33,7 @@ const (
 	// A source issues with JEC's key, or one with keys of its own collects.
 	actionIssue   = "issue"
 	actionCollect = "collect"
+	actionRevoke  = "revoke"
 )
 
 // request is what JEC writes on a plugin's standard input.
@@ -53,6 +54,17 @@ type request struct {
 	File    *file         `json:"file,omitempty"`
 	Issue   *issueOrder   `json:"issue,omitempty"`
 	Collect *collectOrder `json:"collect,omitempty"`
+	Revoke  *revokeOrder  `json:"revoke,omitempty"`
+}
+
+// revokeOrder asks a source to have a certificate it issued revoked: the
+// leaf in PEM, its serial (hex) and SHA-256 (hex), and the reason, as the
+// API names it.
+type revokeOrder struct {
+	Certificate string `json:"certificate"`
+	Serial      string `json:"serial"`
+	Fingerprint string `json:"fingerprint"`
+	Reason      string `json:"reason"`
 }
 
 // issueOrder asks a source for a certificate of the domains, the primary
@@ -197,8 +209,11 @@ type typeSpec struct {
 	// OwnKey a source whose certificates come with their own keys; the
 	// Challenges of a source are how its validation goes through the
 	// certificate's solver, http or record.
-	Records    bool        `json:"records"`
-	OwnKey     bool        `json:"own_key"`
+	Records bool `json:"records"`
+	OwnKey  bool `json:"own_key"`
+	// Revocable marks a source that can have the certificates it issued
+	// revoked: JEC sends it revoke.
+	Revocable  bool        `json:"revocable"`
 	Challenges []string    `json:"challenges"`
 	Fields     []fieldSpec `json:"fields"`
 	// Wait is how long a DNS record may take to be seen, and how often to

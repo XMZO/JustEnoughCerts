@@ -27,12 +27,14 @@ var (
 
 // revocationReasons are the reasons a version can be revoked for, by the
 // names of the API.
-var revocationReasons = map[string]contracts.RevocationReason{
-	"unspecified":            contracts.ReasonUnspecified,
-	"key_compromise":         contracts.ReasonKeyCompromise,
-	"superseded":             contracts.ReasonSuperseded,
-	"cessation_of_operation": contracts.ReasonCessationOfOperation,
-}
+var revocationReasons = func() map[string]contracts.RevocationReason {
+	m := map[string]contracts.RevocationReason{}
+	for _, r := range []contracts.RevocationReason{contracts.ReasonUnspecified, contracts.ReasonKeyCompromise,
+		contracts.ReasonSuperseded, contracts.ReasonCessationOfOperation} {
+		m[r.String()] = r
+	}
+	return m
+}()
 
 // revocable tells why version v of c cannot be revoked now, or nil when
 // it can. typeOf tells the types of sources.

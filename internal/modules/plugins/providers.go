@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -57,6 +58,8 @@ var (
 	_ contracts.RecordSolver = (*recordSolver)(nil)
 	_ contracts.FileSolver   = (*fileSolver)(nil)
 	_ contracts.Tester       = (*instance)(nil)
+	_ contracts.Revoker      = (*source)(nil)
+	_ contracts.Revoker      = (*keySource)(nil)
 )
 
 // request is a request of action about the instance.
@@ -106,6 +109,29 @@ func (in *instance) Test(ctx context.Context) (contracts.Message, error) {
 		return contracts.Message{Key: i18n.PluginsTestOk, Params: map[string]any{"plugin": in.plugin.id, "message": m}}, nil
 	}
 	return contracts.Message{Key: i18n.PluginsTestDone, Params: map[string]any{"plugin": in.plugin.id}}, nil
+}
+
+// revoke has the plugin revoke leaf, which its source issued, for reason.
+// Only the providers of a type that is revocable are asked.
+func (in *instance) revoke(ctx context.Context, leaf *x509.Certificate, reason contracts.RevocationReason) error {
+	fp := sha256.Sum256(leaf.Raw)
+	req := in.request(actionRevoke)
+	req.Revoke = &revokeOrder{
+		Certificate: string(cryptox.EncodeCertificates(leaf)), Serial: leaf.SerialNumber.Text(16),
+		Fingerprint: hex.EncodeToString(fp[:]), Reason: reason.String(),
+	}
+	_, err := in.do(ctx, actionTimeout, req, nil)
+	return err
+}
+
+// Revoke has the plugin revoke leaf, which this source issued.
+func (s *source) Revoke(ctx context.Context, leaf *x509.Certificate, reason contracts.RevocationReason) error {
+	return s.revoke(ctx, leaf, reason)
+}
+
+// Revoke has the plugin revoke leaf, which this source provided.
+func (s *keySource) Revoke(ctx context.Context, leaf *x509.Certificate, reason contracts.RevocationReason) error {
+	return s.revoke(ctx, leaf, reason)
 }
 
 // Close has nothing to release: each action runs the plugin anew.

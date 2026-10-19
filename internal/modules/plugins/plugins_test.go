@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -73,7 +74,7 @@ const fakeDescription = `{"protocol":1,"ok":true,
   {"id":"notes","kind":"notifier","name":"Fake notes","fields":[{"key":"behave","kind":"text"}]},
   {"id":"dns","kind":"solver","name":"Fake DNS","records":true,"wait":{"timeout":30,"interval":1},"fields":[{"key":"behave","kind":"text"}]},
   {"id":"files","kind":"solver","challenge":"http","name":"Fake files","fields":[{"key":"behave","kind":"text"}]},
-  {"id":"ca","kind":"source","challenges":["record","http","record"],"name":"Fake CA","fields":[{"key":"behave","kind":"text"}]},
+  {"id":"ca","kind":"source","challenges":["record","http","record"],"revocable":true,"name":"Fake CA","fields":[{"key":"behave","kind":"text"}]},
   {"id":"store","kind":"source","own_key":true,"name":"Fake store","fields":[{"key":"behave","kind":"text"}]}]}`
 
 // helper is the plugin of the tests. It keeps each request in its working
@@ -128,6 +129,9 @@ func helper() int {
 		return 0
 	case "bad-challenges":
 		fmt.Print(strings.Replace(fakeDescription, `"challenges":["record","http","record"]`, `"challenges":["dns"]`, 1))
+		return 0
+	case "bad-revocable":
+		fmt.Print(strings.Replace(fakeDescription, `"kind":"notifier"`, `"kind":"notifier","revocable":true`, 1))
 		return 0
 	case "wrong-key", "uncovered":
 		// A certificate for a key of the CA's own, or for one domain only.
@@ -444,11 +448,11 @@ func TestDescribe(t *testing.T) {
 	if files, _ := f.reg.Type("plugins.fake.files"); files.Solves() != providers.ChallengeHTTP {
 		t.Errorf("files solve %s", files.Solves())
 	}
-	if ca, _ := f.reg.Type("plugins.fake.ca"); ca.Kind != providers.Source || !ca.NeedsSolver || ca.OwnKey ||
+	if ca, _ := f.reg.Type("plugins.fake.ca"); ca.Kind != providers.Source || !ca.NeedsSolver || ca.OwnKey || !ca.Revocable ||
 		!slices.Equal(ca.Challenges, []string{providers.ChallengeHTTP, providers.ChallengeRecord}) {
 		t.Errorf("ca %+v", ca)
 	}
-	if store, _ := f.reg.Type("plugins.fake.store"); store.Kind != providers.Source || store.NeedsSolver || !store.OwnKey {
+	if store, _ := f.reg.Type("plugins.fake.store"); store.Kind != providers.Source || store.NeedsSolver || !store.OwnKey || store.Revocable {
 		t.Errorf("store %+v", store)
 	}
 
@@ -469,6 +473,7 @@ func TestDescribeFails(t *testing.T) {
 		"bad-own-key":        i18n.PluginsErrorDescribe,
 		"bad-key-challenges": i18n.PluginsErrorDescribe,
 		"bad-challenges":     i18n.PluginsErrorDescribe,
+		"bad-revocable":      i18n.PluginsErrorDescribe,
 		"garbage":            i18n.PluginsErrorAnswer,
 		"exit":               i18n.PluginsErrorExit,
 		"protocol2":          i18n.PluginsErrorAnswer,
@@ -921,6 +926,29 @@ func TestKeySource(t *testing.T) {
 	ks = f.open("plugins.fake.store", map[string]string{"behave": "wait-files"}, nil).(contracts.KeySource)
 	if _, err := ks.Collect(t.Context(), contracts.CollectRequest{Domains: domains}); problemKey(err) != i18n.PluginsErrorValidation || !retry.IsPermanent(err) {
 		t.Errorf("files for a source with keys of its own: %v", err)
+	}
+}
+
+func TestRevoke(t *testing.T) {
+	f := newFixture(t, "fake")
+	ca := cryptoxtest.NewCA(t)
+	leaf := ca.Leaf(t, cryptoxtest.NewKey(t), time.Now().Add(-time.Hour), time.Now().Add(time.Hour), "example.com")
+	src := f.open("plugins.fake.ca", nil, nil).(contracts.Revoker)
+	if err := src.Revoke(t.Context(), leaf, contracts.ReasonKeyCompromise); err != nil {
+		t.Fatal(err)
+	}
+	sent := f.sent()
+	fp := sha256.Sum256(leaf.Raw)
+	if sent.Action != actionRevoke || sent.Type != "ca" || sent.Revoke == nil || sent.Revoke.Reason != "key_compromise" ||
+		sent.Revoke.Serial != leaf.SerialNumber.Text(16) || sent.Revoke.Fingerprint != hex.EncodeToString(fp[:]) {
+		t.Fatalf("sent %+v", sent.Revoke)
+	}
+	if got, err := cryptox.ParseCertificates([]byte(sent.Revoke.Certificate)); err != nil || len(got) != 1 || !got[0].Equal(leaf) {
+		t.Errorf("the certificate sent: %v, %v", got, err)
+	}
+	src = f.open("plugins.fake.ca", map[string]string{"behave": "fail"}, nil).(contracts.Revoker)
+	if err := src.Revoke(t.Context(), leaf, contracts.ReasonSuperseded); problemKey(err) != i18n.PluginsErrorFailed {
+		t.Errorf("refused: %v", err)
 	}
 }
 

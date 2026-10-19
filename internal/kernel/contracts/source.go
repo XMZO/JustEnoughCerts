@@ -121,6 +121,19 @@ const (
 	ReasonCessationOfOperation RevocationReason = 5
 )
 
+// String names r as the API and plugins do, such as key_compromise.
+func (r RevocationReason) String() string {
+	switch r {
+	case ReasonKeyCompromise:
+		return "key_compromise"
+	case ReasonSuperseded:
+		return "superseded"
+	case ReasonCessationOfOperation:
+		return "cessation_of_operation"
+	}
+	return "unspecified"
+}
+
 // Source gets certificates, such as an ACME account. The providers of kind
 // "source" make Sources.
 type Source interface {

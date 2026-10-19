@@ -106,7 +106,8 @@ The answer names the plugin and lists the types it provides:
   and JEC puts in place what the plugin asks for (see `issue`). A source
   with `"own_key": true` instead provides ready certificates with their own
   keys, such as from a certificate store or another tool, and validates
-  nothing through JEC.
+  nothing through JEC. A source with `"revocable": true` can have the
+  certificates it provided revoked (see `revoke`).
 - A field has a `key` (letters, digits and `_`, starting with a letter)
   and a `kind`: `text`, `multiline`, `number`, `url`, `email`, `select` or
   `switch` (`"true"` or `"false"`). It may also have a `label`, a `help`
@@ -138,6 +139,7 @@ settings, and `secrets`, both keyed by field.
 | `file_put`, `file_remove` | `file` | |
 | `issue` | `issue` | `chain`, or `wait` |
 | `collect` | `collect` | `chain` and `key`, or `wait` |
+| `revoke` | `revoke` | |
 
 - `test` is sent only to types marked `testable`, from the Test button on
   their card. It checks the settings and changes nothing.
@@ -184,6 +186,12 @@ settings, and `secrets`, both keyed by field.
   its expiry (RFC 3339); and after a wait, the `state`. The answer
   contains the PEM `chain` and the certificate's private `key`, or a `wait`
   when there is nothing newer.
+- `revoke` is sent only to sources marked `revocable`, when a user revokes
+  a version of a certificate that the source provided. `revoke` contains
+  the PEM `certificate` (the leaf), its `serial` (hex), its `fingerprint`
+  (the SHA-256, hex) and the `reason`: `unspecified`, `key_compromise`,
+  `superseded` or `cessation_of_operation`. A certificate revoked already
+  is no error. The user sees the `error` of a failed answer.
 
 ## Waiting
 

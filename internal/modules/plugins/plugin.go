@@ -166,6 +166,9 @@ func buildType(plugin string, spec typeSpec, tags []language.Tag) (providers.Typ
 	if spec.OwnKey && kind != providers.Source {
 		return none, errors.New("own keys are for sources")
 	}
+	if spec.Revocable && kind != providers.Source {
+		return none, errors.New("revoking is for sources")
+	}
 	if spec.Name.empty() {
 		return none, errors.New("it has no name")
 	}
@@ -194,7 +197,7 @@ func buildType(plugin string, spec typeSpec, tags []language.Tag) (providers.Typ
 		}
 		t.Records = true
 	}
-	t.OwnKey = spec.OwnKey
+	t.OwnKey, t.Revocable = spec.OwnKey, spec.Revocable
 	if len(spec.Challenges) > 0 {
 		if kind != providers.Source || spec.OwnKey {
 			return none, errors.New("challenges are for sources that issue for JEC's keys")
