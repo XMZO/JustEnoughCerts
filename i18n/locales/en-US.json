@@ -2014,9 +2014,12 @@
       "add_record": "The validation record to add: the {type} record {name}, with the value {value}",
       "confirm_failed": "Could not tell Namecheap the certificate is installed, which changes nothing here",
       "issued": "Namecheap issued the certificate",
-      "mark_failed": "Could not put SSL Manager's marks on {domain}, which Namecheap may look for",
+      "mark_failed": "Could not put SSL Manager's markers on {domain}, without which Namecheap shows no certificate. JEC tries again at its next look.",
+      "mark_needs_files": "Namecheap shows the certificate only once it finds {url}, and the validation method chosen cannot put files on the website. Choose one that can, such as Website directory over SSH or Answered at ESA's edge.",
+      "marked": "Put SSL Manager's marker on the website, which Namecheap looks for before it shows the certificate: {url}",
+      "marker_not_served": "{url} cannot be fetched from here, so Namecheap may not find it either. Have the website and its CDN serve the files under /.well-known/.",
       "next": "Namecheap's newest certificate for {domain} is still the one before; waiting for Namecheap to ready the next one.",
-      "none": "Namecheap has no certificate for {domain} yet. Activate it in Namecheap's panel with Server-side automation; JEC keeps looking.",
+      "none": "Namecheap has no certificate for {domain} yet. JEC keeps looking.",
       "not_ours": "The CSR of Namecheap's certificate did not come from this issuance. Reissue it in Namecheap's panel and JEC carries on.",
       "not_served": "{url} does not serve the validation file from here, so the CA may not get it either. Check the CDN and the website.",
       "put_file": "Putting the validation file {path} on {domain}",
@@ -2036,10 +2039,11 @@
       "name": "Namecheap"
     },
     "ssl_manager": {
-      "description": "JEC acts as the client of Namecheap's server-side automation (SSL Manager) and gets each certificate of the subscription. When you activate or reissue the certificate in Namecheap's panel, choose Server-side automation and enter the one-time token it shows here. The API is not public and may break at any time.",
+      "description": "JEC acts as the client of Namecheap's server-side automation (SSL Manager) and gets each certificate of the subscription. The API is not public and may break at any time.\n1. In Namecheap's panel, activate or reissue the certificate with Server-side automation, enter the one-time token it shows (valid for 24 hours) below, save, and press Test to register.\n2. Add the certificate, with this as its source and a validation method that puts files on the website: Website directory over SSH (with a password or a key), Answered at ESA's edge, Website directory or Answered by JEC. The website need not run on JEC's server.\n3. JEC does the rest: it puts /.well-known/ssl-manager/installed.txt, which Namecheap looks for, on the website; once Namecheap shows the certificate, it sends the CSR, puts the validation files, downloads the certificate and deploys it. The website and its CDN have to serve the files under /.well-known/.",
       "name": "Namecheap SSL Manager"
     },
     "test": {
+      "none": "Connected to Namecheap, with no certificate in sight yet. Namecheap shows a certificate once it finds installed.txt on the website: add the certificate, and JEC puts it there through the validation method.",
       "ok": "Connected to Namecheap; {count, plural, one {# certificate} other {# certificates}} in sight."
     }
   },

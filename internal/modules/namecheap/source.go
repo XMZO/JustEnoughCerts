@@ -77,6 +77,10 @@ func (s *sslManager) Test(ctx context.Context) (contracts.Message, error) {
 	if err != nil {
 		return contracts.Message{}, explain(err)
 	}
+	if len(certs) == 0 {
+		// Namecheap shows the certificate once it finds the markers.
+		return contracts.Message{Key: i18n.NamecheapTestNone}, nil
+	}
 	return contracts.Message{Key: i18n.NamecheapTestOk, Params: map[string]any{"count": len(certs)}}, nil
 }
 
@@ -96,6 +100,8 @@ type order struct {
 	Looked      int64  `json:"looked,omitempty"`
 	// Seen is what the last look found, logged once.
 	Seen string `json:"seen,omitempty"`
+	// Markers tells that the markers of SSL Manager are on the website.
+	Markers bool `json:"markers,omitempty"`
 }
 
 type placed struct {
@@ -195,6 +201,12 @@ func (s *sslManager) Issue(ctx context.Context, req contracts.IssueRequest) ([]*
 			return nil, o.keep(err)
 		}
 		if cert == nil {
+			if req.Files == nil {
+				o.note(log, "unmarked", contracts.LogLine{Level: contracts.Warn, Step: contracts.StepOrder, Key: i18n.NamecheapLogMarkNeedsFiles,
+					Params: map[string]any{"url": "http://" + domain + markerPath}})
+				return nil, o.wait()
+			}
+			s.markEarly(ctx, req.Files, domain, &o, log)
 			o.note(log, "none", contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.NamecheapLogNone, Params: map[string]any{"domain": domain}})
 			return nil, o.wait()
 		}
@@ -309,9 +321,11 @@ func (s *sslManager) validate(ctx context.Context, sess *session, cert *certific
 			if !slices.Contains(o.Files, placed{Domain: name, Path: f.FilePath}) {
 				o.Files = append(o.Files, placed{Domain: name, Path: f.FilePath})
 			}
-			s.check(ctx, file, log)
+			s.check(ctx, file, i18n.NamecheapLogNotServed, log)
 		}
-		s.mark(ctx, req.Files, name, log)
+		if _, err := s.mark(ctx, req.Files, name); err != nil {
+			log(contracts.LogLine{Level: contracts.Warn, Step: contracts.StepChallenge, Key: i18n.NamecheapLogMarkFailed, Params: map[string]any{"domain": name}, Detail: err.Error()})
+		}
 		if !slices.Contains(o.Marked, ch.ID) {
 			if err := sess.installed(ctx, sess.access, ch.ID); err != nil {
 				return explain(err)
@@ -410,33 +424,57 @@ func putFailed(err error, domain string) error {
 	return &contracts.Problem{Key: i18n.NamecheapErrorPutFile, Params: map[string]any{"domain": domain}, Err: err}
 }
 
+// markerPath is where Namecheap looks for SSL Manager on a website.
+const markerPath = "/.well-known/ssl-manager/installed.txt"
+
 // mark puts the files the official client leaves on a website it manages,
-// which Namecheap may look for. Failing to is only logged.
-func (s *sslManager) mark(ctx context.Context, files contracts.FileSolver, domain string, log func(contracts.LogLine)) {
+// which Namecheap looks for, and returns the one at markerPath.
+func (s *sslManager) mark(ctx context.Context, files contracts.FileSolver, domain string) (contracts.File, error) {
 	now := s.m.now()
 	data, _ := json.Marshal(map[string]any{"domain": domain, "manager_conflicts": []string{}, "timestamp": now.Format(time.RFC3339)})
+	marker := contracts.File{Domain: domain, Path: markerPath, Content: []byte(strconv.FormatInt(now.Unix(), 10) + " " + domain)}
 	for _, f := range []contracts.File{
-		{Domain: domain, Path: "/.well-known/ssl-manager/installed.txt", Content: []byte(strconv.FormatInt(now.Unix(), 10) + " " + domain)},
+		marker,
 		{Domain: domain, Path: "/.well-known/ssl-manager/installed.b64.json", Content: []byte(base64.StdEncoding.EncodeToString(data))},
 	} {
 		if err := files.PutFile(ctx, f); err != nil {
-			log(contracts.LogLine{Level: contracts.Warn, Step: contracts.StepChallenge, Key: i18n.NamecheapLogMarkFailed, Params: map[string]any{"domain": domain}, Detail: err.Error()})
-			return
+			return marker, err
 		}
 	}
+	return marker, nil
 }
 
-// check fetches a file from the website as the CA will, and logs when the
-// website does not serve it: the validation would fail. It proves nothing
-// when it passes, since JEC may see the website differently.
-func (s *sslManager) check(ctx context.Context, f contracts.File, log func(contracts.LogLine)) {
+// markEarly puts the markers on the website before Namecheap shows a
+// certificate: it shows one to the integration only once it finds them, as
+// the official client puts them when installed. The certificate's way of
+// putting files does it, so the website may be anywhere. A failure is
+// logged and tried again at the next look.
+func (s *sslManager) markEarly(ctx context.Context, files contracts.FileSolver, domain string, o *order, log func(contracts.LogLine)) {
+	if o.Markers {
+		return
+	}
+	marker, err := s.mark(ctx, files, domain)
+	if err != nil {
+		log(contracts.LogLine{Level: contracts.Warn, Step: contracts.StepOrder, Key: i18n.NamecheapLogMarkFailed, Params: map[string]any{"domain": domain}, Detail: err.Error()})
+		return
+	}
+	o.Markers = true
+	address := "http://" + domain + markerPath
+	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.NamecheapLogMarked, Params: map[string]any{"url": address}})
+	s.check(ctx, marker, i18n.NamecheapLogMarkerNotServed, log)
+}
+
+// check fetches a file from the website as the CA, or Namecheap, will, and
+// logs notServed when the website does not serve it. It proves nothing when
+// it passes, since JEC may see the website differently.
+func (s *sslManager) check(ctx context.Context, f contracts.File, notServed i18n.Key, log func(contracts.LogLine)) {
 	address := "http://" + f.Domain + f.Path
 	got, err := s.m.fetch(ctx, address)
 	switch {
 	case err != nil:
-		log(contracts.LogLine{Level: contracts.Warn, Step: contracts.StepChallenge, Key: i18n.NamecheapLogNotServed, Params: map[string]any{"url": address}, Detail: err.Error()})
+		log(contracts.LogLine{Level: contracts.Warn, Step: contracts.StepChallenge, Key: notServed, Params: map[string]any{"url": address}, Detail: err.Error()})
 	case !bytes.Equal(bytes.TrimSpace(got), bytes.TrimSpace(f.Content)):
-		log(contracts.LogLine{Level: contracts.Warn, Step: contracts.StepChallenge, Key: i18n.NamecheapLogNotServed, Params: map[string]any{"url": address}, Detail: snippet(got)})
+		log(contracts.LogLine{Level: contracts.Warn, Step: contracts.StepChallenge, Key: notServed, Params: map[string]any{"url": address}, Detail: snippet(got)})
 	}
 }
 

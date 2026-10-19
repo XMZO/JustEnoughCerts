@@ -2014,9 +2014,12 @@
       "add_record": "要添加的验证记录：{type} 记录 {name}，值为 {value}",
       "confirm_failed": "没能告诉 Namecheap 证书已安装，不影响使用",
       "issued": "Namecheap 已签发证书",
-      "mark_failed": "没能在 {domain} 放 SSL Manager 的标记文件，Namecheap 可能会看",
+      "mark_failed": "没能在 {domain} 放 SSL Manager 的标记文件，没有它 Namecheap 不会给出证书。下次查看时会再试。",
+      "mark_needs_files": "Namecheap 要找到 {url} 才会给出证书，而所选的验证方式不能在网站上放文件。请换一种能放文件的，比如 SSH 网站目录或 ESA 边缘应答。",
+      "marked": "已在网站上放好 SSL Manager 的标记文件，Namecheap 找到它后才会给出证书：{url}",
+      "marker_not_served": "从这里访问 {url} 拿不到标记文件，Namecheap 可能也拿不到。请让网站和 CDN 放行 /.well-known/ 下的文件。",
       "next": "Namecheap 上 {domain} 最新的证书还是以前那张，等 Namecheap 准备下一张。",
-      "none": "Namecheap 上还没有 {domain} 的证书。在 Namecheap 面板激活证书时选 Server-side automation，JEC 会定时查看。",
+      "none": "Namecheap 上还没有 {domain} 的证书，JEC 会定时查看。",
       "not_ours": "Namecheap 上这张证书的 CSR 不是这次签发交的。在 Namecheap 面板重签后，JEC 会接着做。",
       "not_served": "从这里访问 {url} 拿不到验证文件，证书颁发机构可能也拿不到。请检查 CDN 和网站的设置。",
       "put_file": "在 {domain} 放验证文件 {path}",
@@ -2036,10 +2039,11 @@
       "name": "Namecheap"
     },
     "ssl_manager": {
-      "description": "JEC 扮演 Namecheap 服务器端自动化工具（SSL Manager）的客户端，取得订阅里的每一张证书。在 Namecheap 面板激活或重签证书时选 Server-side automation，把给出的一次性令牌填进来。用的是非公开接口，可能随时失效。",
+      "description": "JEC 扮演 Namecheap 服务器端自动化工具（SSL Manager）的客户端，取得订阅里的每一张证书。用的是非公开接口，可能随时失效。\n1. 在 Namecheap 面板激活或重签证书时选 Server-side automation，把给出的一次性令牌（24 小时内有效）填到下面，保存后点“测试连接”完成注册。\n2. 添加这张证书：来源选这里，验证方式选能在网站上放文件的一种：SSH 网站目录（密码或私钥都行）、ESA 边缘应答、网站目录或 JEC 自己应答。网站不必和 JEC 在同一台服务器上。\n3. 之后都由 JEC 完成：先在网站上放好 Namecheap 要检查的 /.well-known/ssl-manager/installed.txt，等 Namecheap 给出证书，再交 CSR、放验证文件、下载并部署。网站和 CDN 要放行 /.well-known/ 下的文件。",
       "name": "Namecheap SSL Manager"
     },
     "test": {
+      "none": "已连上 Namecheap，暂时看不到证书。Namecheap 在网站上找到 installed.txt 后才会给出证书：添加证书后，JEC 会通过所选的验证方式把它放上去。",
       "ok": "已连上 Namecheap，能看到 {count, plural, other {# 张证书}}。"
     }
   },

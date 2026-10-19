@@ -155,10 +155,21 @@ func TestIssueWaitsForSomething(t *testing.T) {
 	f := newFixture(t)
 	key := rsaKeys()[0]
 
-	// No certificate at all.
+	// No certificate at all: the markers go on the website first, once,
+	// as Namecheap shows the certificate only after it found them.
 	_, wait, err := f.issue(key, nil)
-	if err != nil || wait == nil || !slices.Contains(f.logKeys(), i18n.NamecheapLogNone) {
+	if err != nil || wait == nil || !slices.Contains(f.logKeys(), i18n.NamecheapLogNone) || !slices.Contains(f.logKeys(), i18n.NamecheapLogMarked) {
 		t.Fatalf("no certificate: %v %v", err, f.logKeys())
+	}
+	if marker, ok := f.site.file("example.com" + markerPath); !ok || !strings.HasSuffix(string(marker), " example.com") {
+		t.Errorf("marker = %q, %v", marker, ok)
+	}
+	f.vendor.with(func() { f.vendor.fingerprint++ })
+	if _, wait, err = f.issue(key, wait.State); err != nil || wait == nil {
+		t.Fatal(err)
+	}
+	if n := len(slices.DeleteFunc(f.logKeys(), func(k i18n.Key) bool { return k != i18n.NamecheapLogMarked })); n != 1 {
+		t.Errorf("marked %d times", n)
 	}
 
 	// One whose CSR came from elsewhere.

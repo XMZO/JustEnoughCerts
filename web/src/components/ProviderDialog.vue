@@ -238,7 +238,10 @@ async function submit(andTest = false) {
                 {{ t('kernel.modules.experimental') }}
               </span>
             </div>
-            <p v-if="type.data.value.description" class="m-0 text-small text-ink-muted">{{ t(type.data.value.description as MessageKey) }}</p>
+            <!-- A description may set out steps, a line each. -->
+            <p v-if="type.data.value.description" class="m-0 text-small whitespace-pre-line text-ink-muted">
+              {{ t(type.data.value.description as MessageKey) }}
+            </p>
             <p v-else-if="type.data.value.doc" lang="en" class="m-0 text-small text-ink-muted">{{ type.data.value.doc }}</p>
           </div>
           <JecAlert v-if="errors.alert.value" :code="errors.alert.value.code" :params="errors.alert.value.params" />
