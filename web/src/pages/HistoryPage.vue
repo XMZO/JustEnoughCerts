@@ -246,28 +246,27 @@ const selectClass =
         <template v-else>{{ g.label }}</template>
       </h2>
       <div role="list" class="overflow-hidden rounded-lg border border-line bg-surface-raised">
-        <RouterLink
-          v-for="row in g.rows"
-          :key="`${row.run.kind}-${row.run.id}`"
-          role="listitem"
-          :to="row.link"
-          class="grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border-b border-line px-4 py-2.5 text-ink no-underline last:border-b-0 hover:bg-surface-sunken hover:text-ink"
-        >
-          <component
-            :is="looks[row.result].icon"
-            :class="['mt-0.5 size-5', looks[row.result].ink, 'spin' in looks[row.result] && 'animate-spin']"
-            aria-hidden="true"
-          />
-          <span class="grid min-w-0 gap-0.5">
-            <span class="truncate font-semibold" translate="no" :title="row.run.domain">{{ row.run.domain }}</span>
-            <span class="flex flex-wrap gap-x-2 text-small">
-              <span>{{ t(actionText[row.run.action]) }}</span>
-              <span :class="['font-semibold', looks[row.result].ink]">{{ t(resultText[row.result]) }}</span>
+        <div v-for="row in g.rows" :key="`${row.run.kind}-${row.run.id}`" role="listitem" class="border-b border-line last:border-b-0">
+          <RouterLink
+            :to="row.link"
+            class="grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 px-4 py-2.5 text-ink no-underline hover:bg-surface-sunken hover:text-ink"
+          >
+            <component
+              :is="looks[row.result].icon"
+              :class="['mt-0.5 size-5', looks[row.result].ink, 'spin' in looks[row.result] && 'animate-spin']"
+              aria-hidden="true"
+            />
+            <span class="grid min-w-0 gap-0.5">
+              <span class="truncate font-semibold" translate="no" :title="row.run.domain">{{ row.run.domain }}</span>
+              <span class="flex flex-wrap gap-x-2 text-small">
+                <span>{{ t(actionText[row.run.action]) }}</span>
+                <span :class="['font-semibold', looks[row.result].ink]">{{ t(resultText[row.result]) }}</span>
+              </span>
+              <span v-if="row.note" class="truncate text-small text-ink-muted" :title="row.note">{{ row.note }}</span>
             </span>
-            <span v-if="row.note" class="truncate text-small text-ink-muted" :title="row.note">{{ row.note }}</span>
-          </span>
-          <time :datetime="row.at" class="text-small text-ink-muted tabular-nums">{{ intl.clock(row.at) }}</time>
-        </RouterLink>
+            <time :datetime="row.at" class="text-small text-ink-muted tabular-nums">{{ intl.clock(row.at) }}</time>
+          </RouterLink>
+        </div>
       </div>
     </section>
 

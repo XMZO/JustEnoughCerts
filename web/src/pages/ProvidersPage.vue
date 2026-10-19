@@ -279,7 +279,7 @@ async function confirmDelete() {
 
     <p v-if="types.data.value" class="m-0 text-small text-ink-muted">
       {{ t(page.foot, { count: types.data.value.length }) }}
-      <RouterLink to="/modules" class="whitespace-nowrap">{{ t('kernel.providers.manage_modules') }}</RouterLink>
+      <RouterLink to="/modules" class="whitespace-nowrap underline underline-offset-2">{{ t('kernel.providers.manage_modules') }}</RouterLink>
     </p>
   </div>
 

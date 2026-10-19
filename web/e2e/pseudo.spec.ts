@@ -1,13 +1,15 @@
 import { createHmac } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
+import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
 import { pseudoize } from '../src/i18n/pseudo'
 import { selfSigned } from './certs'
 
 // Every page, in the pseudo-locale (src/i18n/pseudo.ts): all text a user
-// sees must carry the markers, and none of it may spill out of its box.
+// sees must carry the markers, none of it may spill out of its box, and axe
+// may find nothing that keeps a page from being accessible.
 
 const english = JSON.parse(readFileSync(new URL('../../i18n/locales/en-US.json', import.meta.url), 'utf8')) as Record<string, unknown>
 
@@ -61,8 +63,22 @@ function totp(key: string, steps: number): string {
   return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0')
 }
 
+/** problems lists what is wrong with the page as it is now: its text, then what axe finds. */
 async function problems(page: Page): Promise<string[]> {
   await page.waitForLoadState('networkidle')
+  return [...(await textProblems(page)), ...(await axeProblems(page))]
+}
+
+/** axeProblems lists the violations axe finds, each with the first elements it is about. */
+async function axeProblems(page: Page): Promise<string[]> {
+  const { violations } = await new AxeBuilder({ page }).analyze()
+  return violations.map(
+    (v) => `axe ${v.id} (${v.impact ?? 'unknown'}): ${v.help}, in ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(', ')}`,
+  )
+}
+
+/** textProblems lists text without the markers of the pseudo-locale and text that does not fit. */
+async function textProblems(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const found: string[] = []
     // Marked text is whole messages, which may hold other messages as
@@ -139,7 +155,7 @@ test('the checks catch untranslated and overflowing text', async ({ page }) => {
     <div style="width: 40px; overflow: hidden; white-space: nowrap" title="⟦all of it⟧">⟦${'t'.repeat(20)}⟧</div>
     <code>jec version</code>
   </body></html>`)
-  const found = await problems(page)
+  const found = await textProblems(page)
   expect(found).toEqual([
     'text without markers in <p class="">: hard-coded',
     `text without markers in <p class="">: ⟦fine⟧ and raw`,
@@ -147,6 +163,13 @@ test('the checks catch untranslated and overflowing text', async ({ page }) => {
     expect.stringMatching(/^overflowing text in <div class="">: ⟦w+/),
     expect.stringMatching(/^clipped text in <div class="">: ⟦c+/),
   ])
+})
+
+test('axe catches what keeps a page from being accessible', async ({ page }) => {
+  await page.setContent(`<!doctype html><html lang="en-US"><head><title>⟦a page⟧</title></head><body>
+    <main><h1>⟦a page⟧</h1><input type="text"></main>
+  </body></html>`)
+  expect(await axeProblems(page)).toEqual([expect.stringMatching(/^axe label \(critical\): .+, in input$/)])
 })
 
 test('the app installs to a home screen', async ({ page }) => {
@@ -167,8 +190,9 @@ test('the app installs to a home screen', async ({ page }) => {
 
 // Soft checks: one run reports the problems of every page, not just the first.
 test('every page is translated and fits', async ({ page }, info) => {
-  // A walk through every page: it outgrows the default 30 seconds on CI's runners.
-  test.setTimeout(120_000)
+  // A walk through every page, each also through axe: it outgrows the
+  // default 30 seconds on CI's runners.
+  test.setTimeout(240_000)
   const token = process.env[`JEC_E2E_TOKEN_${info.project.name.toUpperCase()}`] ?? ''
 
   // A fresh server sends visitors to the setup wizard.

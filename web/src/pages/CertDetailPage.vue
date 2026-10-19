@@ -357,7 +357,7 @@ async function confirmDelete() {
             {{ t('certs.issuance.next_try') }} <time :datetime="latest.nextAt">{{ intl.dateTime(latest.nextAt) }}</time>
           </span>
         </div>
-        <RouterLink :to="latestLink" class="self-center font-semibold">{{ t('certs.detail.show_log') }}</RouterLink>
+        <RouterLink :to="latestLink" class="self-center font-semibold text-danger-ink underline underline-offset-2">{{ t('certs.detail.show_log') }}</RouterLink>
       </section>
       <section v-else-if="failing" role="status" class="flex flex-wrap gap-x-3 gap-y-2 rounded-lg border border-line bg-danger-soft px-4 py-3">
         <CircleX class="mt-0.5 size-5 flex-none text-danger-ink" aria-hidden="true" />
@@ -370,7 +370,7 @@ async function confirmDelete() {
             {{ t('certs.issuance.next_try') }} <time :datetime="failing.nextAt">{{ intl.dateTime(failing.nextAt) }}</time>
           </span>
         </div>
-        <RouterLink :to="`/certificates/${id}/deployments/${failing.id}`" class="self-center font-semibold">{{ t('certs.detail.show_log') }}</RouterLink>
+        <RouterLink :to="`/certificates/${id}/deployments/${failing.id}`" class="self-center font-semibold text-danger-ink underline underline-offset-2">{{ t('certs.detail.show_log') }}</RouterLink>
       </section>
       <div class="flex items-center gap-3 sm:hidden">
         <StatusBadge :state="cert.state" />

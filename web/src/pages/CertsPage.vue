@@ -341,30 +341,29 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
           {{ t('certs.attention.title') }}<data :value="attentionRows.length" class="tabular-nums">{{ attentionRows.length }}</data>
         </h2>
         <div role="list" class="overflow-hidden rounded-lg border border-line bg-surface-raised">
-          <RouterLink
-            v-for="r in attentionRows"
-            :key="r.cert.id"
-            role="listitem"
-            :to="`/certificates/${r.cert.id}`"
-            :aria-label="t('certs.cert.label_note', { label: r.label, note: r.note })"
-            class="grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-line px-4 py-2.5 text-ink no-underline last:border-b-0 hover:bg-surface-sunken hover:text-ink"
-          >
-            <component :is="itemLooks[r.cert.state].icon" :class="['size-5', itemLooks[r.cert.state].ink]" aria-hidden="true" />
-            <span class="grid min-w-0 gap-0.5">
-              <span class="truncate text-heading font-semibold" translate="no" :title="intl.list(r.cert.domains)">
-                {{ r.domain }}<small v-if="r.extra" class="ml-1 text-caption font-normal text-ink-muted">{{ r.extra }}</small>
+          <div v-for="r in attentionRows" :key="r.cert.id" role="listitem" class="border-b border-line last:border-b-0">
+            <RouterLink
+              :to="`/certificates/${r.cert.id}`"
+              :aria-label="t('certs.cert.label_note', { label: r.label, note: r.note })"
+              class="grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5 text-ink no-underline hover:bg-surface-sunken hover:text-ink"
+            >
+              <component :is="itemLooks[r.cert.state].icon" :class="['size-5', itemLooks[r.cert.state].ink]" aria-hidden="true" />
+              <span class="grid min-w-0 gap-0.5">
+                <span class="truncate text-heading font-semibold" translate="no" :title="intl.list(r.cert.domains)">
+                  {{ r.domain }}<small v-if="r.extra" class="ml-1 text-caption font-normal text-ink-muted">{{ r.extra }}</small>
+                </span>
+                <span class="truncate text-small text-ink-muted" :title="t('certs.cert.label_note', { label: t(stateText[r.cert.state]), note: r.note })">
+                  <span :class="['mr-2 font-semibold', itemLooks[r.cert.state].ink]">{{ t(stateText[r.cert.state]) }}</span>{{ r.note }}
+                </span>
               </span>
-              <span class="truncate text-small text-ink-muted" :title="t('certs.cert.label_note', { label: t(stateText[r.cert.state]), note: r.note })">
-                <span :class="['mr-2 font-semibold', itemLooks[r.cert.state].ink]">{{ t(stateText[r.cert.state]) }}</span>{{ r.note }}
+              <span v-if="r.life" class="grid justify-items-end gap-1.5">
+                <span :class="['text-body font-semibold whitespace-nowrap tabular-nums', itemLooks[r.cert.state].ink]">{{ r.lifeWords }}</span>
+                <span class="h-1 w-14 bg-bar-track p-px shadow-[0_0_0_1px_var(--bar-edge)]">
+                  <span :class="['block h-full', fills[r.life.level]]" :style="{ width: `${barPercent(r.life)}%` }" />
+                </span>
               </span>
-            </span>
-            <span v-if="r.life" class="grid justify-items-end gap-1.5">
-              <span :class="['text-body font-semibold whitespace-nowrap tabular-nums', itemLooks[r.cert.state].ink]">{{ r.lifeWords }}</span>
-              <span class="h-1 w-14 bg-bar-track p-px shadow-[0_0_0_1px_var(--bar-edge)]">
-                <span :class="['block h-full', fills[r.life.level]]" :style="{ width: `${barPercent(r.life)}%` }" />
-              </span>
-            </span>
-          </RouterLink>
+            </RouterLink>
+          </div>
         </div>
       </section>
 
@@ -373,24 +372,23 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
           {{ t('certs.state.ok') }}<data :value="healthyRows.length" class="tabular-nums">{{ healthyRows.length }}</data>
         </h2>
         <div role="list" class="grid grid-cols-2 gap-2">
-          <RouterLink
-            v-for="r in healthyRows"
-            :key="r.cert.id"
-            role="listitem"
-            :to="`/certificates/${r.cert.id}`"
-            :aria-label="r.label"
-            class="grid min-w-0 gap-1.5 rounded-lg border border-line bg-surface-raised px-3 py-2.5 text-ink no-underline hover:bg-surface-sunken hover:text-ink"
-          >
-            <span class="truncate text-body font-semibold" translate="no" :title="intl.list(r.cert.domains)">
-              {{ r.domain }}<small v-if="r.extra" class="ml-1 text-caption font-normal text-ink-muted">{{ r.extra }}</small>
-            </span>
-            <span v-if="r.life" class="flex items-center gap-2">
-              <span class="h-1 min-w-0 flex-1 bg-bar-track p-px shadow-[0_0_0_1px_var(--bar-edge)]">
-                <span :class="['block h-full', fills[r.life.level]]" :style="{ width: `${barPercent(r.life)}%` }" />
+          <div v-for="r in healthyRows" :key="r.cert.id" role="listitem" class="grid min-w-0">
+            <RouterLink
+              :to="`/certificates/${r.cert.id}`"
+              :aria-label="r.label"
+              class="grid min-w-0 gap-1.5 rounded-lg border border-line bg-surface-raised px-3 py-2.5 text-ink no-underline hover:bg-surface-sunken hover:text-ink"
+            >
+              <span class="truncate text-body font-semibold" translate="no" :title="intl.list(r.cert.domains)">
+                {{ r.domain }}<small v-if="r.extra" class="ml-1 text-caption font-normal text-ink-muted">{{ r.extra }}</small>
               </span>
-              <span class="flex-none text-small whitespace-nowrap text-ink-muted tabular-nums">{{ r.lifeWords }}</span>
-            </span>
-          </RouterLink>
+              <span v-if="r.life" class="flex items-center gap-2">
+                <span class="h-1 min-w-0 flex-1 bg-bar-track p-px shadow-[0_0_0_1px_var(--bar-edge)]">
+                  <span :class="['block h-full', fills[r.life.level]]" :style="{ width: `${barPercent(r.life)}%` }" />
+                </span>
+                <span class="flex-none text-small whitespace-nowrap text-ink-muted tabular-nums">{{ r.lifeWords }}</span>
+              </span>
+            </RouterLink>
+          </div>
         </div>
       </section>
     </template>

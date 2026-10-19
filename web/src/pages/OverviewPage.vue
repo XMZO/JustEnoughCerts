@@ -250,13 +250,15 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
             <div v-for="c in shown" :key="c.id" role="listitem">
               <CertSlot :cert="c" :pressed="selected?.id === c.id" @select="picked = c.id" />
             </div>
-            <RouterLink
-              to="/certificates/new"
-              :aria-label="t('certs.action.add')"
-              class="grid size-12 place-items-center rounded-sm text-ink-muted shadow-[inset_0_0_0_1px_var(--line-strong)] hover:bg-surface-sunken sm:size-14"
-            >
-              <Plus class="size-4" aria-hidden="true" />
-            </RouterLink>
+            <div role="listitem">
+              <RouterLink
+                to="/certificates/new"
+                :aria-label="t('certs.action.add')"
+                class="grid size-12 place-items-center rounded-sm text-ink-muted shadow-[inset_0_0_0_1px_var(--line-strong)] hover:bg-surface-sunken sm:size-14"
+              >
+                <Plus class="size-4" aria-hidden="true" />
+              </RouterLink>
+            </div>
           </div>
           <p class="m-0 hidden text-small text-ink-muted sm:block">{{ t('certs.overview.hint') }}</p>
         </div>
