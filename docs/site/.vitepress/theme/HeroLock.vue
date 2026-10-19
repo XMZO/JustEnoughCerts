@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useData } from 'vitepress'
+import { useData, withBase } from 'vitepress'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import source from '../../public/jec-hero.svg?raw'
@@ -9,7 +9,8 @@ import { dark, facePixels } from './creeper'
 // The pixel lock of the home page, drawn from public/jec-hero.svg, with an
 // easter egg in it: mined with clicks, as a block is in Minecraft, the lock
 // cracks and opens, shows the face of a creeper, hisses and blows up, then
-// mends, and a toast says so.
+// mends, and a toast says so, with the sounds of Minecraft (sounds.mjs
+// fetches them for the build).
 
 type Pixel = { x: number; y: number; fill: string }
 
@@ -89,6 +90,51 @@ onBeforeUnmount(() => {
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+// The sounds play through one AudioContext, which the first hit starts, as
+// browsers let pages play sound only after the visitor did something. A
+// sound that does not load or decode, as Ogg on some browsers, stays
+// silent.
+const sounds = ['fuse', 'explode1', 'explode2', 'explode3', 'explode4', 'advancement']
+let audio: AudioContext | undefined
+const buffers = new Map<string, Promise<AudioBuffer | undefined>>()
+
+function listen() {
+  if (!audio && 'AudioContext' in window) {
+    audio = new AudioContext()
+    for (const name of sounds) {
+      const ctx = audio
+      buffers.set(
+        name,
+        fetch(withBase(`/sounds/${name}.ogg`))
+          .then((res) => (res.ok ? res.arrayBuffer() : Promise.reject(new Error(res.statusText))))
+          .then((data) => ctx.decodeAudioData(data))
+          .catch(() => undefined),
+      )
+    }
+  }
+  void audio?.resume()
+}
+
+// play starts a sound and returns what stops it, fading it out at once.
+async function play(name: string, volume: number): Promise<(() => void) | undefined> {
+  const buffer = await buffers.get(name)
+  const ctx = audio
+  if (!ctx || !buffer) return
+  const source = ctx.createBufferSource()
+  const gain = ctx.createGain()
+  source.buffer = buffer
+  gain.gain.value = volume
+  source.connect(gain).connect(ctx.destination)
+  source.start()
+  return () => {
+    gain.gain.setTargetAtTime(0, ctx.currentTime, 0.02)
+    source.stop(ctx.currentTime + 0.1)
+  }
+}
+
+// The hiss of the fuse, which the blast cuts short.
+let hiss: Promise<(() => void) | undefined> | undefined
+
 // Mining lets up when the clicks stop: the cracks close one by one.
 function mend() {
   if (stage.value === 0 || busy.value) return
@@ -98,6 +144,7 @@ function mend() {
 
 function hit() {
   if (busy.value) return
+  listen()
   clearTimeout(timer)
   if (stage.value < cracks.length) {
     stage.value++
@@ -134,6 +181,7 @@ async function blowUp() {
   container?.classList.remove('jec-egg')
   busy.value = false
   toast.value = true
+  void play('advancement', 0.35)
   clearTimeout(toastTimer)
   toastTimer = setTimeout(() => (toast.value = false), 5000)
 }
@@ -146,6 +194,7 @@ function reset() {
 
 // Swelling, the creeper flashes white three times before it blows.
 async function fuse() {
+  hiss = play('fuse', 0.6)
   all.value?.animate([{ scale: '1' }, { scale: '1.15' }], { duration: 1500, easing: 'ease-in', fill: 'forwards' })
   const flashes = [...(svg.value?.querySelectorAll('.flash') ?? [])].map((el) =>
     el.animate([{ opacity: 0 }, { opacity: 0.85 }, { opacity: 0 }], { duration: 500, iterations: 3 }),
@@ -158,6 +207,8 @@ type Flight = { el: Element; to: string; blast: Animation }
 // Every pixel flies off and fades, as smoke puffs up where the lock was.
 async function explode(): Promise<Flight[]> {
   for (const a of all.value?.getAnimations() ?? []) a.cancel()
+  void hiss?.then((stop) => stop?.())
+  void play(`explode${1 + Math.floor(Math.random() * 4)}`, 0.6)
   for (const [i, el] of [...(svg.value?.querySelectorAll('.smoke rect') ?? [])].entries()) {
     el.animate(
       [

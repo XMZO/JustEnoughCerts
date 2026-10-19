@@ -5,8 +5,8 @@
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "pages": "node pages.mjs",
-    "dev": "node pages.mjs && vitepress dev .",
-    "build": "node pages.mjs && vitepress build .",
+    "dev": "node sounds.mjs && node pages.mjs && vitepress dev .",
+    "build": "node sounds.mjs && node pages.mjs && vitepress build .",
     "preview": "vitepress preview ."
   },
   "devDependencies": {

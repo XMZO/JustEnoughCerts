@@ -3,3 +3,5 @@
 /.vitepress/dist/
 /.vitepress/cache/
 /node_modules/
+# Mojang's, fetched by sounds.mjs for each build.
+/public/sounds/
