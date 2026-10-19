@@ -16,8 +16,16 @@ For free certificates only, steps 1 to 4 are sufficient.
 
 ## Before you begin
 
-- Use a test release or the main branch: in `deploy/docker-compose.yml`,
-  change the image tag from `latest` to `beta`.
+- Deploy JEC as [Getting started](../guide/getting-started.md) describes.
+  `deploy/docker-compose.yml` runs the newest test release (the image tag
+  `beta`); to update a running deployment, run
+  `docker compose pull && docker compose up -d` in the directory of
+  `docker-compose.yml` (see [Upgrades](../guide/installation.md#upgrades)).
+  The version under About on the Settings page must be `0.1.0-alpha.6`
+  or later.
+- Add a notification channel, such as Telegram or email, on the
+  Notifications page, so that the results of issuances and deployments
+  reach you; an issuance at Namecheap may take a day.
 - Enter every key in JEC's web interface only, never in a file, a
   screenshot or a chat message.
 
@@ -69,6 +77,13 @@ manages are listed, the domain under test among them.
    slots of the free plan never fill up.
 5. After a few minutes, the online check on the certificate's page should
    report the new certificate.
+6. Optionally, test revocation: once the online check reports the new
+   certificate, choose Revoke for the previous version, marked as
+   replaced, under Versions on the certificate's page; select the reason
+   "A newer certificate replaces it" and confirm with your password.
+   Expected result: the version shows "Revoked on ...: A newer
+   certificate replaces it". Revocation cannot be undone, and JEC does
+   not revoke the version in use.
 
 If a step fails, copy the complete log from the issuance or deployment page
 (logs contain no secrets) and record what the ESA console shows.
@@ -125,6 +140,9 @@ Please report:
 - the result of each step and the messages shown;
 - the complete log of each failed step, copied from the issuance or
   deployment page;
+- the server log around the time of the failure: `docker logs jec` for
+  Docker, `journalctl -u jec` for the systemd service. Background errors,
+  such as a failed refresh of Namecheap's access token, appear only there;
 - the states at Namecheap and the changes in the ESA console.
 
 Never send AccessKeys, API keys, one-time tokens, the `secret.key` file of
