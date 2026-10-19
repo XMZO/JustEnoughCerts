@@ -1,6 +1,7 @@
 import IntlMessageFormat from 'intl-messageformat'
 import { createI18n, useI18n, type MessageCompiler, type MessageContext } from 'vue-i18n'
 
+import { crossFade } from '../transition'
 import { baseLocale, locales, type Locale, type MessageKey } from './generated'
 import { pseudoEnabled, pseudoize } from './pseudo'
 
@@ -101,14 +102,21 @@ export function preferredLocale(preferences: readonly string[] = navigator.langu
   return baseLocale
 }
 
-/** Switches the UI language, loading its messages first. */
+/**
+ * Switches the UI language, loading its messages first. A language someone
+ * chose, which is remembered, cross-fades in; the page stays as it is.
+ */
 export async function setLocale(tag: Locale, remember = true): Promise<void> {
   await load(baseLocale) // the fallback for missing translations
   await load(tag)
-  i18n.global.locale.value = tag
-  const meta = locales.find((l) => l.tag === tag)
-  document.documentElement.lang = tag
-  document.documentElement.dir = meta?.dir ?? 'ltr'
+  const apply = () => {
+    i18n.global.locale.value = tag
+    const meta = locales.find((l) => l.tag === tag)
+    document.documentElement.lang = tag
+    document.documentElement.dir = meta?.dir ?? 'ltr'
+  }
+  if (remember) await crossFade(apply)
+  else apply()
   if (remember) {
     try {
       localStorage.setItem(storageKey, tag)

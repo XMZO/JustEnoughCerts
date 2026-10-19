@@ -1,5 +1,7 @@
 import { ref, watch } from 'vue'
 
+import { crossFade } from './transition'
+
 /** The themes one can choose: the one of the system, or either always. */
 export const themes = ['system', 'light', 'dark'] as const
 export type Theme = (typeof themes)[number]
@@ -19,9 +21,11 @@ function stored(): Theme {
 /** theme is the choice of this browser. */
 export const theme = ref<Theme>(stored())
 
-/** setTheme makes t the choice of this browser. */
+/** setTheme makes t the choice of this browser; the page cross-fades to it. */
 export function setTheme(t: Theme): void {
-  theme.value = t
+  void crossFade(() => {
+    theme.value = t
+  })
   try {
     if (t === 'system') localStorage.removeItem(storageKey)
     else localStorage.setItem(storageKey, t)
@@ -48,6 +52,6 @@ export function followTheme(): void {
     }
   }
   apply()
-  dark.addEventListener('change', apply)
+  dark.addEventListener('change', () => void crossFade(apply))
   watch(theme, apply)
 }
