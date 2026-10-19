@@ -267,6 +267,7 @@
       "certs_delete": "删除证书",
       "certs_deploy": "立即部署证书",
       "certs_download": "下载私钥",
+      "certs_export": "下载全部证书和私钥",
       "certs_issue": "立即签发证书",
       "certs_issue_new": "添加要签发的证书",
       "certs_revoke": "吊销证书版本",
@@ -893,6 +894,11 @@
       "wildcard_http": "通配符证书只能通过 DNS 验证。",
       "wrong_provider": "这项服务不能用在这里，请换一个。"
     },
+    "export_all": {
+      "action": "下载全部证书",
+      "intro": "ZIP 文件里每张证书一个文件夹，内含当前版本的 cert.pem、chain.pem、fullchain.pem 和 privkey.pem，可用于离线留存或迁移。文件含私钥，请输入登录密码继续。",
+      "title": "下载全部证书和私钥"
+    },
     "field": {
       "csr": "CSR",
       "days": "{days, plural, other {# 天}}",
@@ -935,6 +941,19 @@
       "revoke_hint": "要吊销正在使用的版本，请先签发新版本，部署完成后再在这里吊销旧版本。",
       "revoked": "{date} 吊销：{reason}",
       "title": "历史版本"
+    },
+    "import": {
+      "added": "已加入",
+      "duplicate": "JEC 里已有",
+      "failed": "加入失败",
+      "files": "证书和私钥文件",
+      "files_help": "一次选择多个文件（PEM、CRT、CER、KEY 等），证书、证书链和私钥可以分开放或混在一起，JEC 按公钥配对，适合从其他工具迁移。JEC 里已有的证书保持不变。",
+      "many": "多个文件",
+      "mode": "上传方式",
+      "no_key": "没有找到私钥",
+      "one": "一张证书",
+      "submit": "导入（{count, plural, other {# 个文件}}）",
+      "summary": "{total, plural, other {共找到 # 张证书，加入了 {added} 张}}"
     },
     "info": {
       "title": "证书信息"

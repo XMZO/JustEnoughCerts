@@ -22,11 +22,16 @@ type pfxOptions struct {
 	legacy   bool   // 3DES rather than AES-256
 }
 
-// download returns version of certificate id as a ZIP of PEM files, laid
-// out as certbot does, with certificate.pfx when pfx is not nil, and a file
-// name for it. It publishes certificate.key_downloaded, for the audit
-// trail.
-func (s *service) download(ctx context.Context, id, version int64, username string, pfx *pfxOptions) ([]byte, string, error) {
+// zipFile is a file of a download.
+type zipFile struct {
+	name string
+	data []byte
+}
+
+// versionFiles returns the files of version of certificate id, laid out as
+// certbot does, with certificate.pfx when pfx is not nil, and the
+// version's names and end.
+func (s *service) versionFiles(ctx context.Context, id, version int64, pfx *pfxOptions) ([]zipFile, []string, time.Time, error) {
 	var chain, fingerprint, names string
 	var sealed []byte
 	var notAfter int64
@@ -34,28 +39,24 @@ func (s *service) download(ctx context.Context, id, version int64, username stri
 		"SELECT chain, sealed_key, fingerprint, names, not_after FROM certs_versions WHERE id = ? AND certificate_id = ?",
 		version, id).Scan(&chain, &sealed, &fingerprint, &names, &notAfter)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, "", errNotFound
+		return nil, nil, time.Time{}, errNotFound
 	}
 	if err != nil {
-		return nil, "", err
+		return nil, nil, time.Time{}, err
 	}
 	key, err := s.secrets.Open(sealed, "key:"+fingerprint)
 	if err != nil {
-		return nil, "", fmt.Errorf("open the private key of version %d: %w", version, err)
+		return nil, nil, time.Time{}, fmt.Errorf("open the private key of version %d: %w", version, err)
 	}
 	certs, err := cryptox.ParseCertificates([]byte(chain))
 	if err != nil {
-		return nil, "", err
+		return nil, nil, time.Time{}, err
 	}
 	var domains []string
 	if err := json.Unmarshal([]byte(names), &domains); err != nil {
-		return nil, "", err
+		return nil, nil, time.Time{}, err
 	}
-
-	files := []struct {
-		name string
-		data []byte
-	}{
+	files := []zipFile{
 		{"cert.pem", cryptox.EncodeCertificates(certs[0])},
 		{"chain.pem", cryptox.EncodeCertificates(certs[1:]...)},
 		{"fullchain.pem", []byte(chain)},
@@ -64,45 +65,104 @@ func (s *service) download(ctx context.Context, id, version int64, username stri
 	if pfx != nil {
 		signer, err := cryptox.ParseKey(key)
 		if err != nil {
-			return nil, "", err
+			return nil, nil, time.Time{}, err
 		}
 		data, err := cryptox.EncodePFX(certs, signer, pfx.password, pfx.legacy)
 		if err != nil {
-			return nil, "", err
+			return nil, nil, time.Time{}, err
 		}
-		files = append(files, struct {
-			name string
-			data []byte
-		}{"certificate.pfx", data})
+		files = append(files, zipFile{"certificate.pfx", data})
 	}
+	return files, domains, time.UnixMilli(notAfter), nil
+}
 
-	var buf bytes.Buffer
-	zw := zip.NewWriter(&buf)
-	now := s.now()
+// addZip writes files into zw under dir, leaving out empty ones, as
+// chain.pem without intermediates.
+func addZip(zw *zip.Writer, dir string, files []zipFile, at time.Time) error {
 	for _, f := range files {
 		if len(f.data) == 0 {
-			continue // no intermediates
+			continue
 		}
-		w, err := zw.CreateHeader(&zip.FileHeader{Name: f.name, Method: zip.Deflate, Modified: now})
+		w, err := zw.CreateHeader(&zip.FileHeader{Name: dir + f.name, Method: zip.Deflate, Modified: at})
 		if err != nil {
-			return nil, "", err
+			return err
 		}
 		if _, err := w.Write(f.data); err != nil {
-			return nil, "", err
+			return err
 		}
+	}
+	return nil
+}
+
+// downloaded publishes certificate.key_downloaded for version of
+// certificate id, for the audit trail.
+func (s *service) downloaded(ctx context.Context, id, version int64, domains []string, notAfter time.Time, username string) error {
+	err := s.events.Publish(ctx, contracts.CertificateKeyDownloaded, strconv.FormatInt(id, 10), contracts.CertificateEvent{
+		CertificateID: id, Domains: domains, VersionID: version, NotAfter: notAfter.UTC(), Username: username,
+	})
+	if err != nil {
+		return err
+	}
+	s.log.Info("private key downloaded", "certificate", id, "version", version, "username", username)
+	return nil
+}
+
+// download returns version of certificate id as a ZIP of its files
+// (versionFiles), and a file name for it.
+func (s *service) download(ctx context.Context, id, version int64, username string, pfx *pfxOptions) ([]byte, string, error) {
+	files, domains, notAfter, err := s.versionFiles(ctx, id, version, pfx)
+	if err != nil {
+		return nil, "", err
+	}
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	if err := addZip(zw, "", files, s.now()); err != nil {
+		return nil, "", err
 	}
 	if err := zw.Close(); err != nil {
 		return nil, "", err
 	}
-
-	err = s.events.Publish(ctx, contracts.CertificateKeyDownloaded, strconv.FormatInt(id, 10), contracts.CertificateEvent{
-		CertificateID: id, Domains: domains, VersionID: version, NotAfter: time.UnixMilli(notAfter).UTC(), Username: username,
-	})
-	if err != nil {
+	if err := s.downloaded(ctx, id, version, domains, notAfter, username); err != nil {
 		return nil, "", err
 	}
-	s.log.Info("private key downloaded", "certificate", id, "version", version, "username", username)
-	return buf.Bytes(), zipName(domains, time.UnixMilli(notAfter)), nil
+	return buf.Bytes(), zipName(domains, notAfter), nil
+}
+
+// exportAll returns the current version of every certificate as one ZIP,
+// a folder each, named as a download of it is.
+func (s *service) exportAll(ctx context.Context, username string) ([]byte, error) {
+	certs, err := s.list(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	now := s.now()
+	used := map[string]bool{}
+	for _, c := range certs {
+		if c.Current == nil {
+			continue
+		}
+		files, domains, notAfter, err := s.versionFiles(ctx, c.ID, c.Current.ID, nil)
+		if err != nil {
+			return nil, err
+		}
+		dir := strings.TrimSuffix(zipName(domains, notAfter), ".zip")
+		if used[dir] {
+			dir += "_" + strconv.FormatInt(c.ID, 10)
+		}
+		used[dir] = true
+		if err := addZip(zw, dir+"/", files, now); err != nil {
+			return nil, err
+		}
+		if err := s.downloaded(ctx, c.ID, c.Current.ID, domains, notAfter, username); err != nil {
+			return nil, err
+		}
+	}
+	if err := zw.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // csr makes a certificate request of the private key of version of

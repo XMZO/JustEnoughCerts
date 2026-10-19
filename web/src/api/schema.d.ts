@@ -220,6 +220,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certs/certificates/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Download the version in use of every certificate with its private key, as one ZIP */
+        post: operations["certs-export"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/certs/certificates/import": {
         parameters: {
             query?: never;
@@ -1800,6 +1817,10 @@ export interface components {
             /** @description The password of the signed-in account */
             password: string;
         };
+        ExportInputBody1: {
+            /** @description The password of the signed-in account, asked again before private keys leave JEC */
+            password: string;
+        };
         FeedBody: {
             enabled: boolean;
             /** @description The path of the feed, from the panel's root, such as /api/v1/calendar/ics/<key>; secret */
@@ -3095,6 +3116,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CertificateBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportInputBody1"];
+            };
+        };
+        responses: {
+            /** @description A folder for each certificate, named after its primary domain and end, with the files of a download of it */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    "Content-Disposition"?: string;
+                    "Content-Type"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
                 };
             };
             /** @description Error */

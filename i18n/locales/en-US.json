@@ -267,6 +267,7 @@
       "certs_delete": "Delete a certificate",
       "certs_deploy": "Deploy a certificate now",
       "certs_download": "Download a private key",
+      "certs_export": "Downloaded every certificate and key",
       "certs_issue": "Issue a certificate now",
       "certs_issue_new": "Add a certificate to issue",
       "certs_revoke": "Revoke a certificate version",
@@ -893,6 +894,11 @@
       "wildcard_http": "A wildcard certificate can only be validated through DNS.",
       "wrong_provider": "This provider cannot be used here. Choose another one."
     },
+    "export_all": {
+      "action": "Download all",
+      "intro": "The ZIP file has a folder for each certificate with cert.pem, chain.pem, fullchain.pem and privkey.pem of the version in use, to keep offline or to move elsewhere. It contains the private keys: enter your password to go on.",
+      "title": "Download every certificate and key"
+    },
     "field": {
       "csr": "CSR",
       "days": "{days, plural, one {# day} other {# days}}",
@@ -935,6 +941,19 @@
       "revoke_hint": "To revoke the version in use, issue a new version first; once it is deployed, revoke the old one here.",
       "revoked": "Revoked on {date}: {reason}",
       "title": "Versions"
+    },
+    "import": {
+      "added": "Added",
+      "duplicate": "In JEC already",
+      "failed": "Not added",
+      "files": "Certificate and key files",
+      "files_help": "Choose many files at once (PEM, CRT, CER, KEY and so on); certificates, chains and keys may be apart or mixed, and JEC pairs them by public key, as when moving from another tool. Certificates JEC has already stay as they are.",
+      "many": "Several files",
+      "mode": "How to upload",
+      "no_key": "No private key found",
+      "one": "One certificate",
+      "submit": "{count, plural, one {Import # file} other {Import # files}}",
+      "summary": "{total, plural, one {{added} added of # certificate found} other {{added} added of # certificates found}}"
     },
     "info": {
       "title": "Certificate details"

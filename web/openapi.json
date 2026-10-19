@@ -1447,6 +1447,21 @@
         ],
         "type": "object"
       },
+      "ExportInputBody1": {
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "description": "The password of the signed-in account, asked again before private keys leave JEC",
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "type": "object"
+      },
       "FeedBody": {
         "additionalProperties": false,
         "properties": {
@@ -4391,6 +4406,66 @@
           }
         },
         "summary": "Add a certificate by uploading it with its private key",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/certificates/export": {
+      "post": {
+        "operationId": "certs-export",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportInputBody1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "A folder for each certificate, named after its primary domain and end, with the files of a download of it",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Download the version in use of every certificate with its private key, as one ZIP",
         "tags": [
           "certs"
         ]

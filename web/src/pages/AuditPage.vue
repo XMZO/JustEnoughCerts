@@ -69,6 +69,7 @@ const operations: Partial<Record<string, MessageKey>> = {
   'certs-delete': 'audit.op.certs_delete',
   'certs-upload': 'audit.op.certs_upload',
   'certs-download': 'audit.op.certs_download',
+  'certs-export': 'audit.op.certs_export',
   'certs-revoke': 'audit.op.certs_revoke',
   'certs-issue': 'audit.op.certs_issue',
   'certs-deploy': 'audit.op.certs_deploy',
@@ -82,7 +83,7 @@ const operations: Partial<Record<string, MessageKey>> = {
 }
 // The operations that hand out secrets: private keys, backups and the
 // configuration with its secrets.
-const secret = new Set(['certs-download', 'backup', 'config-export-secrets'])
+const secret = new Set(['certs-download', 'certs-export', 'backup', 'config-export-secrets'])
 const raw = (e: AuditEntry) => `${e.method} ${e.path}`
 const label = (e: AuditEntry) => {
   const key = operations[e.operation]

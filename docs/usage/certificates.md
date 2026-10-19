@@ -45,6 +45,18 @@ The key type is RSA 2048, 3072 or 4096, or ECDSA P-256 or P-384; the
 default is set under Renewal defaults on the Settings page. Every renewal
 generates a new private key.
 
+Download all, on the certificate list, packs the version in use of every
+certificate with its private key into one ZIP, a folder each, to keep
+offline or to move elsewhere; it asks for the password first, and the
+audit log records each certificate.
+
+To move from another tool, choose Several files under Manual upload and
+pick all the certificate and key files it exported at once (PEM, CRT, CER,
+KEY and so on, apart or mixed): JEC pairs each key with its certificate by
+public key, completes the chain and adds each; certificates it has already
+stay as they are, and certificates without a key and files it cannot read
+are listed.
+
 A note, under the certificate's information on its page, says what the
 certificate is for or whose it is; the list shows it, searches it and
 exports it.

@@ -227,6 +227,15 @@ export function useDeployOf() {
   return useCertsMutation((id: number) => unwrap(api.POST('/certs/certificates/{id}/deploy', { params: { path: { id } }, body: {} })))
 }
 
+export type Imported = components['schemas']['ImportedBody']
+
+/** useImportCertificates adds the certificates among files of certificates and keys, as another tool exported them. */
+export function useImportCertificates() {
+  return useCertsMutation((body: { files: { name: string; content: string }[]; renewBeforeDays?: number; targets?: number[] }) =>
+    unwrap(api.POST('/certs/certificates/import', { body })),
+  )
+}
+
 export function useAddCertificate() {
   return useCertsMutation((body: PEMUpload & { renewBeforeDays?: number; targets?: number[] }) =>
     unwrap(api.POST('/certs/certificates', { body })),
@@ -298,6 +307,25 @@ export function useDownload(id: MaybeRefOrGetter<number>) {
       }
       const disposition = result.response.headers.get('Content-Disposition') ?? ''
       return { blob: result.data, name: /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'certificate.zip' }
+    },
+  })
+}
+
+/** useExportAll downloads the version in use of every certificate with its key, as one ZIP, once the password is confirmed. */
+export function useExportAll() {
+  return useMutation({
+    mutationFn: async (password: string) => {
+      let result
+      try {
+        result = await api.POST('/certs/certificates/export', { body: { password }, parseAs: 'blob' })
+      } catch {
+        throw networkError
+      }
+      if (result.error !== undefined || !result.response.ok) {
+        throw new ApiError(result.response.status, result.error)
+      }
+      const disposition = result.response.headers.get('Content-Disposition') ?? ''
+      return { blob: result.data, name: /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'certificates.zip' }
     },
   })
 }

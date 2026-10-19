@@ -225,6 +225,12 @@ type downloadInput struct {
 	}
 }
 
+type exportInput struct {
+	Body struct {
+		Password string `json:"password" minLength:"1" maxLength:"1024" doc:"The password of the signed-in account, asked again before private keys leave JEC"`
+	}
+}
+
 type revokeInput struct {
 	ID      int64 `path:"id"`
 	Version int64 `path:"version"`
@@ -410,6 +416,30 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 		return &downloadOutput{
 			ContentType:        "application/zip",
 			ContentDisposition: `attachment; filename="` + name + `"`,
+			CacheControl:       "no-store",
+			Body:               data,
+		}, nil
+	})
+
+	huma.Register(a, huma.Operation{
+		OperationID: "certs-export", Method: http.MethodPost, Path: "/certificates/export",
+		Summary: "Download the version in use of every certificate with its private key, as one ZIP",
+		Responses: map[string]*huma.Response{"200": {
+			Description: "A folder for each certificate, named after its primary domain and end, with the files of a download of it",
+			Content:     map[string]*huma.MediaType{"application/zip": {Schema: &huma.Schema{Type: huma.TypeString, Format: "binary"}}},
+		}},
+	}, func(ctx context.Context, in *exportInput) (*downloadOutput, error) {
+		if err := confirm(ctx, in.Body.Password); err != nil {
+			return nil, err
+		}
+		user, _ := auth.UserFrom(ctx)
+		data, err := s.exportAll(ctx, user.Username)
+		if err != nil {
+			return nil, err
+		}
+		return &downloadOutput{
+			ContentType:        "application/zip",
+			ContentDisposition: `attachment; filename="jec-certificates_` + s.now().UTC().Format(time.DateOnly) + `.zip"`,
 			CacheControl:       "no-store",
 			Body:               data,
 		}, nil

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { CircleCheck, CircleX, Plus, Save, ShieldCheck, TriangleAlert } from '@lucide/vue'
+import { CircleCheck, CircleX, Plus, Save, ShieldCheck, TriangleAlert, Upload } from '@lucide/vue'
 import { computed, ref, watchEffect } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
-import { useAddCertificate, useCertificates, useCertSettings, useIssueCertificate, type KeyType } from '../api/certs'
+import { useAddCertificate, useCertificates, useCertSettings, useImportCertificates, useIssueCertificate, type Imported, type KeyType } from '../api/certs'
 import { revealError, useApiError } from '../api/errors'
 import { useProviders, useProviderTypes, useZones, type Provider } from '../api/providers'
 import { loadLastChoice, saveLastChoice, type LastChoice } from '../certs/lastChoice'
@@ -193,6 +193,38 @@ watchEffect(() => {
 })
 
 const uploading = computed(() => source.value === 'upload')
+// Or many at once, from the files another tool exported: certificates and
+// keys in any mix, which the server pairs.
+const importing = ref(false)
+const importFiles = ref<File[]>([])
+const importer = useImportCertificates()
+const importError = useApiError(computed(() => importer.error.value))
+const imported = ref<{ certificates: Imported[]; files: { name: string; code: string }[] }>()
+const importLooks: Record<Imported['result'], { icon: typeof CircleCheck; ink: string; label: MessageKey }> = {
+  added: { icon: CircleCheck, ink: 'text-ok-ink', label: 'certs.import.added' },
+  duplicate: { icon: CircleCheck, ink: 'text-ink-muted', label: 'certs.import.duplicate' },
+  no_key: { icon: TriangleAlert, ink: 'text-warn-ink', label: 'certs.import.no_key' },
+  failed: { icon: CircleX, ink: 'text-danger-ink', label: 'certs.import.failed' },
+}
+function pickImport(e: Event) {
+  importFiles.value = [...((e.target as HTMLInputElement).files ?? [])]
+  imported.value = undefined
+}
+// base64 of a file, which may be binary, as DER is.
+async function base64Of(f: File): Promise<string> {
+  const bytes = new Uint8Array(await f.arrayBuffer())
+  let s = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(s)
+}
+async function submitImport() {
+  const files = await Promise.all(importFiles.value.map(async (f) => ({ name: f.name, content: await base64Of(f) })))
+  try {
+    imported.value = await importer.mutateAsync({ files, renewBeforeDays: Number(days.value) || undefined, targets: chosenTargets.value })
+  } catch {
+    // shown above the files
+  }
+}
 const mutation = computed(() => (uploading.value ? add : issue))
 const errors = useApiError(computed(() => mutation.value.error.value))
 const badTargets = computed(() => Object.entries(errors.fields.value).find(([f]) => f.startsWith('targets'))?.[1])
@@ -236,6 +268,10 @@ const remember = () =>
   saveLastChoice({ source: typeof source.value === 'number' ? source.value : undefined, solver: needsSolver.value ? solver.value : undefined, targets: chosenTargets.value })
 
 async function submit() {
+  if (uploading.value && importing.value) {
+    await submitImport()
+    return
+  }
   if (uploading.value) {
     let created
     try {
@@ -359,8 +395,55 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
           </RouterLink>
         </div>
         <JecAlert v-if="errors.alert.value" :code="errors.alert.value.code" :params="errors.alert.value.params" />
+        <div v-if="uploading" role="group" :aria-label="t('certs.import.mode')" class="inline-flex gap-0.5 self-start rounded-md border border-line bg-surface-sunken p-0.5">
+          <button
+            v-for="many in [false, true]"
+            :key="String(many)"
+            type="button"
+            :aria-pressed="importing === many ? 'true' : 'false'"
+            class="h-[30px] cursor-pointer rounded-sm border-0 bg-transparent px-3 text-small font-semibold text-ink-muted hover:text-ink aria-pressed:bg-surface-raised aria-pressed:text-ink aria-pressed:shadow-[0_0_0_1px_var(--line-strong)]"
+            @click="importing = many"
+          >
+            {{ t(many ? 'certs.import.many' : 'certs.import.one') }}
+          </button>
+        </div>
+        <div v-if="uploading && importing" class="flex flex-col gap-2">
+          <JecField id="import-files" label="certs.import.files" hint="certs.import.files_help">
+            <input
+              id="import-files"
+              type="file"
+              multiple
+              accept=".pem,.crt,.cer,.der,.key,.txt"
+              class="block w-full min-w-0 text-small text-ink file:mr-3 file:h-9 file:cursor-pointer file:rounded-md file:border file:border-solid file:border-line-strong file:bg-surface-raised file:px-3 file:font-semibold file:text-ink hover:file:bg-surface-sunken"
+              @change="pickImport"
+            />
+          </JecField>
+          <JecAlert v-if="importError.error.value" :code="importError.error.value.code" :params="importError.error.value.params" />
+          <section v-if="imported" aria-labelledby="import-results" role="status" class="flex flex-col gap-1.5">
+            <h3 id="import-results" class="m-0 text-body font-semibold">
+              {{ t('certs.import.summary', { added: imported.certificates.filter((c) => c.result === 'added').length, total: imported.certificates.length }) }}
+            </h3>
+            <ul class="m-0 flex list-none flex-col gap-1 p-0 text-small">
+              <li v-for="(c, i) in imported.certificates" :key="i" class="flex items-start gap-2">
+                <component :is="importLooks[c.result].icon" :class="['mt-0.5 size-4 flex-none', importLooks[c.result].ink]" aria-hidden="true" />
+                <span class="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                  <RouterLink v-if="c.id" :to="`/certificates/${c.id}`" class="font-semibold" translate="no">{{ c.domains[0] }}</RouterLink>
+                  <span v-else class="font-semibold" translate="no">{{ c.domains[0] }}</span>
+                  <span class="ml-2 text-ink-muted">{{ t(importLooks[c.result].label) }}</span>
+                </span>
+              </li>
+              <li v-for="f in imported.files" :key="f.name" class="flex items-start gap-2">
+                <TriangleAlert class="mt-0.5 size-4 flex-none text-warn-ink" aria-hidden="true" />
+                <span class="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                  <span class="font-semibold" translate="no">{{ f.name }}</span>
+                  <span class="ml-2 text-ink-muted">{{ t(f.code as MessageKey) }}</span>
+                </span>
+              </li>
+            </ul>
+          </section>
+        </div>
         <PemFields
-          v-if="uploading"
+          v-if="uploading && !importing"
           v-model:certificate="pem.certificate"
           v-model:private-key="pem.privateKey"
           v-model:pfx="pem.pfx"
@@ -518,10 +601,11 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
         type="submit"
         form="add-form"
         variant="primary"
-        :busy="mutation.isPending.value || adding"
-        :disabled="source === undefined || (bulk && !uploading && !batch.length)"
+        :busy="mutation.isPending.value || adding || importer.isPending.value"
+        :disabled="source === undefined || (bulk && !uploading && !batch.length) || (uploading && importing && !importFiles.length)"
       >
-        <template v-if="uploading"><Save class="size-4" aria-hidden="true" />{{ t('certs.action.save') }}</template>
+        <template v-if="uploading && importing"><Upload class="size-4" aria-hidden="true" />{{ t('certs.import.submit', { count: importFiles.length }) }}</template>
+        <template v-else-if="uploading"><Save class="size-4" aria-hidden="true" />{{ t('certs.action.save') }}</template>
         <template v-else-if="bulk"><ShieldCheck class="size-4" aria-hidden="true" />{{ t('certs.add.bulk_submit', { count: batch.length }) }}</template>
         <template v-else><ShieldCheck class="size-4" aria-hidden="true" />{{ t('certs.action.issue') }}</template>
       </JecButton>

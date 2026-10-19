@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Activity, CircleCheck, CircleX, CopyPlus, Download, Eye, FileDown, LoaderCircle, OctagonX, Plus, RefreshCw, Send, ShieldX, Trash2, TriangleAlert, Upload } from '@lucide/vue'
+import { Activity, Archive, CircleCheck, CircleX, CopyPlus, Download, Eye, FileDown, LoaderCircle, OctagonX, Plus, RefreshCw, Send, ShieldX, Trash2, TriangleAlert, Upload } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
-import { saveFile, useCertificates, useDeleteCertificate, useDeleteOf, type Certificate } from '../api/certs'
+import { saveFile, useCertificates, useDeleteCertificate, useDeleteOf, useExportAll, type Certificate } from '../api/certs'
 import { useApiError } from '../api/errors'
 import { useMonitorStates } from '../api/monitor'
 import { useProviders } from '../api/providers'
@@ -16,6 +16,8 @@ import CertActionDialog, { type CertAsk } from '../components/CertActionDialog.v
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
+import JecField from '../components/JecField.vue'
+import JecInput from '../components/JecInput.vue'
 import LifeBar from '../components/LifeBar.vue'
 import PageHeader from '../components/PageHeader.vue'
 import RowMenu, { type MenuItem } from '../components/RowMenu.vue'
@@ -232,6 +234,26 @@ const deleteOpen = computed({
 const remove = useDeleteCertificate(() => deleting.value?.id ?? 0)
 const removeError = useApiError(remove.error)
 
+// Every certificate with its key, as one ZIP, after the password once more.
+const exportingAll = ref(false)
+const exportPassword = ref('')
+const exportAll = useExportAll()
+const exportError = useApiError(computed(() => exportAll.error.value))
+function startExportAll() {
+  exportPassword.value = ''
+  exportAll.reset()
+  exportingAll.value = true
+}
+async function submitExportAll() {
+  try {
+    const file = await exportAll.mutateAsync(exportPassword.value)
+    saveFile(file.blob, file.name)
+  } catch {
+    return // shown in the dialog
+  }
+  exportingAll.value = false
+}
+
 // Several chosen in the table at once: renewed, deployed again or deleted
 // together, one after the other, each asked first. What is chosen stays
 // among the rows shown.
@@ -325,6 +347,7 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
     </template>
     <template #actions>
       <JecButton :disabled="!shown.length" @click="exportCsv"><Download class="size-4" aria-hidden="true" />{{ t('certs.csv.export') }}</JecButton>
+      <JecButton :disabled="!all.some((c) => c.current)" @click="startExportAll"><Archive class="size-4" aria-hidden="true" />{{ t('certs.export_all.action') }}</JecButton>
       <JecButton :to="{ path: '/certificates/new', query: { source: 'upload' } }"><FileDown class="size-4" aria-hidden="true" />{{ t('certs.action.import') }}</JecButton>
       <JecButton variant="primary" to="/certificates/new"><Plus class="size-4" aria-hidden="true" />{{ t('certs.action.add') }}</JecButton>
     </template>
@@ -534,6 +557,29 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
   </div>
 
   <CertActionDialog v-model:ask="asking" />
+
+  <JecDialog v-model:open="exportingAll" :title="t('certs.export_all.title')" small>
+    <form id="export-all-form" class="flex flex-col gap-3" novalidate @submit.prevent="submitExportAll">
+      <p class="m-0">{{ t('certs.export_all.intro') }}</p>
+      <JecAlert v-if="exportError.alert.value" :code="exportError.alert.value.code" :params="exportError.alert.value.params" />
+      <JecField id="export-password" label="kernel.account.confirm_password" :error="exportError.fields.value.password">
+        <JecInput
+          id="export-password"
+          v-model="exportPassword"
+          type="password"
+          autocomplete="current-password"
+          :invalid="!!exportError.fields.value.password"
+          required
+        />
+      </JecField>
+    </form>
+    <template #footer>
+      <JecButton @click="exportingAll = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton type="submit" form="export-all-form" variant="primary" :busy="exportAll.isPending.value" :disabled="!exportPassword">
+        <Archive class="size-4" aria-hidden="true" />{{ t('certs.export_all.action') }}
+      </JecButton>
+    </template>
+  </JecDialog>
 
   <JecDialog v-model:open="deleteManyOpen" :title="t('certs.bulk.delete_title', { count: deletingMany?.length ?? 0 })" small>
     <div class="flex flex-col gap-3">

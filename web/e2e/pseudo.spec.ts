@@ -257,6 +257,18 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page.locator('#pfx-error')).toBeVisible()
   expect.soft(await problems(page), 'add a certificate from a PFX file').toEqual([])
   await page.getByRole('button', { name: label('certs.add.format_pem') }).click()
+  // Several files at once: a certificate without its key, and a file of
+  // nothing, so that nothing is added yet.
+  await page.getByRole('button', { name: label('certs.import.many') }).click()
+  const lone = await selfSigned(['lone.example.com'], -10, 80)
+  await page.locator('#import-files').setInputFiles([
+    { name: 'lone.crt', mimeType: 'application/x-pem-file', buffer: Buffer.from(lone.certificate) },
+    { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('nothing here') },
+  ])
+  await page.locator('button[form=add-form]').click()
+  await expect(page.locator('#import-results')).toBeVisible()
+  expect.soft(await problems(page), 'import several files').toEqual([])
+  await page.getByRole('button', { name: label('certs.import.one') }).click()
 
   // A certificate in each state, the first two with long and several names.
   for (const [names, from, to] of [
@@ -273,6 +285,17 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'overview').toEqual([])
   await page.goto('./certificates')
   expect.soft(await problems(page), 'certificates').toEqual([])
+  // Every certificate with its key, from the header of wider screens: the
+  // password first, here a wrong one.
+  if (info.project.name === 'desktop') {
+    await page.getByRole('button', { name: label('certs.export_all.action') }).click()
+    await page.locator('#export-password').fill('wrong password')
+    await page.locator('button[form=export-all-form]').click()
+    await expect(page.locator('#export-password')).toHaveAttribute('aria-invalid', 'true')
+    expect.soft(await problems(page), 'download every certificate, refused').toEqual([])
+    await page.keyboard.press('Escape')
+    await expect(page.locator('dialog[open]')).toHaveCount(0)
+  }
   if (info.project.name === 'desktop') {
     // The menu of a row, which phones go without; then deletion from it,
     // left unconfirmed.

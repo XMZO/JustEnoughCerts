@@ -1,10 +1,14 @@
 package certs
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/base64"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestImport(t *testing.T) {
@@ -52,5 +56,43 @@ func TestImport(t *testing.T) {
 	c := f.certificate(results["a.example.com"].ID)
 	if c.Source != "upload" || c.RenewBeforeDays != 20 || c.Current == nil {
 		t.Errorf("added %+v", c)
+	}
+}
+
+func TestExportAll(t *testing.T) {
+	f := newFixture(t)
+	f.add(f.leaf(60, "*.example.com", "example.com"))
+	f.add(f.leaf(80, "shop.example.org"))
+	f.issueNew("pending.example.net") // no version yet: left out
+	f.apiError(f.api.Post("/certificates/export", map[string]any{"password": "wrong"}), http.StatusUnprocessableEntity)
+	before := len(f.events())
+
+	resp := f.api.Post("/certificates/export", map[string]any{"password": testPassword})
+	if resp.Code != http.StatusOK || resp.Header().Get("Content-Type") != "application/zip" ||
+		!strings.HasPrefix(resp.Header().Get("Content-Disposition"), `attachment; filename="jec-certificates_`) {
+		t.Fatalf("export: %d %v", resp.Code, resp.Header())
+	}
+	zr, err := zip.NewReader(bytes.NewReader(resp.Body.Bytes()), int64(resp.Body.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, zf := range zr.File {
+		names = append(names, zf.Name)
+	}
+	slices.Sort(names)
+	end1, end2 := f.now.Add(60*day).Format(time.DateOnly), f.now.Add(80*day).Format(time.DateOnly)
+	want := []string{
+		"shop.example.org_" + end2 + "/cert.pem", "shop.example.org_" + end2 + "/chain.pem",
+		"shop.example.org_" + end2 + "/fullchain.pem", "shop.example.org_" + end2 + "/privkey.pem",
+		"star.example.com_" + end1 + "/cert.pem", "star.example.com_" + end1 + "/chain.pem",
+		"star.example.com_" + end1 + "/fullchain.pem", "star.example.com_" + end1 + "/privkey.pem",
+	}
+	if !slices.Equal(names, want) {
+		t.Errorf("files %v", names)
+	}
+	// Each key that left is in the audit trail.
+	if n := len(f.events()) - before; n != 2 {
+		t.Errorf("%d events", n)
 	}
 }
