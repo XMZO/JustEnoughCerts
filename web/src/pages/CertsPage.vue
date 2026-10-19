@@ -11,6 +11,7 @@ import { useProviders } from '../api/providers'
 import { useCertActions } from '../certs/actions'
 import { useDeployNote } from '../certs/deployment'
 import { barPercent, certLife, lifeText, needsAttention, stateText } from '../certs/life'
+import { matches, searchTerm } from '../certs/search'
 import CertActionDialog, { type CertAsk } from '../components/CertActionDialog.vue'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
@@ -55,9 +56,9 @@ const fromSource = ref('')
 
 const all = computed(() => certificates.data.value ?? [])
 const searched = computed(() => {
-  const q = query.value.trim().toLowerCase()
+  const q = searchTerm(query.value)
   return all.value
-    .filter((c) => !q || c.domains.some((d) => d.includes(q)) || (c.note ?? '').toLowerCase().includes(q))
+    .filter((c) => matches(c, q))
     .filter((c) => !fromSource.value || (fromSource.value === 'upload' ? c.source === 'upload' : String(c.sourceProvider) === fromSource.value))
 })
 // The sources there are certificates of, to choose from.

@@ -36,6 +36,10 @@ A note, under the certificate's information on its page, says what the
 certificate is for or whose it is; the list shows it, searches it and
 exports it.
 
+The list's search finds certificates by domain and by note. A host name,
+or a URL pasted in, also finds the wildcard certificate that covers it:
+`api.shop.com` finds `*.shop.com`.
+
 ## The certificate's page
 
 The certificate's page shows:
