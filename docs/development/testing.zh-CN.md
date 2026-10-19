@@ -1,8 +1,8 @@
 # 真实账号测试指南
 
-[English](trying.md)
+[English](testing.md)
 
-阿里云 ESA 部署、ESA 边缘应答与 Namecheap SSL Manager 目前仅通过替身接口测试，参见[服务商支持与测试情况](providers.zh-CN.md)。本指南以下述场景为例，说明使用真实账号逐项验证的步骤、各步骤的预期结果以及失败时需要记录的信息：
+阿里云 ESA 部署、ESA 边缘应答与 Namecheap SSL Manager 目前仅通过替身接口测试，参见[服务商支持与测试情况](../reference/providers.zh-CN.md)。本指南以下述场景为例，说明使用真实账号逐项验证的步骤、各步骤的预期结果以及失败时需要记录的信息：
 
 - 网站托管于阿里云 ESA；
 - DNS 解析托管于腾讯云 DNSPod；

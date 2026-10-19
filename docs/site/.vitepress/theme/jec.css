@@ -1,5 +1,7 @@
 /* The brand and surface colors of docs/design/system/tokens.css, light
-   and dark, in VitePress's variables. */
+   and dark, in VitePress's variables, and the colors of the home page:
+   the name runs from the brand's green to the info blue, over a glow of
+   the life bar's green and blue. */
 :root {
   --vp-c-brand-1: #2b7a33;
   --vp-c-brand-2: #226a2a;
@@ -14,6 +16,23 @@
   --vp-button-brand-bg: #2b7a33;
   --vp-button-brand-hover-bg: #226a2a;
   --vp-button-brand-text: #ffffff;
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #2b7a33 30%, #1d5a9c);
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, #52b548 50%, #4b8fe0 50%);
+  --vp-home-hero-image-filter: blur(56px);
+
+  --jec-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --jec-hero-size: 192px;
+  --jec-card-shadow: 0 16px 32px -16px rgb(43 122 51 / 0.35);
+  --jec-window-shadow: 0 32px 64px -32px rgb(26 32 25 / 0.35);
+
+  /* VitePress's grays, in the tokens' green-tinted neutrals. */
+  --vp-c-gray-1: #d5dbd1;
+  --vp-c-gray-2: #dfe4dc;
+  --vp-c-gray-3: #e8ece5;
+  --vp-c-gray-soft: rgb(123 134 118 / 0.14);
+  --vp-c-border: #c3cbbf;
 }
 
 .dark {
@@ -30,9 +49,235 @@
   --vp-button-brand-bg: #6dbd66;
   --vp-button-brand-hover-bg: #82cb7b;
   --vp-button-brand-text: #0b160b;
+
+  --vp-home-hero-name-background: linear-gradient(120deg, #6dbd66 30%, #8fbdf3);
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, #2b7a33 50%, #1d5a9c 50%);
+  --jec-card-shadow: 0 16px 32px -16px rgb(0 0 0 / 0.6);
+  --jec-window-shadow: 0 32px 64px -32px rgb(0 0 0 / 0.8);
+
+  --vp-c-gray-1: #4f5a4c;
+  --vp-c-gray-2: #3d473b;
+  --vp-c-gray-3: #2f382f;
+  --vp-c-gray-soft: rgb(107 119 102 / 0.16);
+  --vp-c-border: #3a443a;
+  --vp-c-bg-elv: #222a23;
 }
 
-/* The pixel lock stays sharp. */
-.VPNavBarTitle .logo {
+@media (min-width: 640px) {
+  :root {
+    --vp-home-hero-image-filter: blur(68px);
+    --jec-hero-size: 256px;
+  }
+}
+
+@media (min-width: 960px) {
+  :root {
+    --vp-home-hero-image-filter: blur(76px);
+    --jec-hero-size: 320px;
+  }
+}
+
+/* The pixel locks stay sharp. */
+.VPNavBarTitle .logo,
+.VPHero .image-container .image-src {
   image-rendering: pixelated;
+}
+
+.VPHero .image-container .image-src {
+  width: var(--jec-hero-size);
+  height: var(--jec-hero-size);
+}
+
+/* A glint crosses the lock now and then, as over an enchanted item. */
+.VPHero .image-container::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--jec-hero-size);
+  height: var(--jec-hero-size);
+  transform: translate(-50%, -50%);
+  background: linear-gradient(115deg, transparent 45%, rgb(255 255 255 / 0.55) 50%, transparent 55%) 100% 0 / 300% 100% no-repeat;
+  -webkit-mask: url('../../public/jec-hero.svg') center / contain no-repeat;
+  mask: url('../../public/jec-hero.svg') center / contain no-repeat;
+  pointer-events: none;
+}
+
+/* The feature cards: a quiet surface with a line, whose icon takes the
+   brand's color. */
+.VPFeatures .VPFeature {
+  border-color: var(--vp-c-divider);
+  background-color: var(--vp-c-bg-alt);
+  transition:
+    border-color 0.25s,
+    background-color 0.25s,
+    box-shadow 0.3s,
+    transform 0.3s var(--jec-ease);
+}
+
+.VPFeatures .VPFeature .icon {
+  color: var(--vp-c-brand-1);
+  background-color: var(--vp-c-brand-soft);
+  transition:
+    background-color 0.25s,
+    transform 0.3s var(--jec-ease);
+}
+
+.VPFeatures .VPFeature .icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+/* The preview of the panel (HomePreview.vue) in the site's theme. */
+html.dark .JecPreview img.light,
+html:not(.dark) .JecPreview img.dark {
+  display: none;
+}
+
+/* Motion, for those who welcome it. */
+@media (prefers-reduced-motion: no-preference) {
+  /* The hero comes in line by line, the lock last, then floats; its glow
+     breathes. */
+  .VPHero .heading .name,
+  .VPHero .heading .text,
+  .VPHero .tagline,
+  .VPHero .actions {
+    animation: jec-rise 0.8s var(--jec-ease) backwards;
+  }
+
+  .VPHero .heading .text {
+    animation-delay: 0.08s;
+  }
+
+  .VPHero .tagline {
+    animation-delay: 0.16s;
+  }
+
+  .VPHero .actions {
+    animation-delay: 0.24s;
+  }
+
+  .VPHero .image .image-container {
+    animation:
+      jec-pop 1s var(--jec-ease) 0.2s backwards,
+      jec-float 4s ease-in-out 1.2s infinite alternate;
+  }
+
+  .VPHero .image-container .image-bg {
+    animation: jec-breathe 5s ease-in-out infinite alternate;
+  }
+
+  .VPHero .image-container::after {
+    animation: jec-glint 7s ease-in-out 1.5s infinite;
+  }
+
+  /* The cards follow one after another, and rise under the pointer. */
+  .VPFeatures .item {
+    animation: jec-rise 0.7s var(--jec-ease) backwards;
+  }
+
+  .VPFeatures .item:nth-child(1) {
+    animation-delay: 0.3s;
+  }
+
+  .VPFeatures .item:nth-child(2) {
+    animation-delay: 0.36s;
+  }
+
+  .VPFeatures .item:nth-child(3) {
+    animation-delay: 0.42s;
+  }
+
+  .VPFeatures .item:nth-child(4) {
+    animation-delay: 0.48s;
+  }
+
+  .VPFeatures .item:nth-child(5) {
+    animation-delay: 0.54s;
+  }
+
+  .VPFeatures .item:nth-child(6) {
+    animation-delay: 0.6s;
+  }
+
+  .VPFeatures .VPFeature.link:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--jec-card-shadow);
+  }
+
+  .VPFeatures .VPFeature.link:hover .icon {
+    transform: scale(1.08) rotate(-4deg);
+  }
+
+  /* The first page fades in as it opens; Layout.vue fades in the next. */
+  .VPDoc .content-container {
+    animation: jec-enter 0.45s var(--jec-ease) backwards;
+  }
+}
+
+@keyframes jec-rise {
+  from {
+    opacity: 0;
+    translate: 0 16px;
+  }
+}
+
+@keyframes jec-enter {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+@keyframes jec-pop {
+  from {
+    opacity: 0;
+    scale: 0.85;
+  }
+}
+
+@keyframes jec-float {
+  to {
+    translate: 0 -10px;
+  }
+}
+
+@keyframes jec-breathe {
+  from {
+    opacity: 0.75;
+    scale: 0.92;
+  }
+  to {
+    opacity: 1;
+    scale: 1.04;
+  }
+}
+
+@keyframes jec-glint {
+  0%,
+  60% {
+    background-position: 100% 0;
+  }
+  80%,
+  100% {
+    background-position: 0 0;
+  }
+}
+
+/* The switch of appearance: the new look grows in a circle over the old
+   (see Layout.vue). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root),
+.dark::view-transition-new(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root),
+.dark::view-transition-old(root) {
+  z-index: 9999;
 }

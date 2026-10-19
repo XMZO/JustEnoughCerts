@@ -1,10 +1,10 @@
 # Testing with real accounts
 
-[中文](trying.zh-CN.md)
+[中文](testing.zh-CN.md)
 
 Deployment to Alibaba Cloud ESA, ESA edge answers and Namecheap SSL
 Manager have so far been tested only against fakes; see
-[Providers and test coverage](providers.md). This guide describes how to
+[Providers and test coverage](../reference/providers.md). This guide describes how to
 verify them with real accounts, using the setup below as an example, and
 states the expected result of each step and what to record when it fails:
 

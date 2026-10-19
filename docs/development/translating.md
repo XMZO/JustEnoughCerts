@@ -4,7 +4,7 @@
 
 Every text JEC shows, in the web interface, error messages, issuance logs
 and notifications, is stored in one JSON file per language under
-[`i18n/locales/`](../i18n/locales). The server embeds these files and the
+[`i18n/locales/`](../../i18n/locales). The server embeds these files and the
 web interface loads the same ones, so a language added there takes effect
 everywhere at once. American English (`en-US.json`) is the base language:
 it defines every key, and stands in for any message another language

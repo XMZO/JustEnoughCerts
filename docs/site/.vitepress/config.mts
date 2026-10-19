@@ -1,22 +1,58 @@
 import { defineConfig, type DefaultTheme } from 'vitepress'
 
-// The documentation site (PLAN.md 11): the README and the guides of docs/,
-// as pages.mjs puts them together in src/, in English and in Chinese. It
-// is published to GitHub Pages under the repository's path.
+import { sections, source, titleOf } from '../pages.mjs'
+
+// The documentation site (PLAN.md 11): the guides of docs/, as pages.mjs
+// puts them together in src/, in English and in Chinese. It is published
+// to GitHub Pages under the repository's path.
 
 const repo = 'https://github.com/XMZO/JustEnoughCerts'
 
-function sidebar(prefix: string, labels: Record<string, string>): DefaultTheme.SidebarItem[] {
-  return [
-    {
-      items: [
-        { text: labels.overview, link: `${prefix}/` },
-        { text: labels.trying, link: `${prefix}/trying` },
-        { text: labels.providers, link: `${prefix}/providers` },
-        { text: labels.plugins, link: `${prefix}/plugins` },
-        { text: labels.translating, link: `${prefix}/translating` },
-      ],
+type Lang = 'en' | 'zh-CN'
+
+// The names of the sections, as the sidebar's groups.
+const groups: Record<Lang, Record<string, string>> = {
+  en: { guide: 'Getting started', usage: 'Usage', operations: 'Operations', reference: 'Reference', development: 'Development' },
+  'zh-CN': { guide: '开始', usage: '使用', operations: '运维', reference: '参考', development: '开发' },
+}
+
+function prefix(lang: Lang): string {
+  return lang === 'en' ? '' : '/zh-CN'
+}
+
+/** sidebar lists every page, by section, under the titles of the pages. */
+function sidebar(lang: Lang): DefaultTheme.SidebarItem[] {
+  return sections.map((s) => ({
+    text: groups[lang][s.dir],
+    items: s.pages.map((name) => ({
+      text: titleOf.get(source(s.dir, name, lang)),
+      link: `${prefix(lang)}/${s.dir}/${name}`,
+    })),
+  }))
+}
+
+/** editLink links a page to its file on GitHub: the page of the site at
+ * zh-CN/guide/x.md is docs/guide/x.zh-CN.md in the repository. The pattern
+ * runs in the browser, so it refers to nothing around it. */
+function editLink(text: string): DefaultTheme.EditLink {
+  return {
+    text,
+    pattern: ({ filePath }) => {
+      const zh = filePath.startsWith('zh-CN/')
+      const path = zh ? filePath.slice('zh-CN/'.length).replace(/\.md$/, '.zh-CN.md') : filePath
+      return `https://github.com/XMZO/JustEnoughCerts/edit/main/docs/${path}`
     },
+  }
+}
+
+/** nav leads to the first page of the guide, the reference and development. */
+function nav(lang: Lang, text: { guide: string; reference: string; development: string; releases: string }): DefaultTheme.NavItem[] {
+  const at = prefix(lang)
+  return [
+    { text: text.guide, link: `${at}/guide/introduction`, activeMatch: `^${at}/(guide|usage|operations)/` },
+    { text: text.reference, link: `${at}/reference/providers`, activeMatch: `^${at}/reference/` },
+    { text: text.development, link: `${at}/development/contributing`, activeMatch: `^${at}/development/` },
+    { text: text.releases, link: `${repo}/releases` },
   ]
 }
 
@@ -40,6 +76,12 @@ export default defineConfig({
   themeConfig: {
     logo: '/jec-mark.svg',
     socialLinks: [{ icon: 'github', link: repo }],
+    externalLinkIcon: true,
+    outline: { level: [2, 3] },
+    footer: {
+      message: 'Released under the MIT License.',
+      copyright: 'Copyright © 2026 XMZO',
+    },
     search: {
       provider: 'local',
       options: {
@@ -66,17 +108,9 @@ export default defineConfig({
       lang: 'en-US',
       description: 'Just enough certs to keep your site green: a self-hosted SSL/TLS certificate manager.',
       themeConfig: {
-        nav: [
-          { text: 'Guide', link: '/' },
-          { text: 'Releases', link: `${repo}/releases` },
-        ],
-        sidebar: sidebar('', {
-          overview: 'Overview',
-          trying: 'Testing with real accounts',
-          providers: 'Providers',
-          plugins: 'Plugins',
-          translating: 'Translation guide',
-        }),
+        nav: nav('en', { guide: 'Guide', reference: 'Reference', development: 'Development', releases: 'Releases' }),
+        sidebar: sidebar('en'),
+        editLink: editLink('Edit this page on GitHub'),
       },
     },
     'zh-CN': {
@@ -85,18 +119,11 @@ export default defineConfig({
       link: '/zh-CN/',
       description: '刚好够用的证书，让网站一直是绿锁：自托管的 SSL/TLS 证书管理面板。',
       themeConfig: {
-        nav: [
-          { text: '指南', link: '/zh-CN/' },
-          { text: '发布', link: `${repo}/releases` },
-        ],
-        sidebar: sidebar('/zh-CN', {
-          overview: '概览',
-          trying: '真实账号测试',
-          providers: '服务商',
-          plugins: '插件',
-          translating: '翻译指南',
-        }),
-        outline: { label: '本页内容' },
+        nav: nav('zh-CN', { guide: '指南', reference: '参考', development: '开发', releases: '发布' }),
+        sidebar: sidebar('zh-CN'),
+        editLink: editLink('在 GitHub 上编辑此页'),
+        footer: { message: '基于 MIT 许可发布', copyright: '版权所有 © 2026 XMZO' },
+        outline: { level: [2, 3], label: '本页内容' },
         docFooter: { prev: '上一页', next: '下一页' },
         darkModeSwitchLabel: '外观',
         lightModeSwitchTitle: '切换到浅色',

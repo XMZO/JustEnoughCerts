@@ -94,7 +94,7 @@ const pluginsError = useApiError(computed(() => plugins.error.value))
 const pluginName = (p: PluginInfo) => (p.name ? t(p.name as MessageKey) : p.id)
 const inUse = (p: PluginInfo) => t('plugins.page.in_use', { count: p.types?.length ?? 0 })
 const problem = (p: PluginInfo) => (p.error ? t(p.error.key as MessageKey, (p.error.params ?? {}) as Params) : '')
-const guide = computed(() => `https://github.com/XMZO/JustEnoughCerts/blob/main/docs/${locale.value === 'zh-CN' ? 'plugins.zh-CN.md' : 'plugins.md'}`)
+const guide = computed(() => `https://xmzo.github.io/JustEnoughCerts/${locale.value === 'zh-CN' ? 'zh-CN/' : ''}development/plugins`)
 
 // A tag goes under the name when the two do not fit, and is cut short, with
 // its full text as a title, when it alone does not.

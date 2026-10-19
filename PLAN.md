@@ -298,7 +298,7 @@ type Target interface {
 - 要用证书文件的钩子是部署目标：本地目录写好文件后执行命令（certbot 的部署钩子脚本可以直接用），SSH 在服务器上执行命令，Docker 容器发信号或重启，Webhook 部署把证书 POST 出去。`before_issue` 这类节点没有做：域名验证由验证方式完成，不需要先停掉占着 80 端口的服务。
 - 容器镜像里除了 JEC 没有别的程序，脚本只能用 shell 自己的命令和重定向（比如把消息追加到文件里），所以主要给直接运行的 JEC 用。令牌之类放在 JEC 的环境变量里，名字不以 `JEC_` 开头。要按别的格式调用 HTTP 接口时，用 Webhook 的自定义请求体（5.3.3 的“自定义请求”）。
 
-**外部插件的实现**（模块 `plugins`，M3，协议写在 `docs/plugins.md`）：
+**外部插件的实现**（模块 `plugins`，M3，协议写在 `docs/development/plugins.md`）：
 
 - JEC 启动时扫描数据目录下的 `plugins/`：每个可执行文件是一个插件，文件名去掉扩展名就是 ID。文件和目录只能由属主写入，属主要是 root 或运行 JEC 的用户，否则不运行。
 - 对每个插件发 `describe`（10 秒），把它声明的证书来源、部署目标、通知渠道、验证方式（DNS 或 HTTP）登记成 provider 类型 `plugins.<插件>.<类型>`，带 `plugin` 标签；通知渠道自动加上 `contracts.NotifierFields`。
@@ -357,7 +357,7 @@ DNS 验证分成两种能力，实现方式不同：
 - 实现在 `internal/lib/dnsrecord`，没有用 libdns：lego 已经带了这些服务商的 SDK，直接用它们，这一层连同 Namecheap 的 DNS 验证只让程序大了约 0.1 MiB；引入 libdns 等于每家再多一套客户端。设置沿用 lego 的变量名，同一个 DNS 服务商实例两种验证都能用（lego 模块里这几家的验证方式同时是 `RecordSolver`）。首批四家：腾讯云 DNSPod（API 3.0 的 `CreateRecord`、`DeleteRecord`，线路“默认”）、阿里云 DNS（`AddDomainRecord`、`DeleteDomainRecord`）、Cloudflare（v4 接口，API 令牌或全局密钥）、华为云 DNS（官方 SDK，TXT 的值加引号）。记录所在的区按 SOA 查出。其余服务商按需求补。只用替身 API 测过。
 - 这四家的验证类型能“测试连接”（`dnsrecord.API.Domains`）：列出账号下的域名和总数（DNSPod `DescribeDomainList`、阿里云 `DescribeDomains`、Cloudflare `GET /zones`、华为云 `ListPublicZones`），什么都不改；设计稿 DNS 页上的“连接正常，能管理 N 个域名”就是它。其余 lego 服务商没有通用的只读调用，不能测试。
 - 记录什么时候生效由来源判断：`internal/lib/dnscheck` 直接问区的每台权威 DNS 服务器（不经过递归解析的缓存），答复了的服务器都有这条记录才算生效；它还把厂商给的记录名转成完整域名（`RecordName`，见 5.6）。这个包只依赖 DNS 库，用它的来源不会带上各家 SDK。
-- 外部插件的 DNS 验证方式在描述里标 `records`，就能经 `dns_add_record`、`dns_remove_record` 两个动作添加和删除任意记录（`docs/plugins.md`），其余服务商也能这样接入。
+- 外部插件的 DNS 验证方式在描述里标 `records`，就能经 `dns_add_record`、`dns_remove_record` 两个动作添加和删除任意记录（`docs/development/plugins.md`），其余服务商也能这样接入。
 - 补不到的服务商用**手动模式**（模块 `manual`，验证类型 `manual.dns`）：签发日志列出每条要加的记录（ACME 来源给所有 DNS 验证都记这一行），用户在 DNS 服务商那里添加，JEC 查权威 DNS，查到就继续，不用点“已添加”。ACME 最多等设置的分钟数（默认 20，最多 25，在一次尝试 30 分钟的时限内）；厂商来源跨多次检查一直等。每次续期都要重新添加，签发失败的通知会提醒；手动加的记录由用户自己删，日志会提示。
 - 注意：付费证书的验证记录名由 CSR 计算得出，每次重签都会变，所以不能像 ACME 那样把记录永久 CNAME 委派到别处。
 
@@ -953,7 +953,7 @@ JustEnoughCerts/
 | **M1 最小可用** | 证书模块、状态机、调度器；手动上传和导入；ACME（任意 CA + EAB）+ lego 的 221 家 DNS；阿里云 ESA、本地文件、SSH、Webhook 部署；Telegram、邮件、Webhook 通知；总览和证书页 | 用免费证书完整跑通“签发 → 部署到 ESA → 删除旧证书 → 到期自动续” |
 | **M2 厂商来源与付费证书** | 厂商来源的通用框架（提交后等 CA 审核，跨多次检查才取回证书，等待期间加密保存私钥）；第一个实现是 Namecheap SSL Manager（实验性，JEC 扮演它的客户端，见 5.6）；HTTP 文件验证（写到源站的网站目录、经 SSH 写到远程服务器，或由 JEC 自己应答）；导入已有的付费证书；逐家验证商业 CA 的 ACME + EAB（含 Namecheap ACME 上线后） | 第 1 节的验收场景全自动跑通一个周期 |
 | **M3 扩展** | 国内云平台证书来源（取回签发的证书、向阿里云申请证书、腾讯云免费证书都已完成）；DNS 记录管理层（任意记录增删，5.3.2 ②）和手动验证（都已完成）；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子、YAML 导入导出（都已完成）；线上巡检（已完成） | 不改核心代码，写一个外部插件接入新平台（e2e 里的 shell 脚本插件）；停用任意模块后其余功能正常（`cmd/jec` 的 `TestEverySwitchOff` 在运行中逐个停用全部可停用的模块，检查清单、各类服务商类型、证书列表和系统信息照常，再打开回来） |
-| **M4 打磨** | 两步验证、审计日志、PWA、翻译指南（`docs/translating.md`）、OIDC、文档站（都已完成）、服务商兼容表（已有 `docs/providers.md`：每个服务商测到了哪一步） | 发布 `v1.0.0` |
+| **M4 打磨** | 两步验证、审计日志、PWA、翻译指南（`docs/development/translating.md`）、OIDC、文档站（都已完成）、服务商兼容表（已有 `docs/reference/providers.md`：每个服务商测到了哪一步） | 发布 `v1.0.0` |
 | **以后** | Namecheap 官方 API、Spaceship 的 SSL Manager、其他厂商证书 API、更多语言（社区贡献）、多用户和角色、PostgreSQL、私有 CA | 按需求排期 |
 
 先做 M0，是为了尽早把“打标签 → 自动发布”这条链路跑通，同时让模块化和 i18n 门禁从第一天就生效，之后每个功能都能随时发版试用。
@@ -967,4 +967,4 @@ JustEnoughCerts/
 - [x] 续期什么时候执行：按设计稿的设置页，进入续期窗口后在“每天检查时间”开始（默认 02:00，可改，按面板的时区，默认跟随服务器），只剩一周或更少时立即开始（4.3 的“续期”）。
 - [ ] 除 SQLite 外，何时支持 PostgreSQL。
 - [ ] 文档语言：倾向中英双语（界面语言已定为跟随浏览器，可手动切换）。
-- [x] 各厂商 API 和工具的使用条件要在文档里写清楚（`docs/providers.md` 的“各家的使用条件”）（例如 Namecheap 官方 API 需要 20 个域名，或账户余额 / 近两年消费达 $50，并设置 IP 白名单；SSL Manager 只给直客，目前只支持单域名证书），并提示优先使用 ACME + EAB 或手动上传。
+- [x] 各厂商 API 和工具的使用条件要在文档里写清楚（`docs/reference/providers.md` 的“各家的使用条件”）（例如 Namecheap 官方 API 需要 20 个域名，或账户余额 / 近两年消费达 $50，并设置 IP 白名单；SSL Manager 只给直客，目前只支持单域名证书），并提示优先使用 ACME + EAB 或手动上传。

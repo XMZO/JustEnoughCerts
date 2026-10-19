@@ -3,8 +3,8 @@
 // language, describe the provider types they offer, with their own
 // translations, and JEC then runs them as deploy targets, notifiers and
 // solvers. Each action runs the plugin once, with a JSON request on its
-// standard input and its JSON answer on its standard output; docs/plugins.md
-// is the protocol.
+// standard input and its JSON answer on its standard output;
+// docs/development/plugins.md is the protocol.
 package plugins
 
 import (

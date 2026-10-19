@@ -15,8 +15,9 @@ const servers = [
   { project: 'desktop', port: 18091 },
 ]
 
-// A plugin (docs/plugins.md) for each server, where shell scripts run: it
-// offers one deploy target, and answers any other request with success.
+// A plugin (docs/development/plugins.md) for each server, where shell
+// scripts run: it offers one deploy target, and answers any other request
+// with success.
 const plugin = `#!/bin/sh
 cat > /dev/null
 cat <<'EOF'
