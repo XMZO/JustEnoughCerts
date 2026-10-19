@@ -12,15 +12,16 @@ import (
 // once, in this order, skipping the levels it passed while JEC was off.
 var expiryRank = map[contracts.Expiry]int{"": 0, contracts.ExpiryWindow: 1, contracts.ExpiryUrgent: 2, contracts.ExpiryExpired: 3}
 
-// expiry returns how close notAfter is at now, for a renewal window of
-// renewBeforeDays.
-func expiry(now, notAfter time.Time, renewBeforeDays int) contracts.Expiry {
+// expiry returns how close the end of a version valid from notBefore to
+// notAfter is at now, for a renewal window of renewBeforeDays (limits).
+func expiry(now, notBefore, notAfter time.Time, renewBeforeDays int) contracts.Expiry {
+	window, urgent := limits(notBefore, notAfter, renewBeforeDays)
 	switch left := notAfter.Sub(now); {
 	case left <= 0:
 		return contracts.ExpiryExpired
-	case left <= urgentWithin:
+	case left <= urgent:
 		return contracts.ExpiryUrgent
-	case left <= time.Duration(renewBeforeDays)*day:
+	case left <= window:
 		return contracts.ExpiryWindow
 	}
 	return ""
@@ -38,7 +39,7 @@ func (s *service) checkExpiry(ctx context.Context) error {
 		if c.Current == nil {
 			continue
 		}
-		level := expiry(now, c.Current.NotAfter, c.RenewBeforeDays)
+		level := expiry(now, c.Current.NotBefore, c.Current.NotAfter, c.RenewBeforeDays)
 		if level == "" {
 			continue
 		}

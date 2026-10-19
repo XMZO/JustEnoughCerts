@@ -22,6 +22,22 @@ export interface Life {
   level: Level
 }
 
+/**
+ * limits are the renewal window and the urgent span of a version, in
+ * milliseconds, as the backend has them: renewBeforeDays and a week, but no
+ * more than two thirds and one third of its life.
+ */
+export function limits(notBefore: string, notAfter: string, renewBeforeDays: number): { window: number; urgent: number } {
+  const life = Date.parse(notAfter) - Date.parse(notBefore)
+  const window = renewBeforeDays * day
+  const urgent = urgentDays * day
+  return life > 0 ? { window: Math.min(window, (life * 2) / 3), urgent: Math.min(urgent, life / 3) } : { window, urgent }
+}
+
+/** windowStart is when a version enters its renewal window, in milliseconds. */
+export const windowStart = (v: { notBefore: string; notAfter: string }, renewBeforeDays: number) =>
+  Date.parse(v.notAfter) - limits(v.notBefore, v.notAfter, renewBeforeDays).window
+
 /** life works out where a version stands at now. */
 export function life(notBefore: string, notAfter: string, renewBeforeDays: number, now = Date.now()): Life {
   const start = Date.parse(notBefore)
@@ -30,9 +46,10 @@ export function life(notBefore: string, notAfter: string, renewBeforeDays: numbe
   const expired = left <= 0
   const days = Math.floor(Math.abs(left) / day)
   const fraction = expired ? 0 : Math.min(1, left / Math.max(end - start, 1))
+  const { window, urgent } = limits(notBefore, notAfter, renewBeforeDays)
   let level: Level = 'ok'
-  if (expired || left <= urgentDays * day) level = 'danger'
-  else if (left <= renewBeforeDays * day) level = 'warn'
+  if (expired || left <= urgent) level = 'danger'
+  else if (left <= window) level = 'warn'
   return { days, expired, fraction, level }
 }
 

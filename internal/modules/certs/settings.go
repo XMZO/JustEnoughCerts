@@ -142,13 +142,27 @@ func (s *service) schedule(ctx context.Context) (schedule, error) {
 	return schedule{checkTime: st.CheckTime, loc: s.zone()}, err
 }
 
-// renewAt is when the renewal of a version that ends at notAfter starts:
-// at the first check time once the version enters its renewal window, or
-// as soon as a week or less is left, whichever comes first.
-func (sch schedule) renewAt(notAfter time.Time, renewBeforeDays int) time.Time {
-	window := notAfter.Add(-time.Duration(renewBeforeDays) * day)
+// limits are the renewal window and the urgent span of a version valid
+// from notBefore to notAfter: renewBeforeDays and a week, but no more than
+// two thirds and one third of its life, so that a short-lived certificate,
+// as one of six days, or a window longer than the certificate, does not
+// make it due again as soon as it came.
+func limits(notBefore, notAfter time.Time, renewBeforeDays int) (window, urgent time.Duration) {
+	window, urgent = time.Duration(renewBeforeDays)*day, urgentWithin
+	if life := notAfter.Sub(notBefore); life > 0 {
+		window, urgent = min(window, life*2/3), min(urgent, life/3)
+	}
+	return window, urgent
+}
+
+// renewAt is when the renewal of a version valid from notBefore to
+// notAfter starts: at the first check time once the version enters its
+// renewal window, or as soon as it is urgent, whichever comes first.
+func (sch schedule) renewAt(notBefore, notAfter time.Time, renewBeforeDays int) time.Time {
+	span, urgentSpan := limits(notBefore, notAfter, renewBeforeDays)
+	window := notAfter.Add(-span)
 	at := nextClock(window, sch.checkTime, sch.loc)
-	if urgent := notAfter.Add(-urgentWithin); at.After(urgent) {
+	if urgent := notAfter.Add(-urgentSpan); at.After(urgent) {
 		if window.After(urgent) {
 			return window
 		}

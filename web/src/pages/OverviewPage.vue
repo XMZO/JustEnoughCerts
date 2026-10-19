@@ -12,7 +12,7 @@ import { domainNeedsLook, needsLook, useDomains, useSites } from '../api/watch'
 import { useCertActions } from '../certs/actions'
 import { failingDeployment, useDeployNote } from '../certs/deployment'
 import { runAt, runLink, runResult, useRunText } from '../certs/runs'
-import { caReasonText, certLife, lifeText, needsAttention, type Life } from '../certs/life'
+import { caReasonText, certLife, lifeText, needsAttention, windowStart, type Life } from '../certs/life'
 import CertActionDialog, { type CertAsk } from '../components/CertActionDialog.vue'
 import CertSlot from '../components/CertSlot.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -130,7 +130,7 @@ function plan(c: Certificate, l: Life | null): string {
     }
     if (c.state === 'failed') return t('certs.next.gave_up')
     if (!c.current) return t('certs.next.first')
-    return t('certs.next.auto', { date: intl.date(Date.parse(c.current.notAfter) - c.renewBeforeDays * day) })
+    return t('certs.next.auto', { date: intl.date(windowStart(c.current, c.renewBeforeDays)) })
   }
   if (!l || l.expired) return t('certs.plan.expired')
   if (c.state === 'expiring' && c.current) return t('certs.plan.upload_due', { date: intl.date(c.current.notAfter) })

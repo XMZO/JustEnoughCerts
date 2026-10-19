@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { barPercent, colonHex, keyText, life, lifeText, mono } from './life'
+import { barPercent, colonHex, keyText, life, lifeText, mono, windowStart } from './life'
 
 const day = 86_400_000
 const now = Date.parse('2026-10-17T08:00:00Z')
@@ -56,5 +56,19 @@ describe('colonHex', () => {
   it('writes byte pairs in uppercase', () => {
     expect(colonHex('7c1e930a')).toBe('7C:1E:93:0A')
     expect(colonHex('abc')).toBe('0A:BC')
+  })
+})
+
+describe('limits', () => {
+  it('keeps a short-lived certificate out of its window as it comes', () => {
+    const start = Date.parse('2026-10-20T00:00:00Z')
+    const iso = (t: number) => new Date(t).toISOString()
+    // Six days, a window of 30: due after two, urgent for the last two.
+    expect(life(iso(start), iso(start + 6 * day), 30, start + day).level).toBe('ok')
+    expect(life(iso(start), iso(start + 6 * day), 30, start + 3 * day).level).toBe('warn')
+    expect(life(iso(start), iso(start + 6 * day), 30, start + 5 * day).level).toBe('danger')
+    expect(windowStart({ notBefore: iso(start), notAfter: iso(start + 6 * day) }, 30)).toBe(start + 2 * day)
+    // Ninety days keep the window of 30.
+    expect(windowStart({ notBefore: iso(start), notAfter: iso(start + 90 * day) }, 30)).toBe(start + 60 * day)
   })
 })

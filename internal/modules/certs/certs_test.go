@@ -94,11 +94,14 @@ type upload struct {
 	key0      crypto.Signer
 }
 
-// leaf issues a certificate for names that ends after days.
+// leaf issues a certificate for names that ends after days. It is valid
+// for 90 days, as a CA's usually are, or from an hour ago when it ends
+// later: the share of its life left decides when it is due (limits).
 func (f *fixture) leaf(days int, names ...string) upload {
 	f.t.Helper()
 	key := cryptoxtest.NewKey(f.t)
-	leaf := f.ca.Leaf(f.t, key, f.now.Add(-time.Hour), f.now.Add(time.Duration(days)*day), names...)
+	end := f.now.Add(time.Duration(days) * day)
+	leaf := f.ca.Leaf(f.t, key, minTime(f.now.Add(-time.Hour), end.Add(-90*day)), end, names...)
 	return upload{cryptoxtest.CertPEM(leaf, f.ca.Intermediate), cryptoxtest.KeyPEM(f.t, key), key}
 }
 
@@ -556,4 +559,11 @@ func TestAnnounce(t *testing.T) {
 		current[0].data.VersionID != c.Current.ID || !current[0].data.NotAfter.Equal(c.Current.NotAfter) {
 		t.Errorf("current %+v", current)
 	}
+}
+
+func minTime(a, b time.Time) time.Time {
+	if b.Before(a) {
+		return b
+	}
+	return a
 }

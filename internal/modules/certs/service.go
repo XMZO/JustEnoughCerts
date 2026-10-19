@@ -204,12 +204,13 @@ func (c *Certificate) state(now time.Time) string {
 	if c.Current == nil {
 		return stateExpired
 	}
+	window, _ := limits(c.Current.NotBefore, c.Current.NotAfter, c.RenewBeforeDays)
 	switch left := c.Current.NotAfter.Sub(now); {
 	case left <= 0:
 		return stateExpired
 	case !c.Current.CARevokedAt.IsZero():
 		return stateRevoked
-	case left <= time.Duration(c.RenewBeforeDays)*day:
+	case left <= window:
 		return stateExpiring
 	}
 	return stateOK

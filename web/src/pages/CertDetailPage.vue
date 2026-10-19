@@ -37,7 +37,7 @@ import { useProviders, useProviderTypes, useProviderTypesOf } from '../api/provi
 import { domainNeedsLook, useDomains, useWatching } from '../api/watch'
 import { deploymentState, failingDeployment } from '../certs/deployment'
 import { deploySteps, issuanceState, reasonText } from '../certs/issuance'
-import { caReasonText, certLife, colonHex, keyText } from '../certs/life'
+import { caReasonText, certLife, colonHex, keyText, windowStart } from '../certs/life'
 import { useDurationText } from '../certs/runs'
 import CertActionDialog, { type CertAsk } from '../components/CertActionDialog.vue'
 import CertSlot from '../components/CertSlot.vue'
@@ -90,7 +90,7 @@ const validityDays = computed(() =>
   current.value ? Math.round((Date.parse(current.value.notAfter) - Date.parse(current.value.notBefore)) / day) : 0,
 )
 const reminderAt = computed(() =>
-  current.value && cert.value ? Date.parse(current.value.notAfter) - cert.value.renewBeforeDays * day : 0,
+  current.value && cert.value ? windowStart(current.value, cert.value.renewBeforeDays) : 0,
 )
 const key = computed(() => (current.value ? keyText(current.value.keyType) : null))
 

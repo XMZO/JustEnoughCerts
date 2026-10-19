@@ -26,9 +26,23 @@ func TestRenewAt(t *testing.T) {
 		{"a window within the last week", utc, 3, time.Date(2026, 12, 28, 12, 0, 0, 0, time.UTC)},
 		{"in the server's time zone", schedule{checkTime: 2 * 60, loc: time.FixedZone("CST", 8*3600)}, 30, time.Date(2026, 12, 1, 18, 0, 0, 0, time.UTC)},
 	} {
-		if got := c.sch.renewAt(end, c.before); !got.Equal(c.want) {
+		if got := c.sch.renewAt(end.Add(-90*day), end, c.before); !got.Equal(c.want) {
 			t.Errorf("%s: %s, want %s", c.name, got.UTC(), c.want)
 		}
+	}
+
+	// A short-lived certificate, or a window longer than the certificate,
+	// waits for a third of its life: its renewal is not due as it comes.
+	start := end.Add(-6 * day)
+	if got := utc.renewAt(start, end, 30); got.Before(start.Add(2*day)) || got.After(start.Add(3*day)) {
+		t.Errorf("six days: %s", got)
+	}
+	start = end.Add(-90 * day)
+	if got, want := utc.renewAt(start, end, 200), time.Date(2026, 11, 2, 2, 0, 0, 0, time.UTC); !got.Equal(want) {
+		t.Errorf("a window of 200 days for 90: %s, want %s", got, want)
+	}
+	if got := expiry(start.Add(day), end.Add(-84*day), end, 30); got != "" {
+		t.Errorf("a new six-day certificate is %q", got)
 	}
 
 	// 02:30 does not exist the day New York's clocks go forward: either
@@ -38,7 +52,7 @@ func TestRenewAt(t *testing.T) {
 		t.Fatal(err)
 	}
 	window := time.Date(2027, 3, 14, 5, 0, 0, 0, time.UTC) // midnight there
-	got := schedule{checkTime: 2*60 + 30, loc: ny}.renewAt(window.Add(30*day), 30)
+	got := schedule{checkTime: 2*60 + 30, loc: ny}.renewAt(window.Add(-60*day), window.Add(30*day), 30)
 	if got.Before(window) || got.After(window.Add(4*time.Hour)) {
 		t.Errorf("across the gap: %s", got)
 	}

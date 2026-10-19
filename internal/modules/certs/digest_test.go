@@ -12,7 +12,7 @@ import (
 func TestDigestOf(t *testing.T) {
 	now := time.Date(2026, 10, 19, 9, 0, 0, 0, time.UTC)
 	version := func(days int) *Version {
-		return &Version{CreatedAt: now.AddDate(0, 0, -60), NotAfter: now.AddDate(0, 0, days)}
+		return &Version{CreatedAt: now.AddDate(0, 0, -60), NotBefore: now.AddDate(0, 0, days-90), NotAfter: now.AddDate(0, 0, days)}
 	}
 	certs := []*Certificate{
 		{ID: 1, Domains: []string{"ok.example.com"}, Source: sourceUpload, RenewBeforeDays: 30, Current: version(90)},

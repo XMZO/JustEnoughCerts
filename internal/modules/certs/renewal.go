@@ -47,7 +47,7 @@ func (sch schedule) due(c *Certificate) time.Time {
 	if !c.Current.CARevokedAt.IsZero() {
 		return c.Current.CARevokedAt
 	}
-	at := sch.renewAt(c.Current.NotAfter, c.RenewBeforeDays)
+	at := sch.renewAt(c.Current.NotBefore, c.Current.NotAfter, c.RenewBeforeDays)
 	if r := c.Current.Renewal; r != nil && r.At.Before(at) {
 		return r.At
 	}

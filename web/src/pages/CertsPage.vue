@@ -10,7 +10,7 @@ import { useMonitorStates } from '../api/monitor'
 import { useProviders } from '../api/providers'
 import { useCertActions } from '../certs/actions'
 import { useDeployNote } from '../certs/deployment'
-import { barPercent, caReasonText, certLife, lifeText, needsAttention, stateText } from '../certs/life'
+import { barPercent, caReasonText, certLife, lifeText, needsAttention, stateText, windowStart } from '../certs/life'
 import { matches, searchTerm } from '../certs/search'
 import CertActionDialog, { type CertAsk } from '../components/CertActionDialog.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -125,7 +125,6 @@ interface Row {
   next: string
 }
 
-const day = 86_400_000
 
 /** note says why a certificate needs attention. */
 function note(c: Certificate): string {
@@ -161,7 +160,7 @@ function next(c: Certificate): string {
   if (c.state === 'issuing') return t('certs.next.issuing')
   if (c.state === 'failed') return issueNote(c)
   if (!c.current) return t('certs.next.first')
-  return t('certs.next.auto', { date: c.renewAt ? intl.dateTime(c.renewAt) : intl.date(Date.parse(c.current.notAfter) - c.renewBeforeDays * day) })
+  return t('certs.next.auto', { date: c.renewAt ? intl.dateTime(c.renewAt) : intl.date(windowStart(c.current, c.renewBeforeDays)) })
 }
 
 const rows = computed<Row[]>(() =>
