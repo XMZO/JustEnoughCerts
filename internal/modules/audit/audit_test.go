@@ -34,24 +34,49 @@ func TestLog(t *testing.T) {
 			Status: 204, User: "admin", Client: "198.51.100.1", UserAgent: strings.Repeat("x", 600), Token: "ci"})
 	}
 
-	all, more, err := m.entries(t.Context(), time.Time{}, 10)
-	if err != nil || more || len(all) != 4 {
-		t.Fatalf("%d entries, more %v: %v", len(all), more, err)
+	all, counts, err := m.find(t.Context(), query{limit: 10})
+	if err != nil || len(all) != 4 || counts != (tally{all: 4, ok: 4}) {
+		t.Fatalf("%d entries, %+v: %v", len(all), counts, err)
 	}
 	// The newest first; of two at once, the later recorded.
 	if all[0].path != "/certs/certificates/4" || all[3].path != "/certs/certificates/1" || len(all[0].agent) != maxUserAgent ||
 		all[0].user != "admin" || all[0].client != "198.51.100.1" || all[0].status != 204 || !all[0].at.Equal(now.Add(-time.Hour)) || all[0].token != "ci" {
 		t.Errorf("entries %+v", all)
 	}
-	week, more, err := m.entries(t.Context(), now.Add(-7*24*time.Hour), 1)
-	if err != nil || !more || len(week) != 1 {
-		t.Errorf("a week, one at most: %d, more %v: %v", len(week), more, err)
+	week, counts, err := m.find(t.Context(), query{since: now.Add(-7 * 24 * time.Hour), limit: 1, offset: 1})
+	if err != nil || len(week) != 1 || week[0].path != "/certs/certificates/3" || counts.all != 2 {
+		t.Errorf("the second of a week's: %+v, %+v: %v", week, counts, err)
+	}
+
+	// A refusal, then the filters: by result, and by text in the path,
+	// the address or the operation's name.
+	m.record(t.Context(), module.Request{At: now, Operation: "sign-in", Method: "POST", Path: "/session", Status: 401, Client: "203.0.113.9"})
+	for _, c := range []struct {
+		q     query
+		paths []string
+		count tally
+	}{
+		{query{result: "failed"}, []string{"/session"}, tally{all: 5, ok: 4, failed: 1}},
+		{query{result: "ok", text: "203.0"}, nil, tally{all: 1, failed: 1}},
+		{query{text: "CERTIFICATES/2"}, []string{"/certs/certificates/2"}, tally{all: 1, ok: 1}},
+		{query{text: "a name", ops: []string{"sign-in"}}, []string{"/session"}, tally{all: 1, failed: 1}},
+		{query{text: "%"}, nil, tally{}},
+	} {
+		c.q.limit = 10
+		got, counts, err := m.find(t.Context(), c.q)
+		var paths []string
+		for _, e := range got {
+			paths = append(paths, e.path)
+		}
+		if err != nil || strings.Join(paths, " ") != strings.Join(c.paths, " ") || counts != c.count {
+			t.Errorf("%+v: %v, %+v: %v", c.q, paths, counts, err)
+		}
 	}
 
 	if err := m.prune(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if left, _, _ := m.entries(t.Context(), time.Time{}, 10); len(left) != 3 {
+	if left, _, _ := m.find(t.Context(), query{limit: 10}); len(left) != 4 {
 		t.Errorf("%d left after a year", len(left))
 	}
 }

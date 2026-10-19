@@ -508,6 +508,29 @@
         ],
         "type": "object"
       },
+      "CountsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "all": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "failed": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "ok": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "all",
+          "ok",
+          "failed"
+        ],
+        "type": "object"
+      },
       "CreateCredentialInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -1090,21 +1113,26 @@
       "EntriesOutputBody": {
         "additionalProperties": false,
         "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/CountsBody"
+          },
           "entries": {
-            "description": "The newest first",
+            "description": "The page asked for, the newest first",
             "items": {
               "$ref": "#/components/schemas/EntryBody"
             },
             "type": "array"
           },
-          "more": {
-            "description": "There are older ones in the time asked for than one answer holds",
-            "type": "boolean"
+          "total": {
+            "description": "The entries of every page",
+            "format": "int64",
+            "type": "integer"
           }
         },
         "required": [
           "entries",
-          "more"
+          "total",
+          "counts"
         ],
         "type": "object"
       },
@@ -3367,7 +3395,7 @@
     },
     "/audit/entries": {
       "get": {
-        "description": "The operations of the last days that may have changed something, the newest first, at most 5000.",
+        "description": "The operations of the last days that may have changed something, the newest first, a page at a time.",
         "operationId": "audit-entries",
         "parameters": [
           {
@@ -3381,6 +3409,67 @@
               "format": "int64",
               "maximum": 36500,
               "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Only the entries that succeeded, or only those that failed (status 400 and up)",
+            "explode": false,
+            "in": "query",
+            "name": "result",
+            "schema": {
+              "description": "Only the entries that succeeded, or only those that failed (status 400 and up)",
+              "enum": [
+                "ok",
+                "failed"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only those holding this, letter case aside, in the path, the account, the address, the token or the operation's ID",
+            "explode": false,
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "description": "Only those holding this, letter case aside, in the path, the account, the address, the token or the operation's ID",
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Operations, by ID and comma separated, that also match the text: those whose names, as the interface words them, hold it",
+            "explode": false,
+            "in": "query",
+            "name": "ops",
+            "schema": {
+              "description": "Operations, by ID and comma separated, that also match the text: those whose names, as the interface words them, hold it",
+              "maxLength": 4000,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "default": 1,
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Entries a page holds",
+            "explode": false,
+            "in": "query",
+            "name": "size",
+            "schema": {
+              "default": 50,
+              "description": "Entries a page holds",
+              "format": "int64",
+              "maximum": 5000,
+              "minimum": 1,
               "type": "integer"
             }
           }

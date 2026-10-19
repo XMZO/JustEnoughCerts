@@ -296,11 +296,10 @@
       "export": "Export CSV",
       "filter": "Result",
       "intro": "What was done through the panel, by whom and from where, the newest first. Kept for a year.",
-      "more": "There are more in this time: only the latest {count} are listed.",
       "no_account": "Not signed in",
       "no_match": "Nothing matches.",
       "search": "Search actions, accounts and addresses",
-      "summary": "{shown} of {total} shown.",
+      "summary": "{from}–{to} of {total}.",
       "title": "Audit log",
       "today": "Today",
       "via_token": "through {name}",
@@ -1764,6 +1763,13 @@
     },
     "overview": {
       "title": "Overview"
+    },
+    "pager": {
+      "label": "Pages",
+      "next": "Next",
+      "of": "{page} / {pages}",
+      "page": "Page {page}",
+      "prev": "Previous"
     },
     "providers": {
       "advanced": "More settings ({count})",

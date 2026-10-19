@@ -9,6 +9,7 @@ import (
 	"embed"
 	"io/fs"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
@@ -89,14 +90,60 @@ type entry struct {
 	status                                              int
 }
 
-// entries lists the entries since since, the newest first, at most limit,
-// and tells whether there are more.
-func (m *Module) entries(ctx context.Context, since time.Time, limit int) ([]entry, bool, error) {
-	rows, err := m.db.QueryContext(ctx,
-		`SELECT id, at, operation, method, path, status, user, client, user_agent, token FROM audit_log
-		 WHERE at >= ? ORDER BY at DESC, id DESC LIMIT ?`, since.UnixMilli(), limit+1)
+// query is what a page of the log asks for: the entries since since, of
+// result ("ok", "failed", or "" for both), holding text, the newest first,
+// limit of them after offset.
+type query struct {
+	since  time.Time
+	result string
+	// text is looked for, letter case aside, in the path, the account,
+	// the address, the token and the operation's ID; ops are operations
+	// whose names hold it, as the interface words them.
+	text          string
+	ops           []string
+	offset, limit int
+}
+
+// tally counts the entries of a query's time and text, by result.
+type tally struct{ all, ok, failed int }
+
+// find returns the entries of q, and the tally of its time and text.
+func (m *Module) find(ctx context.Context, q query) ([]entry, tally, error) {
+	where := "at >= ?"
+	args := []any{q.since.UnixMilli()}
+	if text := strings.ToLower(strings.TrimSpace(q.text)); text != "" {
+		like := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(text) + "%"
+		var holds []string
+		for _, column := range []string{"path", "user", "client", "token", "operation"} {
+			holds = append(holds, "lower("+column+`) LIKE ? ESCAPE '\'`)
+			args = append(args, like)
+		}
+		if len(q.ops) > 0 {
+			holds = append(holds, "operation IN (?"+strings.Repeat(", ?", len(q.ops)-1)+")")
+			for _, op := range q.ops {
+				args = append(args, op)
+			}
+		}
+		where += " AND (" + strings.Join(holds, " OR ") + ")"
+	}
+	var t tally
+	err := m.db.QueryRowContext(ctx, //nolint:gosec // G202: the conditions are fixed; the values are arguments
+		"SELECT count(*), coalesce(sum(status < 400), 0), coalesce(sum(status >= 400), 0) FROM audit_log WHERE "+where, args...).
+		Scan(&t.all, &t.ok, &t.failed)
 	if err != nil {
-		return nil, false, err
+		return nil, tally{}, err
+	}
+	switch q.result {
+	case "ok":
+		where += " AND status < 400"
+	case "failed":
+		where += " AND status >= 400"
+	}
+	rows, err := m.db.QueryContext(ctx, //nolint:gosec // G202: as above
+		`SELECT id, at, operation, method, path, status, user, client, user_agent, token FROM audit_log
+		 WHERE `+where+` ORDER BY at DESC, id DESC LIMIT ? OFFSET ?`, append(args, q.limit, q.offset)...)
+	if err != nil {
+		return nil, tally{}, err
 	}
 	defer rows.Close()
 	var out []entry
@@ -104,16 +151,10 @@ func (m *Module) entries(ctx context.Context, since time.Time, limit int) ([]ent
 		var e entry
 		var at int64
 		if err := rows.Scan(&e.id, &at, &e.operation, &e.method, &e.path, &e.status, &e.user, &e.client, &e.agent, &e.token); err != nil {
-			return nil, false, err
+			return nil, tally{}, err
 		}
 		e.at = time.UnixMilli(at).UTC()
 		out = append(out, e)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, false, err
-	}
-	if len(out) > limit {
-		return out[:limit], true, nil
-	}
-	return out, false, nil
+	return out, t, rows.Err()
 }

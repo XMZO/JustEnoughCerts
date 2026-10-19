@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { CircleCheck, Download, KeyRound, OctagonX } from '@lucide/vue'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
-import { useAuditEntries, type AuditEntry } from '../api/audit'
+import { auditExport, pageSize, useAuditEntries, type AuditEntry, type AuditQuery } from '../api/audit'
 import { saveFile } from '../api/certs'
 import { useApiError } from '../api/errors'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
+import JecPager from '../components/JecPager.vue'
 import PageHeader from '../components/PageHeader.vue'
 import SearchBox from '../components/SearchBox.vue'
 import { useT, type MessageKey } from '../i18n'
@@ -15,8 +17,9 @@ import { fromMore } from '../shell'
 import { dayKey, stamp } from '../zone'
 
 // What was done through the API (module audit), the newest first and
-// grouped by day, filtered by result, time and text instead of paged, as
-// the history is (docs/design/boards/History). On phones a list, from
+// grouped by day, filtered by result, time and text, which the server
+// does, and paged, as the user asked: a log can grow long, as of a chat
+// bot or a script. The page is in the address. On phones a list, from
 // 640px a table.
 const { t } = useT()
 const intl = useIntl()
@@ -28,8 +31,6 @@ const ranges = [
   { days: 0, label: 'audit.range.all' },
 ] as const
 const days = ref(30)
-const entries = useAuditEntries(days)
-const loadError = useApiError(entries.error)
 
 // What the operations are called; the others show as their method and path.
 const operations: Partial<Record<string, MessageKey>> = {
@@ -89,23 +90,63 @@ const looks = {
   failed: { icon: OctagonX, badge: 'bg-danger-soft text-danger-ink', ink: 'text-danger-ink' },
 } as const
 
+// The text looked for, once typing pauses; the operations whose names, as
+// they read here, hold it go along, for the server to match them too.
 const query = ref('')
+const text = ref('')
+let typing: ReturnType<typeof setTimeout> | undefined
+watch(query, (q) => {
+  clearTimeout(typing)
+  typing = setTimeout(() => (text.value = q.trim()), 300)
+})
+const ops = computed(() => {
+  const q = text.value.toLowerCase()
+  if (!q) return ''
+  return Object.entries(operations)
+    .filter(([, key]) => key && t(key).toLowerCase().includes(q))
+    .map(([id]) => id)
+    .join(',')
+})
 type Filter = 'all' | Result
 const filter = ref<Filter>('all')
-const all = computed(() => entries.data.value?.entries ?? [])
-const searched = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return all.value
-  return all.value.filter((e) => [label(e), e.path, e.user ?? '', e.client].some((s) => s.toLowerCase().includes(q)))
+
+// The page, in the address: back and forward keep it; another filter
+// starts over at the first.
+const route = useRoute()
+const router = useRouter()
+const page = computed({
+  get: () => Math.max(1, Number(route.query.page) || 1),
+  set: (p: number) => {
+    void router.replace({ query: { ...route.query, page: p > 1 ? String(p) : undefined } })
+    window.scrollTo({ top: 0 })
+  },
 })
-const filters = computed(() =>
-  (['all', 'ok', 'failed'] as const).map((id): { id: Filter; label: MessageKey; count: number } => ({
+watch([days, filter, text], () => {
+  if (page.value > 1) page.value = 1
+})
+const asked = computed<AuditQuery>(() => ({
+  days: days.value,
+  result: filter.value === 'all' ? undefined : filter.value,
+  q: text.value || undefined,
+  ops: ops.value || undefined,
+}))
+const entries = useAuditEntries(() => ({ ...asked.value, page: page.value }))
+const loadError = useApiError(entries.error)
+const shown = computed(() => entries.data.value?.entries ?? [])
+const total = computed(() => entries.data.value?.total ?? 0)
+const pages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+// Past the last page, as after the log was pruned: the last one.
+watch(pages, (n) => {
+  if (page.value > n) page.value = n
+})
+const filters = computed(() => {
+  const counts = entries.data.value?.counts
+  return (['all', 'ok', 'failed'] as const).map((id): { id: Filter; label: MessageKey; count: number } => ({
     id,
     label: id === 'all' ? 'audit.result.all' : resultText[id],
-    count: id === 'all' ? searched.value.length : searched.value.filter((e) => resultOf(e) === id).length,
-  })),
-)
-const shown = computed(() => searched.value.filter((e) => filter.value === 'all' || resultOf(e) === filter.value))
+    count: counts ? (id === 'all' ? counts.all : id === 'ok' ? counts.ok : counts.failed) : 0,
+  }))
+})
 
 interface Group {
   key: string
@@ -134,12 +175,22 @@ const groups = computed(() => {
 
 const columns = ['audit.column.time', 'audit.column.action', 'audit.column.account', 'audit.column.result', 'audit.column.client'] as const
 
-// The entries shown, as CSV: times in the panel's zone, and a byte order
-// mark so that spreadsheets read the text as UTF-8.
+// The entries the filters match, every page, as CSV: times in the panel's
+// zone, and a byte order mark so that spreadsheets read the text as UTF-8.
 const cell = (v: string) => (/[",\r\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v)
-function exportCsv() {
+const exporting = ref(false)
+async function exportCsv() {
+  exporting.value = true
+  let list: AuditEntry[]
+  try {
+    list = await auditExport(asked.value)
+  } catch {
+    return // the page shows why the log cannot be read
+  } finally {
+    exporting.value = false
+  }
   const lines = [[...columns.map((c) => t(c)), 'HTTP', 'User-Agent']]
-  for (const e of shown.value) {
+  for (const e of list) {
     lines.push([stamp(e.at, true), `${label(e)} (${raw(e)})`, e.user ?? '', t(resultText[resultOf(e)]), e.client, String(e.status), e.userAgent ?? ''])
   }
   const csv = String.fromCharCode(0xfeff) + lines.map((l) => l.map(cell).join(',')).join('\r\n') + '\r\n'
@@ -153,7 +204,7 @@ const selectClass =
 <template>
   <PageHeader :title="t('audit.page.title')" :subtitle="t('audit.page.intro')" :phone-back="fromMore">
     <template #actions>
-      <JecButton :disabled="!shown.length" @click="exportCsv"><Download class="size-4" aria-hidden="true" />{{ t('audit.page.export') }}</JecButton>
+      <JecButton :disabled="!shown.length" :busy="exporting" @click="exportCsv"><Download class="size-4" aria-hidden="true" />{{ t('audit.page.export') }}</JecButton>
     </template>
   </PageHeader>
 
@@ -186,7 +237,10 @@ const selectClass =
       </div>
     </div>
 
-    <p v-if="entries.isSuccess.value && !all.length" class="m-0 rounded-lg border border-line bg-surface-raised p-4 text-ink-muted">
+    <p
+      v-if="entries.isSuccess.value && !entries.data.value?.counts.all && !text"
+      class="m-0 rounded-lg border border-line bg-surface-raised p-4 text-ink-muted"
+    >
       {{ t('audit.page.empty') }}
     </p>
     <p v-else-if="entries.isSuccess.value && !shown.length" class="m-0 rounded-lg border border-line bg-surface-raised p-4 text-ink-muted">
@@ -281,9 +335,9 @@ const selectClass =
       </ul>
     </section>
 
-    <p v-if="shown.length" class="m-0 text-small text-ink-muted">
-      {{ t('audit.page.summary', { shown: shown.length, total: all.length }) }}
-      <template v-if="entries.data.value?.more">{{ t('audit.page.more', { count: all.length }) }}</template>
+    <JecPager v-model="page" :pages="pages" />
+    <p v-if="shown.length" class="m-0 text-center text-small text-ink-muted">
+      {{ t('audit.page.summary', { from: (page - 1) * pageSize + 1, to: (page - 1) * pageSize + shown.length, total }) }}
     </p>
   </div>
 </template>

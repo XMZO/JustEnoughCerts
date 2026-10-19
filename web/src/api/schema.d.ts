@@ -136,7 +136,7 @@ export interface paths {
         };
         /**
          * List what was done
-         * @description The operations of the last days that may have changed something, the newest first, at most 5000.
+         * @description The operations of the last days that may have changed something, the newest first, a page at a time.
          */
         get: operations["audit-entries"];
         put?: never;
@@ -1178,6 +1178,14 @@ export interface components {
             Unparsed: string[];
             Value: string;
         };
+        CountsBody: {
+            /** Format: int64 */
+            all: number;
+            /** Format: int64 */
+            failed: number;
+            /** Format: int64 */
+            ok: number;
+        };
         CreateCredentialInputBody: {
             config?: {
                 [key: string]: string;
@@ -1385,10 +1393,14 @@ export interface components {
             password: string;
         };
         EntriesOutputBody: {
-            /** @description The newest first */
+            counts: components["schemas"]["CountsBody"];
+            /** @description The page asked for, the newest first */
             entries: components["schemas"]["EntryBody"][];
-            /** @description There are older ones in the time asked for than one answer holds */
-            more: boolean;
+            /**
+             * Format: int64
+             * @description The entries of every page
+             */
+            total: number;
         };
         EntryBody: {
             /** Format: date-time */
@@ -2350,6 +2362,15 @@ export interface operations {
             query?: {
                 /** @description How many days back to list; 0 for all */
                 days?: number;
+                /** @description Only the entries that succeeded, or only those that failed (status 400 and up) */
+                result?: "ok" | "failed";
+                /** @description Only those holding this, letter case aside, in the path, the account, the address, the token or the operation's ID */
+                q?: string;
+                /** @description Operations, by ID and comma separated, that also match the text: those whose names, as the interface words them, hold it */
+                ops?: string;
+                page?: number;
+                /** @description Entries a page holds */
+                size?: number;
             };
             header?: never;
             path?: never;
