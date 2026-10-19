@@ -37,7 +37,7 @@ import { useProviders, useProviderTypes, useProviderTypesOf } from '../api/provi
 import { domainNeedsLook, useDomains, useWatching } from '../api/watch'
 import { deploymentState, failingDeployment } from '../certs/deployment'
 import { deploySteps, issuanceState, reasonText } from '../certs/issuance'
-import { certLife, colonHex, keyText } from '../certs/life'
+import { caReasonText, certLife, colonHex, keyText } from '../certs/life'
 import { useDurationText } from '../certs/runs'
 import CertActionDialog, { type CertAsk } from '../components/CertActionDialog.vue'
 import CertSlot from '../components/CertSlot.vue'
@@ -516,6 +516,15 @@ async function confirmDelete() {
         </div>
         <RouterLink :to="`/certificates/${id}/deployments/${failing.id}`" class="self-center font-semibold text-danger-ink underline underline-offset-2">{{ t('certs.detail.show_log') }}</RouterLink>
       </section>
+      <section v-else-if="current?.caRevokedAt" role="status" class="flex flex-wrap gap-x-3 gap-y-2 rounded-lg border border-line bg-danger-soft px-4 py-3">
+        <ShieldX class="mt-0.5 size-5 flex-none text-danger-ink" aria-hidden="true" />
+        <div class="flex min-w-0 flex-[1_1_240px] flex-col gap-0.5">
+          <strong class="text-danger-ink [overflow-wrap:anywhere]">
+            {{ t('certs.history.ca_revoked', { date: intl.date(current.caRevokedAt), reason: t(caReasonText(current.caRevokeReason)) }) }}
+          </strong>
+          <span class="text-small [overflow-wrap:anywhere]">{{ t(issued ? 'certs.detail.revoked_renewing' : 'certs.detail.revoked_upload') }}</span>
+        </div>
+      </section>
       <div class="flex items-center gap-3 sm:hidden">
         <StatusBadge :state="cert.state" />
         <p v-if="also" class="m-0 min-w-0 truncate text-small text-ink-muted" :title="t('certs.detail.also', { names: also })">
@@ -678,6 +687,10 @@ async function confirmDelete() {
                   <div v-if="h.version.revokedAt" class="flex items-start gap-1 font-semibold text-danger-ink">
                     <ShieldX class="mt-0.5 size-4 flex-none" aria-hidden="true" />
                     {{ t('certs.history.revoked', { date: intl.date(h.version.revokedAt), reason: t(reasonLabel(h.version.revokeReason)) }) }}
+                  </div>
+                  <div v-else-if="h.version.caRevokedAt" class="flex items-start gap-1 font-semibold text-danger-ink">
+                    <ShieldX class="mt-0.5 size-4 flex-none" aria-hidden="true" />
+                    {{ t('certs.history.ca_revoked', { date: intl.date(h.version.caRevokedAt), reason: t(caReasonText(h.version.caRevokeReason)) }) }}
                   </div>
                 </div>
                 <button

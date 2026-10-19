@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Activity, CircleCheck, CircleX, Download, Eye, FileDown, LoaderCircle, OctagonX, Plus, RefreshCw, Send, Trash2, TriangleAlert, Upload } from '@lucide/vue'
+import { Activity, CircleCheck, CircleX, Download, Eye, FileDown, LoaderCircle, OctagonX, Plus, RefreshCw, Send, ShieldX, Trash2, TriangleAlert, Upload } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
@@ -10,7 +10,7 @@ import { useMonitorStates } from '../api/monitor'
 import { useProviders } from '../api/providers'
 import { useCertActions } from '../certs/actions'
 import { useDeployNote } from '../certs/deployment'
-import { barPercent, certLife, lifeText, needsAttention, stateText } from '../certs/life'
+import { barPercent, caReasonText, certLife, lifeText, needsAttention, stateText } from '../certs/life'
 import { matches, searchTerm } from '../certs/search'
 import CertActionDialog, { type CertAsk } from '../components/CertActionDialog.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -132,12 +132,19 @@ function note(c: Certificate): string {
   if (servedOld(c) && (c.state === 'ok' || c.state === 'deploying')) return t('monitor.note.served_old')
   if (c.state === 'failed') return issueNote(c)
   if (c.state === 'deploy_failed') return deployNote(c)
+  if (c.state === 'revoked') return revokedNote(c)
   if (c.state === 'ok' || c.state === 'issuing' || c.state === 'deploying') return ''
   if (c.source === 'provider') {
     // Waiting for the check time, or under way already.
     return c.renewAt && Date.parse(c.renewAt) > Date.now() ? t('certs.next.auto', { date: intl.dateTime(c.renewAt) }) : t('certs.note.renewing')
   }
   return t(c.state === 'expired' ? 'certs.note.expired' : 'certs.note.manual')
+}
+
+/** revokedNote says why the CA of a certificate revoked it, and what comes of it. */
+function revokedNote(c: Certificate): string {
+  const reason = t(caReasonText(c.current?.caRevokeReason))
+  return t(c.source === 'provider' ? 'certs.note.revoked_renewing' : 'certs.note.revoked', { reason })
 }
 
 /** issueNote says why the latest issuance of a certificate failed. */
@@ -149,6 +156,7 @@ function issueNote(c: Certificate): string {
 /** next says what happens to a certificate next, or what stops it. */
 function next(c: Certificate): string {
   if (c.state === 'deploy_failed') return deployNote(c)
+  if (c.state === 'revoked') return revokedNote(c)
   if (c.source !== 'provider') return t('certs.next.manual')
   if (c.state === 'issuing') return t('certs.next.issuing')
   if (c.state === 'failed') return issueNote(c)
@@ -240,6 +248,7 @@ const itemLooks = {
   expired: { icon: CircleX, ink: 'text-danger-ink', fill: 'bg-danger-fill' },
   failed: { icon: OctagonX, ink: 'text-danger-ink', fill: 'bg-danger-fill' },
   deploy_failed: { icon: OctagonX, ink: 'text-danger-ink', fill: 'bg-danger-fill' },
+  revoked: { icon: ShieldX, ink: 'text-danger-ink', fill: 'bg-danger-fill' },
   issuing: { icon: LoaderCircle, ink: 'text-info-ink', fill: 'bg-info-fill' },
   deploying: { icon: LoaderCircle, ink: 'text-info-ink', fill: 'bg-info-fill' },
   ok: { icon: CircleCheck, ink: 'text-ok-ink', fill: 'bg-ok-fill' },

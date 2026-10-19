@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleCheck, CircleX, LoaderCircle, OctagonX, TriangleAlert } from '@lucide/vue'
+import { CircleCheck, CircleX, LoaderCircle, OctagonX, ShieldX, TriangleAlert } from '@lucide/vue'
 
 import type { CertificateState } from '../api/certs'
 import { stateText } from '../certs/life'
@@ -17,6 +17,7 @@ const looks = {
   expired: { icon: CircleX, cls: 'bg-danger-soft text-danger-ink' },
   failed: { icon: OctagonX, cls: 'bg-danger-soft text-danger-ink' },
   deploy_failed: { icon: OctagonX, cls: 'bg-danger-soft text-danger-ink' },
+  revoked: { icon: ShieldX, cls: 'bg-danger-soft text-danger-ink' },
   issuing: { icon: LoaderCircle, cls: 'bg-info-soft text-info-ink', spin: true },
   deploying: { icon: LoaderCircle, cls: 'bg-info-soft text-info-ink', spin: true },
 } as const

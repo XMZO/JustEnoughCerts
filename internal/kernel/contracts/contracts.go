@@ -25,6 +25,11 @@ const (
 	// has a week or less left, or expired; see Expiry. Payload
 	// CertificateEvent with Expiry set.
 	CertificateExpiring = "certificate.expiring"
+	// CertificateRevoked: the CA of the current version revoked it, as its
+	// OCSP responder or CRL told; one with a source is renewed at once.
+	// Payload CertificateEvent with VersionID, Fingerprint, NotAfter and
+	// Revocation set.
+	CertificateRevoked = "certificate.revoked"
 	// CertificateDeleted: a certificate and all its versions were deleted.
 	// Payload CertificateEvent without a version.
 	CertificateDeleted = "certificate.deleted"
@@ -140,6 +145,35 @@ type CertificateEvent struct {
 	Issuance      *Issuance   `json:"issuance,omitempty"`
 	Deployment    *Deployment `json:"deployment,omitempty"`
 	Check         *Check      `json:"check,omitempty"`
+	Revocation    *Revocation `json:"revocation,omitempty"`
+}
+
+// RevocationReasonText names a reason code of RFC 5280.
+func RevocationReasonText(code int) i18n.Key {
+	switch code {
+	case 1:
+		return i18n.CertsCaRevokedReasonKeyCompromise
+	case 2, 10:
+		return i18n.CertsCaRevokedReasonCaCompromise
+	case 3:
+		return i18n.CertsCaRevokedReasonAffiliationChanged
+	case 4:
+		return i18n.CertsCaRevokedReasonSuperseded
+	case 5:
+		return i18n.CertsCaRevokedReasonCessationOfOperation
+	case 6:
+		return i18n.CertsCaRevokedReasonCertificateHold
+	case 9:
+		return i18n.CertsCaRevokedReasonPrivilegeWithdrawn
+	}
+	return i18n.CertsCaRevokedReasonUnspecified
+}
+
+// Revocation tells that a CA revoked a version.
+type Revocation struct {
+	At       time.Time `json:"at"`
+	Reason   int       `json:"reason"`   // the reason code of RFC 5280: 1 key compromise, 4 superseded, …
+	Renewing bool      `json:"renewing"` // the certificate has a source, which issues a new version at once
 }
 
 // Check tells what a domain of a certificate served when the monitor

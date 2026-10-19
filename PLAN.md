@@ -224,6 +224,7 @@ stateDiagram-v2
 - **事件**（类型和数据结构在 `internal/kernel/contracts`）：新版本成为当前版本时发 `certificate.issued`；删除时发 `certificate.deleted`；每小时的 `certs.check_expiry` 任务在当前版本进入续期窗口、只剩 7 天、已过期时各发一次 `certificate.expiring`（重启或停机跳过的级别不补发）。
 - **事件里的指纹**：`certificate.issued`、`certificate.deployed` 带版本叶子证书的 SHA-256 指纹（`Fingerprint`）。别的模块发 `certificates.announce` 时，证书模块给每张有版本的证书发一条 `certificate.current`（数据同 `issued`），供后来启用、或者错过了事件的模块补齐。
 - **吊销**（`revoke.go`）：`POST /api/v1/certs/certificates/{id}/versions/{version}/revoke`（要再输一次密码，原因是 `unspecified`、`key_compromise`、`superseded`、`cessation_of_operation` 之一）请签发这个版本的来源吊销它：来源实现 `contracts.Revoker`，类型标 `Revocable`：ACME 账号（用账号密钥签名，CA 回答“已经吊销”也算成功；CI 的 Pebble 测试覆盖），以及在 `describe` 里标 `revocable` 的插件来源（JEC 发 `revoke`，带叶子证书、序列号、指纹和原因，见 `docs/development/plugins.md`）。只吊销不是当前版本、没过期、还没吊销的版本：吊销正在用的版本前要先签发并部署新版本，免得网站用着已吊销的证书（界面在历史版本下面写明）。吊销时间和原因存在 `certs_versions` 的 `revoked_at`、`revoke_reason`；详情接口的每个版本带 `revocable`、`revokedAt`、`revokeReason`。审计日志按 `certs-revoke` 记下。
+- **吊销检查**（`revocation.go`）：任务 `certs.revocation`（每 30 分钟看一次，每个版本 12 小时查一次，CA 没答上来 1 小时后再查）对当前版本问 CA 是否已吊销：证书带 OCSP 地址时发 OCSP 请求，否则下载 CRL（按 `NextUpdate` 缓存，每次核对颁发者签名）；需要版本带着颁发者证书。发现被吊销时记下时间和 RFC 5280 原因码，证书状态变为 `revoked`，发 `certificate.revoked`（通知默认开）；有来源的证书立即续期（`due` 返回吊销时间），上传的证书等人上传新版本。ARI 能提前告知的吊销照旧按 ARI 走，这里兜住没有 ARI 的 CA（如 Sectigo 系）和上传的证书。
 
 ### 4.7 线上巡检
 

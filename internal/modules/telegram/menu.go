@@ -243,6 +243,8 @@ func (l *listener) why(c *certificate) string {
 		if c.Current != nil {
 			return l.text(i18n.TelegramTodoExpired, i18n.Args{"date": l.day(c.Current.NotAfter)})
 		}
+	case "revoked":
+		return l.text(i18n.TelegramStateRevoked, nil)
 	case "expiring":
 		if c.Current != nil {
 			return l.text(i18n.TelegramTodoExpiringManual, i18n.Args{"date": l.day(c.Current.NotAfter)})
@@ -806,7 +808,7 @@ func (l *listener) short(c *certificate) string {
 // expired, or an upload about to.
 func needsAttention(c *certificate) bool {
 	switch c.State {
-	case "failed", "deploy_failed", "expired":
+	case "failed", "deploy_failed", "expired", "revoked":
 		return true
 	case "expiring":
 		return c.Source != "provider"
@@ -851,7 +853,7 @@ func stateText(state string) i18n.Key {
 var states = map[string]i18n.Key{
 	"ok": i18n.TelegramStateOk, "expiring": i18n.TelegramStateExpiring, "expired": i18n.TelegramStateExpired,
 	"issuing": i18n.TelegramStateIssuing, "deploying": i18n.TelegramStateDeploying,
-	"failed": i18n.TelegramStateFailed, "deploy_failed": i18n.TelegramStateDeployFailed,
+	"failed": i18n.TelegramStateFailed, "deploy_failed": i18n.TelegramStateDeployFailed, "revoked": i18n.TelegramStateRevoked,
 }
 
 var deployStates = map[string]i18n.Key{

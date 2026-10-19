@@ -52,6 +52,7 @@ const (
 	stateDeploying    = "deploying"
 	stateFailed       = "failed"
 	stateDeployFailed = "deploy_failed"
+	stateRevoked      = "revoked" // its CA revoked the current version
 )
 
 // Errors of the service, which the API turns into responses.
@@ -87,6 +88,9 @@ type service struct {
 	// zone returns the time zone of the time renewals start: the one
 	// chosen for JEC, or the server's.
 	zone func() *time.Location
+
+	// status asks CAs whether they revoked versions; nil to not ask.
+	status *statusChecker
 
 	issuing   *queue[claimed]
 	deploying *queue[deployClaim]
@@ -156,6 +160,12 @@ type Version struct {
 	// and RevokeReason the reason it gave (revoke.go).
 	RevokedAt    time.Time
 	RevokeReason string
+	// CARevokedAt is when its CA revoked the version, as OCSP or the CRL
+	// told, zero while it has not, with the reason code of RFC 5280;
+	// StatusCheck is when to ask again (revocation.go).
+	CARevokedAt    time.Time
+	CARevokeReason int
+	StatusCheck    time.Time
 }
 
 // RenewalWindow is the window a CA suggests renewing a version in, and the
@@ -197,6 +207,8 @@ func (c *Certificate) state(now time.Time) string {
 	switch left := c.Current.NotAfter.Sub(now); {
 	case left <= 0:
 		return stateExpired
+	case !c.Current.CARevokedAt.IsZero():
+		return stateRevoked
 	case left <= time.Duration(c.RenewBeforeDays)*day:
 		return stateExpiring
 	}
@@ -367,6 +379,7 @@ const selectCertificates = `SELECT c.id, c.domains, c.source, c.source_provider,
 	c.renew_before_days, c.created_at, c.note,
 	v.id, v.origin, v.names, v.serial, v.fingerprint, v.issuer, v.key_type, v.not_before, v.not_after, v.chain, v.created_at,
 	v.source_provider, v.renewal_start, v.renewal_end, v.renewal_at, v.renewal_explanation, v.renewal_check,
+	v.ca_revoked_at, v.ca_revoke_reason, v.status_check,
 	` + issuanceColumns + `
 	FROM certs_certificates c LEFT JOIN certs_versions v ON v.id = c.current_version_id
 	LEFT JOIN certs_issuances i ON i.id = (SELECT max(id) FROM certs_issuances WHERE certificate_id = c.id)`
@@ -416,11 +429,12 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 			id                                                                      sql.NullInt64
 			origin, names, serial, fingerprint, issuer, keyType, chain, explanation sql.NullString
 			notBefore, notAfter, created, source, start, end, at, check             sql.NullInt64
+			caRevoked, caReason, statusCheck                                        sql.NullInt64
 		}
 		var is issuanceRow
 		dest := []any{&c.ID, &domains, &c.Source, &sourceProvider, &solverProvider, &c.KeyType, &c.RenewBeforeDays, &created, &c.Note,
 			&v.id, &v.origin, &v.names, &v.serial, &v.fingerprint, &v.issuer, &v.keyType, &v.notBefore, &v.notAfter, &v.chain, &v.created,
-			&v.source, &v.start, &v.end, &v.at, &v.explanation, &v.check}
+			&v.source, &v.start, &v.end, &v.at, &v.explanation, &v.check, &v.caRevoked, &v.caReason, &v.statusCheck}
 		if err := rows.Scan(append(dest, is.dest()...)...); err != nil {
 			return nil, err
 		}
@@ -441,7 +455,11 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 				Issuer: v.issuer.String, KeyType: v.keyType.String, Chain: v.chain.String,
 				NotBefore: time.UnixMilli(v.notBefore.Int64).UTC(), NotAfter: time.UnixMilli(v.notAfter.Int64).UTC(),
 				CreatedAt: time.UnixMilli(v.created.Int64).UTC(), SourceProvider: v.source.Int64,
-				RenewalCheck: time.UnixMilli(v.check.Int64).UTC(),
+				RenewalCheck:   time.UnixMilli(v.check.Int64).UTC(),
+				CARevokeReason: int(v.caReason.Int64), StatusCheck: time.UnixMilli(v.statusCheck.Int64).UTC(),
+			}
+			if v.caRevoked.Valid {
+				c.Current.CARevokedAt = time.UnixMilli(v.caRevoked.Int64).UTC()
 			}
 			if v.start.Valid && v.end.Valid && v.at.Valid {
 				c.Current.Renewal = &RenewalWindow{Start: time.UnixMilli(v.start.Int64).UTC(), End: time.UnixMilli(v.end.Int64).UTC(),
@@ -466,7 +484,7 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 func (s *service) versions(ctx context.Context, id int64) ([]*Version, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT id, origin, names, serial, fingerprint, issuer, key_type, not_before, not_after, chain, created_at,
-		 source_provider, revoked_at, revoke_reason
+		 source_provider, revoked_at, revoke_reason, ca_revoked_at, ca_revoke_reason
 		 FROM certs_versions WHERE certificate_id = ? ORDER BY created_at DESC, id DESC`, id)
 	if err != nil {
 		return nil, err
@@ -477,13 +495,16 @@ func (s *service) versions(ctx context.Context, id int64) ([]*Version, error) {
 		v := &Version{}
 		var names string
 		var notBefore, notAfter, created int64
-		var revoked sql.NullInt64
+		var revoked, caRevoked sql.NullInt64
 		if err := rows.Scan(&v.ID, &v.Origin, &names, &v.Serial, &v.Fingerprint, &v.Issuer, &v.KeyType,
-			&notBefore, &notAfter, &v.Chain, &created, &v.SourceProvider, &revoked, &v.RevokeReason); err != nil {
+			&notBefore, &notAfter, &v.Chain, &created, &v.SourceProvider, &revoked, &v.RevokeReason, &caRevoked, &v.CARevokeReason); err != nil {
 			return nil, err
 		}
 		if revoked.Valid {
 			v.RevokedAt = time.UnixMilli(revoked.Int64).UTC()
+		}
+		if caRevoked.Valid {
+			v.CARevokedAt = time.UnixMilli(caRevoked.Int64).UTC()
 		}
 		if err := json.Unmarshal([]byte(names), &v.Names); err != nil {
 			return nil, err

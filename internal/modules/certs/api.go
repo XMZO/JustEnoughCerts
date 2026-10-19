@@ -26,7 +26,7 @@ type CertificateBody struct {
 	KeyType         string           `json:"keyType" doc:"Type and size of the key, such as rsa-2048 or ecdsa-p256"`
 	Note            string           `json:"note,omitempty" doc:"What people wrote about it"`
 	RenewBeforeDays int              `json:"renewBeforeDays" doc:"How many days before the end the certificate is renewed, or a reminder sent"`
-	State           string           `json:"state" enum:"ok,expiring,expired,issuing,deploying,failed,deploy_failed" doc:"issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end) or expired"`
+	State           string           `json:"state" enum:"ok,expiring,expired,issuing,deploying,failed,deploy_failed,revoked" doc:"issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)"`
 	Current         *VersionBody     `json:"current,omitempty" doc:"The version in use"`
 	RenewAt         *time.Time       `json:"renewAt,omitempty" doc:"When the renewal of the current version starts, or started: for a certificate with a source"`
 	RenewalWindow   *RenewalBody     `json:"renewalWindow,omitempty" doc:"The window the CA suggests renewing the current version in (ACME Renewal Information), once it answered"`
@@ -53,6 +53,15 @@ type VersionBody struct {
 	Revocable    bool       `json:"revocable,omitempty" doc:"JEC can have the version revoked at its CA now"`
 	RevokedAt    *time.Time `json:"revokedAt,omitempty" doc:"When JEC had the version revoked"`
 	RevokeReason string     `json:"revokeReason,omitempty" enum:"unspecified,key_compromise,superseded,cessation_of_operation"`
+	// CARevokedAt and CARevokeReason are in every version.
+	CARevokedAt    *time.Time `json:"caRevokedAt,omitempty" doc:"When its CA revoked the version, as its OCSP responder or CRL told"`
+	CARevokeReason string     `json:"caRevokeReason,omitempty" enum:"unspecified,key_compromise,ca_compromise,affiliation_changed,superseded,cessation_of_operation,certificate_hold,privilege_withdrawn" doc:"Why, as RFC 5280 names it"`
+}
+
+// caReasons names the reason codes of RFC 5280.
+var caReasons = map[int]string{
+	1: "key_compromise", 2: "ca_compromise", 3: "affiliation_changed", 4: "superseded", 5: "cessation_of_operation",
+	6: "certificate_hold", 9: "privilege_withdrawn", 10: "ca_compromise",
 }
 
 // RenewalBody is the window a CA suggests renewing a version in.
@@ -140,6 +149,13 @@ func versionBody(v *Version) VersionBody {
 	if !v.RevokedAt.IsZero() {
 		at := v.RevokedAt
 		b.RevokedAt, b.RevokeReason = &at, v.RevokeReason
+	}
+	if !v.CARevokedAt.IsZero() {
+		at, reason := v.CARevokedAt, caReasons[v.CARevokeReason]
+		if reason == "" {
+			reason = "unspecified"
+		}
+		b.CARevokedAt, b.CARevokeReason = &at, reason
 	}
 	return b
 }

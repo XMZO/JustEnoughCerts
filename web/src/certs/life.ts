@@ -63,7 +63,11 @@ export const stateText: Record<CertificateState, MessageKey> = {
   deploying: 'certs.state.deploying',
   failed: 'certs.state.failed',
   deploy_failed: 'certs.state.deploy_failed',
+  revoked: 'certs.state.revoked',
 }
+
+/** caReasonText names why a CA revoked a version. */
+export const caReasonText = (reason?: string) => `certs.ca_revoked.reason.${reason ?? 'unspecified'}` as MessageKey
 
 /** needsAttention tells the certificates that need someone: one being issued or deployed does not, yet. */
 export function needsAttention(c: Certificate): boolean {

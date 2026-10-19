@@ -12,7 +12,7 @@ import { domainNeedsLook, needsLook, useDomains, useSites } from '../api/watch'
 import { useCertActions } from '../certs/actions'
 import { failingDeployment, useDeployNote } from '../certs/deployment'
 import { runAt, runLink, runResult, useRunText } from '../certs/runs'
-import { certLife, lifeText, needsAttention, type Life } from '../certs/life'
+import { caReasonText, certLife, lifeText, needsAttention, type Life } from '../certs/life'
 import CertActionDialog, { type CertAsk } from '../components/CertActionDialog.vue'
 import CertSlot from '../components/CertSlot.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -104,7 +104,7 @@ function runPrimary(c: Certificate) {
   else if (main?.run) void act(main.run, c.id)
 }
 
-const order: CertificateState[] = ['failed', 'deploy_failed', 'expired', 'expiring', 'issuing', 'deploying', 'ok']
+const order: CertificateState[] = ['failed', 'deploy_failed', 'revoked', 'expired', 'expiring', 'issuing', 'deploying', 'ok']
 const counts = computed(() =>
   order.map((state) => ({ state, count: all.value.filter((c) => c.state === state).length })).filter((s) => s.count > 0),
 )
@@ -162,8 +162,21 @@ const todo = computed(() =>
   attention.value.filter((c) => !renewing.value.includes(c)).map((c) => {
     const l = certLife(c)
     const domain = c.domains[0] ?? ''
-    const expired = c.state === 'expired' || c.state === 'failed' || c.state === 'deploy_failed'
+    const expired = c.state === 'expired' || c.state === 'failed' || c.state === 'deploy_failed' || c.state === 'revoked'
     const deployment = c.state === 'deploy_failed' ? failingDeployment(c) : undefined
+    if (c.state === 'revoked') {
+      const reason = t(caReasonText(c.current?.caRevokeReason))
+      const issued = c.source === 'provider'
+      return {
+        cert: c,
+        expired,
+        title: t('certs.attention.revoked', { domain }),
+        detail: t(issued ? 'certs.note.revoked_renewing' : 'certs.note.revoked', { reason }),
+        to: issued ? `/certificates/${c.id}` : { path: `/certificates/${c.id}`, query: { upload: '1' } },
+        action: (issued ? 'certs.action.details' : 'certs.action.upload_short') as MessageKey,
+        button: undefined,
+      }
+    }
     if (deployment) {
       return {
         cert: c,

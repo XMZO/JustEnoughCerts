@@ -669,7 +669,20 @@
       "renewing": "{domain} 即将到期",
       "replace": "{domain} 需要手动更换",
       "replace_detail": "手动上传的证书无法自动续期，{life}。",
+      "revoked": "{domain} 的证书已被 CA 吊销",
       "title": "需要处理"
+    },
+    "ca_revoked": {
+      "reason": {
+        "affiliation_changed": "证书中的信息有变",
+        "ca_compromise": "CA 的私钥泄露",
+        "certificate_hold": "暂停使用",
+        "cessation_of_operation": "不再使用",
+        "key_compromise": "私钥泄露",
+        "privilege_withdrawn": "授权被撤回",
+        "superseded": "已被新证书取代",
+        "unspecified": "未说明"
+      }
     },
     "cert": {
       "label": "{domain}，{state}，{life}",
@@ -780,6 +793,8 @@
       "no_issuances": "还没有签发记录。",
       "no_targets": "还没有选部署目标。",
       "retrying": "签发失败，稍后自动重试",
+      "revoked_renewing": "JEC 正在重新签发，新证书会照常部署。",
+      "revoked_upload": "这张证书没有来源，JEC 无法重新签发，请尽快上传新证书。",
       "run_deploy_failed": "{start} 开始，用时 {duration}，签好了，但有部署失败。",
       "run_deploying": "{start} 开始，用时 {duration}，签好了，正在部署。",
       "run_done": "{start} 开始，用时 {duration}，全部成功。",
@@ -876,6 +891,7 @@
       "source": "来源"
     },
     "history": {
+      "ca_revoked": "{date} 被 CA 吊销（{reason}）",
       "current": "当前",
       "range": "{from} 至 {to}",
       "replaced": "{date} 被替换",
@@ -987,7 +1003,9 @@
       "deploy_failed": "{target}：{error}",
       "expired": "请上传新证书",
       "manual": "无法自动续期，请上传新证书",
-      "renewing": "即将自动续期"
+      "renewing": "即将自动续期",
+      "revoked": "CA 已吊销这张证书（{reason}），请尽快换上新证书。",
+      "revoked_renewing": "CA 已吊销这张证书（{reason}），JEC 正在重新签发。"
     },
     "overview": {
       "badge": "{label} {count}",
@@ -1112,7 +1130,8 @@
       "expiring": "即将到期",
       "failed": "签发失败",
       "issuing": "签发中",
-      "ok": "正常"
+      "ok": "正常",
+      "revoked": "已被吊销"
     },
     "step": {
       "challenge": "添加验证记录",
@@ -1905,6 +1924,7 @@
         "expiring": "证书快到期或已经过期时通知",
         "issue_failed": "签发失败时通知",
         "issued": "有新证书（签发或上传）时通知",
+        "revoked": "证书被 CA 吊销时通知",
         "served_old": "网站上还是旧证书",
         "site_expiring": "监控的站点证书快到期或已经过期时通知"
       },
@@ -2392,6 +2412,12 @@
       },
       "link": "详情：{url}",
       "retry": "JEC 会在 {time} 再试一次。",
+      "revoked": {
+        "manual": "这张证书没有来源，JEC 无法自动重新签发，请尽快换上新证书。",
+        "renewing": "JEC 已开始重新签发，新证书会照常部署。",
+        "title": "{domain} 的证书已被 CA 吊销",
+        "when": "吊销于 {date}，原因：{reason}。"
+      },
       "served_old": "线上的证书 {served} 到期，JEC 里的当前版本 {current} 到期：部署的目标（比如 CDN）可能还没换上新证书。",
       "served_old_title": "{domain} 上还是旧证书",
       "site": {
@@ -3113,7 +3139,8 @@
       "expiring": "即将到期",
       "failed": "签发失败",
       "issuing": "签发中",
-      "ok": "正常"
+      "ok": "正常",
+      "revoked": "已被 CA 吊销"
     },
     "system": {
       "modules": "启用的模块：{count}",

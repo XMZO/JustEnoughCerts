@@ -378,7 +378,7 @@
             "type": "integer"
           },
           "state": {
-            "description": "issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end) or expired",
+            "description": "issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)",
             "enum": [
               "ok",
               "expiring",
@@ -386,7 +386,8 @@
               "issuing",
               "deploying",
               "failed",
-              "deploy_failed"
+              "deploy_failed",
+              "revoked"
             ],
             "type": "string"
           },
@@ -3427,6 +3428,25 @@
       "VersionBody": {
         "additionalProperties": false,
         "properties": {
+          "caRevokeReason": {
+            "description": "Why, as RFC 5280 names it",
+            "enum": [
+              "unspecified",
+              "key_compromise",
+              "ca_compromise",
+              "affiliation_changed",
+              "superseded",
+              "cessation_of_operation",
+              "certificate_hold",
+              "privilege_withdrawn"
+            ],
+            "type": "string"
+          },
+          "caRevokedAt": {
+            "description": "When its CA revoked the version, as its OCSP responder or CRL told",
+            "format": "date-time",
+            "type": "string"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"

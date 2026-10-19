@@ -15,6 +15,7 @@ message at once.
 | Deployment failed | On |
 | Certificate expiring or expired | On |
 | Old certificate still served (found by the online check) | On |
+| The CA revoked a certificate (see [Revocation checks](renewal.md#revocation-checks)) | On |
 | A watched site's certificate ends soon or ended (see [Expiry watch](sites.md)) | On |
 | A domain registration ends soon or ended (likewise) | On |
 | New certificate (issued or uploaded) | Off |

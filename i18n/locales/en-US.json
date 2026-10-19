@@ -669,7 +669,20 @@
       "renewing": "{domain} expires soon",
       "replace": "{domain} needs replacing",
       "replace_detail": "Uploaded certificates are not renewed automatically: {life}.",
+      "revoked": "The CA revoked the certificate of {domain}",
       "title": "Needs attention"
+    },
+    "ca_revoked": {
+      "reason": {
+        "affiliation_changed": "its details changed",
+        "ca_compromise": "the CA's key leaked",
+        "certificate_hold": "on hold",
+        "cessation_of_operation": "no longer in use",
+        "key_compromise": "the private key leaked",
+        "privilege_withdrawn": "the authorization was withdrawn",
+        "superseded": "a newer certificate replaces it",
+        "unspecified": "not given"
+      }
     },
     "cert": {
       "label": "{domain}, {state}, {life}",
@@ -780,6 +793,8 @@
       "no_issuances": "No issuances yet.",
       "no_targets": "No targets chosen yet.",
       "retrying": "The issuance failed; trying again later",
+      "revoked_renewing": "JEC is issuing a new one, which it deploys as usual.",
+      "revoked_upload": "It has no source for JEC to issue a new one from: upload a new one soon.",
       "run_deploy_failed": "Started {start}. Time taken: {duration}. Issued, but a deployment failed.",
       "run_deploying": "Started {start}. Time taken: {duration}. Issued; deploying now.",
       "run_done": "Started {start}. Time taken: {duration}. All went through.",
@@ -876,6 +891,7 @@
       "source": "Source"
     },
     "history": {
+      "ca_revoked": "Revoked by the CA on {date} ({reason})",
       "current": "Current",
       "range": "{from} to {to}",
       "replaced": "Replaced on {date}",
@@ -987,7 +1003,9 @@
       "deploy_failed": "{target}: {error}",
       "expired": "Upload a new certificate",
       "manual": "Not renewed automatically, upload a new one",
-      "renewing": "Renewing soon"
+      "renewing": "Renewing soon",
+      "revoked": "Its CA revoked it ({reason}): replace it soon.",
+      "revoked_renewing": "Its CA revoked it ({reason}); JEC is issuing a new one."
     },
     "overview": {
       "badge": "{label} {count}",
@@ -1112,7 +1130,8 @@
       "expiring": "Expiring soon",
       "failed": "Issuance failed",
       "issuing": "Issuing",
-      "ok": "Healthy"
+      "ok": "Healthy",
+      "revoked": "Revoked"
     },
     "step": {
       "challenge": "Add the validation records",
@@ -1905,6 +1924,7 @@
         "expiring": "When a certificate is about to expire, or has expired",
         "issue_failed": "When an issuance fails",
         "issued": "When a new certificate is issued or uploaded",
+        "revoked": "The CA revoked a certificate",
         "served_old": "A website still serves the old certificate",
         "site_expiring": "A watched site's certificate ends soon or ended"
       },
@@ -2392,6 +2412,12 @@
       },
       "link": "Details: {url}",
       "retry": "JEC tries again at {time}.",
+      "revoked": {
+        "manual": "The certificate has no source for JEC to issue a new one from: replace it soon.",
+        "renewing": "JEC is issuing a new one, which it deploys as usual.",
+        "title": "The CA revoked the certificate of {domain}",
+        "when": "Revoked on {date}; reason: {reason}."
+      },
       "served_old": "The certificate it serves ends on {served}, the version in use on {current}: the target, such as a CDN, may not have taken the new one.",
       "served_old_title": "{domain} still serves the old certificate",
       "site": {
@@ -3113,7 +3139,8 @@
       "expiring": "Expiring",
       "failed": "Issuance failed",
       "issuing": "Issuing",
-      "ok": "OK"
+      "ok": "OK",
+      "revoked": "Revoked by the CA"
     },
     "system": {
       "modules": "Modules on: {count}",

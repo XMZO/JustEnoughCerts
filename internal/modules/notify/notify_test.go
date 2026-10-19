@@ -394,3 +394,28 @@ func TestDomainNote(t *testing.T) {
 		t.Errorf("note %q\n%s", n.Title, n.Text)
 	}
 }
+
+func TestRevokedNote(t *testing.T) {
+	f := newFixture(t)
+	en := f.notifier("ops", map[string]string{"locale": "en-US"}) // on by default
+	for i, renewing := range []bool{true, false} {
+		d := contracts.CertificateEvent{CertificateID: 3, Domains: []string{"example.com"}, VersionID: 9, NotAfter: start.Add(60 * 24 * time.Hour),
+			Revocation: &contracts.Revocation{At: start.Add(-time.Hour), Reason: 1, Renewing: renewing}}
+		raw, _ := json.Marshal(d)
+		ev := events.Event{ID: int64(i + 1), Type: contracts.CertificateRevoked, Source: "certs", Subject: "3", Data: raw, Time: start}
+		if err := f.svc.handle(t.Context(), ev); err != nil {
+			t.Fatal(err)
+		}
+	}
+	notes := f.notes(en)
+	if len(notes) != 2 {
+		t.Fatalf("notes %v", notes)
+	}
+	if n := notes[0]; n.Title != "The CA revoked the certificate of example.com" ||
+		!strings.HasPrefix(n.Text, "Revoked on 2026-10-17; reason: the private key leaked.\nJEC is issuing a new one") {
+		t.Errorf("note %q\n%s", n.Title, n.Text)
+	}
+	if n := notes[1]; !strings.Contains(n.Text, "no source for JEC") {
+		t.Errorf("note %q\n%s", n.Title, n.Text)
+	}
+}

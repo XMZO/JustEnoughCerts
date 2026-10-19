@@ -41,8 +41,12 @@ func replaced(c *Certificate) *x509.Certificate {
 
 // due is when the renewal of the current version of c starts: by the
 // schedule, or earlier when its CA suggests so, as before it revokes the
-// version. A later suggestion does not hold the renewal back.
+// version, and at once once it did. A later suggestion does not hold the
+// renewal back.
 func (sch schedule) due(c *Certificate) time.Time {
+	if !c.Current.CARevokedAt.IsZero() {
+		return c.Current.CARevokedAt
+	}
 	at := sch.renewAt(c.Current.NotAfter, c.RenewBeforeDays)
 	if r := c.Current.Renewal; r != nil && r.At.Before(at) {
 		return r.At

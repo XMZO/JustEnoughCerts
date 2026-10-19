@@ -78,7 +78,7 @@ func digestOf(certs []*Certificate, now time.Time, sch schedule) contracts.Diges
 		switch {
 		case state == stateOK:
 			d.OK++
-		case state == stateFailed, state == stateDeployFailed, state == stateExpired,
+		case state == stateFailed, state == stateDeployFailed, state == stateExpired, state == stateRevoked,
 			state == stateExpiring && c.Source != sourceProvider:
 			d.Attention = append(d.Attention, item)
 		}

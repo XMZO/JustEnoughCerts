@@ -22,6 +22,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
 
 //go:embed migrations/*.sql
@@ -59,6 +60,11 @@ func (*Module) Migrations() fs.FS {
 func (m *Module) Register(r *module.Registry) error {
 	s := newService(r.DB, r.Events, r.Secrets, r.Providers, r.Log, m.now)
 	s.zone = r.Zone
+	client, err := httpx.Client(httpx.Options{PublicOnly: true, Timeout: 30 * time.Second})
+	if err != nil {
+		return err
+	}
+	s.status = &statusChecker{client: client, now: m.now}
 	s.issuing.trigger = func() { r.Jobs.Trigger("issue") }
 	s.deploying.trigger = func() { r.Jobs.Trigger("deploy") }
 	registerAPI(r.API, s, r.ConfirmPassword)
@@ -79,6 +85,7 @@ func (m *Module) Register(r *module.Registry) error {
 		{Name: "renew", Every: 5 * time.Minute, Timeout: 5 * time.Minute, Run: s.renew},
 		{Name: "check_expiry", Every: time.Hour, Timeout: 5 * time.Minute, Run: s.checkExpiry},
 		{Name: "renewal_info", Every: time.Hour, Timeout: 10 * time.Minute, Run: s.checkRenewalInfo},
+		{Name: "revocation", Every: 30 * time.Minute, Timeout: 10 * time.Minute, Run: s.checkRevocation},
 		{Name: "digest", Every: time.Hour, Timeout: 5 * time.Minute, Run: s.digest},
 	} {
 		if err := r.Jobs.Add(j); err != nil {

@@ -285,6 +285,16 @@ func (s *service) note(ctx context.Context, tag language.Tag, ev events.Event, d
 			n.Title = w.text(i18n.NotifyNoteServedOldTitle, i18n.Args{"domain": c.Domain})
 			lines = append(lines, w.text(i18n.NotifyNoteServedOld, i18n.Args{"served": w.day(c.NotAfter), "current": w.day(d.NotAfter)}))
 		}
+	case contracts.CertificateRevoked:
+		n.Title = w.text(i18n.NotifyNoteRevokedTitle, i18n.Args{"domain": domain})
+		if r := d.Revocation; r != nil {
+			lines = append(lines, w.text(i18n.NotifyNoteRevokedWhen, i18n.Args{"date": w.day(r.At), "reason": w.text(contracts.RevocationReasonText(r.Reason), nil)}))
+			if r.Renewing {
+				lines = append(lines, w.text(i18n.NotifyNoteRevokedRenewing, nil))
+			} else {
+				lines = append(lines, w.text(i18n.NotifyNoteRevokedManual, nil))
+			}
+		}
 	case contracts.CertificateExpiring:
 		if d.Expiry == contracts.ExpiryExpired {
 			n.Title = w.text(i18n.NotifyNoteExpiredTitle, i18n.Args{"domain": domain})
@@ -311,7 +321,7 @@ func (s *service) note(ctx context.Context, tag language.Tag, ev events.Event, d
 var stateText = map[string]i18n.Key{
 	"ok": i18n.CertsStateOk, "expiring": i18n.CertsStateExpiring, "expired": i18n.CertsStateExpired,
 	"issuing": i18n.CertsStateIssuing, "deploying": i18n.CertsStateDeploying,
-	"failed": i18n.CertsStateFailed, "deploy_failed": i18n.CertsStateDeployFailed,
+	"failed": i18n.CertsStateFailed, "deploy_failed": i18n.CertsStateDeployFailed, "revoked": i18n.CertsStateRevoked,
 }
 
 // digestNote writes the weekly digest in the language tag: what needs

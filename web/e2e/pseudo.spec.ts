@@ -679,18 +679,21 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.route(detailRoute, async (route) => {
     const res = await route.fetch()
     const body = (await res.json()) as { certificate: Record<string, unknown>; versions: unknown[] }
+    // The current one its CA revoked, as OCSP or the CRL told.
     const versions = [
-      madeUp(9003, -10, 80, {}),
+      madeUp(9003, -10, 80, { caRevokedAt: at(-1), caRevokeReason: 'superseded' }),
       madeUp(9002, -40, 50, { revocable: true }),
       madeUp(9001, -70, 20, { revokedAt: at(-40), revokeReason: 'key_compromise' }),
     ]
     body.certificate.current = versions[0]
+    body.certificate.state = 'revoked'
     body.versions = versions
     await route.fulfill({ response: res, json: body })
   })
   await page.reload()
   const versionRows = page.locator('section[aria-labelledby=versions] li')
   await expect(versionRows).toHaveCount(3)
+  await expect(page.getByText(label('certs.detail.revoked_renewing'))).toBeVisible()
   expect.soft(await problems(page), 'versions, one revocable and one revoked').toEqual([])
   await versionRows.nth(1).getByRole('button').first().click()
   await expect(page.locator('dialog[open]')).toBeVisible()

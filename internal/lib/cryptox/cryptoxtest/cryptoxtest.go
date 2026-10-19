@@ -39,7 +39,7 @@ func NewCA(t testing.TB) *CA {
 	ca := func(cn string) *x509.Certificate {
 		return &x509.Certificate{
 			Subject: pkix.Name{CommonName: cn}, IsCA: true, BasicConstraintsValid: true,
-			KeyUsage: x509.KeyUsageCertSign, NotBefore: now.Add(-time.Hour), NotAfter: now.AddDate(10, 0, 0),
+			KeyUsage: x509.KeyUsageCertSign | x509.KeyUsageCRLSign, NotBefore: now.Add(-time.Hour), NotAfter: now.AddDate(10, 0, 0),
 		}
 	}
 	root := sign(t, ca("Test Root"), rootKey, nil, nil)
@@ -60,6 +60,18 @@ func (ca *CA) Leaf(t testing.TB, key crypto.Signer, notBefore, notAfter time.Tim
 	}
 	return sign(t, tmpl, key, ca.Intermediate, ca.interKey)
 }
+
+// Sign issues a certificate from tmpl for key with the intermediate, as a
+// leaf with fields Leaf does not set, such as where to learn whether it was
+// revoked.
+func (ca *CA) Sign(t testing.TB, key crypto.Signer, tmpl *x509.Certificate) *x509.Certificate {
+	t.Helper()
+	return sign(t, tmpl, key, ca.Intermediate, ca.interKey)
+}
+
+// Signer is the key of the intermediate, to sign what it answers for its
+// leaves, as OCSP responses and CRLs.
+func (ca *CA) Signer() crypto.Signer { return ca.interKey }
 
 func sign(t testing.TB, tmpl *x509.Certificate, key crypto.Signer, parent *x509.Certificate, parentKey crypto.Signer) *x509.Certificate {
 	t.Helper()

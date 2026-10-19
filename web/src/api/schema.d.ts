@@ -1363,10 +1363,10 @@ export interface components {
              */
             sourceProvider?: number;
             /**
-             * @description issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end) or expired
+             * @description issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)
              * @enum {string}
              */
-            state: "ok" | "expiring" | "expired" | "issuing" | "deploying" | "failed" | "deploy_failed";
+            state: "ok" | "expiring" | "expired" | "issuing" | "deploying" | "failed" | "deploy_failed" | "revoked";
             /** @description The target provider instances each version is deployed to, in order */
             targets: number[];
         };
@@ -2453,6 +2453,16 @@ export interface components {
             privateKey?: string;
         };
         VersionBody: {
+            /**
+             * @description Why, as RFC 5280 names it
+             * @enum {string}
+             */
+            caRevokeReason?: "unspecified" | "key_compromise" | "ca_compromise" | "affiliation_changed" | "superseded" | "cessation_of_operation" | "certificate_hold" | "privilege_withdrawn";
+            /**
+             * Format: date-time
+             * @description When its CA revoked the version, as its OCSP responder or CRL told
+             */
+            caRevokedAt?: string;
             /** Format: date-time */
             createdAt: string;
             /** @description SHA-256 of the certificate, lowercase hex */
