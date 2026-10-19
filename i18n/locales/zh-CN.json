@@ -30,7 +30,8 @@
     },
     "error": {
       "ca": "证书颁发机构返回了错误。完整日志里有原因。",
-      "caa": "域名的 CAA 记录不允许这家证书颁发机构签发证书。请在 CAA 记录里加上它。",
+      "caa": "{domain} 的 CAA 记录只允许 {allowed} 签发证书，不包括这个 CA。请在它的 DNS 中添加 CAA 记录 0 issue \"{ca}\"，或者换一个 CA。",
+      "caa_none": "{domain} 的 CAA 记录不允许任何 CA 签发证书。请在它的 DNS 中添加 CAA 记录 0 issue \"{ca}\"。",
       "directory": "连不上证书颁发机构：{directory}。请检查网络，或者确认目录地址正确。",
       "directory_required": "请填写自定义证书颁发机构的目录地址。",
       "eab_required": "这家证书颁发机构要求 EAB。请在账号里填写 EAB Key ID 和 HMAC Key。",
@@ -58,6 +59,7 @@
       "email_help": "CA 会把账号相关的通知发到这里。使用这个账号即表示接受该 CA 的服务条款。"
     },
     "log": {
+      "caa_unknown": "读不出 {domain} 的 CAA 记录，交给 CA 自己检查",
       "cleanup": "正在删除 {domain} 的验证记录",
       "cleanup_failed": "没能删除 {domain} 的验证记录，可以到 DNS 服务商那里手动删除",
       "connect": "连接证书颁发机构：{directory}",

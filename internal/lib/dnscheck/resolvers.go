@@ -60,6 +60,9 @@ func UseResolvers(servers []string) {
 	if len(servers) == 0 {
 		return
 	}
+	caaMu.Lock()
+	caaServers = servers
+	caaMu.Unlock()
 	opts := dns01.NewOptions()
 	opts.RecursiveNameservers = servers
 	dns01.SetDefaultClient(dns01.NewClient(opts))

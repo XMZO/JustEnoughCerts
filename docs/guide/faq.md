@@ -35,6 +35,15 @@ from the internet, set public resolvers in `JEC_DNS_RESOLVERS` (see
 provider without an API, delegate `_acme-challenge` with a CNAME record
 to a zone at a supported provider (see [Domain validation](../usage/validation.md)).
 
+## The CA refuses because of CAA records
+
+CAA records in a domain's DNS name the CAs that may issue its
+certificates. Before ordering from a well-known CA, such as Let's
+Encrypt, ZeroSSL, Google Trust Services, SSL.com, Sectigo or DigiCert,
+JEC reads them and stops with the record to add, such as
+`0 issue "letsencrypt.org"`, when they leave the CA out. The records of a
+parent domain count for its subdomains that have none.
+
 ## A site still serves the old certificate after the deployment
 
 The online check connects to each domain and reports this, by

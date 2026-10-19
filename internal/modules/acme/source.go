@@ -61,6 +61,11 @@ func (s *source) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509
 	if req.Solver == nil && req.Files == nil {
 		return nil, retry.Permanent(fmt.Errorf("ACME needs a solver for %s", strings.Join(req.Domains, ", ")))
 	}
+	if dir, err := directoryOf(s.in); err == nil {
+		if err := checkCAA(ctx, s.m.caa, dir, req.Domains, log); err != nil {
+			return nil, err
+		}
+	}
 	client, _, err := s.connect(ctx, log)
 	if err != nil {
 		return nil, err

@@ -9,6 +9,7 @@
 package acme
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
@@ -24,6 +25,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/dnscheck"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
 
@@ -39,6 +41,8 @@ type Module struct {
 	// need not see real DNS records.
 	roots           *x509.CertPool
 	skipPropagation bool
+	// caa reads the CAA records of a domain; tests replace it.
+	caa func(ctx context.Context, domain string) (dnscheck.CAAPolicy, error)
 
 	db      *sql.DB
 	secrets *secrets.Scope
@@ -46,7 +50,7 @@ type Module struct {
 }
 
 // New returns the module.
-func New() *Module { return &Module{now: time.Now} }
+func New() *Module { return &Module{now: time.Now, caa: dnscheck.CAA} }
 
 // Manifest describes the module.
 func (*Module) Manifest() module.Manifest {

@@ -18,6 +18,10 @@
 
 JEC 向域名的权威 DNS 服务器查询记录是否生效。证书所选的 DNS 服务商必须是域名 NS 记录所指向的服务商。如服务器的域名解析结果与公网不同，可在 `JEC_DNS_RESOLVERS` 中指定公共解析服务器（参见 [DNS 解析服务器](../operations/configuration.zh-CN.md#dns-解析服务器)）。DNS 服务商没有 API 时，可用 CNAME 记录将 `_acme-challenge` 委派到受支持服务商上的域名（参见[域名验证](../usage/validation.zh-CN.md)）。
 
+## CA 因 CAA 记录拒绝签发
+
+域名 DNS 中的 CAA 记录指定允许为其签发证书的 CA。向 Let's Encrypt、ZeroSSL、Google Trust Services、SSL.com、Sectigo、DigiCert 等常见 CA 下单前，JEC 会先读取这些记录；不包括该 CA 时停止签发，并给出应添加的记录，如 `0 issue "letsencrypt.org"`。子域名没有 CAA 记录时，以上级域名的为准。
+
 ## 部署后网站仍在使用旧证书
 
 线上巡检会连接每个域名进行核对：新证书生效 30 分钟后网站仍使用旧证书时，JEC 会报告并发送通知（参见[线上巡检](../usage/renewal.zh-CN.md#线上巡检)）。请检查部署目标的设置（如要更新的站点或域名）及其最近一次部署日志；CDN 应用证书可能需要几分钟。在证书页面选择“重新部署”可再次部署。

@@ -30,7 +30,8 @@
     },
     "error": {
       "ca": "The certificate authority returned an error. The full log says why.",
-      "caa": "The domain's CAA records do not allow this certificate authority. Add it to the CAA records.",
+      "caa": "The CAA records of {domain} let only {allowed} issue its certificates, not this CA. Add the record 0 issue \"{ca}\" to its DNS, or choose another CA.",
+      "caa_none": "The CAA records of {domain} let no CA issue its certificates. Add the record 0 issue \"{ca}\" to its DNS.",
       "directory": "Cannot reach the certificate authority at {directory}. Check the network, or that the directory URL is right.",
       "directory_required": "Fill in the directory URL of the custom certificate authority.",
       "eab_required": "This certificate authority needs External Account Binding. Fill in the EAB Key ID and HMAC key of the account.",
@@ -58,6 +59,7 @@
       "email_help": "The CA sends notices about the account here. Using the account means accepting the CA's terms of service."
     },
     "log": {
+      "caa_unknown": "Could not read the CAA records of {domain}; the CA checks them itself",
       "cleanup": "Removing the validation record for {domain}",
       "cleanup_failed": "Could not remove the record for {domain}; you can remove it at the DNS provider",
       "connect": "Contacting the certificate authority at {directory}",
