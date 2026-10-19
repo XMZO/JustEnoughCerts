@@ -212,7 +212,7 @@ const selectClass =
                 {{ row.run.domain }}
               </RouterLink>
             </td>
-            <td class="border-b border-line px-3 py-1.5">
+            <td class="border-b border-line px-3 py-1.5 whitespace-nowrap">
               {{ t(actionText[row.run.action]) }}<span class="ml-1.5 text-caption text-ink-muted">{{ t(triggerText[row.run.trigger]) }}</span>
             </td>
             <td class="border-b border-line px-3 py-1.5">
@@ -223,7 +223,7 @@ const selectClass =
             </td>
             <!-- Takes the room left, and cuts what does not fit. -->
             <td class="w-full max-w-0 truncate border-b border-line px-3 py-1.5 text-ink-muted" :title="row.note">{{ row.note }}</td>
-            <td class="border-b border-line px-3 py-1.5 text-right text-ink-muted tabular-nums">{{ row.duration }}</td>
+            <td class="border-b border-line px-3 py-1.5 text-right whitespace-nowrap text-ink-muted tabular-nums">{{ row.duration }}</td>
             <td class="w-11 border-b border-line px-1 py-0.5">
               <RouterLink
                 :to="row.link"

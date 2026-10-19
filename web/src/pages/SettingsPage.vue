@@ -419,7 +419,7 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
 <template>
   <PageHeader :title="t('kernel.settings.title')" :subtitle="t('kernel.settings.intro')" :phone-back="fromMore" />
 
-  <div class="grid items-start gap-3 px-4 pt-3 sm:mt-4 sm:grid-cols-[repeat(auto-fill,minmax(420px,1fr))] sm:gap-4 sm:p-0">
+  <div class="grid grid-cols-[minmax(0,1fr)] items-start gap-3 px-4 pt-3 sm:mt-4 sm:grid-cols-[repeat(auto-fill,minmax(420px,1fr))] sm:gap-4 sm:p-0">
     <p class="m-0 text-ink-muted sm:hidden">{{ t('kernel.settings.intro') }}</p>
 
     <section aria-labelledby="appearance" :class="panel">
@@ -469,7 +469,7 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           :value="system.data.value.timeZone ?? ''"
           aria-describedby="zone-help"
           :aria-invalid="!!zoneError.fields.value.timeZone || undefined"
-          :class="[control, 'w-44 max-w-[50%] flex-none']"
+          :class="[control, 'max-w-[55%] min-w-0 flex-none']"
           @change="pickZone"
         >
           <option value="">{{ t('kernel.settings.time_zone_server', { zone: system.data.value.serverTimeZone }) }}</option>
