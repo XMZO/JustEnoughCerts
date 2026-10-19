@@ -37,10 +37,10 @@ YAML configuration file; see [Configuration file](config-file.md).
 **In the interface**: on the Settings page, choose Restore, upload the
 backup and enter the password. JEC first checks the backup: the file must
 be intact, be a JEC database, be encrypted with the current master key,
-and not come from a newer version of JEC. JEC then stops, Docker restarts
-it with the backup, and the previous database, with its WAL file, is kept
-in the data directory as `jec.db.before-restore-<time>`. Without Docker,
-start JEC again yourself.
+and not come from a newer version of JEC. JEC then stops, Docker or the
+systemd service starts it again with the backup, and the previous
+database, with its WAL file, is kept in the data directory as
+`jec.db.before-restore-<time>`. Otherwise, start JEC again yourself.
 
 **By hand**: stop JEC, place the backup in the data directory as `jec.db`,
 and start JEC.

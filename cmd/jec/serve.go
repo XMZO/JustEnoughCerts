@@ -38,7 +38,7 @@ func runServe(ctx context.Context, args []string, _, stderr io.Writer) int {
 	log := newLogger(cfg.Log, stderr)
 	slog.SetDefault(log)
 	if err := serve(ctx, cfg, log); errors.Is(err, errRestart) {
-		log.Warn("stopped to restore a backup: JEC has to start again, which Docker does by itself")
+		log.Warn("stopped to restore a backup: JEC has to start again, which Docker and the systemd service do by themselves")
 		return exitRestart
 	} else if err != nil {
 		log.Error("server failed", "err", err)

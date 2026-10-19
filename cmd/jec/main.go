@@ -40,6 +40,7 @@ func commands() []command {
 		{"serve", "run the server", runServe},
 		{"healthcheck", "exit 0 if the local server is up (for container health checks)", runHealthcheck},
 		{"reset-password", "set a new password for an account, turn its two-factor authentication off and sign it out everywhere", runResetPassword},
+		{"service", "install or uninstall JEC as a systemd service", runService},
 		{"version", "print version information", runVersion},
 	}
 }

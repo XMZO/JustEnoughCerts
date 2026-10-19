@@ -1,0 +1,53 @@
+# Just Enough Certs as a systemd service, written by "jec service install".
+# Change it with "systemctl edit jec": installing again writes this file
+# anew, but keeps the changes made that way. deploy/systemd/jec.service in
+# the repository is this unit with the default paths, for installing by
+# hand.
+#
+# Settings go in {{.DataDir}}/config.yaml, or in Environment= lines.
+# The sandbox keeps JEC from writing to /usr, /boot and /etc; elsewhere,
+# the user {{.User}} writes where the file permissions let it. A deploy
+# target or website directory under /etc needs a line
+# "ReadWritePaths=<directory>", and the Docker container target
+# "SupplementaryGroups=docker".
+
+[Unit]
+Description=Just Enough Certs
+Documentation=https://xmzo.github.io/JustEnoughCerts/guide/installation
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=exec
+User={{.User}}
+Group={{.User}}
+ExecStart={{.Bin}} serve -data-dir {{.DataDir}}
+# Restoring a backup stops JEC with exit code 3, for it to start again.
+Restart=on-failure
+RestartSec=5
+RestartPreventExitStatus=2
+{{- if .StateDirectory}}
+StateDirectory={{.StateDirectory}}
+StateDirectoryMode=0700
+{{- else}}
+ReadWritePaths={{.DataDir}}
+{{- end}}
+
+NoNewPrivileges=yes
+ProtectSystem=full
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

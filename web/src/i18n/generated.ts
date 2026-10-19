@@ -974,6 +974,7 @@ export type MessageKey =
   | "files.error.file_path"
   | "files.error.owner"
   | "files.error.owner_unknown"
+  | "files.error.read_only"
   | "files.error.relative"
   | "files.error.watch_denied"
   | "files.error.watch_empty"

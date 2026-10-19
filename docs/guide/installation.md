@@ -49,8 +49,67 @@ tar -xzf jec_<version>_linux_amd64.tar.gz
 ```
 
 `jec <command> -h` lists the flags of a command. The other commands are
-`jec version` (version information), `jec healthcheck` (a health check)
-and `jec reset-password` (resets the password).
+`jec version` (version information), `jec healthcheck` (a health check),
+`jec reset-password` (resets the password) and `jec service` (below).
+
+### systemd service
+
+On Linux with systemd, `jec service install` runs JEC as a service:
+
+```sh
+tar -xzf jec_<version>_linux_amd64.tar.gz
+sudo ./jec service install
+journalctl -u jec | grep setup_token
+```
+
+The command copies the binary to `/usr/local/bin/jec`, adds the system
+user `jec`, writes `/etc/systemd/system/jec.service`, and enables and
+starts the service, with its data in `/var/lib/jec`. The last command
+prints the setup token. `jec service unit` prints the unit without
+installing anything; the same unit is in
+[deploy/systemd/jec.service](../../deploy/systemd/jec.service) for
+installing by hand.
+
+| Flag | Default | Description |
+|---|---|---|
+| `-bin` | `/usr/local/bin/jec` | Where the binary is copied to, and the service runs it from |
+| `-data-dir` | `/var/lib/jec` | The data directory |
+| `-user` | `jec` | The user the service runs as, added if missing; `root` to write anywhere |
+| `-start` | `true` | `-start=false` enables the service without starting it |
+
+Settings go in `/var/lib/jec/config.yaml`; see the
+[Configuration reference](../operations/configuration.md). Further
+changes to the service, such as environment variables, go in
+`sudo systemctl edit jec`, which keeps them apart from the unit, so that
+installing again preserves them. `sudo jec service uninstall` stops the
+service and removes the unit, and keeps the data, the user and the binary.
+
+The service runs in a sandbox: it cannot write to `/usr`, `/boot` or
+`/etc`, and elsewhere the user `jec` writes only where file permissions
+allow. Features that reach outside the data directory need access, added
+with `sudo systemctl edit jec` under `[Service]`:
+
+| Feature | Access |
+|---|---|
+| A local directory or website directory under `/etc`, such as `/etc/nginx/ssl` | `ReadWritePaths=/etc/nginx/ssl`, and write permission for `jec` on the directory |
+| A local directory or website directory elsewhere | Write permission for `jec` on the directory |
+| The Docker container target | `SupplementaryGroups=docker` |
+| Certificates on this machine, from certbot or acme.sh | Their keys are readable by root only: install with `-user root`, or have certbot's `--deploy-hook` copy them where `jec` can read them |
+| A command after writing that reloads a service, such as `systemctl reload nginx` | A polkit rule, as below, or `-user root` |
+
+A polkit rule that lets `jec` reload nginx, in
+`/etc/polkit-1/rules.d/50-jec.rules`:
+
+```js
+polkit.addRule(function (action, subject) {
+  if (action.id == "org.freedesktop.systemd1.manage-units" &&
+      action.lookup("unit") == "nginx.service" &&
+      action.lookup("verb") == "reload" &&
+      subject.user == "jec") {
+    return polkit.Result.YES;
+  }
+});
+```
 
 ## Upgrades
 
@@ -62,7 +121,9 @@ and `jec reset-password` (resets the password).
   docker compose up -d
   ```
 
-- **Binaries**: stop JEC, replace the binary and start it again.
+- **systemd service**: run `sudo ./jec service install` again with the
+  new binary; it replaces the binary and restarts the service.
+- **Other binaries**: stop JEC, replace the binary and start it again.
 
 Back up before upgrading; see [Data and backups](../operations/backup.md).
 To verify the signatures of a release, see

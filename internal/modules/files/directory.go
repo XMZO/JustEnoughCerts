@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
@@ -187,10 +188,15 @@ func writeFile(path string, data []byte, mode fs.FileMode, o *owner) error {
 }
 
 // fail explains an error of the file system: one that retrying cannot fix,
-// such as a missing permission, ends the deployment.
+// such as a missing permission or a read-only file system, which a mount
+// or the sandbox of the systemd service makes, ends the deployment.
 func fail(dir string, err error) error {
 	problem := &contracts.Problem{Key: i18n.FilesErrorWrite, Params: map[string]any{"directory": dir}, Err: err}
-	if errors.Is(err, fs.ErrPermission) {
+	switch {
+	case errors.Is(err, syscall.EROFS):
+		problem.Key = i18n.FilesErrorReadOnly
+		return retry.Permanent(problem)
+	case errors.Is(err, fs.ErrPermission):
 		return retry.Permanent(problem)
 	}
 	return problem

@@ -799,6 +799,9 @@ services:
 ### 8.4 原生二进制
 
 - `jec serve` 启动服务；`jec service install` 注册为 systemd 服务。
+- systemd 服务（已实现，`cmd/jec/service.go`）：`jec service install` 把正在运行的程序复制到 `/usr/local/bin/jec`（`-bin`），没有用户 `jec` 时用 `useradd --system` 添加（`-user`，`root` 可写任意位置），写入 `/etc/systemd/system/jec.service`，再 `daemon-reload`、`enable`、`restart`；用新版本再执行一次就是升级。单元文件由 `cmd/jec/jec.service.tmpl` 生成，`deploy/systemd/jec.service` 是默认路径下的同一份（`jec service unit` 输出，测试核对两者一致）。数据目录在 `/var/lib` 下时用 `StateDirectory`（systemd 建目录、交给运行用户），否则写 `ReadWritePaths` 并由命令建好。只替换或删除首行带标记的单元文件（`-force` 例外）；`jec service uninstall` 停止服务、删除单元，保留数据、用户、程序和 `systemctl edit` 的改动。
+  - 沙箱：`ProtectSystem=full`（不能写 `/usr`、`/boot`、`/etc`）、`NoNewPrivileges`、`PrivateTmp`、`PrivateDevices`、内核和时钟的保护、`RestrictAddressFamilies`（含 `AF_UNIX`，Docker 套接字和 D-Bus 要用）。写入后执行的命令和钩子脚本继承沙箱，所以不加 `MemoryDenyWriteExecute`（Node.js、Java 等带 JIT 的程序会崩溃）和 `SystemCallFilter`（命令可能需要任何系统调用）；JEC 本身加上这两项也能运行（在带 systemd 的容器里实测过）。`Restart=on-failure` 让恢复备份后的退出码 3 自动重启。
+  - 要访问数据目录以外的位置时（文档“安装与升级”有表）：`/etc` 下的目录加 `ReadWritePaths`，Docker 目标加 `SupplementaryGroups=docker`，写入后重载其他服务用 polkit 规则（`org.freedesktop.systemd1.manage-units`，按 `unit`、`verb` 放行），或以 root 运行；其中 `ReadWritePaths` 和 polkit 规则在带 systemd 的容器里实测过。写入时遇到只读文件系统（只读挂载或沙箱）报 `files.error.read_only`，告诉用户怎么放行。
 - 数据目录、端口、Base URL、默认语言都可以用命令行参数、环境变量（`JEC_*`）或 `config.yaml` 配置。优先级：命令行参数 > 环境变量 > 配置文件 > 默认值。
 
 ## 9. CI/CD（GitHub Actions）

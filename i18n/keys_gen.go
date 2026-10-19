@@ -966,6 +966,7 @@ const (
 	FilesErrorFilePath                    Key = "files.error.file_path"
 	FilesErrorOwner                       Key = "files.error.owner"
 	FilesErrorOwnerUnknown                Key = "files.error.owner_unknown"
+	FilesErrorReadOnly                    Key = "files.error.read_only"
 	FilesErrorRelative                    Key = "files.error.relative"
 	FilesErrorWatchDenied                 Key = "files.error.watch_denied"
 	FilesErrorWatchEmpty                  Key = "files.error.watch_empty"

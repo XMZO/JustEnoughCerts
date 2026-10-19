@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"syscall"
 	"testing"
 	"time"
 
@@ -101,6 +102,25 @@ func TestDeployErrors(t *testing.T) {
 	_, err = open(t, map[string]string{"directory": root}).Deploy(t.Context(), request(t, "example.com"))
 	if !errors.As(err, &p) || p.Key != i18n.FilesErrorWrite {
 		t.Errorf("a blocked directory: %v", err)
+	}
+}
+
+func TestFail(t *testing.T) {
+	tests := []struct {
+		err       error
+		key       i18n.Key
+		permanent bool
+	}{
+		{&os.PathError{Op: "open", Path: "/etc/x", Err: syscall.EROFS}, i18n.FilesErrorReadOnly, true},
+		{&os.PathError{Op: "open", Path: "/etc/x", Err: syscall.EACCES}, i18n.FilesErrorWrite, true},
+		{&os.PathError{Op: "write", Path: "/srv/x", Err: syscall.ENOSPC}, i18n.FilesErrorWrite, false},
+	}
+	for _, tt := range tests {
+		err := fail("/etc/x", tt.err)
+		var p *contracts.Problem
+		if !errors.As(err, &p) || p.Key != tt.key || p.Params["directory"] != "/etc/x" || retry.IsPermanent(err) != tt.permanent {
+			t.Errorf("fail(%v) = %v, permanent %v; want %s, permanent %v", tt.err, err, retry.IsPermanent(err), tt.key, tt.permanent)
+		}
 	}
 }
 
