@@ -27,16 +27,17 @@ Minecraft mod JEI.
 - **Certificate sources**: any ACME certificate authority, including
   External Account Binding; PEM and PFX uploads; the certificates certbot
   or acme.sh renews on the same machine; the certificate services of
-  Alibaba Cloud and Tencent Cloud; Namecheap SSL Manager (experimental).
+  Alibaba Cloud and Tencent Cloud; a private CA of your own; Namecheap SSL
+  Manager (experimental).
 - **Domain validation**: the 221 DNS providers of
   [lego](https://github.com/go-acme/lego), manual records and CNAME
   delegation; HTTP validation through website directories, answered by
-  JEC itself, or answered at the edge of Alibaba Cloud ESA.
-- **Deploy targets**: 26 types, including Alibaba Cloud (ESA, CDN, OSS,
-  load balancers), Tencent Cloud, Huawei Cloud, Cloudflare, AWS
-  Certificate Manager, BaoTa, 1Panel, Nginx Proxy Manager, Synology DSM,
-  Proxmox VE, Caddy, local directories, SSH servers, Docker containers,
-  Kubernetes and webhooks.
+  JEC itself, or answered at the edge of Alibaba Cloud ESA or Cloudflare.
+- **Deploy targets**: 31 types, including Alibaba Cloud (ESA, CDN, OSS,
+  load balancers), Tencent Cloud (CDN, EdgeOne), Huawei Cloud (CDN, ELB),
+  Cloudflare, AWS (Certificate Manager, CloudFront), Gcore, BaoTa, 1Panel,
+  Nginx Proxy Manager, Synology DSM, Proxmox VE, Caddy, local directories,
+  SSH servers, Docker containers, Kubernetes and webhooks.
 - **Renewal**: renewal windows with a daily check time, ACME Renewal
   Information (ARI), retries with backoff, and online checks of the
   certificate each domain serves.

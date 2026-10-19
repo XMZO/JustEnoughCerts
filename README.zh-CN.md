@@ -16,9 +16,9 @@ Just Enough Certs（JEC）是一款自托管的 SSL/TLS 证书管理面板，负
 
 ## 功能
 
-- **证书来源**：任意 ACME 证书颁发机构（支持 External Account Binding）；上传 PEM 或 PFX 文件；本机 certbot、acme.sh 续期的证书；阿里云与腾讯云的证书服务；Namecheap SSL Manager（实验性）。
-- **域名验证**：[lego](https://github.com/go-acme/lego) 支持的 221 家 DNS 服务商、手动添加记录与 CNAME 委派；HTTP 验证可写入网站目录，或由 JEC 自身、阿里云 ESA 边缘应答。
-- **部署目标**：26 种，包括阿里云（ESA、CDN、OSS、负载均衡）、腾讯云、华为云、Cloudflare、AWS Certificate Manager、宝塔面板、1Panel、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Caddy、本地目录、SSH 服务器、Docker 容器、Kubernetes 与 Webhook。
+- **证书来源**：任意 ACME 证书颁发机构（支持 External Account Binding）；上传 PEM 或 PFX 文件；本机 certbot、acme.sh 续期的证书；阿里云与腾讯云的证书服务；自己的私有 CA；Namecheap SSL Manager（实验性）。
+- **域名验证**：[lego](https://github.com/go-acme/lego) 支持的 221 家 DNS 服务商、手动添加记录与 CNAME 委派；HTTP 验证可写入网站目录，或由 JEC 自身、阿里云 ESA 或 Cloudflare 边缘应答。
+- **部署目标**：31 种，包括阿里云（ESA、CDN、OSS、负载均衡）、腾讯云（CDN、EdgeOne）、华为云（CDN、ELB）、Cloudflare、AWS（Certificate Manager、CloudFront）、Gcore、宝塔面板、1Panel、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Caddy、本地目录、SSH 服务器、Docker 容器、Kubernetes 与 Webhook。
 - **续期**：续期窗口与每日检查时间、ACME 续期信息（ARI）、失败按退避重试，并核对各域名实际提供的证书。
 - **通知**：14 种渠道，如邮件、Telegram、钉钉、飞书、企业微信、Discord、Slack、Bark、ntfy、Webhook 与脚本，可分别设置事件与语言。
 - **安全**：密钥加密存储、两步验证、OpenID Connect 单点登录、API 令牌与审计日志，可在证书颁发机构吊销已签发的证书。

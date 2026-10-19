@@ -38,13 +38,13 @@ and servers, and renews them before they expire.
 
 - [Certificate sources](../usage/sources.md): ACME, including External
   Account Binding; manual upload; certbot and acme.sh on the same machine;
-  Alibaba Cloud and Tencent Cloud certificate services; Namecheap SSL
-  Manager (experimental).
+  Alibaba Cloud and Tencent Cloud certificate services; a private CA;
+  Namecheap SSL Manager (experimental).
 - [Domain validation](../usage/validation.md): the 221 DNS providers of
   lego, arbitrary records, manual records, website directories, answers by
-  JEC itself and answers at Alibaba Cloud ESA's edge.
-- [Deploy targets](../usage/targets.md): 26 types, covering clouds such as
-  Alibaba Cloud, Tencent Cloud, Huawei Cloud, Cloudflare and AWS, panels
+  JEC itself and answers at the edge of Alibaba Cloud ESA or Cloudflare.
+- [Deploy targets](../usage/targets.md): 31 types, covering clouds such as
+  Alibaba Cloud, Tencent Cloud, Huawei Cloud, Cloudflare, AWS and Gcore, panels
   such as BaoTa and 1Panel, and local directories, SSH servers, Docker
   containers and Kubernetes.
 - [Renewal](../usage/renewal.md): renewal windows and a daily check time,
