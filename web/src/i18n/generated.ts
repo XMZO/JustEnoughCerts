@@ -1593,6 +1593,8 @@ export type MessageKey =
   | "manual.field.minutes_help"
   | "manual.module.description"
   | "manual.module.name"
+  | "metrics.module.description"
+  | "metrics.module.name"
   | "monitor.action.check"
   | "monitor.error.unknown"
   | "monitor.module.description"

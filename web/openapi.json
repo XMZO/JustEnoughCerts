@@ -4907,6 +4907,46 @@
         ]
       }
     },
+    "/metrics/prometheus": {
+      "get": {
+        "description": "The certificates in Prometheus's text format: when each ends and renews, its state, its failed deployments and what the online checks found. Prometheus scrapes it with an API token that may read.",
+        "operationId": "metrics-prometheus",
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {}
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Type": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Metrics for Prometheus",
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
     "/modules/{id}": {
       "put": {
         "description": "A module switched on runs once the modules it requires are on too. Required modules cannot be switched off.",

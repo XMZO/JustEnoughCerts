@@ -1585,6 +1585,8 @@ const (
 	ManualFieldMinutesHelp                Key = "manual.field.minutes_help"
 	ManualModuleDescription               Key = "manual.module.description"
 	ManualModuleName                      Key = "manual.module.name"
+	MetricsModuleDescription              Key = "metrics.module.description"
+	MetricsModuleName                     Key = "metrics.module.name"
 	MonitorActionCheck                    Key = "monitor.action.check"
 	MonitorErrorUnknown                   Key = "monitor.error.unknown"
 	MonitorModuleDescription              Key = "monitor.module.description"

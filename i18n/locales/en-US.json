@@ -2147,6 +2147,12 @@
       "name": "Manual DNS records"
     }
   },
+  "metrics": {
+    "module": {
+      "description": "Serves the certificates as metrics for Prometheus: when each ends and renews, its state, failed deployments and online checks.",
+      "name": "Prometheus metrics"
+    }
+  },
   "monitor": {
     "action": {
       "check": "Check now"

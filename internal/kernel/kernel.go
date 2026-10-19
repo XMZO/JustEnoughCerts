@@ -258,6 +258,9 @@ func callAPI(ctx context.Context, h http.Handler, prefix, via, method, path stri
 		}
 		r = bytes.NewReader(data)
 	}
+	// A call made while the router serves another request starts routing
+	// anew: chi would go on from where the outer request was.
+	ctx = context.WithValue(ctx, chi.RouteCtxKey, (*chi.Context)(nil))
 	req, err := http.NewRequestWithContext(auth.WithLocal(ctx, via), method, prefix+path, r)
 	if err != nil {
 		return err

@@ -2147,6 +2147,12 @@
       "name": "手动 DNS 记录"
     }
   },
+  "metrics": {
+    "module": {
+      "description": "以 Prometheus 指标提供证书的到期和续期时间、状态、部署失败和线上检查结果。",
+      "name": "Prometheus 指标"
+    }
+  },
   "monitor": {
     "action": {
       "check": "立即检查"

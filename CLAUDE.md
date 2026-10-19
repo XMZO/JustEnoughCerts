@@ -116,6 +116,7 @@
 - 服务商对话框的表单每次打开、每种类型只初始化一次（`ProviderDialog.vue` 的 `formFor`），重新获取类型不会覆盖已经填的内容。换类型时旧表单是 `inert` 的，Playwright 往里 `fill` 会静默丢掉：伪语言测试选类型一律用 `pick(dialog, name)`，等新表单可用再填（CI 上曾因此偶发失败）。
 - PostgreSQL（`PLAN.md` 8.5）：`JEC_DATABASE_URL` 设了就用 PostgreSQL；SQL 和迁移只写一份（SQLite 写法），`internal/kernel/store` 的包装驱动和迁移翻译负责转换；新写的 SQL 照 8.5 的“可移植的写法”办；`jec import-sqlite`；备份、恢复经逐表复制，两种数据库的备份都是 SQLite 文件。本机测试：临时容器起 `postgres:18`，`JEC_TEST_POSTGRES=postgres://…` 跑 `go test ./...`；CI 有 `test (PostgreSQL 18)`。
 - 签发记录也分页了（和审计日志一样，`GET /api/v1/certs/runs` 的 `action`、`result`、`q`、`page`、`size`；`size` 默认 500，总览、部署目标页照旧取一次）。只用替身测过的类型标 `Untested`（`providers.Type.Untested`，界面上的“未实测”标签，`web/src/components/TypeTags.vue`），新加的类型只用替身测过也要标上，用真实账号验证后去掉。多用户和 Namecheap 官方 API 暂不考虑。
+- Prometheus 指标（模块 `metrics`，`GET /api/v1/metrics/prometheus`，经 `r.Call` 读 JEC 自己的 API，只读令牌即可采集；文档 `docs/operations/monitoring.md`）。`Registry.Call` 在处理别的请求时调用也行了：`callAPI` 清掉外层请求带进来的 chi 路由状态，否则内层请求会落到网页上。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定
