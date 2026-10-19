@@ -72,6 +72,53 @@ func stateContext(certificateID int64) string {
 // errNoSource: the certificate gets new versions by upload only.
 var errNoSource = errors.New("the certificate has no source to issue it")
 
+// errIssuing: an issuance of the certificate is under way.
+var errIssuing = errors.New("an issuance of the certificate is under way")
+
+// setDomains replaces the domains of certificate id, which has a source,
+// and issues it at once for them; it does nothing when they are the same.
+// An order kept from an issuance that failed is for the old domains: it
+// is dropped.
+func (s *service) setDomains(ctx context.Context, id int64, domains []string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	c, err := s.load(ctx, tx, id)
+	if err != nil {
+		return err
+	}
+	if c.Source != sourceProvider {
+		return errNoSource
+	}
+	if open, err := s.openIssuance(ctx, tx, id); err != nil {
+		return err
+	} else if open != nil {
+		return errIssuing
+	}
+	if slices.Equal(c.Domains, domains) {
+		return nil
+	}
+	list, _ := json.Marshal(domains)
+	now := s.now().UnixMilli()
+	if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET domains = ?, updated_at = ? WHERE id = ?", string(list), now, id); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx,
+		"UPDATE certs_issuances SET sealed_key = NULL, sealed_state = NULL WHERE certificate_id = ? AND state = 'failed'", id); err != nil {
+		return err
+	}
+	if _, err := s.startIssuance(ctx, tx, id, reasonManual); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.issuing.kick()
+	return nil
+}
+
 // Issuance is getting a new version of a certificate from its source.
 type Issuance struct {
 	ID            int64

@@ -269,6 +269,7 @@
       "certs_issue_new": "Add a certificate to issue",
       "certs_revoke": "Revoke a certificate version",
       "certs_save_settings": "Change the renewal defaults",
+      "certs_set_domains": "Changed the domains of a certificate",
       "certs_update": "Change a certificate",
       "certs_upload": "Upload a new version",
       "change_password": "Change the password",
@@ -829,8 +830,11 @@
       "waiting": "A new certificate is being issued; the source is not done yet."
     },
     "domains": {
+      "edit": "Change the domains",
+      "help": "Saving issues the certificate again at once for the new domains, and deploys it as usual. The first one is the primary domain.",
       "placeholder": "Add a domain, then press Enter",
-      "remove": "Remove {domain}"
+      "remove": "Remove {domain}",
+      "save": "Save and issue"
     },
     "download": {
       "files": "A ZIP file with cert.pem, chain.pem, fullchain.pem and privkey.pem, the format most web servers take.",
@@ -862,6 +866,7 @@
       "encrypted_key": "The private key is protected by a passphrase. Remove it first, for example with openssl pkey -in key.pem -out plain.pem, then paste the key again.",
       "ip_dns": "An IP address can be proved only through files on the web server (HTTP validation), never through DNS.",
       "issue_failed": "The issuance failed. The full log says why.",
+      "issuing_now": "The certificate is being issued; change it once the issuance ends.",
       "key_mismatch": "The private key does not belong to this certificate. Check that both come from the same order or CSR.",
       "names_missing": "The certificate issued lacks {domains}.",
       "no_certificate": "No certificate found. Paste the certificate in PEM format, starting with -----BEGIN CERTIFICATE-----.",

@@ -663,6 +663,16 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page).toHaveURL(/\/certificates\/\d+$/)
   await expect(page.getByRole('heading', { name: label('certs.detail.last_issuance') })).toBeVisible()
   expect.soft(await problems(page), 'a certificate whose issuance failed').toEqual([])
+  // Its domains, changed: refused while its issuance waits to retry.
+  await page.getByRole('button', { name: label('certs.domains.edit') }).click()
+  await expect(page.locator('dialog[open]')).toBeVisible()
+  await page.locator('#new-domains').fill('www.issued.example.com')
+  await page.locator('#new-domains').press('Enter')
+  await page.locator('button[form=domains-form]').click()
+  await expect(page.locator('dialog[open]').getByRole('alert')).toBeVisible()
+  expect.soft(await problems(page), 'change the domains of a certificate, refused').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
 
   // Revoking. There is no CA to have issued versions, so the page is shown
   // made-up ones: the one in use, one it can revoke and one revoked. The

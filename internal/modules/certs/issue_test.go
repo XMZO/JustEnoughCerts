@@ -1172,3 +1172,42 @@ func TestKeySourceKeepsState(t *testing.T) {
 		t.Errorf("the key from the source logged %d times: %v", n, keys)
 	}
 }
+
+func TestSetDomains(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+	path := "/certificates/" + strconv.FormatInt(c.ID, 10) + "/domains"
+	// Not while it is being issued.
+	if e := f.apiError(f.api.Put(path, map[string]any{"domains": []string{"example.com", "www.example.com"}}), http.StatusConflict); e.Code != string(i18n.CertsErrorIssuingNow) {
+		t.Errorf("while issuing: %+v", e)
+	}
+	f.run()
+	first := f.certificate(c.ID).Current.ID
+
+	// The same domains change nothing.
+	f.call(f.api.Put(path, map[string]any{"domains": []string{"Example.com."}}), http.StatusOK, nil)
+	if is := f.certificate(c.ID).Issuance; is.State != "done" {
+		t.Errorf("the same domains started %+v", is)
+	}
+	// Others are checked, then issued at once.
+	e := f.apiError(f.api.Put(path, map[string]any{"domains": []string{"example.com", "bad name", "192.0.2.1"}}), http.StatusUnprocessableEntity)
+	if len(e.Fields) != 2 || e.Fields[0].Location != "body.domains[1]" || e.Fields[1].Code != string(i18n.CertsErrorIpDns) {
+		t.Errorf("bad domains: %+v", e.Fields)
+	}
+	var got CertificateBody
+	f.call(f.api.Put(path, map[string]any{"domains": []string{"example.com", "WWW.example.com"}}), http.StatusOK, &got)
+	if !slices.Equal(got.Domains, []string{"example.com", "www.example.com"}) || got.Issuance == nil || got.Issuance.Reason != "manual" || got.State != "issuing" {
+		t.Fatalf("after = %+v", got)
+	}
+	f.run()
+	if got := f.certificate(c.ID); got.Current.ID == first || !slices.Contains(got.Current.Names, "www.example.com") {
+		t.Errorf("issued %+v", got.Current)
+	}
+
+	// An upload takes its domains from its file.
+	up := f.add(f.leaf(60, "upload.example.com"))
+	if e := f.apiError(f.api.Put("/certificates/"+strconv.FormatInt(up.ID, 10)+"/domains", map[string]any{"domains": []string{"other.example.com"}}), http.StatusConflict); e.Code != string(i18n.CertsErrorNoSource) {
+		t.Errorf("upload: %+v", e)
+	}
+	f.apiError(f.api.Put("/certificates/999/domains", map[string]any{"domains": []string{"x.example.com"}}), http.StatusNotFound)
+}

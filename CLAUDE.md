@@ -128,6 +128,7 @@
 - 搜索跳转（`web/src/components/QuickJump.vue`）：Ctrl/⌘+K、侧栏“搜索”、平板顶栏、手机“更多”打开（`shell.ts` 的 `jumpOpen`），找证书（`certs/search.ts` 的 `matches`）、页面、服务商（跳到 `?edit=<id>`，服务商页据此打开编辑框），第一次打开才挂载。
 - 证书列表的批量操作（宽屏表格的复选框，`certs.bulk.*`）：选中的一起立即续期、重新部署（`CertActionDialog` 支持多张）、删除，逐张调用原有接口；下载可附 PFX（`pfx`、`pfxPassword`、`pfxLegacy`）；添加证书只填通配符时提示加上主域名。
 - DNS 区域预检：`dnsrecord.API.Holds`（四家各自按名字查一个域名）和 `dnsrecord.ZoneOf`（先按 SOA 找区域）；验证类型标 `Zones`、实例实现 `contracts.ZoneHolder`（lego 模块的这四家），接口 `GET /api/v1/providers/{id}/zones?domain=…`（GET，不进审计）；添加证书页在 DNS 服务商下面提示不在账号里的域名。
+- 证书的修改域名（`PUT /api/v1/certs/certificates/{id}/domains`，`setDomains`）：只限有来源的证书，签发进行中拒绝（`certs.error.issuing_now`），丢弃失败签发留下的订单状态后立即签发。续期窗口和紧急期按有效期封顶（`limits`：2/3 和 1/3），短期证书不会刚签好就再续。ACME 账号可选证书配置（`profile`，测试连接列出 CA 提供的）；证书可以是 IP 地址（只能 HTTP 验证），Pebble 测试覆盖 shortlived 和 IP。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

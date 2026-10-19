@@ -28,6 +28,7 @@ import {
   useIssuances,
   useIssueNow,
   useRevoke,
+  useSetDomains,
   useUpdateCertificate,
   useUploadVersion,
   type RevokeReason,
@@ -42,6 +43,7 @@ import { useDurationText } from '../certs/runs'
 import CertActionDialog, { type CertAsk } from '../components/CertActionDialog.vue'
 import CertSlot from '../components/CertSlot.vue'
 import CopyButton from '../components/CopyButton.vue'
+import DomainInput from '../components/DomainInput.vue'
 import IssuanceSteps from '../components/IssuanceSteps.vue'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
@@ -351,6 +353,32 @@ async function saveNote() {
     return
   }
   noting.value = false
+}
+
+// The domains of a certificate with a source: changed, it is issued again
+// at once for them.
+const renaming = ref(false)
+const newDomains = ref<string[]>([])
+const setDomains = useSetDomains(() => props.id)
+const domainsError = useApiError(setDomains.error)
+const badNewDomains = computed(() =>
+  Object.keys(domainsError.fields.value)
+    .map((f) => /^domains\[(\d+)\]$/.exec(f)?.[1])
+    .filter((i): i is string => i !== undefined)
+    .map(Number),
+)
+function editDomains() {
+  newDomains.value = [...(cert.value?.domains ?? [])]
+  setDomains.reset()
+  renaming.value = true
+}
+async function saveDomains() {
+  try {
+    await setDomains.mutateAsync(newDomains.value)
+  } catch {
+    return // shown in the dialog
+  }
+  renaming.value = false
 }
 
 async function saveSettings() {
@@ -745,8 +773,20 @@ async function confirmDelete() {
                 </button>
               </dd>
               <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.domains') }}</dt>
-              <dd class="m-0 [overflow-wrap:anywhere]" translate="no">
-                <span v-for="d in cert.domains" :key="d" class="block">{{ d }}</span>
+              <dd class="m-0 flex min-w-0 items-start gap-1">
+                <span class="min-w-0 flex-1 [overflow-wrap:anywhere]" translate="no">
+                  <span v-for="d in cert.domains" :key="d" class="block">{{ d }}</span>
+                </span>
+                <button
+                  v-if="issued"
+                  type="button"
+                  :aria-label="t('certs.domains.edit')"
+                  :title="t('certs.domains.edit')"
+                  class="-my-1 grid size-7 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
+                  @click="editDomains"
+                >
+                  <Pencil class="size-3.5" aria-hidden="true" />
+                </button>
               </dd>
               <template v-if="registrations.length">
                 <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('watch.domain.cert_row') }}</dt>
@@ -898,6 +938,25 @@ async function confirmDelete() {
     <template #footer>
       <JecButton @click="noting = false">{{ t('kernel.action.cancel') }}</JecButton>
       <JecButton type="submit" form="note-form" variant="primary" :busy="update.isPending.value">{{ t('kernel.action.save') }}</JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-if="cert" v-model:open="renaming" :title="t('certs.domains.edit')" small>
+    <form id="domains-form" class="flex flex-col gap-3" novalidate @submit.prevent="saveDomains">
+      <p class="m-0 text-small text-ink-muted">{{ t('certs.domains.help') }}</p>
+      <label for="new-domains" class="sr-only">{{ t('certs.field.domains') }}</label>
+      <DomainInput id="new-domains" v-model="newDomains" :invalid="badNewDomains" described-by="new-domains-help" />
+      <p v-if="badNewDomains.length" id="new-domains-help" class="m-0 text-small text-danger-ink">{{ t('certs.error.bad_domain') }}</p>
+      <p v-else-if="domainsError.fields.value.domains" id="new-domains-help" class="m-0 text-small text-danger-ink">
+        {{ t(domainsError.fields.value.domains) }}
+      </p>
+      <JecAlert v-if="domainsError.alert.value" :code="domainsError.alert.value.code" :params="domainsError.alert.value.params" />
+    </form>
+    <template #footer>
+      <JecButton @click="renaming = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton type="submit" form="domains-form" variant="primary" :busy="setDomains.isPending.value" :disabled="!newDomains.length">
+        <RotateCw class="size-4" aria-hidden="true" />{{ t('certs.domains.save') }}
+      </JecButton>
     </template>
   </JecDialog>
 

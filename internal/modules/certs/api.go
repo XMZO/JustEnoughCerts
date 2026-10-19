@@ -527,6 +527,8 @@ func serviceError(err error) error {
 			WithField("body.certificate", i18n.CertsErrorNotNewer)
 	case errors.Is(err, errNoSource):
 		return api.NewError(http.StatusConflict, i18n.CertsErrorNoSource, nil)
+	case errors.Is(err, errIssuing):
+		return api.NewError(http.StatusConflict, i18n.CertsErrorIssuingNow, nil)
 	case errors.Is(err, errNoVersion):
 		return api.NewError(http.StatusConflict, i18n.CertsErrorNoVersion, nil)
 	}

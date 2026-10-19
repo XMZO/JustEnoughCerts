@@ -1267,6 +1267,24 @@
         ],
         "type": "object"
       },
+      "DomainsInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "domains": {
+            "description": "The domains, the primary first; a wildcard as *.example.com",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "domains"
+        ],
+        "type": "object"
+      },
       "DomainsOutputBody": {
         "additionalProperties": false,
         "properties": {
@@ -4463,6 +4481,59 @@
           }
         },
         "summary": "Deploy the current version of a certificate now",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/certificates/{id}/domains": {
+      "put": {
+        "description": "Refused while an issuance is under way; an uploaded certificate takes its domains from its file.",
+        "operationId": "certs-set-domains",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DomainsInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Change the domains of a certificate with a source, which is issued again at once",
         "tags": [
           "certs"
         ]

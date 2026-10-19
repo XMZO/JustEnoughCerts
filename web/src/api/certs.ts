@@ -245,6 +245,13 @@ export function useUpdateCertificate(id: MaybeRefOrGetter<number>) {
   )
 }
 
+/** useSetDomains changes the domains of a certificate with a source, which is issued again at once. */
+export function useSetDomains(id: MaybeRefOrGetter<number>) {
+  return useCertsMutation((domains: string[]) =>
+    unwrap(api.PUT('/certs/certificates/{id}/domains', { params: { path: { id: toValue(id) } }, body: { domains } })),
+  )
+}
+
 export function useDeleteCertificate(id: MaybeRefOrGetter<number>) {
   return useCertsMutation(() => unwrap(api.DELETE('/certs/certificates/{id}', { params: { path: { id: toValue(id) } } })))
 }

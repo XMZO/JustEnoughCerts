@@ -160,6 +160,21 @@ func registerIssueAPI(a huma.API, s *service) {
 	})
 
 	huma.Register(a, huma.Operation{
+		OperationID: "certs-set-domains", Method: http.MethodPut, Path: "/certificates/{id}/domains",
+		Summary:     "Change the domains of a certificate with a source, which is issued again at once",
+		Description: "Refused while an issuance is under way; an uploaded certificate takes its domains from its file.",
+	}, func(ctx context.Context, in *domainsInput) (*certificateOutput, error) {
+		if err := s.checkDomains(ctx, in.ID, in.Body.Domains); err != nil {
+			return nil, err
+		}
+		domains, _ := normalizeDomains(in.Body.Domains)
+		if err := s.setDomains(ctx, in.ID, domains); err != nil {
+			return nil, serviceError(err)
+		}
+		return s.output(ctx, in.ID)
+	})
+
+	huma.Register(a, huma.Operation{
 		OperationID: "certs-issuances", Method: http.MethodGet, Path: "/certificates/{id}/issuances",
 		Summary: "List the latest issuances of a certificate",
 	}, func(ctx context.Context, in *issuanceListInput) (*issuanceListOutput, error) {
@@ -213,6 +228,41 @@ func registerIssueAPI(a huma.API, s *service) {
 		}
 		return out, nil
 	})
+}
+
+type domainsInput struct {
+	ID   int64 `path:"id"`
+	Body struct {
+		Domains []string `json:"domains" minItems:"1" maxItems:"100" doc:"The domains, the primary first; a wildcard as *.example.com"`
+	}
+}
+
+// checkDomains checks new domains of certificate id as adding it does:
+// each well formed, and each one its solver can prove.
+func (s *service) checkDomains(ctx context.Context, id int64, names []string) error {
+	c, err := s.load(ctx, s.db, id)
+	if err != nil {
+		return serviceError(err)
+	}
+	invalid := api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil)
+	domains, bad := normalizeDomains(names)
+	for _, i := range bad {
+		invalid = invalid.WithField(fmt.Sprintf("body.domains[%d]", i), i18n.CertsErrorBadDomain)
+	}
+	if c.SolverProvider != 0 {
+		if typ, err := s.providers.Type(ctx, c.SolverProvider); err == nil {
+			switch {
+			case typ.Solves() == providers.ChallengeHTTP && slices.ContainsFunc(domains, isWildcard):
+				invalid = invalid.WithField("body.domains", i18n.CertsErrorWildcardHttp)
+			case typ.Solves() != providers.ChallengeHTTP && slices.ContainsFunc(domains, isIP):
+				invalid = invalid.WithField("body.domains", i18n.CertsErrorIpDns)
+			}
+		}
+	}
+	if len(invalid.Fields) > 0 {
+		return invalid
+	}
+	return nil
 }
 
 // addIssued checks the request and adds the certificate with its first

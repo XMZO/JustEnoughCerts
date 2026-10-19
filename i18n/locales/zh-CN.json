@@ -269,6 +269,7 @@
       "certs_issue_new": "添加要签发的证书",
       "certs_revoke": "吊销证书版本",
       "certs_save_settings": "修改续期默认值",
+      "certs_set_domains": "修改证书的域名",
       "certs_update": "修改证书设置",
       "certs_upload": "上传新版本",
       "change_password": "修改密码",
@@ -829,8 +830,11 @@
       "waiting": "正在签发新证书，来源还没处理完。"
     },
     "domains": {
+      "edit": "修改域名",
+      "help": "保存后立即按新的域名重新签发，新证书照常部署。第一个域名是主域名。",
       "placeholder": "添加域名，回车确认",
-      "remove": "移除 {domain}"
+      "remove": "移除 {domain}",
+      "save": "保存并签发"
     },
     "download": {
       "files": "ZIP 文件，内含 cert.pem、chain.pem、fullchain.pem 和 privkey.pem，大多数 Web 服务器都能直接用。",
@@ -862,6 +866,7 @@
       "encrypted_key": "私钥设置了密码。请先去掉密码，例如运行 openssl pkey -in key.pem -out plain.pem，再重新粘贴。",
       "ip_dns": "IP 地址只能通过网站目录类的验证方式（HTTP 文件验证）证明，不能用 DNS 验证。",
       "issue_failed": "签发失败。完整日志里有原因。",
+      "issuing_now": "这张证书正在签发，等签发结束后再改。",
       "key_mismatch": "私钥和证书不匹配。请确认两者来自同一个订单或同一份 CSR。",
       "names_missing": "签发的证书缺少这些域名：{domains}。",
       "no_certificate": "没有找到证书。请粘贴 PEM 格式的证书，开头是 -----BEGIN CERTIFICATE-----。",
