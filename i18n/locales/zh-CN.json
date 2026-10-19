@@ -703,6 +703,7 @@
       "key": "密钥",
       "not_after": "到期时间",
       "not_before": "签发时间",
+      "notify": "通知",
       "reminder": "到期提醒",
       "renewal": "自动续期",
       "serial": "序列号",
@@ -728,7 +729,11 @@
     },
     "issuance": {
       "background": "在后台继续",
+      "deploy_step": "部署到 {target}",
       "done": "证书已签发",
+      "done_deployed": "已签发，并部署到 {count, plural, other {# 个目标}}",
+      "done_deploying": "已签发，正在部署到 {count, plural, other {# 个目标}}",
+      "done_renew": "有效期到 {date}，JEC 会在 {time} 自动续期。",
       "done_until": "有效期到 {date}。",
       "download_log": "下载完整日志",
       "failed": "签发失败，共试了 {attempts, plural, other {# 次}}",
@@ -754,6 +759,8 @@
       "title": "签发",
       "via": "来源：{source}",
       "via_dns": "来源：{source}，用 {dns} 验证域名",
+      "via_dns_targets": "来源：{source}，用 {dns} 验证域名，部署到 {targets}",
+      "via_targets": "来源：{source}，部署到 {targets}",
       "waiting": "{source} 还没处理完，JEC 会定时查看"
     },
     "key": {
@@ -900,7 +907,9 @@
       "days": "提前天数",
       "days_help": "证书只剩这么多天时提醒你，可以填 1 到 365。",
       "days_unit": "天",
+      "notify_none": "没有通知渠道",
       "reminder_value": "到期前 {days, plural, other {# 天}}",
+      "renewal_value": "到期前 {days, plural, other {# 天}}，每天 {time} 检查",
       "title": "续期设置"
     },
     "source": {

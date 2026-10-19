@@ -703,6 +703,7 @@
       "key": "Key",
       "not_after": "Expires on",
       "not_before": "Valid from",
+      "notify": "Notifications",
       "reminder": "Reminder",
       "renewal": "Renewal",
       "serial": "Serial number",
@@ -728,7 +729,11 @@
     },
     "issuance": {
       "background": "Continue in the background",
+      "deploy_step": "Deploy to {target}",
       "done": "Certificate issued",
+      "done_deployed": "Issued, and deployed to {count, plural, one {# target} other {# targets}}",
+      "done_deploying": "Issued; deploying to {count, plural, one {# target} other {# targets}}",
+      "done_renew": "Valid until {date}; JEC renews it at {time}.",
       "done_until": "Valid until {date}.",
       "download_log": "Download the full log",
       "failed": "The issuance failed after {attempts, plural, one {# attempt} other {# attempts}}",
@@ -754,6 +759,8 @@
       "title": "Issuance",
       "via": "From {source}",
       "via_dns": "From {source}, validated through {dns}",
+      "via_dns_targets": "Source: {source}, validated through {dns}; deploys to {targets}",
+      "via_targets": "Source: {source}; deploys to {targets}",
       "waiting": "{source} is not done yet; JEC checks back regularly"
     },
     "key": {
@@ -900,7 +907,9 @@
       "days": "Days before expiry",
       "days_help": "JEC warns you when the certificate has this many days left, from 1 to 365.",
       "days_unit": "days",
+      "notify_none": "No notification channels",
       "reminder_value": "{days, plural, one {# day} other {# days}} before expiry",
+      "renewal_value": "{days, plural, one {# day} other {# days}} before it ends, looked at daily at {time}",
       "title": "Renewal settings"
     },
     "source": {

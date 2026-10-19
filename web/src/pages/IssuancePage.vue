@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Circle, CircleCheck, CircleX, Hourglass, LoaderCircle, OctagonX, RotateCw, TriangleAlert } from '@lucide/vue'
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 
 import { useIssuance, useIssueNow } from '../api/certs'
 import { useApiError } from '../api/errors'
@@ -28,6 +28,7 @@ const detail = useIssuance(() => props.issuance)
 const loadError = useApiError(detail.error)
 const sources = useProviders('source')
 const solvers = useProviders('solver')
+const targets = useProviders('target')
 
 const is = computed(() => detail.data.value?.issuance)
 const cert = computed(() => detail.data.value?.certificate)
@@ -40,10 +41,27 @@ const running = computed(() => is.value?.state === 'running' || is.value?.state 
 const retrying = computed(() => is.value?.state === 'pending' && !!is.value.error)
 
 const source = computed(() => sources.data.value?.find((p) => p.id === cert.value?.sourceProvider)?.name ?? '')
+const targetName = (id: number) => targets.data.value?.find((p) => p.id === id)?.name ?? ''
 const via = computed(() => {
   const dns = solvers.data.value?.find((p) => p.id === cert.value?.solverProvider)?.name
+  const to = intl.list((cert.value?.targets ?? []).map(targetName).filter(Boolean))
+  if (to) return dns ? t('certs.issuance.via_dns_targets', { source: source.value, dns, targets: to }) : t('certs.issuance.via_targets', { source: source.value, targets: to })
   return dns ? t('certs.issuance.via_dns', { source: source.value, dns }) : t('certs.issuance.via', { source: source.value })
 })
+
+// The deployments of the version the issuance brings, to each target, as
+// the steps after it: under way, done or failed, or to come.
+const deploys = computed(() =>
+  (cert.value?.targets ?? []).map((target) => {
+    const d = cert.value?.deployments.find((x) => x.target === target && !!is.value?.versionId && x.versionId === is.value.versionId)
+    let state: 'pending' | 'running' | 'done' | 'failed' = 'pending'
+    if (d?.state === 'done') state = 'done'
+    else if (d?.state === 'failed' || (d?.state === 'pending' && d.error)) state = 'failed'
+    else if (d?.state === 'running') state = 'running'
+    return { target, name: targetName(target), state, at: d?.finishedAt, link: d ? `/certificates/${props.id}/deployments/${d.id}` : undefined }
+  }),
+)
+const deployed = computed(() => deploys.value.filter((d) => d.state === 'done').length)
 
 const params = (p?: Record<string, unknown>) => (p ?? {}) as Params
 const message = (l: { key: string; params?: Record<string, unknown> }) => t(l.key as MessageKey, params(l.params))
@@ -94,8 +112,15 @@ async function retry() {
       <section v-if="is.state === 'done'" role="status" class="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-lg border border-line bg-ok-soft p-4">
         <CircleCheck class="size-6 flex-none text-ok-ink" aria-hidden="true" />
         <div class="flex min-w-0 flex-[1_1_280px] flex-col gap-0.5">
-          <strong class="text-heading text-ok-ink">{{ t('certs.issuance.done') }}</strong>
-          <span v-if="cert.current" class="text-small">
+          <strong class="text-heading text-ok-ink">
+            <template v-if="!deploys.length">{{ t('certs.issuance.done') }}</template>
+            <template v-else-if="deployed === deploys.length">{{ t('certs.issuance.done_deployed', { count: deploys.length }) }}</template>
+            <template v-else>{{ t('certs.issuance.done_deploying', { count: deploys.length }) }}</template>
+          </strong>
+          <span v-if="cert.current && cert.renewAt" class="text-small">
+            {{ t('certs.issuance.done_renew', { date: intl.date(cert.current.notAfter), time: intl.dateTime(cert.renewAt) }) }}
+          </span>
+          <span v-else-if="cert.current" class="text-small">
             {{ t('certs.issuance.done_until', { date: intl.date(cert.current.notAfter) }) }}
           </span>
         </div>
@@ -154,6 +179,19 @@ async function retry() {
                 <span class="sr-only">{{ t(stepStateText[s.state]) }}</span>
               </span>
               <time v-if="s.at" :datetime="s.at" class="text-caption text-ink-muted tabular-nums">{{ intl.time(s.at) }}</time>
+            </li>
+            <li v-for="d in deploys" :key="`deploy-${d.target}`" class="grid grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-2 py-1">
+              <component
+                :is="stepIcons[d.state]"
+                :class="['size-5', stepInk[d.state], d.state === 'running' ? 'animate-spin' : '']"
+                aria-hidden="true"
+              />
+              <span :class="['min-w-0 [overflow-wrap:anywhere]', d.state === 'pending' ? 'text-ink-muted' : '', d.state === 'running' ? 'font-semibold' : '']">
+                <RouterLink v-if="d.link" :to="d.link" class="text-inherit">{{ t('certs.issuance.deploy_step', { target: d.name }) }}</RouterLink>
+                <template v-else>{{ t('certs.issuance.deploy_step', { target: d.name }) }}</template>
+                <span class="sr-only">{{ t(stepStateText[d.state]) }}</span>
+              </span>
+              <time v-if="d.at" :datetime="d.at" class="text-caption text-ink-muted tabular-nums">{{ intl.time(d.at) }}</time>
             </li>
           </ol>
         </section>

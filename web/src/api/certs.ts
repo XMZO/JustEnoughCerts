@@ -102,10 +102,15 @@ export function useIssuance(id: MaybeRefOrGetter<number>) {
       }
       return detail
     },
-    // Quick while an attempt runs or is about to; slow while a retry or the source waits.
+    // Quick while an attempt runs or is about to, or the version it issued
+    // is being deployed; slow while a retry or the source waits.
     refetchInterval: (query) => {
       const is = query.state.data?.issuance
       if (is?.state === 'running' || (is?.state === 'pending' && !is.error)) return 2000
+      const deploying = query.state.data?.certificate.deployments.some(
+        (d) => d.versionId === is?.versionId && (d.state === 'running' || (d.state === 'pending' && !d.error)),
+      )
+      if (is?.state === 'done' && deploying) return 2000
       return is?.state === 'pending' || is?.state === 'waiting' ? 30_000 : false
     },
   })

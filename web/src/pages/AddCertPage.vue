@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Save, ShieldCheck } from '@lucide/vue'
+import { CircleCheck, Plus, Save, ShieldCheck, TriangleAlert } from '@lucide/vue'
 import { computed, ref, watchEffect } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
@@ -14,7 +14,7 @@ import JecField from '../components/JecField.vue'
 import JecInput from '../components/JecInput.vue'
 import PageHeader from '../components/PageHeader.vue'
 import PemFields from '../components/PemFields.vue'
-import { useT, type MessageKey } from '../i18n'
+import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import { typeName } from '../providers/fields'
 
@@ -87,6 +87,13 @@ const domains = ref<string[]>([])
 const pickedSolver = ref<number>()
 const solver = computed(() => usable.value.find((p) => p.id === pickedSolver.value)?.id ?? usable.value[0]?.id)
 const solverProvider = computed(() => usable.value.find((p) => p.id === solver.value))
+// What the solver's last test said, as its card says it.
+const solverTest = computed(() => {
+  const last = solverProvider.value?.lastTest
+  if (!last) return undefined
+  const said = t(last.message.key as MessageKey, (last.message.params ?? {}) as Params)
+  return { ok: last.ok, text: last.ok ? said : t('kernel.providers.status.test_failed', { error: said }) }
+})
 // The words of the solver field: for the kind the source takes, or the one picked.
 const only = computed<Challenge | undefined>(() => (accepted.value.length === 1 ? accepted.value[0] : undefined))
 const solverLabel = computed<MessageKey>(() =>
@@ -292,6 +299,9 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
                 </option>
               </select>
             </JecField>
+            <p v-if="solverTest" :class="['m-0 flex items-start gap-1.5 text-small [overflow-wrap:anywhere]', solverTest.ok ? 'text-ok-ink' : 'text-warn-ink']">
+              <component :is="solverTest.ok ? CircleCheck : TriangleAlert" class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ solverTest.text }}
+            </p>
             <RouterLink to="/dns" class="self-start text-small">{{ t('certs.add.manage_solvers') }}</RouterLink>
           </template>
           <div v-else class="flex flex-col items-start gap-2">

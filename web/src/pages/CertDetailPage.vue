@@ -18,6 +18,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   saveFile,
   useCertificate,
+  useCertSettings,
   useDeleteCertificate,
   useDeployNow,
   useDownload,
@@ -107,6 +108,11 @@ const errorText = (e?: { key: string; params?: Record<string, unknown> }) => (e 
 
 // Deploying, to the certificate's targets.
 const targets = useProviders('target')
+// What the settings show: when renewals look, and who hears of them.
+const certSettings = useCertSettings()
+const notifiers = useProviders('notifier')
+const noteEvents = ['on_issue_failed', 'on_deploy_failed', 'on_expiring', 'on_issued', 'on_deployed']
+const notifying = computed(() => (notifiers.data.value ?? []).filter((n) => noteEvents.some((e) => n.config[e] === 'true')).map((n) => n.name))
 const targetTypes = useProviderTypes('target')
 const targetLabel = (id: number) => {
   const p = targets.data.value?.find((x) => x.id === id)
@@ -529,7 +535,13 @@ async function confirmDelete() {
             </div>
             <dl v-if="!editing" class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-small">
               <dt class="whitespace-nowrap text-ink-muted">{{ t(issued ? 'certs.field.renewal' : 'certs.field.reminder') }}</dt>
-              <dd class="m-0">{{ t('certs.settings.reminder_value', { days: cert.renewBeforeDays }) }}</dd>
+              <dd v-if="issued && certSettings.data.value" class="m-0">
+                {{ t('certs.settings.renewal_value', { days: cert.renewBeforeDays, time: certSettings.data.value.checkTime }) }}
+              </dd>
+              <dd v-else class="m-0">{{ t('certs.settings.reminder_value', { days: cert.renewBeforeDays }) }}</dd>
+              <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.notify') }}</dt>
+              <dd v-if="notifying.length" class="m-0 [overflow-wrap:anywhere]" translate="no">{{ intl.list(notifying) }}</dd>
+              <dd v-else class="m-0 text-ink-muted">{{ t('certs.settings.notify_none') }}</dd>
             </dl>
             <form v-else class="flex flex-col gap-3" novalidate @submit.prevent="saveSettings">
               <JecField id="renewBeforeDays" label="certs.settings.days" hint="certs.settings.days_help" :error="updateError.fields.value.renewBeforeDays">
