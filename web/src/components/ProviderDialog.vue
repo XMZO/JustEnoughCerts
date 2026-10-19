@@ -79,6 +79,17 @@ const single = computed(() => !props.instance && types.data.value?.length === 1)
 const hasTags = computed(() => (types.data.value ?? []).some((s) => s.tags?.length))
 
 const name = ref('')
+// A name typed in stays, even when the type's form comes after it.
+const nameTyped = ref(false)
+const nameModel = computed({
+  get: () => name.value,
+  set: (v: string) => {
+    name.value = v
+    nameTyped.value = true
+  },
+})
+// The type whose form is set up, once each time the dialog opens.
+const formFor = ref<string>()
 const values = ref<Record<string, string>>({})
 const credential = ref('')
 const create = useCreateProvider()
@@ -109,20 +120,25 @@ watch(
 watch(open, (now) => {
   if (now) return
   picked.value = undefined
+  formFor.value = undefined
+  nameTyped.value = false
   query.value = ''
   tag.value = ''
   create.reset()
   update.reset()
 })
-// A type's form starts from the instance's settings, or the defaults.
+// A type's form starts from the instance's settings, or the defaults,
+// once: what comes later, such as the type fetched anew, leaves what was
+// typed alone.
 watch(
-  () => type.data.value,
-  (full) => {
-    if (!full || full.id !== picked.value) return
+  [() => type.data.value, picked, open],
+  ([full]) => {
+    if (!open.value || !full || full.id !== picked.value || formFor.value === full.id) return
+    formFor.value = full.id
     values.value = initialValues(full, props.instance, locale.value)
     credential.value = initialCredential(full, props.instance)
     const n = typeName(full)
-    name.value = props.instance?.name ?? n.brand ?? (n.key ? t(n.key) : full.id)
+    if (!nameTyped.value) name.value = props.instance?.name ?? n.brand ?? (n.key ? t(n.key) : full.id)
   },
   { immediate: true },
 )
@@ -253,7 +269,7 @@ async function submit(andTest = false) {
           </div>
           <JecAlert v-if="errors.alert.value" :code="errors.alert.value.code" :params="errors.alert.value.params" />
           <ProviderForm
-            v-model:name="name"
+            v-model:name="nameModel"
             v-model:values="values"
             v-model:credential="credential"
             :id-prefix="uid"
