@@ -52,6 +52,11 @@ Expected result: the connection succeeds and the number of certificates on
 the site is shown. If the test reports insufficient permissions or a
 missing site, record the message and the error code in the log.
 
+A site on the free plan holds at most two custom certificates, and JEC
+removes only those it deployed itself. If the site already holds two,
+delete one that is no longer in use in the ESA console first; otherwise
+the first deployment fails because the site is full.
+
 ## 3. Add the validation method: DNSPod
 
 1. On the Domain validation page, choose Add a validation method, search
