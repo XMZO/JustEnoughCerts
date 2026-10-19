@@ -12,8 +12,8 @@
 | 文件 | 内容 |
 |---|---|
 | `README.md` | 设计规范：文案语气、颜色用法、耐久条和格子、文字、间距、断点、图标、动效、国际化、无障碍 |
-| `tokens.json` | 颜色（浅色和深色两套）、字体、字号、间距、圆角、阴影、布局尺寸，每个 token 带用法说明 |
-| `tokens.css` | 由 `tokens.json` 生成的 CSS 变量，深色主题用 `[data-theme="dark"]` |
+| `tokens.json` | 颜色（浅色和深色两套，另有可选的主题色 `color.accents`）、可选的风格（`styles`，方块风）、字体、字号、间距、圆角、阴影、布局尺寸，每个 token 带用法说明 |
+| `tokens.css` | 由 `tokens.json` 生成的 CSS 变量，深色主题用 `[data-theme="dark"]`，主题色用 `[data-accent]`，方块风用 `[data-style="blocks"]` |
 | `bundle.css` | 全部组件的参考样式，类名前缀 `jec-` |
 | `components/*.md` | 每个组件的用法：Button、StatusBadge、LifeBar、CertSlot、CertRow（含手机端 CertItem 和两列小格）、Field、Switch、ChoiceCard、Segmented、LogView、Dialog |
 | `jec-mark.svg` | 像素锁标志 |

@@ -97,6 +97,20 @@
   --font-sans: "Noto Sans SC Subset", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
+/* The blocks of JEI (theme.ts, data-style): square corners everywhere, as
+   the tokens set their radii to 0 but some corners are round by nature,
+   and buttons bevelled as the slots of an inventory. */
+:root[data-style="blocks"] *,
+:root[data-style="blocks"] *::before,
+:root[data-style="blocks"] *::after {
+  border-radius: 0 !important;
+}
+:root[data-style="blocks"] .jec-bevel:not(.bg-transparent) {
+  box-shadow:
+    inset 2px 2px 0 rgb(255 255 255 / 0.22),
+    inset -2px -2px 0 rgb(0 0 0 / 0.22);
+}
+
 @layer base {
   html {
     background: var(--surface);

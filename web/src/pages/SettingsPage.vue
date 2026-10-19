@@ -47,7 +47,7 @@ import OidcSettings from '../components/OidcSettings.vue'
 import PageHeader from '../components/PageHeader.vue'
 import { locales, setLocale, useT, type Locale, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
-import { setTheme, theme, themes, type Theme } from '../theme'
+import { accent, accents, setAccent, setStyle, setTheme, style, styles, theme, themes, type Accent, type Style, type Theme } from '../theme'
 import { fromMore } from '../shell'
 import { zones } from '../zone'
 
@@ -58,7 +58,15 @@ const { t, locale } = useT()
 const intl = useIntl()
 const manifest = useManifest()
 
-// The theme of this browser.
+// The theme of this browser, with its color and style.
+const accentLabels: Record<Accent, MessageKey> = {
+  green: 'kernel.settings.accent_green',
+  blue: 'kernel.settings.accent_blue',
+  teal: 'kernel.settings.accent_teal',
+  purple: 'kernel.settings.accent_purple',
+  pink: 'kernel.settings.accent_pink',
+}
+const styleLabels: Record<Style, MessageKey> = { plain: 'kernel.settings.style_plain', blocks: 'kernel.settings.style_blocks' }
 const themeLabels: Record<Theme, MessageKey> = {
   system: 'kernel.settings.theme_system',
   light: 'kernel.settings.theme_light',
@@ -465,6 +473,50 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
             @click="setTheme(th)"
           >
             {{ t(themeLabels[th]) }}
+          </button>
+        </div>
+      </div>
+      <div :class="[row, 'flex-wrap']">
+        <div class="min-w-0 flex-[1_1_10rem]">
+          <span id="accent-label" class="block font-semibold">{{ t('kernel.settings.accent') }}</span>
+          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.accent_help') }}</span>
+        </div>
+        <!-- Each swatch takes its own color: data-accent sets the brand's tokens within it. -->
+        <div role="group" aria-labelledby="accent-label" class="flex flex-none flex-wrap gap-1.5">
+          <button
+            v-for="a in accents"
+            :key="a"
+            type="button"
+            :data-accent="a"
+            :aria-pressed="accent === a ? 'true' : 'false'"
+            :aria-label="t(accentLabels[a])"
+            :title="t(accentLabels[a])"
+            class="grid size-8 cursor-pointer place-items-center rounded-full border-2 border-surface-raised bg-brand p-0 text-on-brand shadow-[0_0_0_1px_var(--line-strong)] aria-pressed:shadow-[0_0_0_2px_var(--ink)] max-sm:size-11"
+            @click="setAccent(a)"
+          >
+            <Check v-if="accent === a" class="size-4" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+      <div :class="[row, 'flex-wrap']">
+        <div class="min-w-0 flex-[1_1_10rem]">
+          <span id="style-label" class="block font-semibold">{{ t('kernel.settings.style') }}</span>
+          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.style_help') }}</span>
+        </div>
+        <div
+          role="group"
+          aria-labelledby="style-label"
+          class="inline-flex flex-none gap-0.5 rounded-md border border-line bg-surface-sunken p-0.5 max-sm:flex max-sm:w-full"
+        >
+          <button
+            v-for="s in styles"
+            :key="s"
+            type="button"
+            :aria-pressed="style === s ? 'true' : 'false'"
+            class="h-[30px] cursor-pointer rounded-sm border-0 bg-transparent px-3 text-[13px] font-semibold whitespace-nowrap text-ink-muted hover:text-ink aria-pressed:bg-surface-raised aria-pressed:text-ink aria-pressed:shadow-[0_0_0_1px_var(--line-strong)] max-sm:h-auto max-sm:min-h-9 max-sm:min-w-0 max-sm:flex-1 max-sm:px-1.5 max-sm:py-1 max-sm:whitespace-normal"
+            @click="setStyle(s)"
+          >
+            {{ t(styleLabels[s]) }}
           </button>
         </div>
       </div>

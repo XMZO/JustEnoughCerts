@@ -30,6 +30,21 @@ describe('theme', () => {
     await nextTick()
     expect(now()).toBe('dark')
     expect(localStorage.getItem('jec.theme')).toBeNull()
+
+    // The color and the style, but for the defaults, mark <html> too.
+    const { setAccent, setStyle } = await import('./theme')
+    const root = document.documentElement
+    expect(root.dataset.accent).toBeUndefined()
+    setAccent('teal')
+    setStyle('blocks')
+    await nextTick()
+    expect([root.dataset.accent, root.dataset.style]).toEqual(['teal', 'blocks'])
+    expect([localStorage.getItem('jec.accent'), localStorage.getItem('jec.style')]).toEqual(['teal', 'blocks'])
+    setAccent('green')
+    setStyle('plain')
+    await nextTick()
+    expect([root.dataset.accent, root.dataset.style]).toEqual([undefined, undefined])
+    expect(localStorage.getItem('jec.accent')).toBeNull()
     vi.unstubAllGlobals()
   })
 })

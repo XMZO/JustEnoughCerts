@@ -20,7 +20,7 @@ withDefaults(
 // wider than its row, as with a long translation, wraps its label rather
 // than spill out.
 const base = [
-  'inline-flex max-w-full items-center justify-center gap-1.5 rounded-md border text-center font-semibold no-underline',
+  'jec-bevel inline-flex max-w-full items-center justify-center gap-1.5 rounded-md border text-center font-semibold no-underline',
   'transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-45',
 ]
 const variants = {
