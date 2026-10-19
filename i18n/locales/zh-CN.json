@@ -955,6 +955,12 @@
       "stored": "证书已保存，有效期还有 {days, plural, other {# 天}}",
       "take_over": "接着做上一次签发留下的订单，用它的私钥"
     },
+    "memo": {
+      "edit": "编辑备注",
+      "help": "写给自己看，比如这张证书用在哪里、归谁管。",
+      "none": "无",
+      "title": "备注"
+    },
     "menu": {
       "collect_hint": "到来源查看有没有更新的证书",
       "label": "{domain} 的更多操作",

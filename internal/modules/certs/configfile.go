@@ -43,6 +43,8 @@ type certificateEntry struct {
 	KeyType         string   `yaml:"key_type,omitempty"`
 	RenewBeforeDays int      `yaml:"renew_before_days,omitempty"`
 	Targets         []string `yaml:"targets"`
+	// Note, left out, stays as it is.
+	Note *string `yaml:"note,omitempty"`
 }
 
 // configSections are the module's sections: the renewal defaults first,
@@ -129,6 +131,9 @@ func (s *service) exportCertificates(ctx context.Context, _ configfile.Export) (
 	out := make([]certificateEntry, 0, len(list))
 	for _, c := range list {
 		e := certificateEntry{Domains: c.Domains, RenewBeforeDays: c.RenewBeforeDays, Targets: []string{}}
+		if c.Note != "" {
+			e.Note = &c.Note
+		}
 		if c.Source == sourceProvider {
 			if e.Source, err = s.providerName(ctx, c.SourceProvider); err != nil {
 				return nil, err
@@ -274,6 +279,9 @@ func (s *service) addCertificate(ctx context.Context, ci *certImport, e certific
 		return it, nil
 	}
 	c := Certificate{Domains: domains, KeyType: e.KeyType, RenewBeforeDays: e.RenewBeforeDays, Targets: targets}
+	if e.Note != nil {
+		c.Note = strings.TrimSpace(*e.Note)
+	}
 	source, pr := ci.in.Provider(providers.Source, e.Source)
 	if pr != nil {
 		pr.Field = "source"
@@ -406,6 +414,13 @@ func (s *service) changeCertificate(ctx context.Context, ci *certImport, e certi
 			return it, err
 		}
 		ci.deployed = true
+	}
+	if e.Note != nil && strings.TrimSpace(*e.Note) != c.Note {
+		changed = true
+		if _, err := ci.tx.ExecContext(ctx, "UPDATE certs_certificates SET note = ?, updated_at = ? WHERE id = ?",
+			strings.TrimSpace(*e.Note), s.now().UnixMilli(), c.ID); err != nil {
+			return it, err
+		}
 	}
 	it.Action = configfile.Keep
 	if changed {

@@ -326,6 +326,10 @@
             "description": "Type and size of the key, such as rsa-2048 or ecdsa-p256",
             "type": "string"
           },
+          "note": {
+            "description": "What people wrote about it",
+            "type": "string"
+          },
           "renewAt": {
             "description": "When the renewal of the current version starts, or started: for a certificate with a source",
             "format": "date-time",
@@ -3188,6 +3192,11 @@
       "UpdateInputBody1": {
         "additionalProperties": false,
         "properties": {
+          "note": {
+            "description": "Replaces the note when given; empty removes it",
+            "maxLength": 500,
+            "type": "string"
+          },
           "renewBeforeDays": {
             "description": "Unchanged if left out",
             "format": "int64",
@@ -4144,7 +4153,7 @@
             "description": "Error"
           }
         },
-        "summary": "Change the renewal policy or the targets of a certificate",
+        "summary": "Change the renewal policy, the targets or the note of a certificate",
         "tags": [
           "certs"
         ]

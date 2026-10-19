@@ -47,6 +47,7 @@ import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
 import JecField from '../components/JecField.vue'
 import JecInput from '../components/JecInput.vue'
+import JecTextarea from '../components/JecTextarea.vue'
 import LifeBar from '../components/LifeBar.vue'
 import MonitorSection from '../components/MonitorSection.vue'
 import PageHeader from '../components/PageHeader.vue'
@@ -330,6 +331,23 @@ function edit() {
   update.reset()
   editing.value = true
 }
+// The note: what people write about the certificate.
+const noting = ref(false)
+const note = ref('')
+function editNote() {
+  note.value = cert.value?.note ?? ''
+  update.reset()
+  noting.value = true
+}
+async function saveNote() {
+  try {
+    await update.mutateAsync({ note: note.value })
+  } catch {
+    return
+  }
+  noting.value = false
+}
+
 async function saveSettings() {
   try {
     await update.mutateAsync({ renewBeforeDays: Number(days.value) })
@@ -687,6 +705,20 @@ async function confirmDelete() {
           <section aria-labelledby="info" class="rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
             <h2 id="info" class="m-0 mb-1 text-heading font-semibold sm:text-section-title">{{ t('certs.info.title') }}</h2>
             <dl class="m-0 grid grid-cols-[fit-content(40%)_minmax(0,1fr)] gap-x-4 gap-y-0.5 text-small">
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.memo.title') }}</dt>
+              <dd class="m-0 flex min-w-0 items-start gap-1">
+                <span v-if="cert.note" class="min-w-0 flex-1 whitespace-pre-line [overflow-wrap:anywhere]" translate="no">{{ cert.note }}</span>
+                <span v-else class="min-w-0 flex-1 text-ink-muted">{{ t('certs.memo.none') }}</span>
+                <button
+                  type="button"
+                  :aria-label="t('certs.memo.edit')"
+                  :title="t('certs.memo.edit')"
+                  class="-my-1 grid size-7 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
+                  @click="editNote"
+                >
+                  <Pencil class="size-3.5" aria-hidden="true" />
+                </button>
+              </dd>
               <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.domains') }}</dt>
               <dd class="m-0 [overflow-wrap:anywhere]" translate="no">
                 <span v-for="d in cert.domains" :key="d" class="block">{{ d }}</span>
@@ -811,6 +843,19 @@ async function confirmDelete() {
     <template #footer>
       <JecButton @click="editing = false">{{ t('kernel.action.cancel') }}</JecButton>
       <JecButton type="submit" form="settings-form" variant="primary" :busy="update.isPending.value">{{ t('kernel.action.save') }}</JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-if="cert" v-model:open="noting" :title="t('certs.memo.title')" small>
+    <form id="note-form" class="flex flex-col gap-3" novalidate @submit.prevent="saveNote">
+      <JecField id="note" label="certs.memo.title" hint="certs.memo.help" :error="updateError.fields.value.note">
+        <JecTextarea id="note" v-model="note" :rows="3" maxlength="500" :invalid="!!updateError.fields.value.note" />
+      </JecField>
+      <JecAlert v-if="updateError.alert.value" :code="updateError.alert.value.code" :params="updateError.alert.value.params" />
+    </form>
+    <template #footer>
+      <JecButton @click="noting = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton type="submit" form="note-form" variant="primary" :busy="update.isPending.value">{{ t('kernel.action.save') }}</JecButton>
     </template>
   </JecDialog>
 

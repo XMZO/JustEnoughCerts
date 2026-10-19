@@ -57,7 +57,7 @@ const all = computed(() => certificates.data.value ?? [])
 const searched = computed(() => {
   const q = query.value.trim().toLowerCase()
   return all.value
-    .filter((c) => !q || c.domains.some((d) => d.includes(q)))
+    .filter((c) => !q || c.domains.some((d) => d.includes(q)) || (c.note ?? '').toLowerCase().includes(q))
     .filter((c) => !fromSource.value || (fromSource.value === 'upload' ? c.source === 'upload' : String(c.sourceProvider) === fromSource.value))
 })
 // The sources there are certificates of, to choose from.
@@ -87,6 +87,7 @@ function exportCsv() {
     'certs.csv.ends',
     'certs.csv.renews',
     'certs.csv.targets',
+    'certs.memo.title',
   ] as const satisfies readonly MessageKey[]
   const lines = [columns.map((c) => t(c))]
   for (const c of shown.value) {
@@ -100,6 +101,7 @@ function exportCsv() {
       c.current ? stamp(c.current.notAfter) : '',
       c.renewAt ? stamp(c.renewAt) : '',
       names.join(' / '),
+      c.note ?? '',
     ])
   }
   const csv = String.fromCharCode(0xfeff) + lines.map((l) => l.map(cell).join(',')).join('\r\n') + '\r\n'
@@ -341,6 +343,7 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
                 <RouterLink :to="`/certificates/${r.cert.id}`" class="font-semibold text-ink no-underline hover:text-ink" translate="no">
                   {{ r.domain }}<small v-if="r.extra" class="ml-1 text-small font-normal text-ink-muted">{{ r.extra }}</small>
                 </RouterLink>
+                <span v-if="r.cert.note" class="block max-w-64 truncate text-caption text-ink-muted" translate="no" :title="r.cert.note">{{ r.cert.note }}</span>
               </td>
               <td class="border-b border-line px-3 py-1.5"><StatusBadge :state="r.cert.state" /></td>
               <td class="border-b border-line px-3 py-1.5">
@@ -399,6 +402,7 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
                 <span class="truncate text-small text-ink-muted" :title="t('certs.cert.label_note', { label: t(stateText[r.cert.state]), note: r.note })">
                   <span :class="['mr-2 font-semibold', itemLooks[r.cert.state].ink]">{{ t(stateText[r.cert.state]) }}</span>{{ r.note }}
                 </span>
+                <span v-if="r.cert.note" class="truncate text-caption text-ink-muted" translate="no" :title="r.cert.note">{{ r.cert.note }}</span>
               </span>
               <span v-if="r.life" class="grid justify-items-end gap-1.5">
                 <span :class="['text-body font-semibold whitespace-nowrap tabular-nums', itemLooks[r.cert.state].ink]">{{ r.lifeWords }}</span>

@@ -955,6 +955,12 @@
       "stored": "Certificate saved, valid for {days, plural, one {# day} other {# days}}",
       "take_over": "Picking up the order the last issuance left, with its private key"
     },
+    "memo": {
+      "edit": "Edit the note",
+      "help": "For yourself: where the certificate is used, or whose it is.",
+      "none": "None",
+      "title": "Note"
+    },
     "menu": {
       "collect_hint": "Looks for a newer certificate at the source",
       "label": "More for {domain}",

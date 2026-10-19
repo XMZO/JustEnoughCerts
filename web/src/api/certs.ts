@@ -240,7 +240,7 @@ export function useUploadVersion(id: MaybeRefOrGetter<number>) {
 }
 
 export function useUpdateCertificate(id: MaybeRefOrGetter<number>) {
-  return useCertsMutation((body: { renewBeforeDays?: number; targets?: number[] }) =>
+  return useCertsMutation((body: { renewBeforeDays?: number; targets?: number[]; note?: string }) =>
     unwrap(api.PATCH('/certs/certificates/{id}', { params: { path: { id: toValue(id) } }, body })),
   )
 }

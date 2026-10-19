@@ -13,6 +13,7 @@ import (
 	"math"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -127,6 +128,8 @@ type Certificate struct {
 	Targets     []int64
 	Deployments []*Deployment
 	CreatedAt   time.Time
+	// Note is what people wrote about it, "" for nothing.
+	Note string
 }
 
 // Version is a certificate issued or uploaded for a Certificate.
@@ -361,7 +364,7 @@ type querier interface {
 }
 
 const selectCertificates = `SELECT c.id, c.domains, c.source, c.source_provider, c.solver_provider, c.key_type,
-	c.renew_before_days, c.created_at,
+	c.renew_before_days, c.created_at, c.note,
 	v.id, v.origin, v.names, v.serial, v.fingerprint, v.issuer, v.key_type, v.not_before, v.not_after, v.chain, v.created_at,
 	v.source_provider, v.renewal_start, v.renewal_end, v.renewal_at, v.renewal_explanation, v.renewal_check,
 	` + issuanceColumns + `
@@ -415,7 +418,7 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 			notBefore, notAfter, created, source, start, end, at, check             sql.NullInt64
 		}
 		var is issuanceRow
-		dest := []any{&c.ID, &domains, &c.Source, &sourceProvider, &solverProvider, &c.KeyType, &c.RenewBeforeDays, &created,
+		dest := []any{&c.ID, &domains, &c.Source, &sourceProvider, &solverProvider, &c.KeyType, &c.RenewBeforeDays, &created, &c.Note,
 			&v.id, &v.origin, &v.names, &v.serial, &v.fingerprint, &v.issuer, &v.keyType, &v.notBefore, &v.notAfter, &v.chain, &v.created,
 			&v.source, &v.start, &v.end, &v.at, &v.explanation, &v.check}
 		if err := rows.Scan(append(dest, is.dest()...)...); err != nil {
@@ -493,7 +496,7 @@ func (s *service) versions(ctx context.Context, id int64) ([]*Version, error) {
 
 // update changes the renewal window of certificate id, unless days is 0,
 // and its targets, unless targets is nil.
-func (s *service) update(ctx context.Context, id int64, days int, targets []int64) error {
+func (s *service) update(ctx context.Context, id int64, days int, targets []int64, note *string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -511,6 +514,12 @@ func (s *service) update(ctx context.Context, id int64, days int, targets []int6
 	}
 	if targets != nil {
 		if err := s.setTargets(ctx, tx, c, targets); err != nil {
+			return err
+		}
+	}
+	if note != nil {
+		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET note = ?, updated_at = ? WHERE id = ?",
+			strings.TrimSpace(*note), s.now().UnixMilli(), id); err != nil {
 			return err
 		}
 	}

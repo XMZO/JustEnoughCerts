@@ -32,6 +32,10 @@ The key type is RSA 2048, 3072 or 4096, or ECDSA P-256 or P-384; the
 default is set under Renewal defaults on the Settings page. Every renewal
 generates a new private key.
 
+A note, under the certificate's information on its page, says what the
+certificate is for or whose it is; the list shows it, searches it and
+exports it.
+
 ## The certificate's page
 
 The certificate's page shows:

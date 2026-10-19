@@ -255,7 +255,7 @@ export interface paths {
         delete: operations["certs-delete"];
         options?: never;
         head?: never;
-        /** Change the renewal policy or the targets of a certificate */
+        /** Change the renewal policy, the targets or the note of a certificate */
         patch: operations["certs-update"];
         trace?: never;
     };
@@ -1257,6 +1257,8 @@ export interface components {
             issuance?: components["schemas"]["IssuanceBody"];
             /** @description Type and size of the key, such as rsa-2048 or ecdsa-p256 */
             keyType: string;
+            /** @description What people wrote about it */
+            note?: string;
             /**
              * Format: date-time
              * @description When the renewal of the current version starts, or started: for a certificate with a source
@@ -2283,6 +2285,8 @@ export interface components {
             };
         };
         UpdateInputBody1: {
+            /** @description Replaces the note when given; empty removes it */
+            note?: string;
             /**
              * Format: int64
              * @description Unchanged if left out

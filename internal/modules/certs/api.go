@@ -24,6 +24,7 @@ type CertificateBody struct {
 	SourceProvider  int64            `json:"sourceProvider,omitempty" doc:"The source provider instance that issues the certificate"`
 	SolverProvider  int64            `json:"solverProvider,omitempty" doc:"The solver provider instance that proves control of the domains"`
 	KeyType         string           `json:"keyType" doc:"Type and size of the key, such as rsa-2048 or ecdsa-p256"`
+	Note            string           `json:"note,omitempty" doc:"What people wrote about it"`
 	RenewBeforeDays int              `json:"renewBeforeDays" doc:"How many days before the end the certificate is renewed, or a reminder sent"`
 	State           string           `json:"state" enum:"ok,expiring,expired,issuing,deploying,failed,deploy_failed" doc:"issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end) or expired"`
 	Current         *VersionBody     `json:"current,omitempty" doc:"The version in use"`
@@ -106,7 +107,7 @@ type CSRBody struct {
 func certificateBody(c *Certificate, now time.Time, sch schedule) CertificateBody {
 	b := CertificateBody{
 		ID: c.ID, Domains: c.Domains, Source: c.Source, SourceProvider: c.SourceProvider, SolverProvider: c.SolverProvider,
-		KeyType: c.KeyType, RenewBeforeDays: c.RenewBeforeDays, State: c.state(now), CreatedAt: c.CreatedAt,
+		KeyType: c.KeyType, RenewBeforeDays: c.RenewBeforeDays, State: c.state(now), CreatedAt: c.CreatedAt, Note: c.Note,
 	}
 	if c.Current != nil {
 		v := versionBody(c.Current)
@@ -225,6 +226,7 @@ type updateInput struct {
 	Body struct {
 		RenewBeforeDays int     `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Unchanged if left out"`
 		Targets         []int64 `json:"targets,omitempty" maxItems:"50" doc:"Replaces the targets when given; an empty list removes them all"`
+		Note            *string `json:"note,omitempty" maxLength:"500" doc:"Replaces the note when given; empty removes it"`
 	}
 }
 
@@ -334,7 +336,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 
 	huma.Register(a, huma.Operation{
 		OperationID: "certs-update", Method: http.MethodPatch, Path: "/certificates/{id}",
-		Summary: "Change the renewal policy or the targets of a certificate",
+		Summary: "Change the renewal policy, the targets or the note of a certificate",
 	}, func(ctx context.Context, in *updateInput) (*certificateOutput, error) {
 		var targets []int64
 		if in.Body.Targets != nil {
@@ -344,7 +346,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			}
 			targets = append([]int64{}, targets...) // not nil: an empty list removes them all
 		}
-		if err := s.update(ctx, in.ID, in.Body.RenewBeforeDays, targets); err != nil {
+		if err := s.update(ctx, in.ID, in.Body.RenewBeforeDays, targets, in.Body.Note); err != nil {
 			return nil, serviceError(err)
 		}
 		return s.output(ctx, in.ID)

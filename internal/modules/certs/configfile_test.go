@@ -189,6 +189,15 @@ certificates:
 	if strings.Join(itemsOf(rep, "certificates"), "\n") != "example.com: keep" {
 		t.Errorf("report %+v", rep)
 	}
+
+	// A note comes and goes with the file, which an export writes again.
+	rep = f.importConfig("version: 1\ncertificates:\n  - {domains: [example.com], source: LE, solver: DNS 2, note: the shop}\n", true)
+	if c, err := f.svc.load(t.Context(), f.db, body.ID); err != nil || c.Note != "the shop" || !strings.Contains(strings.Join(itemsOf(rep, "certificates"), "\n"), "change") {
+		t.Errorf("noted %+v, %v: %+v", c, err, rep)
+	}
+	if data, err := f.configFile().Export(t.Context(), configfile.Export{}); err != nil || !strings.Contains(string(data), "note: the shop") {
+		t.Errorf("export %s: %v", data, err)
+	}
 }
 
 func TestConfigImportProblems(t *testing.T) {

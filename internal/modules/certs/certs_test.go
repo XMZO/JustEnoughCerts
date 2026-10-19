@@ -337,6 +337,16 @@ func TestUpdateAndDelete(t *testing.T) {
 	if got.RenewBeforeDays != 45 || got.State != "expiring" {
 		t.Errorf("after the update: %+v", got)
 	}
+	// A note, then none; what is left out stays.
+	f.call(f.api.Patch(path, map[string]any{"note": "  the shop of a client  "}), http.StatusOK, &got)
+	if got.Note != "the shop of a client" || got.RenewBeforeDays != 45 {
+		t.Errorf("noted %+v", got)
+	}
+	got = CertificateBody{}
+	f.call(f.api.Patch(path, map[string]any{"note": ""}), http.StatusOK, &got)
+	if got.Note != "" || got.ID != c.ID {
+		t.Errorf("note left %q", got.Note)
+	}
 	f.apiError(f.api.Patch(path, map[string]any{"renewBeforeDays": 0}), http.StatusUnprocessableEntity)
 	f.apiError(f.api.Patch("/certificates/999", map[string]any{"renewBeforeDays": 10}), http.StatusNotFound)
 

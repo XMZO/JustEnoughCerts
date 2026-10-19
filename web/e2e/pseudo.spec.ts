@@ -416,6 +416,17 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page.getByRole('status')).toBeVisible()
   expect.soft(await problems(page), 'deploy targets: a test that passed').toEqual([])
 
+  // A note on a certificate: the dialog, then the page with it.
+  await page.goto('./certificates/1')
+  await page.getByRole('button', { name: label('certs.memo.edit') }).click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'the note of a certificate').toEqual([])
+  await dialog.locator('#note').fill('e2e note')
+  await dialog.locator('button[type=submit]').click()
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  await expect(page.getByText('e2e note')).toBeVisible()
+  expect.soft(await problems(page), 'a certificate with a note').toEqual([])
+
   // An uploaded certificate deployed there.
   await page.goto('./certificates/1')
   await page.getByRole('button', { name: label('certs.action.choose_targets') }).click()
