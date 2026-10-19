@@ -1519,7 +1519,7 @@
     "app": {
       "language": "语言",
       "name": "Just Enough Certs",
-      "tagline": "刚好够用的证书管理，到期前自动续期。"
+      "tagline": "SSL/TLS 证书全生命周期管理"
     },
     "config": {
       "action": {

@@ -3,7 +3,7 @@ layout: home
 
 hero:
   name: Just Enough Certs
-  text: '告别证书过期'
+  text: '证书全生命周期管理'
   tagline: '自托管的 SSL/TLS 证书管理面板。从多种来源获取证书，自动完成域名验证，部署到 CDN 与服务器，并在到期前自动续期。'
   image:
     src: /jec-hero.svg
