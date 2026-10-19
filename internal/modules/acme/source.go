@@ -5,10 +5,13 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"sync"
@@ -220,7 +223,7 @@ func (s *source) connect(ctx context.Context, log func(contracts.LogLine)) (*leg
 	}
 	if u.reg == nil {
 		log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.AcmeLogRegister, Params: map[string]any{"directory": directory}})
-		reg, err := s.register(ctx, client)
+		reg, err := s.register(ctx, client, directory)
 		if err != nil {
 			return nil, "", err
 		}
@@ -232,9 +235,10 @@ func (s *source) connect(ctx context.Context, log func(contracts.LogLine)) (*leg
 	return client, directory, nil
 }
 
-// register makes the account known to the CA, with External Account
-// Binding when the account has it.
-func (s *source) register(ctx context.Context, client *lego.Client) (*legoacme.ExtendedAccount, error) {
+// register makes the account known to the CA at directory, with External
+// Account Binding when the account has it. ZeroSSL hands out the binding
+// of the account's email address, as acme.sh has it do.
+func (s *source) register(ctx context.Context, client *lego.Client, directory string) (*legoacme.ExtendedAccount, error) {
 	kid, hmac := s.in.Config["eab_kid"], s.in.Secrets["eab_hmac"]
 	var reg *legoacme.ExtendedAccount
 	var err error
@@ -243,6 +247,18 @@ func (s *source) register(ctx context.Context, client *lego.Client) (*legoacme.E
 		reg, err = client.Registration.RegisterWithExternalAccountBinding(ctx, registration.RegisterEABOptions{
 			TermsOfServiceAgreed: true, Kid: kid, HmacEncoded: eabHMAC(hmac),
 		})
+	case strings.HasPrefix(directory, "https://acme.zerossl.com/"):
+		kid, hmac, err := s.zeroSSLBinding(ctx)
+		if err != nil {
+			return nil, err
+		}
+		reg, err = client.Registration.RegisterWithExternalAccountBinding(ctx, registration.RegisterEABOptions{
+			TermsOfServiceAgreed: true, Kid: kid, HmacEncoded: hmac,
+		})
+		if err != nil {
+			return nil, &contracts.Problem{Key: i18n.AcmeErrorRegister, Err: err}
+		}
+		return reg, nil
 	case client.GetServerMetadata().ExternalAccountRequired:
 		return nil, retry.Permanent(&contracts.Problem{Key: i18n.AcmeErrorEabRequired})
 	default:
@@ -427,4 +443,49 @@ func (p *dnsProvider) unseen() []string {
 	}
 	slices.Sort(out)
 	return out
+}
+
+// zeroSSLBinding asks ZeroSSL for the EAB credentials of the account's
+// email address: its key ID and its HMAC key, in base64url.
+func (s *source) zeroSSLBinding(ctx context.Context) (kid, hmac string, err error) {
+	email := strings.TrimSpace(s.in.Config["email"])
+	if email == "" {
+		return "", "", retry.Permanent(&contracts.Problem{Key: i18n.AcmeErrorZerosslEmail})
+	}
+	client, err := s.m.client(s.in.Config[httpx.ProxyKey])
+	if err != nil {
+		return "", "", err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.m.zeroSSL+"/acme/eab-credentials-email",
+		strings.NewReader(url.Values{"email": {email}}.Encode()))
+	if err != nil {
+		return "", "", err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	res, err := client.Do(req)
+	if err != nil {
+		return "", "", &contracts.Problem{Key: i18n.AcmeErrorZerossl, Params: map[string]any{"message": httpx.Cause(err).Error()}, Err: err}
+	}
+	defer func() { _ = res.Body.Close() }()
+	var out struct {
+		Success bool   `json:"success"`
+		Kid     string `json:"eab_kid"`
+		Hmac    string `json:"eab_hmac_key"`
+		Error   *struct {
+			Type string `json:"type"`
+			Info string `json:"info"`
+		} `json:"error"`
+	}
+	if err := json.NewDecoder(io.LimitReader(res.Body, 1<<16)).Decode(&out); err != nil {
+		return "", "", &contracts.Problem{Key: i18n.AcmeErrorZerossl, Params: map[string]any{"message": fmt.Sprintf("HTTP %d", res.StatusCode)}, Err: err}
+	}
+	if !out.Success || out.Kid == "" || out.Hmac == "" {
+		msg := fmt.Sprintf("HTTP %d", res.StatusCode)
+		if out.Error != nil {
+			msg = strings.TrimSpace(out.Error.Type + " " + out.Error.Info)
+		}
+		return "", "", retry.Permanent(&contracts.Problem{Key: i18n.AcmeErrorZerossl, Params: map[string]any{"message": msg}})
+	}
+	return out.Kid, out.Hmac, nil
 }

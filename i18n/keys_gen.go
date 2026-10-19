@@ -40,6 +40,8 @@ const (
 	AcmeErrorRevokeReason                    Key = "acme.error.revoke_reason"
 	AcmeErrorUserAction                      Key = "acme.error.user_action"
 	AcmeErrorValidation                      Key = "acme.error.validation"
+	AcmeErrorZerossl                         Key = "acme.error.zerossl"
+	AcmeErrorZerosslEmail                    Key = "acme.error.zerossl_email"
 	AcmeFieldCa                              Key = "acme.field.ca"
 	AcmeFieldCaHelp                          Key = "acme.field.ca_help"
 	AcmeFieldDirectory                       Key = "acme.field.directory"

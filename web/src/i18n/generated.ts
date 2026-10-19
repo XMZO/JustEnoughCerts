@@ -48,6 +48,8 @@ export type MessageKey =
   | "acme.error.revoke_reason"
   | "acme.error.user_action"
   | "acme.error.validation"
+  | "acme.error.zerossl"
+  | "acme.error.zerossl_email"
   | "acme.field.ca"
   | "acme.field.ca_help"
   | "acme.field.directory"

@@ -43,6 +43,9 @@ type Module struct {
 	skipPropagation bool
 	// caa reads the CAA records of a domain; tests replace it.
 	caa func(ctx context.Context, domain string) (dnscheck.CAAPolicy, error)
+	// zeroSSL is the API that hands out the EAB credentials of an email
+	// address at ZeroSSL; tests replace it.
+	zeroSSL string
 
 	db      *sql.DB
 	secrets *secrets.Scope
@@ -50,7 +53,9 @@ type Module struct {
 }
 
 // New returns the module.
-func New() *Module { return &Module{now: time.Now, caa: dnscheck.CAA} }
+func New() *Module {
+	return &Module{now: time.Now, caa: dnscheck.CAA, zeroSSL: "https://api.zerossl.com"}
+}
 
 // Manifest describes the module.
 func (*Module) Manifest() module.Manifest {

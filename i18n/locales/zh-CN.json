@@ -45,7 +45,9 @@
       "revoke": "证书颁发机构没有吊销该证书：{detail}",
       "revoke_reason": "证书颁发机构不接受这个吊销原因，请换一个。",
       "user_action": "证书颁发机构要求先在它的网站上处理一件事：{url}",
-      "validation": "证书颁发机构没能验证域名。请确认 DNS 服务商管理的正是这些域名。"
+      "validation": "证书颁发机构没能验证域名。请确认 DNS 服务商管理的正是这些域名。",
+      "zerossl": "向 ZeroSSL 领取 EAB 失败：{message}",
+      "zerossl_email": "ZeroSSL 需要 EAB：请填写邮箱，JEC 会用它向 ZeroSSL 领取；或者填写 ZeroSSL 账户页面里的 EAB Key ID 和 HMAC Key。"
     },
     "field": {
       "ca": "证书颁发机构",
@@ -55,7 +57,7 @@
       "eab_hmac": "EAB HMAC Key（可选）",
       "eab_hmac_help": "和 Key ID 一起给出，注册账号时使用。",
       "eab_kid": "EAB Key ID（可选）",
-      "eab_kid_help": "ZeroSSL、Google Trust Services 和多数付费 CA 需要，在它们的账户页面里获取。",
+      "eab_kid_help": "ZeroSSL、Google Trust Services 和多数付费 CA 需要，在它们的账户页面里获取。ZeroSSL 也可以留空，JEC 用上面的邮箱自动领取。",
       "email": "联系邮箱（可选）",
       "email_help": "CA 会把账号相关的通知发到这里。使用这个账号即表示接受该 CA 的服务条款。",
       "profile": "证书配置",

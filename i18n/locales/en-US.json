@@ -45,7 +45,9 @@
       "revoke": "The certificate authority did not revoke the certificate: {detail}",
       "revoke_reason": "The certificate authority does not accept this reason for revoking. Choose another one.",
       "user_action": "The certificate authority asks you to do something on its site first: {url}",
-      "validation": "The certificate authority could not validate the domains. Check that the DNS provider is the one that serves them."
+      "validation": "The certificate authority could not validate the domains. Check that the DNS provider is the one that serves them.",
+      "zerossl": "ZeroSSL did not hand out EAB credentials: {message}",
+      "zerossl_email": "ZeroSSL needs EAB: enter an email address, with which JEC asks ZeroSSL for it, or the EAB Key ID and HMAC key from your ZeroSSL account."
     },
     "field": {
       "ca": "Certificate authority",
@@ -55,7 +57,7 @@
       "eab_hmac": "EAB HMAC key (optional)",
       "eab_hmac_help": "Comes with the Key ID; JEC uses it to register the account.",
       "eab_kid": "EAB Key ID (optional)",
-      "eab_kid_help": "ZeroSSL, Google Trust Services and most paid CAs need it; their account page gives it.",
+      "eab_kid_help": "ZeroSSL, Google Trust Services and most paid CAs need it; their account page gives it. For ZeroSSL it may stay empty: JEC asks for it with the email address above.",
       "email": "Contact email (optional)",
       "email_help": "The CA sends notices about the account here. Using the account means accepting the CA's terms of service.",
       "profile": "Profile",
