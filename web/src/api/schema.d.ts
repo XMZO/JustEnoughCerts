@@ -278,6 +278,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certs/certificates/{id}/versions/{version}/csr": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A certificate request of a version's key for its names
+         * @description Made anew each time from the version's private key, which stays on the server: for asking another CA for a certificate of the same key and names.
+         */
+        get: operations["certs-csr"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/certs/certificates/{id}/versions/{version}/download": {
         parameters: {
             query?: never;
@@ -1010,6 +1030,14 @@ export interface components {
             /** @description The password of the signed-in account */
             password: string;
         };
+        CSRBody: {
+            /** @description The request, in PEM form */
+            csr: string;
+            keyType: string;
+            names: string[];
+            signatureAlgorithm: string;
+            subject: string;
+        };
         CertSettingsBody: {
             /** @description The time of day, HH:MM in timeZone, renewals start once certificates enter their renewal window; with a week or less left, they start at once */
             checkTime: string;
@@ -1289,8 +1317,42 @@ export interface components {
             certificate: components["schemas"]["CertificateBody"];
             /** @description The chain of the current version, the leaf first */
             chain: components["schemas"]["ChainEntry"][];
+            /** @description What the current version says beyond its names and dates */
+            details?: components["schemas"]["DetailsBody"];
             /** @description Every version, the newest first */
             versions: components["schemas"]["VersionBody"][];
+        };
+        DetailsBody: {
+            /** @description Where its issuer's certificate is */
+            caIssuers: string[];
+            /** @description The lists of revoked certificates of its issuer */
+            crl: string[];
+            extKeyUsage: ("any" | "server_auth" | "client_auth" | "code_signing" | "email_protection" | "time_stamping" | "ocsp_signing")[];
+            /** @description The issuer's distinguished name */
+            issuer: string;
+            keyUsage: ("digital_signature" | "content_commitment" | "key_encipherment" | "data_encipherment" | "key_agreement" | "cert_sign" | "crl_sign" | "encipher_only" | "decipher_only")[];
+            /** @description Clients must get its OCSP status from the server */
+            mustStaple: boolean;
+            /** @description Where its revocation is looked up, by OCSP */
+            ocsp: string[];
+            /**
+             * Format: int64
+             * @description The timestamps of Certificate Transparency logs it carries
+             */
+            scts: number;
+            /** @description The thumbprint, as Windows shows it, in hex */
+            sha1: string;
+            /** @description As Go names it: SHA256-RSA, ECDSA-SHA384 */
+            signatureAlgorithm: string;
+            /** @description The SHA-256 of the public key, in base64, as pins are */
+            spkiSha256: string;
+            /** @description The distinguished name, as RFC 2253 writes it */
+            subject: string;
+            /**
+             * @description What the CA checked, by the policy of the CA/Browser Forum it names
+             * @enum {string}
+             */
+            validation?: "dv" | "ov" | "iv" | "ev";
         };
         DomainCheckBody: {
             /** Format: date-time */
@@ -2627,6 +2689,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CertificateBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-csr": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CSRBody"];
                 };
             };
             /** @description Error */

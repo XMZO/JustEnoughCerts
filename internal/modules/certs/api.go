@@ -68,6 +68,41 @@ type ChainEntry struct {
 	NotAfter time.Time `json:"notAfter"`
 }
 
+// DetailsBody is what a version's certificate says beyond its names and
+// dates (cryptox.Details).
+type DetailsBody struct {
+	Subject            string   `json:"subject" doc:"The distinguished name, as RFC 2253 writes it"`
+	Issuer             string   `json:"issuer" doc:"The issuer's distinguished name"`
+	SignatureAlgorithm string   `json:"signatureAlgorithm" doc:"As Go names it: SHA256-RSA, ECDSA-SHA384"`
+	SHA1               string   `json:"sha1" doc:"The thumbprint, as Windows shows it, in hex"`
+	SPKISHA256         string   `json:"spkiSha256" doc:"The SHA-256 of the public key, in base64, as pins are"`
+	KeyUsage           []string `json:"keyUsage" enum:"digital_signature,content_commitment,key_encipherment,data_encipherment,key_agreement,cert_sign,crl_sign,encipher_only,decipher_only"`
+	ExtKeyUsage        []string `json:"extKeyUsage" enum:"any,server_auth,client_auth,code_signing,email_protection,time_stamping,ocsp_signing"`
+	OCSP               []string `json:"ocsp" doc:"Where its revocation is looked up, by OCSP"`
+	CRL                []string `json:"crl" doc:"The lists of revoked certificates of its issuer"`
+	CAIssuers          []string `json:"caIssuers" doc:"Where its issuer's certificate is"`
+	Validation         string   `json:"validation,omitempty" enum:"dv,ov,iv,ev" doc:"What the CA checked, by the policy of the CA/Browser Forum it names"`
+	SCTs               int      `json:"scts" doc:"The timestamps of Certificate Transparency logs it carries"`
+	MustStaple         bool     `json:"mustStaple" doc:"Clients must get its OCSP status from the server"`
+}
+
+func detailsBody(d cryptox.Details) DetailsBody {
+	return DetailsBody{
+		Subject: d.Subject, Issuer: d.Issuer, SignatureAlgorithm: d.SignatureAlgorithm, SHA1: d.SHA1, SPKISHA256: d.SPKISHA256,
+		KeyUsage: d.KeyUsage, ExtKeyUsage: d.ExtKeyUsage, OCSP: d.OCSP, CRL: d.CRL, CAIssuers: d.CAIssuers,
+		Validation: d.Validation, SCTs: d.SCTs, MustStaple: d.MustStaple,
+	}
+}
+
+// CSRBody is a certificate request of a version's key for its names.
+type CSRBody struct {
+	CSR                string   `json:"csr" doc:"The request, in PEM form"`
+	Subject            string   `json:"subject"`
+	Names              []string `json:"names"`
+	KeyType            string   `json:"keyType"`
+	SignatureAlgorithm string   `json:"signatureAlgorithm"`
+}
+
 func certificateBody(c *Certificate, now time.Time, sch schedule) CertificateBody {
 	b := CertificateBody{
 		ID: c.ID, Domains: c.Domains, Source: c.Source, SourceProvider: c.SourceProvider, SolverProvider: c.SolverProvider,
@@ -127,7 +162,17 @@ type detailOutput struct {
 		Certificate CertificateBody `json:"certificate"`
 		Versions    []VersionBody   `json:"versions" doc:"Every version, the newest first"`
 		Chain       []ChainEntry    `json:"chain" doc:"The chain of the current version, the leaf first"`
+		Details     *DetailsBody    `json:"details,omitempty" doc:"What the current version says beyond its names and dates"`
 	}
+}
+
+type versionInput struct {
+	ID      int64 `path:"id"`
+	Version int64 `path:"version"`
+}
+
+type csrOutput struct {
+	Body CSRBody
 }
 
 // UploadFields are what an upload carries: PEM texts, or a PKCS #12 file.
@@ -263,8 +308,28 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 					Subject: subjectName(cert), Issuer: issuerName(cert), NotAfter: cert.NotAfter.UTC(),
 				})
 			}
+			if len(chain) > 0 {
+				d := detailsBody(cryptox.Describe(chain[0]))
+				out.Body.Details = &d
+			}
 		}
 		return out, nil
+	})
+
+	huma.Register(a, huma.Operation{
+		OperationID: "certs-csr", Method: http.MethodGet, Path: "/certificates/{id}/versions/{version}/csr",
+		Summary:     "A certificate request of a version's key for its names",
+		Description: "Made anew each time from the version's private key, which stays on the server: for asking another CA for a certificate of the same key and names.",
+	}, func(ctx context.Context, in *versionInput) (*csrOutput, error) {
+		pem, err := s.csr(ctx, in.ID, in.Version)
+		if err != nil {
+			return nil, serviceError(err)
+		}
+		r, err := cryptox.DescribeCSR(pem)
+		if err != nil {
+			return nil, err
+		}
+		return &csrOutput{Body: CSRBody{CSR: string(pem), Subject: r.Subject, Names: r.Names, KeyType: r.KeyType, SignatureAlgorithm: r.SignatureAlgorithm}}, nil
 	})
 
 	huma.Register(a, huma.Operation{

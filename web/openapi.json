@@ -109,6 +109,38 @@
         ],
         "type": "object"
       },
+      "CSRBody": {
+        "additionalProperties": false,
+        "properties": {
+          "csr": {
+            "description": "The request, in PEM form",
+            "type": "string"
+          },
+          "keyType": {
+            "type": "string"
+          },
+          "names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "signatureAlgorithm": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "csr",
+          "subject",
+          "names",
+          "keyType",
+          "signatureAlgorithm"
+        ],
+        "type": "object"
+      },
       "CertSettingsBody": {
         "additionalProperties": false,
         "properties": {
@@ -856,6 +888,10 @@
             },
             "type": "array"
           },
+          "details": {
+            "$ref": "#/components/schemas/DetailsBody",
+            "description": "What the current version says beyond its names and dates"
+          },
           "versions": {
             "description": "Every version, the newest first",
             "items": {
@@ -868,6 +904,118 @@
           "certificate",
           "versions",
           "chain"
+        ],
+        "type": "object"
+      },
+      "DetailsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "caIssuers": {
+            "description": "Where its issuer's certificate is",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "crl": {
+            "description": "The lists of revoked certificates of its issuer",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "extKeyUsage": {
+            "items": {
+              "enum": [
+                "any",
+                "server_auth",
+                "client_auth",
+                "code_signing",
+                "email_protection",
+                "time_stamping",
+                "ocsp_signing"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "issuer": {
+            "description": "The issuer's distinguished name",
+            "type": "string"
+          },
+          "keyUsage": {
+            "items": {
+              "enum": [
+                "digital_signature",
+                "content_commitment",
+                "key_encipherment",
+                "data_encipherment",
+                "key_agreement",
+                "cert_sign",
+                "crl_sign",
+                "encipher_only",
+                "decipher_only"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "mustStaple": {
+            "description": "Clients must get its OCSP status from the server",
+            "type": "boolean"
+          },
+          "ocsp": {
+            "description": "Where its revocation is looked up, by OCSP",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "scts": {
+            "description": "The timestamps of Certificate Transparency logs it carries",
+            "format": "int64",
+            "type": "integer"
+          },
+          "sha1": {
+            "description": "The thumbprint, as Windows shows it, in hex",
+            "type": "string"
+          },
+          "signatureAlgorithm": {
+            "description": "As Go names it: SHA256-RSA, ECDSA-SHA384",
+            "type": "string"
+          },
+          "spkiSha256": {
+            "description": "The SHA-256 of the public key, in base64, as pins are",
+            "type": "string"
+          },
+          "subject": {
+            "description": "The distinguished name, as RFC 2253 writes it",
+            "type": "string"
+          },
+          "validation": {
+            "description": "What the CA checked, by the policy of the CA/Browser Forum it names",
+            "enum": [
+              "dv",
+              "ov",
+              "iv",
+              "ev"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "issuer",
+          "signatureAlgorithm",
+          "sha1",
+          "spkiSha256",
+          "keyUsage",
+          "extKeyUsage",
+          "ocsp",
+          "crl",
+          "caIssuers",
+          "scts",
+          "mustStaple"
         ],
         "type": "object"
       },
@@ -3701,6 +3849,58 @@
           }
         },
         "summary": "Upload a new version of a certificate",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/certificates/{id}/versions/{version}/csr": {
+      "get": {
+        "description": "Made anew each time from the version's private key, which stays on the server: for asking another CA for a certificate of the same key and names.",
+        "operationId": "certs-csr",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CSRBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "A certificate request of a version's key for its names",
         "tags": [
           "certs"
         ]

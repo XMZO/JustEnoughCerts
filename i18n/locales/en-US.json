@@ -524,6 +524,8 @@
       "collect_now": "Check now",
       "copy_fingerprint": "Copy the SHA-256 fingerprint",
       "copy_serial": "Copy the serial number",
+      "copy_sha1": "Copy the SHA-1 fingerprint",
+      "copy_spki": "Copy the public key's SHA-256",
       "delete": "Delete certificate",
       "deploy_now": "Deploy now",
       "deploy_to": "Deploy now to {target}",
@@ -662,6 +664,14 @@
       "renew_title": "Renew {domain} now?",
       "then_deploy": "The new certificate is then deployed to {targets}; until then, the current one stays in use."
     },
+    "csr": {
+      "copy": "Copy the CSR",
+      "download": "Download the .csr file",
+      "intro": "A certificate signing request made of this version's private key and names. The key stays in JEC; another certificate authority can issue a certificate of the same names and key for it. It is made anew each time it opens: the same request, with perhaps another signature.",
+      "names": "Names",
+      "show": "Show the CSR",
+      "title": "The CSR of {domain}"
+    },
     "defaults": {
       "check_time": "Daily check time",
       "check_time_help": "Certificates in their renewal window start renewing at this time, in the panel's time zone ({zone}); with a week or less left, at once.",
@@ -731,6 +741,15 @@
       "intro": "The download holds the private key. Enter your password to go on.",
       "title": "Download the certificate"
     },
+    "eku": {
+      "any": "Any use",
+      "client_auth": "Client authentication",
+      "code_signing": "Code signing",
+      "email_protection": "Email protection",
+      "ocsp_signing": "OCSP signing",
+      "server_auth": "Server authentication",
+      "time_stamping": "Time stamping"
+    },
     "error": {
       "bad_certificate": "A certificate cannot be read. Paste it again in full, from -----BEGIN CERTIFICATE----- to -----END CERTIFICATE-----.",
       "bad_domain": "This is not a valid domain name. Write a wildcard as *.example.com.",
@@ -763,21 +782,31 @@
       "wrong_provider": "This provider cannot be used here. Choose another one."
     },
     "field": {
+      "csr": "CSR",
       "days": "{days, plural, one {# day} other {# days}}",
       "domains": "Domains",
       "expires": "Expires",
       "fingerprint": "SHA-256",
       "issuer": "Issuer",
       "key": "Key",
+      "must_staple": "OCSP stapling",
       "not_after": "Expires on",
       "not_before": "Valid from",
       "notify": "Notifications",
       "reminder": "Reminder",
       "renewal": "Renewal",
+      "revocation": "Revocation",
       "serial": "Serial number",
+      "sha1": "SHA-1",
+      "signature": "Signature",
       "source": "Source",
+      "spki": "Public key SHA-256",
+      "subject": "Subject",
       "targets": "Deploys to",
+      "transparency": "Transparency",
+      "uses": "Uses",
       "validation": "Validation",
+      "validation_level": "Validation",
       "validity": "Validity"
     },
     "filter": {
@@ -877,6 +906,9 @@
       "description": "Keeps track of each certificate and its versions, and warns before one expires.",
       "name": "Certificates"
     },
+    "must_staple": {
+      "required": "Required (Must-Staple)"
+    },
     "next": {
       "auto": "Renews on {date}",
       "first": "Waiting for the first issuance",
@@ -924,6 +956,11 @@
     "renewal": {
       "suggested": "The CA suggests {start} to {end}",
       "why": "Why"
+    },
+    "revocation": {
+      "ca": "Issuer certificate",
+      "crl": "CRL",
+      "ocsp": "OCSP"
     },
     "revoke": {
       "intro": "The certificate authority puts the certificate valid {range} on its revocation list, and browsers that check the list stop trusting it. This cannot be undone.",
@@ -993,6 +1030,7 @@
       "days": "Days before expiry",
       "days_help": "JEC warns you when the certificate has this many days left, from 1 to 365.",
       "days_unit": "days",
+      "edit": "Edit the renewal settings",
       "notify_none": "No notification channels",
       "reminder_value": "{days, plural, one {# day} other {# days}} before expiry",
       "renewal_value": "{days, plural, one {# day} other {# days}} before it ends, looked at daily at {time}",
@@ -1035,9 +1073,19 @@
       "title": "Expiring in the next 90 days",
       "today": "Today"
     },
+    "transparency": {
+      "logged": "{count, plural, one {Logged in # log} other {Logged in # logs}}",
+      "none": "Not logged in the certificate"
+    },
     "upload": {
       "intro": "The new certificate replaces the one in use. It must cover {domain} and expire later.",
       "title": "Upload a new certificate"
+    },
+    "validation": {
+      "dv": "Domain validated (DV)",
+      "ev": "Extended validation (EV)",
+      "iv": "Individual validated (IV)",
+      "ov": "Organization validated (OV)"
     }
   },
   "cloudflare": {

@@ -524,6 +524,8 @@
       "collect_now": "立即检查",
       "copy_fingerprint": "复制 SHA-256 指纹",
       "copy_serial": "复制序列号",
+      "copy_sha1": "复制 SHA-1 指纹",
+      "copy_spki": "复制公钥 SHA-256",
       "delete": "删除证书",
       "deploy_now": "立即部署",
       "deploy_to": "立即部署到 {target}",
@@ -662,6 +664,14 @@
       "renew_title": "立即续期 {domain}？",
       "then_deploy": "新证书会部署到 {targets}；在那之前，现在这张证书照常使用。"
     },
+    "csr": {
+      "copy": "复制 CSR",
+      "download": "下载 .csr 文件",
+      "intro": "用这个版本的私钥和域名生成的证书签名请求。私钥留在 JEC 里；可以拿它向别的证书颁发机构申请同一组域名、同一把密钥的证书。每次打开都会重新生成，内容不变，签名可能不同。",
+      "names": "域名",
+      "show": "查看 CSR",
+      "title": "{domain} 的 CSR"
+    },
     "defaults": {
       "check_time": "每天检查时间",
       "check_time_help": "进入续期窗口的证书在这个时间开始续期，按面板的时区（{zone}）；只剩一周或更少时立即续期。",
@@ -731,6 +741,15 @@
       "intro": "下载的文件里有私钥。请输入登录密码继续。",
       "title": "下载证书"
     },
+    "eku": {
+      "any": "任意用途",
+      "client_auth": "客户端身份验证",
+      "code_signing": "代码签名",
+      "email_protection": "电子邮件保护",
+      "ocsp_signing": "OCSP 签名",
+      "server_auth": "服务器身份验证",
+      "time_stamping": "时间戳"
+    },
     "error": {
       "bad_certificate": "有一张证书读不出来。请完整地重新粘贴，从 -----BEGIN CERTIFICATE----- 到 -----END CERTIFICATE-----。",
       "bad_domain": "这不是有效的域名。通配符写成 *.example.com。",
@@ -763,21 +782,31 @@
       "wrong_provider": "这项服务不能用在这里，请换一个。"
     },
     "field": {
+      "csr": "CSR",
       "days": "{days, plural, other {# 天}}",
       "domains": "域名",
       "expires": "到期",
       "fingerprint": "SHA-256",
       "issuer": "颁发者",
       "key": "密钥",
+      "must_staple": "OCSP 装订",
       "not_after": "到期时间",
       "not_before": "签发时间",
       "notify": "通知",
       "reminder": "到期提醒",
       "renewal": "自动续期",
+      "revocation": "吊销查询",
       "serial": "序列号",
+      "sha1": "SHA-1",
+      "signature": "签名算法",
       "source": "来源",
+      "spki": "公钥 SHA-256",
+      "subject": "主题",
       "targets": "部署到",
+      "transparency": "证书透明度",
+      "uses": "用途",
       "validation": "域名验证",
+      "validation_level": "验证级别",
       "validity": "有效期"
     },
     "filter": {
@@ -877,6 +906,9 @@
       "description": "记录每张证书和它的各个版本，到期前发出提醒。",
       "name": "证书"
     },
+    "must_staple": {
+      "required": "必须（Must-Staple）"
+    },
     "next": {
       "auto": "{date} 自动续期",
       "first": "等待首次签发",
@@ -924,6 +956,11 @@
     "renewal": {
       "suggested": "CA 建议 {start} 至 {end}",
       "why": "原因"
+    },
+    "revocation": {
+      "ca": "颁发者证书",
+      "crl": "CRL",
+      "ocsp": "OCSP"
     },
     "revoke": {
       "intro": "证书颁发机构会将有效期为 {range} 的证书列入吊销列表，检查吊销列表的浏览器将不再信任它。此操作无法撤销。",
@@ -993,6 +1030,7 @@
       "days": "提前天数",
       "days_help": "证书只剩这么多天时提醒你，可以填 1 到 365。",
       "days_unit": "天",
+      "edit": "编辑续期设置",
       "notify_none": "没有通知渠道",
       "reminder_value": "到期前 {days, plural, other {# 天}}",
       "renewal_value": "到期前 {days, plural, other {# 天}}，每天 {time} 检查",
@@ -1035,9 +1073,19 @@
       "title": "未来 90 天到期",
       "today": "今天"
     },
+    "transparency": {
+      "logged": "已记录到 {count, plural, other {# 个日志}}",
+      "none": "证书里没有记录"
+    },
     "upload": {
       "intro": "新证书会替换正在使用的这张。它必须包含 {domain}，而且到期时间更晚。",
       "title": "上传新证书"
+    },
+    "validation": {
+      "dv": "域名验证（DV）",
+      "ev": "扩展验证（EV）",
+      "iv": "个人验证（IV）",
+      "ov": "组织验证（OV）"
     }
   },
   "cloudflare": {

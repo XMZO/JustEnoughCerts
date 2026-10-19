@@ -286,6 +286,17 @@ test('every page is translated and fits', async ({ page }, info) => {
   }
   await page.goto('./certificates/1')
   expect.soft(await problems(page), 'a certificate').toEqual([])
+  // Its CSR, and its renewal settings, each in a dialog.
+  await page.getByRole('button', { name: label('certs.csr.show') }).click()
+  await expect(page.locator('dialog[open] pre')).toBeVisible()
+  expect.soft(await problems(page), 'the CSR of a certificate').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  await page.getByRole('button', { name: label('certs.settings.edit') }).click()
+  await expect(page.locator('dialog[open] #renewBeforeDays')).toBeVisible()
+  expect.soft(await problems(page), 'the renewal settings of a certificate').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
 
   await page.goto('./certificates/1?upload=1')
   await expect(page.locator('dialog[open]')).toBeVisible()

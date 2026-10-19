@@ -20,6 +20,7 @@ import {
   saveFile,
   useCertificate,
   useCertSettings,
+  useCsr,
   useDeleteCertificate,
   useDeployNow,
   useDownload,
@@ -86,6 +87,61 @@ const reminderAt = computed(() =>
   current.value && cert.value ? Date.parse(current.value.notAfter) - cert.value.renewBeforeDays * day : 0,
 )
 const key = computed(() => (current.value ? keyText(current.value.keyType) : null))
+
+// What the current version says beyond its names and dates.
+const details = computed(() => detail.data.value?.details)
+type Details = NonNullable<typeof details.value>
+const validationText: Record<NonNullable<Details['validation']>, MessageKey> = {
+  dv: 'certs.validation.dv',
+  ov: 'certs.validation.ov',
+  iv: 'certs.validation.iv',
+  ev: 'certs.validation.ev',
+}
+const ekuText: Record<Details['extKeyUsage'][number], MessageKey> = {
+  any: 'certs.eku.any',
+  server_auth: 'certs.eku.server_auth',
+  client_auth: 'certs.eku.client_auth',
+  code_signing: 'certs.eku.code_signing',
+  email_protection: 'certs.eku.email_protection',
+  time_stamping: 'certs.eku.time_stamping',
+  ocsp_signing: 'certs.eku.ocsp_signing',
+}
+// Where the revocation of the version is looked up, and its issuer fetched.
+const linkLabels = { ocsp: 'certs.revocation.ocsp', crl: 'certs.revocation.crl', ca: 'certs.revocation.ca' } as const satisfies Record<string, MessageKey>
+const revocationLinks = computed(() => {
+  const d = details.value
+  if (!d) return []
+  return [
+    ...d.ocsp.map((href) => ({ href, label: linkLabels.ocsp })),
+    ...d.crl.map((href) => ({ href, label: linkLabels.crl })),
+    ...d.caIssuers.map((href) => ({ href, label: linkLabels.ca })),
+  ]
+})
+// The fingerprints, each with a button to copy it.
+const hashes = computed(() => {
+  const c = current.value
+  if (!c) return []
+  const out: { label: MessageKey; value: string; copy: MessageKey }[] = [
+    { label: 'certs.field.serial', value: colonHex(c.serial), copy: 'certs.action.copy_serial' },
+    { label: 'certs.field.fingerprint', value: colonHex(c.fingerprint), copy: 'certs.action.copy_fingerprint' },
+  ]
+  if (details.value) {
+    out.push(
+      { label: 'certs.field.sha1', value: colonHex(details.value.sha1), copy: 'certs.action.copy_sha1' },
+      { label: 'certs.field.spki', value: details.value.spkiSha256, copy: 'certs.action.copy_spki' },
+    )
+  }
+  return out
+})
+
+// A request of the version's key for its names, made when asked for.
+const showingCsr = ref(false)
+const csr = useCsr(() => props.id, () => current.value?.id ?? 0, showingCsr)
+const csrError = useApiError(csr.error)
+function downloadCsr() {
+  const text = csr.data.value?.csr
+  if (text) saveFile(new Blob([text], { type: 'application/pkcs10' }), `${domain.value.replace('*', 'star')}.csr`)
+}
 
 // Issuing, for a certificate with a source.
 const issued = computed(() => cert.value?.source === 'provider')
@@ -259,7 +315,12 @@ async function submitUpload() {
   uploading.value = false
 }
 
-// Renewal settings, edited in place.
+// Renewal settings, in the validity bar, edited in a dialog.
+const rule = computed(() =>
+  issued.value && certSettings.data.value
+    ? t('certs.settings.renewal_value', { days: cert.value?.renewBeforeDays ?? 0, time: certSettings.data.value.checkTime })
+    : t('certs.settings.reminder_value', { days: cert.value?.renewBeforeDays ?? 0 }),
+)
 const editing = ref(false)
 const days = ref('')
 const update = useUpdateCertificate(() => props.id)
@@ -470,6 +531,18 @@ async function confirmDelete() {
                   t('certs.renewal.why')
                 }}</a>
               </span>
+              <span class="mt-0.5 flex items-start gap-1 text-caption font-normal text-ink-muted">
+                <span class="min-w-0 [overflow-wrap:anywhere]">{{ rule }}</span>
+                <button
+                  type="button"
+                  :aria-label="t('certs.settings.edit')"
+                  :title="t('certs.settings.edit')"
+                  class="-my-1 grid size-6 flex-none cursor-pointer place-items-center rounded-sm border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:-my-2 max-sm:size-8"
+                  @click="edit"
+                >
+                  <Pencil class="size-3.5" aria-hidden="true" />
+                </button>
+              </span>
             </dd>
           </div>
         </dl>
@@ -612,95 +685,90 @@ async function confirmDelete() {
 
         <div class="flex min-w-0 flex-col gap-3 sm:gap-4 md:col-start-2 md:row-span-2 md:row-start-1 xl:col-start-3 xl:row-span-1 [&>*:last-child]:flex-1">
           <section aria-labelledby="info" class="rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
-            <h2 id="info" class="m-0 mb-1 text-heading sm:text-section-title font-semibold">{{ t('certs.info.title') }}</h2>
-            <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-small">
-              <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.domains') }}</dt>
+            <h2 id="info" class="m-0 mb-1 text-heading font-semibold sm:text-section-title">{{ t('certs.info.title') }}</h2>
+            <dl class="m-0 grid grid-cols-[fit-content(40%)_minmax(0,1fr)] gap-x-4 gap-y-0.5 text-small">
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.domains') }}</dt>
               <dd class="m-0 [overflow-wrap:anywhere]" translate="no">
                 <span v-for="d in cert.domains" :key="d" class="block">{{ d }}</span>
               </dd>
-              <template v-if="current">
-                <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.issuer') }}</dt>
-                <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ current.issuer }}</dd>
+              <template v-if="details && details.subject !== `CN=${cert.domains[0]}`">
+                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.subject') }}</dt>
+                <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ details.subject }}</dd>
               </template>
-              <template v-if="chain.length > 1">
-                <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.chain.title') }}</dt>
-                <dd class="m-0 flex min-w-0 flex-col gap-1">
+              <!-- The issuer, and the chain up from it, each with when it expires. -->
+              <template v-if="current">
+                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t(chain.length > 2 ? 'certs.chain.title' : 'certs.field.issuer') }}</dt>
+                <dd v-if="chain.length > 1" class="m-0 flex min-w-0 flex-col gap-0.5">
                   <span v-for="(c, i) in chain.slice(1)" :key="i" class="[overflow-wrap:anywhere]">
                     <span class="block" translate="no">{{ c.subject }}</span>
                     <span class="block text-caption text-ink-muted">{{ t('certs.chain.expires', { date: intl.date(c.notAfter) }) }}</span>
                   </span>
                 </dd>
+                <dd v-else class="m-0 [overflow-wrap:anywhere]" translate="no">{{ current.issuer }}</dd>
               </template>
-              <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.source') }}</dt>
+              <template v-if="details?.validation">
+                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.validation_level') }}</dt>
+                <dd class="m-0 [overflow-wrap:anywhere]">{{ t(validationText[details.validation]) }}</dd>
+              </template>
+              <template v-if="details?.extKeyUsage.length">
+                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.uses') }}</dt>
+                <dd class="m-0 [overflow-wrap:anywhere]">{{ intl.list(details.extKeyUsage.map((u) => t(ekuText[u]))) }}</dd>
+              </template>
+              <template v-if="details">
+                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.transparency') }}</dt>
+                <dd class="m-0 [overflow-wrap:anywhere]">{{ details.scts ? t('certs.transparency.logged', { count: details.scts }) : t('certs.transparency.none') }}</dd>
+              </template>
+              <template v-if="details?.mustStaple">
+                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.must_staple') }}</dt>
+                <dd class="m-0 [overflow-wrap:anywhere]">{{ t('certs.must_staple.required') }}</dd>
+              </template>
+              <template v-if="details && (details.ocsp.length || details.crl.length || details.caIssuers.length)">
+                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.revocation') }}</dt>
+                <dd class="m-0 flex flex-wrap">
+                  <a
+                    v-for="l in revocationLinks"
+                    :key="l.href"
+                    :href="l.href"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="underline underline-offset-2 not-first:before:mx-1.5 not-first:before:text-ink-muted not-first:before:no-underline not-first:before:content-['·']"
+                    >{{ t(l.label) }}</a
+                  >
+                </dd>
+              </template>
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.source') }}</dt>
               <dd v-if="issued" class="m-0 [overflow-wrap:anywhere]" translate="no">{{ sourceName ?? '' }}</dd>
-              <dd v-else class="m-0">{{ t('certs.source.upload') }}</dd>
+              <dd v-else class="m-0 [overflow-wrap:anywhere]">{{ t('certs.source.upload') }}</dd>
               <template v-if="issued && cert.solverProvider">
-                <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.validation') }}</dt>
+                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.validation') }}</dt>
                 <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ solverName ?? '' }}</dd>
               </template>
-              <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.key') }}</dt>
-              <dd v-if="key" class="m-0">{{ t(key.key, key.params) }}</dd>
-              <dd v-else class="m-0">{{ t(keyText(cert.keyType).key, keyText(cert.keyType).params) }}</dd>
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.key') }}</dt>
+              <dd v-if="key" class="m-0 [overflow-wrap:anywhere]">{{ t(key.key, key.params) }}</dd>
+              <dd v-else class="m-0 [overflow-wrap:anywhere]">{{ t(keyText(cert.keyType).key, keyText(cert.keyType).params) }}</dd>
+              <template v-if="details">
+                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.signature') }}</dt>
+                <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ details.signatureAlgorithm }}</dd>
+              </template>
               <template v-if="current">
-                <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.serial') }}</dt>
-                <dd class="m-0 flex min-w-0 items-start gap-1">
-                  <span class="min-w-0 flex-1 truncate font-mono text-caption leading-5" translate="no" :title="colonHex(current.serial)">
-                    {{ colonHex(current.serial) }}
-                  </span>
-                  <CopyButton :value="colonHex(current.serial)" label="certs.action.copy_serial" />
-                </dd>
-                <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.fingerprint') }}</dt>
-                <dd class="m-0 flex min-w-0 items-start gap-1">
-                  <span class="min-w-0 flex-1 truncate font-mono text-caption leading-5" translate="no" :title="colonHex(current.fingerprint)">
-                    {{ colonHex(current.fingerprint) }}
-                  </span>
-                  <CopyButton :value="colonHex(current.fingerprint)" label="certs.action.copy_fingerprint" />
+                <template v-for="h in hashes" :key="h.label">
+                  <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t(h.label) }}</dt>
+                  <dd class="m-0 flex min-w-0 items-start gap-1">
+                    <span class="min-w-0 flex-1 truncate font-mono text-caption leading-5" translate="no" :title="h.value">{{ h.value }}</span>
+                    <CopyButton :value="h.value" :label="h.copy" />
+                  </dd>
+                </template>
+                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.csr') }}</dt>
+                <dd class="m-0 [overflow-wrap:anywhere]">
+                  <button type="button" class="cursor-pointer border-0 bg-transparent p-0 text-small text-brand underline underline-offset-2 hover:text-brand-hover" @click="showingCsr = true">
+                    {{ t('certs.csr.show') }}
+                  </button>
                 </dd>
               </template>
-            </dl>
-          </section>
-
-          <section aria-labelledby="settings" class="rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
-            <div class="mb-1 flex items-center justify-between gap-3">
-              <h2 id="settings" class="m-0 text-heading sm:text-section-title font-semibold">{{ t('certs.settings.title') }}</h2>
-              <JecButton v-if="!editing" variant="ghost" size="sm" @click="edit">
-                <Pencil class="size-4" aria-hidden="true" />{{ t('kernel.action.edit') }}
-              </JecButton>
-            </div>
-            <dl v-if="!editing" class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-small">
-              <dt class="whitespace-nowrap text-ink-muted">{{ t(issued ? 'certs.field.renewal' : 'certs.field.reminder') }}</dt>
-              <dd v-if="issued && certSettings.data.value" class="m-0">
-                {{ t('certs.settings.renewal_value', { days: cert.renewBeforeDays, time: certSettings.data.value.checkTime }) }}
-              </dd>
-              <dd v-else class="m-0">{{ t('certs.settings.reminder_value', { days: cert.renewBeforeDays }) }}</dd>
-              <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.notify') }}</dt>
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.notify') }}</dt>
               <dd v-if="notifying.length" class="m-0 [overflow-wrap:anywhere]" translate="no">{{ intl.list(notifying) }}</dd>
-              <dd v-else class="m-0 text-ink-muted">{{ t('certs.settings.notify_none') }}</dd>
+              <dd v-else class="m-0 [overflow-wrap:anywhere] text-ink-muted">{{ t('certs.settings.notify_none') }}</dd>
             </dl>
-            <form v-else class="flex flex-col gap-3" novalidate @submit.prevent="saveSettings">
-              <JecField id="renewBeforeDays" label="certs.settings.days" hint="certs.settings.days_help" :error="updateError.fields.value.renewBeforeDays">
-                <span class="flex items-center gap-2">
-                  <span class="w-24 flex-none">
-                    <JecInput
-                      id="renewBeforeDays"
-                      v-model="days"
-                      type="number"
-                      inputmode="numeric"
-                      min="1"
-                      max="365"
-                      class="tabular-nums"
-                      :invalid="!!updateError.fields.value.renewBeforeDays"
-                    />
-                  </span>
-                  <span>{{ t('certs.settings.days_unit') }}</span>
-                </span>
-              </JecField>
-              <JecAlert v-if="updateError.alert.value" :code="updateError.alert.value.code" :params="updateError.alert.value.params" />
-              <div class="flex flex-wrap gap-2">
-                <JecButton type="submit" variant="primary" size="sm" :busy="update.isPending.value">{{ t('kernel.action.save') }}</JecButton>
-                <JecButton size="sm" @click="editing = false">{{ t('kernel.action.cancel') }}</JecButton>
-              </div>
-            </form>
           </section>
 
         </div>
@@ -718,6 +786,69 @@ async function confirmDelete() {
   </div>
 
   <CertActionDialog v-model:ask="asking" />
+
+  <JecDialog v-if="cert" v-model:open="editing" :title="t('certs.settings.title')" small>
+    <form id="settings-form" class="flex flex-col gap-3" novalidate @submit.prevent="saveSettings">
+      <JecField id="renewBeforeDays" label="certs.settings.days" hint="certs.settings.days_help" :error="updateError.fields.value.renewBeforeDays">
+        <span class="flex items-center gap-2">
+          <span class="w-24 flex-none">
+            <JecInput
+              id="renewBeforeDays"
+              v-model="days"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              max="365"
+              class="tabular-nums"
+              :invalid="!!updateError.fields.value.renewBeforeDays"
+            />
+          </span>
+          <span>{{ t('certs.settings.days_unit') }}</span>
+        </span>
+      </JecField>
+      <JecAlert v-if="updateError.alert.value" :code="updateError.alert.value.code" :params="updateError.alert.value.params" />
+    </form>
+    <template #footer>
+      <JecButton @click="editing = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton type="submit" form="settings-form" variant="primary" :busy="update.isPending.value">{{ t('kernel.action.save') }}</JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-if="cert && current" v-model:open="showingCsr" :title="t('certs.csr.title', { domain })">
+    <div class="flex flex-col gap-3">
+      <p class="m-0 text-small text-ink-muted">{{ t('certs.csr.intro') }}</p>
+      <JecAlert v-if="csrError.error.value" :code="csrError.error.value.code" :params="csrError.error.value.params" />
+      <template v-if="csr.data.value">
+        <dl class="m-0 grid grid-cols-[fit-content(40%)_minmax(0,1fr)] gap-x-4 gap-y-0.5 text-small">
+          <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.subject') }}</dt>
+          <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ csr.data.value.subject }}</dd>
+          <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.csr.names') }}</dt>
+          <dd class="m-0 [overflow-wrap:anywhere]" translate="no">
+            <span v-for="n in csr.data.value.names" :key="n" class="block">{{ n }}</span>
+          </dd>
+          <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.key') }}</dt>
+          <dd class="m-0 [overflow-wrap:anywhere]">{{ t(keyText(csr.data.value.keyType).key, keyText(csr.data.value.keyType).params) }}</dd>
+          <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.signature') }}</dt>
+          <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ csr.data.value.signatureAlgorithm }}</dd>
+        </dl>
+        <div class="relative">
+          <pre
+            translate="no"
+            tabindex="0"
+            :aria-label="t('certs.field.csr')"
+            class="m-0 max-h-64 overflow-auto rounded-md bg-surface-sunken p-3 pr-10 font-mono text-caption whitespace-pre"
+          >{{ csr.data.value.csr }}</pre>
+          <span class="absolute top-1.5 right-1.5"><CopyButton :value="csr.data.value.csr" label="certs.csr.copy" /></span>
+        </div>
+      </template>
+    </div>
+    <template #footer>
+      <JecButton @click="showingCsr = false">{{ t('kernel.action.close') }}</JecButton>
+      <JecButton variant="primary" :disabled="!csr.data.value" @click="downloadCsr">
+        <Download class="size-4" aria-hidden="true" />{{ t('certs.csr.download') }}
+      </JecButton>
+    </template>
+  </JecDialog>
 
   <JecDialog v-if="cert" v-model:open="uploading" :title="t('certs.upload.title')">
     <form id="upload-form" class="flex flex-col gap-3" novalidate @submit.prevent="submitUpload">

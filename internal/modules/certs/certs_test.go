@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -272,6 +273,7 @@ func TestDetail(t *testing.T) {
 		Certificate CertificateBody
 		Versions    []VersionBody
 		Chain       []ChainEntry
+		Details     *DetailsBody
 	}
 	f.call(f.api.Get("/certificates/"+strconv.FormatInt(c.ID, 10)), http.StatusOK, &d)
 	if len(d.Versions) != 2 || d.Versions[0].ID != d.Certificate.Current.ID || d.Versions[1].ID != c.Current.ID {
@@ -281,7 +283,20 @@ func TestDetail(t *testing.T) {
 		d.Chain[1].Subject != "Test Intermediate" || d.Chain[1].Issuer != "Test Root" {
 		t.Errorf("chain: %+v", d.Chain)
 	}
+	if d.Details == nil || d.Details.Subject != "CN=example.com" || d.Details.Issuer != "CN=Test Intermediate" ||
+		!slices.Equal(d.Details.ExtKeyUsage, []string{"server_auth"}) || len(d.Details.SHA1) != 40 {
+		t.Errorf("details: %+v", d.Details)
+	}
 	f.apiError(f.api.Get("/certificates/999"), http.StatusNotFound)
+
+	// A request of the version's key, for its names.
+	var r CSRBody
+	f.call(f.api.Get("/certificates/"+strconv.FormatInt(c.ID, 10)+"/versions/"+strconv.FormatInt(c.Current.ID, 10)+"/csr"), http.StatusOK, &r)
+	if !strings.HasPrefix(r.CSR, "-----BEGIN CERTIFICATE REQUEST-----") || r.Subject != "CN=example.com" ||
+		!slices.Equal(r.Names, []string{"example.com"}) || r.KeyType != c.Current.KeyType {
+		t.Errorf("request: %+v", r)
+	}
+	f.apiError(f.api.Get("/certificates/"+strconv.FormatInt(c.ID, 10)+"/versions/999/csr"), http.StatusNotFound)
 }
 
 func TestUploadVersion(t *testing.T) {

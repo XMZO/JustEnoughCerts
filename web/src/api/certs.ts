@@ -262,6 +262,17 @@ export function useDownload(id: MaybeRefOrGetter<number>) {
   })
 }
 
+/** A certificate request of version's private key for its names, which the server makes anew when asked. */
+export function useCsr(id: MaybeRefOrGetter<number>, version: MaybeRefOrGetter<number>, enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: computed(() => [...all, 'csr', toValue(id), toValue(version)] as const),
+    queryFn: () =>
+      unwrap(api.GET('/certs/certificates/{id}/versions/{version}/csr', { params: { path: { id: toValue(id), version: toValue(version) } } })),
+    enabled: computed(() => toValue(enabled)),
+    staleTime: Infinity,
+  })
+}
+
 /** saveFile hands blob to the browser as a download called name. */
 export function saveFile(blob: Blob, name: string): void {
   const url = URL.createObjectURL(blob)
