@@ -23,7 +23,7 @@ const defaultServer = "https://api.day.app"
 
 func deviceType() providers.Type {
 	return providers.Type{
-		ID: "bark.device", Kind: providers.Notifier, Name: i18n.BarkDeviceName, Description: i18n.BarkDeviceDescription,
+		ID: "bark.device", Kind: providers.Notifier, Name: i18n.BarkDeviceName, Description: i18n.BarkDeviceDescription, Untested: true,
 		Fields: append([]providers.Field{
 			{Key: "key", Label: i18n.BarkFieldKey, Help: i18n.BarkFieldKeyHelp, Kind: providers.Text, Secret: true, Required: true},
 			{Key: "server", Label: i18n.BarkFieldServer, Help: i18n.BarkFieldServerHelp, Kind: providers.URL, Default: defaultServer, Advanced: true},

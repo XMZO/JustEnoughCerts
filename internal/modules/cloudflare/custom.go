@@ -22,7 +22,7 @@ import (
 
 func customType() providers.Type {
 	return providers.Type{
-		ID: "cloudflare.custom", Kind: providers.Target, Name: i18n.CloudflareCustomName, Description: i18n.CloudflareCustomDescription,
+		ID: "cloudflare.custom", Kind: providers.Target, Name: i18n.CloudflareCustomName, Description: i18n.CloudflareCustomDescription, Untested: true,
 		Testable: true,
 		Fields: []providers.Field{
 			credentials.CloudflareAuth,

@@ -53,7 +53,7 @@ const (
 
 func edgeType() providers.Type {
 	return providers.Type{
-		ID: "esa.edge", Kind: providers.Solver, Challenge: providers.ChallengeHTTP,
+		ID: "esa.edge", Kind: providers.Solver, Challenge: providers.ChallengeHTTP, Untested: true,
 		Name: i18n.EsaEdgeName, Description: i18n.EsaEdgeDescription,
 		Tags: []string{"china", "http"}, Testable: true,
 		Fields: []providers.Field{

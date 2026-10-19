@@ -37,7 +37,7 @@ const (
 
 func cdnType() providers.Type {
 	return providers.Type{
-		ID: "qiniu.cdn", Kind: providers.Target, Name: i18n.QiniuCdnName, Description: i18n.QiniuCdnDescription,
+		ID: "qiniu.cdn", Kind: providers.Target, Name: i18n.QiniuCdnName, Description: i18n.QiniuCdnDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "access_key", Label: i18n.QiniuFieldAccessKey, Kind: providers.Text, Required: true},

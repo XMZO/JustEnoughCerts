@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { CircleCheck, CircleSlash, Download, FileText, LoaderCircle, OctagonX } from '@lucide/vue'
-import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
-import { saveFile, useRuns, type Run } from '../api/certs'
+import { runsExport, runsPageSize, saveFile, useRunsPage, type Run, type RunsQuery } from '../api/certs'
 import { useApiError } from '../api/errors'
 import { actionText, resultText, runAt, runLink, runResult, runSeconds, triggerText, useRunText, type RunResult } from '../certs/runs'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
+import JecPager from '../components/JecPager.vue'
 import PageHeader from '../components/PageHeader.vue'
 import SearchBox from '../components/SearchBox.vue'
 import { useT, type MessageKey } from '../i18n'
@@ -15,9 +16,10 @@ import { useIntl } from '../i18n/intl'
 import { dayKey, stamp } from '../zone'
 
 // Every issuance, renewal and deployment (docs/design/boards/History and
-// HistoryMobile), the newest first and grouped by day: filtered by result,
-// action, time and domain instead of paged, each leading to its log. On
-// phones a list, from 640px a table.
+// HistoryMobile), the newest first and grouped by day, each leading to its
+// log: filtered by result, action, time and domain, which the server does,
+// and paged, as the user asked, the page in the address. On phones a list,
+// from 640px a table.
 const { t } = useT()
 const intl = useIntl()
 const text = useRunText()
@@ -29,8 +31,6 @@ const ranges = [
   { days: 0, label: 'certs.runs.range.all' },
 ] as const
 const days = ref(30)
-const runs = useRuns(days)
-const loadError = useApiError(runs.error)
 
 const actions = [
   { id: 'all', label: 'certs.runs.action.all' },
@@ -39,24 +39,55 @@ const actions = [
   { id: 'deploy', label: 'certs.runs.action.deploy' },
 ] as const
 const action = ref<'all' | Run['action']>('all')
-const query = ref('')
 type Filter = 'all' | RunResult
 const filter = ref<Filter>('all')
 
-// The newest first, by when each began.
-const all = computed(() => [...(runs.data.value?.runs ?? [])].sort((a, b) => Date.parse(runAt(b)) - Date.parse(runAt(a))))
-const searched = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  return all.value.filter((r) => (action.value === 'all' || r.action === action.value) && (!q || r.domain.includes(q)))
+// The domain looked for, once typing pauses.
+const query = ref('')
+const domain = ref('')
+let typing: ReturnType<typeof setTimeout> | undefined
+watch(query, (q) => {
+  clearTimeout(typing)
+  typing = setTimeout(() => (domain.value = q.trim()), 300)
 })
-const filters = computed(() =>
-  (['all', 'ok', 'failed', 'running'] as const).map((id): { id: Filter; label: MessageKey; count: number } => ({
+
+// The page, in the address: back and forward keep it; another filter
+// starts over at the first.
+const route = useRoute()
+const router = useRouter()
+const page = computed({
+  get: () => Math.max(1, Number(route.query.page) || 1),
+  set: (p: number) => {
+    void router.replace({ query: { ...route.query, page: p > 1 ? String(p) : undefined } })
+    window.scrollTo({ top: 0 })
+  },
+})
+watch([days, action, filter, domain], () => {
+  if (page.value > 1) page.value = 1
+})
+const asked = computed<RunsQuery>(() => ({
+  days: days.value,
+  action: action.value === 'all' ? undefined : action.value,
+  result: filter.value === 'all' ? undefined : filter.value,
+  q: domain.value || undefined,
+}))
+const runs = useRunsPage(() => ({ ...asked.value, page: page.value }))
+const loadError = useApiError(runs.error)
+const shown = computed(() => runs.data.value?.runs ?? [])
+const total = computed(() => runs.data.value?.total ?? 0)
+const pages = computed(() => Math.max(1, Math.ceil(total.value / runsPageSize)))
+// Past the last page, as after a filter: the last one.
+watch(pages, (n) => {
+  if (page.value > n) page.value = n
+})
+const filters = computed(() => {
+  const counts = runs.data.value?.counts
+  return (['all', 'ok', 'failed', 'running'] as const).map((id): { id: Filter; label: MessageKey; count: number } => ({
     id,
     label: id === 'all' ? 'certs.runs.result.all' : resultText[id],
-    count: id === 'all' ? searched.value.length : searched.value.filter((r) => runResult(r) === id).length,
-  })),
-)
-const shown = computed(() => searched.value.filter((r) => filter.value === 'all' || runResult(r) === filter.value))
+    count: counts ? counts[id] : 0,
+  }))
+})
 
 interface Row {
   run: Run
@@ -108,12 +139,22 @@ const columns = [
   'certs.runs.column.duration',
 ] as const
 
-// The rows shown, as CSV: times in the panel's zone, and a byte order mark
-// so that spreadsheets read the text as UTF-8.
+// The runs the filters match, every page, as CSV: times in the panel's
+// zone, and a byte order mark so that spreadsheets read the text as UTF-8.
 const cell = (v: string) => (/[",\r\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v)
-function exportCsv() {
+const exporting = ref(false)
+async function exportCsv() {
+  exporting.value = true
+  let list: Run[]
+  try {
+    list = await runsExport(asked.value)
+  } catch {
+    return // the page shows why the history cannot be read
+  } finally {
+    exporting.value = false
+  }
   const lines = [columns.map((c) => t(c))]
-  for (const r of shown.value) {
+  for (const r of list) {
     lines.push([
       stamp(runAt(r)),
       r.domain,
@@ -134,7 +175,7 @@ const selectClass =
 <template>
   <PageHeader :title="t('certs.runs.title')" :subtitle="t('certs.runs.intro')">
     <template #actions>
-      <JecButton :disabled="!shown.length" @click="exportCsv"><Download class="size-4" aria-hidden="true" />{{ t('certs.runs.export') }}</JecButton>
+      <JecButton :disabled="!shown.length" :busy="exporting" @click="exportCsv"><Download class="size-4" aria-hidden="true" />{{ t('certs.runs.export') }}</JecButton>
     </template>
   </PageHeader>
 
@@ -170,7 +211,7 @@ const selectClass =
       </div>
     </div>
 
-    <p v-if="runs.isSuccess.value && !all.length" class="m-0 rounded-lg border border-line bg-surface-raised p-4 text-ink-muted">
+    <p v-if="runs.isSuccess.value && !runs.data.value?.counts.all && !domain" class="m-0 rounded-lg border border-line bg-surface-raised p-4 text-ink-muted">
       {{ t('certs.runs.empty') }}
     </p>
     <p v-else-if="runs.isSuccess.value && !shown.length" class="m-0 rounded-lg border border-line bg-surface-raised p-4 text-ink-muted">
@@ -270,9 +311,9 @@ const selectClass =
       </div>
     </section>
 
-    <p v-if="shown.length" class="m-0 text-small text-ink-muted">
-      {{ t('certs.runs.summary', { shown: shown.length, total: all.length }) }}
-      <template v-if="runs.data.value?.more">{{ t('certs.runs.more', { count: all.length }) }}</template>
+    <JecPager v-model="page" :pages="pages" />
+    <p v-if="shown.length" class="m-0 text-center text-small text-ink-muted">
+      {{ t('kernel.pager.summary', { from: (page - 1) * runsPageSize + 1, to: (page - 1) * runsPageSize + shown.length, total }) }}
     </p>
   </div>
 </template>

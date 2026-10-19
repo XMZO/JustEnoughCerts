@@ -24,7 +24,7 @@ import (
 
 func elbType() providers.Type {
 	return providers.Type{
-		ID: "huaweicloud.elb", Kind: providers.Target, Name: i18n.HuaweicloudElbName, Description: i18n.HuaweicloudElbDescription,
+		ID: "huaweicloud.elb", Kind: providers.Target, Name: i18n.HuaweicloudElbName, Description: i18n.HuaweicloudElbDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "access_key_id", Label: i18n.HuaweicloudFieldAccessKeyId, Kind: providers.Text, Required: true},

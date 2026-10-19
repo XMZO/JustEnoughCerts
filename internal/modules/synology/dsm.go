@@ -35,7 +35,7 @@ const maxListed = 20
 
 func dsmType() providers.Type {
 	return providers.Type{
-		ID: "synology.dsm", Kind: providers.Target, Name: i18n.SynologyDsmName, Description: i18n.SynologyDsmDescription,
+		ID: "synology.dsm", Kind: providers.Target, Name: i18n.SynologyDsmName, Description: i18n.SynologyDsmDescription, Untested: true,
 		Tags: []string{"self_hosted"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "url", Label: i18n.SynologyFieldUrl, Help: i18n.SynologyFieldUrlHelp, Kind: providers.URL, Required: true},

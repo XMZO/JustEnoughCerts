@@ -41,7 +41,7 @@ var (
 
 func sendKeyType() providers.Type {
 	return providers.Type{
-		ID: "serverchan.sendkey", Kind: providers.Notifier, Name: i18n.ServerchanSendkeyName, Description: i18n.ServerchanSendkeyDescription,
+		ID: "serverchan.sendkey", Kind: providers.Notifier, Name: i18n.ServerchanSendkeyName, Description: i18n.ServerchanSendkeyDescription, Untested: true,
 		Tags: []string{"china"},
 		Fields: append([]providers.Field{
 			{Key: "key", Label: i18n.ServerchanFieldKey, Help: i18n.ServerchanFieldKeyHelp, Kind: providers.Text, Secret: true, Required: true},

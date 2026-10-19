@@ -2249,23 +2249,66 @@
         ],
         "type": "object"
       },
+      "RunCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "all": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "canceled": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "failed": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "ok": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "running": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "all",
+          "ok",
+          "failed",
+          "running",
+          "canceled"
+        ],
+        "type": "object"
+      },
       "RunsOutputBody": {
         "additionalProperties": false,
         "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/RunCounts"
+          },
           "more": {
-            "description": "There are older ones in the time asked for than one answer holds",
+            "description": "There are pages after this one",
             "type": "boolean"
           },
           "runs": {
-            "description": "The newest first",
+            "description": "The newest first, by the start of their last attempt or else their creation",
             "items": {
               "$ref": "#/components/schemas/RunBody"
             },
             "type": "array"
+          },
+          "total": {
+            "description": "The runs all filters ask for, every page",
+            "format": "int64",
+            "type": "integer"
           }
         },
         "required": [
           "runs",
+          "total",
+          "counts",
           "more"
         ],
         "type": "object"
@@ -2752,6 +2795,9 @@
             },
             "type": "object"
           },
+          "untested": {
+            "type": "boolean"
+          },
           "url": {
             "type": "string"
           }
@@ -2856,6 +2902,10 @@
             },
             "description": "The type's own messages, by language tag and key, for keys the locale files lack, such as a plugin's",
             "type": "object"
+          },
+          "untested": {
+            "description": "Tested only against a stand-in for the service's API, never with a real account: it may not work",
+            "type": "boolean"
           },
           "url": {
             "type": "string"
@@ -4216,7 +4266,7 @@
     },
     "/certs/runs": {
       "get": {
-        "description": "Those created in the last days, the newest first, at most 500.",
+        "description": "Those created in the last days that the filters ask for, the newest first, a page at a time.",
         "operationId": "certs-runs",
         "parameters": [
           {
@@ -4230,6 +4280,73 @@
               "format": "int64",
               "maximum": 36500,
               "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Only runs of this action",
+            "explode": false,
+            "in": "query",
+            "name": "action",
+            "schema": {
+              "description": "Only runs of this action",
+              "enum": [
+                "issue",
+                "renew",
+                "deploy"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only runs of this result; a pending run that failed before is failed",
+            "explode": false,
+            "in": "query",
+            "name": "result",
+            "schema": {
+              "description": "Only runs of this result; a pending run that failed before is failed",
+              "enum": [
+                "ok",
+                "failed",
+                "running",
+                "canceled"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only runs of certificates whose primary domain holds this text",
+            "explode": false,
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "description": "Only runs of certificates whose primary domain holds this text",
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "default": 1,
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Runs a page holds",
+            "explode": false,
+            "in": "query",
+            "name": "size",
+            "schema": {
+              "default": 500,
+              "description": "Runs a page holds",
+              "format": "int64",
+              "maximum": 5000,
+              "minimum": 1,
               "type": "integer"
             }
           }

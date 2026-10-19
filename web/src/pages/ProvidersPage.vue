@@ -15,6 +15,7 @@ import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
 import PageHeader from '../components/PageHeader.vue'
 import ProviderDialog from '../components/ProviderDialog.vue'
+import TypeTags from '../components/TypeTags.vue'
 import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import { kindPages, summary, typeName, type PageKind } from '../providers/fields'
@@ -132,6 +133,7 @@ const cards = computed(() =>
     ).length
     return {
       provider: p,
+      type: summaryType,
       typeBrand: name.brand,
       typeLabel: name.key ? t(name.key) : (name.brand ?? (summaryType ? '' : t('kernel.providers.type_gone'))),
       shown: summary(fullType(p.type), p),
@@ -213,7 +215,10 @@ async function confirmDelete() {
       <article v-for="c in cards" :key="c.provider.id" class="flex min-w-0 flex-col gap-2 rounded-lg border border-line bg-surface-raised p-4">
         <div class="flex min-w-0 flex-col gap-0.5">
           <h2 class="m-0 truncate text-heading font-semibold" translate="no" :title="c.provider.name">{{ c.provider.name }}</h2>
-          <span class="truncate text-small text-ink-muted" :translate="c.typeBrand ? 'no' : undefined" :title="c.typeLabel">{{ c.typeLabel }}</span>
+          <span class="flex min-w-0 items-center gap-1.5">
+            <span class="truncate text-small text-ink-muted" :translate="c.typeBrand ? 'no' : undefined" :title="c.typeLabel">{{ c.typeLabel }}</span>
+            <TypeTags :type="c.type" />
+          </span>
         </div>
         <dl v-if="c.shown.length" class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-small">
           <template v-for="s in c.shown" :key="s.key">

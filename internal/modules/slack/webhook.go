@@ -27,7 +27,7 @@ const maxText = 3000
 
 func webhookType() providers.Type {
 	return providers.Type{
-		ID: "slack.webhook", Kind: providers.Notifier, Name: i18n.SlackWebhookName, Description: i18n.SlackWebhookDescription,
+		ID: "slack.webhook", Kind: providers.Notifier, Name: i18n.SlackWebhookName, Description: i18n.SlackWebhookDescription, Untested: true,
 		Fields: append([]providers.Field{
 			{Key: "url", Label: i18n.SlackFieldUrl, Help: i18n.SlackFieldUrlHelp, Kind: providers.URL, Secret: true, Required: true},
 			{Key: "allow_private", Label: i18n.SlackFieldAllowPrivate, Help: i18n.SlackFieldAllowPrivateHelp, Kind: providers.Switch, Default: "false", Advanced: true},

@@ -42,7 +42,7 @@ var hosts = []string{"discord.com", "discordapp.com", "canary.discord.com", "ptb
 
 func webhookType() providers.Type {
 	return providers.Type{
-		ID: "discord.webhook", Kind: providers.Notifier, Name: i18n.DiscordWebhookName, Description: i18n.DiscordWebhookDescription,
+		ID: "discord.webhook", Kind: providers.Notifier, Name: i18n.DiscordWebhookName, Description: i18n.DiscordWebhookDescription, Untested: true,
 		Fields: append([]providers.Field{
 			{Key: "url", Label: i18n.DiscordFieldUrl, Help: i18n.DiscordFieldUrlHelp, Kind: providers.URL, Secret: true, Required: true},
 			httpx.ProxyField(),

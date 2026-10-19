@@ -19,7 +19,7 @@ func (svc service) providerType() providers.Type {
 		desc = i18n.AliyunDcdnDescription
 	}
 	return providers.Type{
-		ID: "aliyun." + svc.id, Kind: providers.Target, Name: svc.name, Description: desc,
+		ID: "aliyun." + svc.id, Kind: providers.Target, Name: svc.name, Description: desc, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "access_key_id", Label: i18n.AliyunFieldAccessKeyId, Kind: providers.Text, Required: true},

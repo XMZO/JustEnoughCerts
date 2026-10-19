@@ -35,7 +35,7 @@ const maxContent = 4000
 
 func botType() providers.Type {
 	return providers.Type{
-		ID: "feishu.bot", Kind: providers.Notifier, Name: i18n.FeishuBotName, Description: i18n.FeishuBotDescription,
+		ID: "feishu.bot", Kind: providers.Notifier, Name: i18n.FeishuBotName, Description: i18n.FeishuBotDescription, Untested: true,
 		Tags: []string{"china"},
 		Fields: append([]providers.Field{
 			{Key: "webhook", Label: i18n.FeishuFieldWebhook, Help: i18n.FeishuFieldWebhookHelp, Kind: providers.Text, Secret: true, Required: true},

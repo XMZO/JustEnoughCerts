@@ -28,7 +28,7 @@ const (
 
 func userType() providers.Type {
 	return providers.Type{
-		ID: "pushover.user", Kind: providers.Notifier, Name: i18n.PushoverUserName, Description: i18n.PushoverUserDescription,
+		ID: "pushover.user", Kind: providers.Notifier, Name: i18n.PushoverUserName, Description: i18n.PushoverUserDescription, Untested: true,
 		Fields: append([]providers.Field{
 			{Key: "token", Label: i18n.PushoverFieldToken, Help: i18n.PushoverFieldTokenHelp, Kind: providers.Text, Secret: true, Required: true},
 			{Key: "user", Label: i18n.PushoverFieldUser, Help: i18n.PushoverFieldUserHelp, Kind: providers.Text, Secret: true, Required: true},

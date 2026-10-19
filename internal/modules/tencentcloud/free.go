@@ -29,7 +29,7 @@ const freePoll = 2 * time.Minute
 
 func freeType() providers.Type {
 	return providers.Type{
-		ID: "tencentcloud.free", Kind: providers.Source, OwnKey: true, Name: i18n.TencentcloudFreeName, Description: i18n.TencentcloudFreeDescription,
+		ID: "tencentcloud.free", Kind: providers.Source, OwnKey: true, Name: i18n.TencentcloudFreeName, Description: i18n.TencentcloudFreeDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "secret_id", Label: i18n.TencentcloudFieldSecretId, Kind: providers.Text, Required: true},

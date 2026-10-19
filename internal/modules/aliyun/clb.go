@@ -37,7 +37,7 @@ func clbEndpoint(region string) string {
 
 func clbType() providers.Type {
 	return providers.Type{
-		ID: "aliyun.clb", Kind: providers.Target, Name: i18n.AliyunClbName, Description: i18n.AliyunClbDescription,
+		ID: "aliyun.clb", Kind: providers.Target, Name: i18n.AliyunClbName, Description: i18n.AliyunClbDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "access_key_id", Label: i18n.AliyunFieldAccessKeyId, Kind: providers.Text, Required: true},

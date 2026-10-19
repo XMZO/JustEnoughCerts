@@ -29,7 +29,7 @@ const recheck = 6 * time.Hour
 
 func fetchType() providers.Type {
 	return providers.Type{
-		ID: "aliyun.fetch", Kind: providers.Source, OwnKey: true, Name: i18n.AliyunFetchName, Description: i18n.AliyunFetchDescription,
+		ID: "aliyun.fetch", Kind: providers.Source, OwnKey: true, Name: i18n.AliyunFetchName, Description: i18n.AliyunFetchDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "access_key_id", Label: i18n.AliyunFieldAccessKeyId, Kind: providers.Text, Required: true},

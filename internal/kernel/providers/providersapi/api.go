@@ -37,6 +37,7 @@ type TypeSummary struct {
 	Records      bool           `json:"records,omitempty" doc:"For a solver of DNS: it adds records of any type too, as some sources ask"`
 	Testable     bool           `json:"testable,omitempty" doc:"Its instances can be tested"`
 	Experimental bool           `json:"experimental,omitempty"`
+	Untested     bool           `json:"untested,omitempty" doc:"Tested only against a stand-in for the service's API, never with a real account: it may not work"`
 	// CredentialKind is the kind of credential the type can take some of
 	// its fields from.
 	CredentialKind string `json:"credentialKind,omitempty" doc:"The kind of credential the type can take some of its fields from"`
@@ -151,7 +152,7 @@ func Register(a huma.API, r *providers.Registry) {
 		for _, t := range r.Types(providers.Kind(in.Kind)) {
 			sum := TypeSummary{
 				ID: t.ID, Kind: t.Kind, Module: t.Module, Name: t.Name, Description: t.Description,
-				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, OwnKey: t.OwnKey, Revocable: t.Revocable, Testable: t.Testable, Experimental: t.Experimental,
+				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, OwnKey: t.OwnKey, Revocable: t.Revocable, Testable: t.Testable, Experimental: t.Experimental, Untested: t.Untested,
 				CredentialKind: t.CredentialKind, Texts: t.Texts,
 			}
 			switch {

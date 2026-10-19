@@ -139,6 +139,9 @@ type Type struct {
 	// (contracts.Tester), through POST /api/v1/providers/{id}/test.
 	Testable     bool `json:"testable,omitempty"`
 	Experimental bool `json:"experimental,omitempty"`
+	// Untested is set on a type tested only against a stand-in for the
+	// service's API, never with a real account: it may not work.
+	Untested bool `json:"untested,omitempty"`
 	// Texts are the type's own messages, by language tag and key, for keys
 	// the locale files lack, as a plugin brings its translations along. The
 	// web UI adds them to its messages. Their keys start with the module ID

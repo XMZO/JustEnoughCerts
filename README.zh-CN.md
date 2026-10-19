@@ -7,7 +7,7 @@
 Just Enough Certs（JEC）是一款自托管的 SSL/TLS 证书管理面板，负责从各类来源获取证书、自动完成域名验证、将证书部署到 CDN 与服务器，并在到期前自动续期。项目名称与视觉风格致敬 Minecraft 模组 JEI。
 
 > [!WARNING]
-> JEC 仍处于早期开发阶段，尚未发布正式版。测试版为 0.1.0-alpha.x（镜像标签 `beta`），已实现下文所列功能。阿里云 ESA 部署与 Namecheap SSL Manager 已经过真实账号验证，ESA 边缘应答尚未验证。路线图见 [PLAN.md](PLAN.md)。
+> JEC 仍处于早期开发阶段，尚未发布正式版。测试版为 0.1.0-alpha.x（镜像标签 `beta`），已实现下文所列功能。阿里云 ESA 部署、Namecheap SSL Manager 与 Cloudflare 边缘应答已经过真实账号验证；界面上标有“未实测”的类型仅用替身测试，可能无法生效。路线图见 [PLAN.md](PLAN.md)。
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/site/public/preview/overview-zh-CN-dark.webp">

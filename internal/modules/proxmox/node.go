@@ -25,7 +25,7 @@ var nodePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.-]{0,62}$`)
 
 func nodeType() providers.Type {
 	return providers.Type{
-		ID: "proxmox.node", Kind: providers.Target, Name: i18n.ProxmoxNodeName, Description: i18n.ProxmoxNodeDescription,
+		ID: "proxmox.node", Kind: providers.Target, Name: i18n.ProxmoxNodeName, Description: i18n.ProxmoxNodeDescription, Untested: true,
 		Tags: []string{"self_hosted"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "url", Label: i18n.ProxmoxFieldUrl, Help: i18n.ProxmoxFieldUrlHelp, Kind: providers.URL, Required: true},

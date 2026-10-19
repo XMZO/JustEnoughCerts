@@ -27,7 +27,7 @@ const maxContent = 2048
 
 func robotType() providers.Type {
 	return providers.Type{
-		ID: "wecom.robot", Kind: providers.Notifier, Name: i18n.WecomRobotName, Description: i18n.WecomRobotDescription,
+		ID: "wecom.robot", Kind: providers.Notifier, Name: i18n.WecomRobotName, Description: i18n.WecomRobotDescription, Untested: true,
 		Tags: []string{"china"},
 		Fields: append([]providers.Field{
 			{Key: "webhook", Label: i18n.WecomFieldWebhook, Help: i18n.WecomFieldWebhookHelp, Kind: providers.Text, Secret: true, Required: true},

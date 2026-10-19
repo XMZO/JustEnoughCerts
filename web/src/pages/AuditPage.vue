@@ -337,7 +337,7 @@ const selectClass =
 
     <JecPager v-model="page" :pages="pages" />
     <p v-if="shown.length" class="m-0 text-center text-small text-ink-muted">
-      {{ t('audit.page.summary', { from: (page - 1) * pageSize + 1, to: (page - 1) * pageSize + shown.length, total }) }}
+      {{ t('kernel.pager.summary', { from: (page - 1) * pageSize + 1, to: (page - 1) * pageSize + shown.length, total }) }}
     </p>
   </div>
 </template>

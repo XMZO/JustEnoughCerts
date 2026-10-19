@@ -18,7 +18,9 @@ The tests fall into four kinds:
 | Emulator | Tested against software that implements the service's API, such as moto for AWS or Pebble for an ACME CA |
 | Fake | A stand-in for the API, written from its documentation or from an existing client; it checks the requests JEC sends, not how the service handles them |
 
-Reports of results with real accounts are welcome.
+Types tested only with a fake are tagged "Untested" in the web UI: they
+may not work with the real service. Reports of results with real
+accounts are welcome.
 
 ## Certificate sources
 

@@ -28,7 +28,7 @@ const defaultBase = "https://api.gcore.com"
 
 func cdnType() providers.Type {
 	return providers.Type{
-		ID: "gcore.cdn", Kind: providers.Target, Name: i18n.GcoreCdnName, Description: i18n.GcoreCdnDescription,
+		ID: "gcore.cdn", Kind: providers.Target, Name: i18n.GcoreCdnName, Description: i18n.GcoreCdnDescription, Untested: true,
 		Testable: true,
 		Fields: []providers.Field{
 			{Key: "api_token", Label: i18n.GcoreFieldApiToken, Help: i18n.GcoreFieldApiTokenHelp, Kind: providers.Text, Secret: true, Required: true},

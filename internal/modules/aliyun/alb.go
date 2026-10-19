@@ -54,7 +54,7 @@ func casSiteOf(region string) string {
 
 func albType() providers.Type {
 	return providers.Type{
-		ID: "aliyun.alb", Kind: providers.Target, Name: i18n.AliyunAlbName, Description: i18n.AliyunAlbDescription,
+		ID: "aliyun.alb", Kind: providers.Target, Name: i18n.AliyunAlbName, Description: i18n.AliyunAlbDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "access_key_id", Label: i18n.AliyunFieldAccessKeyId, Kind: providers.Text, Required: true},

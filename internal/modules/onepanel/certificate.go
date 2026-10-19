@@ -35,7 +35,7 @@ const maxListed = 20
 
 func certificateType() providers.Type {
 	return providers.Type{
-		ID: "onepanel.certificate", Kind: providers.Target, Name: i18n.OnepanelCertificateName, Description: i18n.OnepanelCertificateDescription,
+		ID: "onepanel.certificate", Kind: providers.Target, Name: i18n.OnepanelCertificateName, Description: i18n.OnepanelCertificateDescription, Untested: true,
 		Tags: []string{"china", "self_hosted"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "url", Label: i18n.OnepanelFieldUrl, Help: i18n.OnepanelFieldUrlHelp, Kind: providers.URL, Required: true},

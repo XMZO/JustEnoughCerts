@@ -33,7 +33,7 @@ import (
 
 func ossType() providers.Type {
 	return providers.Type{
-		ID: "aliyun.oss", Kind: providers.Target, Name: i18n.AliyunOssName, Description: i18n.AliyunOssDescription,
+		ID: "aliyun.oss", Kind: providers.Target, Name: i18n.AliyunOssName, Description: i18n.AliyunOssDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "access_key_id", Label: i18n.AliyunFieldAccessKeyId, Kind: providers.Text, Required: true},

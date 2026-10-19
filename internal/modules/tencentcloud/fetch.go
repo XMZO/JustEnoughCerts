@@ -41,7 +41,7 @@ const (
 
 func fetchType() providers.Type {
 	return providers.Type{
-		ID: "tencentcloud.fetch", Kind: providers.Source, OwnKey: true, Name: i18n.TencentcloudFetchName, Description: i18n.TencentcloudFetchDescription,
+		ID: "tencentcloud.fetch", Kind: providers.Source, OwnKey: true, Name: i18n.TencentcloudFetchName, Description: i18n.TencentcloudFetchDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "secret_id", Label: i18n.TencentcloudFieldSecretId, Kind: providers.Text, Required: true},

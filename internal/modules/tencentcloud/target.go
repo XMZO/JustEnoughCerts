@@ -33,7 +33,7 @@ var (
 
 func sslType() providers.Type {
 	return providers.Type{
-		ID: "tencentcloud.ssl", Kind: providers.Target, Name: i18n.TencentcloudSslName, Description: i18n.TencentcloudSslDescription,
+		ID: "tencentcloud.ssl", Kind: providers.Target, Name: i18n.TencentcloudSslName, Description: i18n.TencentcloudSslDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "secret_id", Label: i18n.TencentcloudFieldSecretId, Kind: providers.Text, Required: true},

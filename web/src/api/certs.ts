@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 
 import { api, ApiError, networkError, unwrap } from './client'
-import type { components } from './schema'
+import type { components, operations } from './schema'
 
 export type Certificate = components['schemas']['CertificateBody']
 export type Version = components['schemas']['VersionBody']
@@ -98,6 +98,34 @@ export function useRuns(days: MaybeRefOrGetter<number>, enabled: MaybeRefOrGette
       return runs.some((r) => r.state === 'waiting') ? 30_000 : false
     },
   })
+}
+
+export type RunsQuery = NonNullable<operations['certs-runs']['parameters']['query']>
+
+/** runsPageSize is how many runs a page of the history holds. */
+export const runsPageSize = 50
+
+/**
+ * A page of the history as q asks: the last days, the action, the result,
+ * the text. The page before stays while the next one loads; polled as
+ * useRuns is.
+ */
+export function useRunsPage(q: MaybeRefOrGetter<RunsQuery>) {
+  return useQuery({
+    queryKey: computed(() => [...all, 'runs', 'page', toValue(q)] as const),
+    queryFn: () => unwrap(api.GET('/certs/runs', { params: { query: { size: runsPageSize, ...toValue(q) } } })),
+    placeholderData: keepPreviousData,
+    refetchInterval: (query) => {
+      const runs = query.state.data?.runs ?? []
+      if (runs.some((r) => r.state === 'running' || (r.state === 'pending' && !r.error))) return 3000
+      return runs.some((r) => r.state === 'waiting') ? 30_000 : false
+    },
+  })
+}
+
+/** Every run q asks for, at most 5000, for an export. */
+export async function runsExport(q: RunsQuery): Promise<Run[]> {
+  return (await unwrap(api.GET('/certs/runs', { params: { query: { ...q, page: 1, size: 5000 } } }))).runs
 }
 
 /** untilNext is how long to wait to look again at what tries again at nextAt: just after it, between two seconds and longest. */

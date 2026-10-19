@@ -26,7 +26,7 @@ const botTypeID = "telegram.bot"
 
 func botType() providers.Type {
 	return providers.Type{
-		ID: botTypeID, Kind: providers.Notifier, Name: i18n.TelegramBotName, Description: i18n.TelegramBotDescription,
+		ID: botTypeID, Kind: providers.Notifier, Name: i18n.TelegramBotName, Description: i18n.TelegramBotDescription, Untested: true,
 		Tags: []string{"popular"},
 		Fields: append([]providers.Field{
 			{Key: "token", Label: i18n.TelegramFieldToken, Help: i18n.TelegramFieldTokenHelp, Kind: providers.Text, Secret: true, Required: true},

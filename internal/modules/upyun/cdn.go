@@ -27,7 +27,7 @@ const consoleBase = "https://console.upyun.com"
 
 func cdnType() providers.Type {
 	return providers.Type{
-		ID: "upyun.cdn", Kind: providers.Target, Name: i18n.UpyunCdnName, Description: i18n.UpyunCdnDescription,
+		ID: "upyun.cdn", Kind: providers.Target, Name: i18n.UpyunCdnName, Description: i18n.UpyunCdnDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true, Experimental: true,
 		Fields: []providers.Field{
 			{Key: "username", Label: i18n.UpyunFieldUsername, Kind: providers.Text, Required: true},

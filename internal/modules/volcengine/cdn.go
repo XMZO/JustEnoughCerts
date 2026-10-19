@@ -37,7 +37,7 @@ const (
 
 func cdnType() providers.Type {
 	return providers.Type{
-		ID: "volcengine.cdn", Kind: providers.Target, Name: i18n.VolcengineCdnName, Description: i18n.VolcengineCdnDescription,
+		ID: "volcengine.cdn", Kind: providers.Target, Name: i18n.VolcengineCdnName, Description: i18n.VolcengineCdnDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "access_key_id", Label: i18n.VolcengineFieldAccessKeyId, Kind: providers.Text, Required: true},

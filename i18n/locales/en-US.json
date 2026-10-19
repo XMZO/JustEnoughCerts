@@ -299,7 +299,6 @@
       "no_account": "Not signed in",
       "no_match": "Nothing matches.",
       "search": "Search actions, accounts and addresses",
-      "summary": "{from}–{to} of {total}.",
       "title": "Audit log",
       "today": "Today",
       "via_token": "through {name}",
@@ -1003,7 +1002,6 @@
       "instant": "Under a second",
       "intro": "Every issuance, renewal and deployment, each with its full log.",
       "minutes": "{minutes} min {seconds} s",
-      "more": "There are more in this time: only the latest {count} are listed.",
       "no_match": "Nothing matches.",
       "note": {
         "target": "To {target}",
@@ -1024,7 +1022,6 @@
         "running": "Under way"
       },
       "seconds": "{seconds} s",
-      "summary": "{shown} of {total} shown.",
       "target_gone": "a deleted target",
       "title": "History",
       "today": "Today",
@@ -1848,7 +1845,8 @@
       "next": "Next",
       "of": "{page} / {pages}",
       "page": "Page {page}",
-      "prev": "Previous"
+      "prev": "Previous",
+      "summary": "{from}–{to} of {total}."
     },
     "providers": {
       "advanced": "More settings ({count})",
@@ -1927,6 +1925,8 @@
       },
       "test": "Test",
       "type_gone": "Type not available; its module may be off",
+      "untested": "Untested",
+      "untested_help": "Tested only against a stand-in for the service's API, not with a real account: it may not work. Reports are welcome.",
       "uses": "{count, plural, =0 {Used by no certificate} one {Used by # certificate} other {Used by # certificates}}"
     },
     "restore": {

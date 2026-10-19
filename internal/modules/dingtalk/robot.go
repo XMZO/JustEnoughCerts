@@ -32,7 +32,7 @@ const maxContent = 4000
 
 func robotType() providers.Type {
 	return providers.Type{
-		ID: "dingtalk.robot", Kind: providers.Notifier, Name: i18n.DingtalkRobotName, Description: i18n.DingtalkRobotDescription,
+		ID: "dingtalk.robot", Kind: providers.Notifier, Name: i18n.DingtalkRobotName, Description: i18n.DingtalkRobotDescription, Untested: true,
 		Tags: []string{"china"},
 		Fields: append([]providers.Field{
 			{Key: "webhook", Label: i18n.DingtalkFieldWebhook, Help: i18n.DingtalkFieldWebhookHelp, Kind: providers.Text, Secret: true, Required: true},

@@ -43,7 +43,7 @@ func directFields(list i18n.Key, listHelp i18n.Key, extra ...providers.Field) []
 
 func cdnType() providers.Type {
 	return providers.Type{
-		ID: "tencentcloud.cdn", Kind: providers.Target, Name: i18n.TencentcloudCdnName, Description: i18n.TencentcloudCdnDescription,
+		ID: "tencentcloud.cdn", Kind: providers.Target, Name: i18n.TencentcloudCdnName, Description: i18n.TencentcloudCdnDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields:     directFields(i18n.TencentcloudFieldCdnDomains, i18n.TencentcloudFieldCdnDomainsHelp),
 		Credential: credentials.Use(credentials.TencentCloud),
@@ -52,7 +52,7 @@ func cdnType() providers.Type {
 
 func teoType() providers.Type {
 	return providers.Type{
-		ID: "tencentcloud.teo", Kind: providers.Target, Name: i18n.TencentcloudTeoName, Description: i18n.TencentcloudTeoDescription,
+		ID: "tencentcloud.teo", Kind: providers.Target, Name: i18n.TencentcloudTeoName, Description: i18n.TencentcloudTeoDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: directFields(i18n.TencentcloudFieldTeoHosts, i18n.TencentcloudFieldTeoHostsHelp,
 			providers.Field{Key: "zone", Label: i18n.TencentcloudFieldZone, Help: i18n.TencentcloudFieldZoneHelp, Kind: providers.Text, Required: true}),

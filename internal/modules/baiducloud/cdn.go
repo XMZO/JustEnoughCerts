@@ -32,7 +32,7 @@ const (
 
 func cdnType() providers.Type {
 	return providers.Type{
-		ID: "baiducloud.cdn", Kind: providers.Target, Name: i18n.BaiducloudCdnName, Description: i18n.BaiducloudCdnDescription,
+		ID: "baiducloud.cdn", Kind: providers.Target, Name: i18n.BaiducloudCdnName, Description: i18n.BaiducloudCdnDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "access_key", Label: i18n.BaiducloudFieldAccessKey, Kind: providers.Text, Required: true},

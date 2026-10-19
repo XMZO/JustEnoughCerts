@@ -6,15 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 )
-
-// maxRuns bounds the runs one answer of the history holds.
-const maxRuns = 500
 
 // Kinds of run.
 const (
@@ -41,27 +39,92 @@ type Run struct {
 	FinishedAt time.Time
 }
 
-// runs returns the issuances and deployments created since since, the
-// newest first, at most limit of them, and whether there were more.
-func (s *service) runs(ctx context.Context, since time.Time, limit int) ([]Run, bool, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT 'issuance', i.id, i.certificate_id, json_extract(c.domains, '$[0]'), i.reason, i.state, i.attempts, 0,
-		       i.error_key, i.error_params, v.not_after, i.created_at, i.started_at, i.finished_at
+// runQuery is what a page of the history asks for: the runs created since
+// since, of an action and a result ("" for any), whose primary domain
+// holds text, from offset on, at most limit of them.
+type runQuery struct {
+	since          time.Time
+	action, result string
+	text           string
+	offset, limit  int
+}
+
+// runTally counts the runs of a query, but for its result, by result.
+type runTally struct{ all, ok, failed, running, canceled int }
+
+// runsFrom are the runs as the history sees them, with what it filters by:
+// when each is shown as happening, the start of its last attempt or else
+// its creation, its action, and its result, where a pending run that failed
+// before counts as failed, as it waits to try again.
+const runsFrom = `
+	WITH base AS (
+		SELECT 'issuance' AS kind, i.id, i.certificate_id, json_extract(c.domains, '$[0]') AS domain, i.reason, i.state, i.attempts,
+		       0 AS target, i.error_key, i.error_params, v.not_after, i.created_at, i.started_at, i.finished_at
 		FROM certs_issuances i
 		JOIN certs_certificates c ON c.id = i.certificate_id
 		LEFT JOIN certs_versions v ON v.id = i.version_id
-		WHERE i.created_at >= ?
+		WHERE i.created_at >= :since
 		UNION ALL
-		SELECT 'deployment', d.id, d.certificate_id, json_extract(c.domains, '$[0]'), d.reason, d.state, d.attempts, d.provider_id,
-		       d.error_key, d.error_params, v.not_after, d.created_at, d.started_at, d.finished_at
+		SELECT 'deployment', d.id, d.certificate_id, json_extract(c.domains, '$[0]'), d.reason, d.state, d.attempts,
+		       d.provider_id, d.error_key, d.error_params, v.not_after, d.created_at, d.started_at, d.finished_at
 		FROM certs_deployments d
 		JOIN certs_certificates c ON c.id = d.certificate_id
 		LEFT JOIN certs_versions v ON v.id = d.version_id
-		WHERE d.created_at >= ?
-		ORDER BY 12 DESC, 1, 2 DESC
-		LIMIT ?`, since.UnixMilli(), since.UnixMilli(), limit+1)
+		WHERE d.created_at >= :since
+	), tagged AS (
+		SELECT *, coalesce(started_at, created_at) AS at,
+		       CASE WHEN kind = 'deployment' THEN 'deploy' WHEN reason = :renewal THEN 'renew' ELSE 'issue' END AS action,
+		       CASE WHEN state = 'done' THEN 'ok'
+		            WHEN state = 'failed' OR (state = 'pending' AND error_key <> '') THEN 'failed'
+		            WHEN state = 'canceled' THEN 'canceled'
+		            ELSE 'running' END AS result
+		FROM base
+	), runs AS (
+		SELECT * FROM tagged WHERE (:action = '' OR action = :action) AND (:text = '' OR domain LIKE :like ESCAPE '\')
+	)`
+
+// runs returns the runs q asks for, the newest first, and their tally.
+func (s *service) runs(ctx context.Context, q runQuery) ([]Run, runTally, error) {
+	var tally runTally
+	like := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(strings.ToLower(q.text)) + "%"
+	args := []any{
+		sql.Named("since", q.since.UnixMilli()), sql.Named("renewal", reasonRenewal),
+		sql.Named("action", q.action), sql.Named("text", q.text), sql.Named("like", like),
+	}
+	rows, err := s.db.QueryContext(ctx, runsFrom+` SELECT result, count(*) FROM runs GROUP BY result`, args...)
 	if err != nil {
-		return nil, false, err
+		return nil, tally, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var result string
+		var n int
+		if err := rows.Scan(&result, &n); err != nil {
+			return nil, tally, err
+		}
+		tally.all += n
+		switch result {
+		case "ok":
+			tally.ok = n
+		case "failed":
+			tally.failed = n
+		case "running":
+			tally.running = n
+		case "canceled":
+			tally.canceled = n
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, tally, err
+	}
+
+	rows, err = s.db.QueryContext(ctx, runsFrom+`
+		SELECT kind, id, certificate_id, domain, reason, state, attempts, target, error_key, error_params, not_after, created_at, started_at, finished_at
+		FROM runs WHERE :result = '' OR result = :result
+		ORDER BY at DESC, kind, id DESC LIMIT :limit OFFSET :offset`,
+		append(args, sql.Named("result", q.result), sql.Named("limit", q.limit), sql.Named("offset", q.offset))...)
+	if err != nil {
+		return nil, tally, err
 	}
 	defer rows.Close()
 	out := []Run{}
@@ -73,12 +136,12 @@ func (s *service) runs(ctx context.Context, since time.Time, limit int) ([]Run, 
 		// The key is scanned as it is: it was stored from a message.
 		if err := rows.Scan(&r.Kind, &r.ID, &r.CertificateID, &domain, &r.Reason, &r.State, &r.Attempts, &r.Target,
 			&r.Error.Key, &params, &notAfter, &created, &started, &finished); err != nil {
-			return nil, false, err
+			return nil, tally, err
 		}
 		r.Domain = domain.String
 		if params.String != "" {
 			if err := json.Unmarshal([]byte(params.String), &r.Error.Params); err != nil {
-				return nil, false, fmt.Errorf("%s %d: error params: %w", r.Kind, r.ID, err)
+				return nil, tally, fmt.Errorf("%s %d: error params: %w", r.Kind, r.ID, err)
 			}
 		}
 		r.CreatedAt = time.UnixMilli(created).UTC()
@@ -93,13 +156,7 @@ func (s *service) runs(ctx context.Context, since time.Time, limit int) ([]Run, 
 		}
 		out = append(out, r)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, false, err
-	}
-	if len(out) > limit {
-		return out[:limit], true, nil
-	}
-	return out, false, nil
+	return out, tally, rows.Err()
 }
 
 // RunBody is a run as the API returns it.
@@ -149,13 +206,29 @@ func runBody(r Run) RunBody {
 }
 
 type runsInput struct {
-	Days int `query:"days" minimum:"0" maximum:"36500" default:"30" doc:"How many days back to list; 0 for all"`
+	Days   int    `query:"days" minimum:"0" maximum:"36500" default:"30" doc:"How many days back to list; 0 for all"`
+	Action string `query:"action" enum:"issue,renew,deploy" doc:"Only runs of this action"`
+	Result string `query:"result" enum:"ok,failed,running,canceled" doc:"Only runs of this result; a pending run that failed before is failed"`
+	Q      string `query:"q" maxLength:"200" doc:"Only runs of certificates whose primary domain holds this text"`
+	Page   int    `query:"page" minimum:"1" default:"1"`
+	Size   int    `query:"size" minimum:"1" maximum:"5000" default:"500" doc:"Runs a page holds"`
+}
+
+// RunCounts counts the runs the time, action and text ask for, by result.
+type RunCounts struct {
+	All      int `json:"all"`
+	OK       int `json:"ok"`
+	Failed   int `json:"failed"`
+	Running  int `json:"running"`
+	Canceled int `json:"canceled"`
 }
 
 type runsOutput struct {
 	Body struct {
-		Runs []RunBody `json:"runs" doc:"The newest first"`
-		More bool      `json:"more" doc:"There are older ones in the time asked for than one answer holds"`
+		Runs   []RunBody `json:"runs" doc:"The newest first, by the start of their last attempt or else their creation"`
+		Total  int       `json:"total" doc:"The runs all filters ask for, every page"`
+		Counts RunCounts `json:"counts"`
+		More   bool      `json:"more" doc:"There are pages after this one"`
 	}
 }
 
@@ -163,18 +236,23 @@ func registerHistoryAPI(a huma.API, s *service) {
 	huma.Register(a, huma.Operation{
 		OperationID: "certs-runs", Method: http.MethodGet, Path: "/runs",
 		Summary:     "List the issuances and deployments",
-		Description: fmt.Sprintf("Those created in the last days, the newest first, at most %d.", maxRuns),
+		Description: "Those created in the last days that the filters ask for, the newest first, a page at a time.",
 	}, func(ctx context.Context, in *runsInput) (*runsOutput, error) {
-		var since time.Time
+		q := runQuery{action: in.Action, result: in.Result, text: strings.TrimSpace(in.Q), offset: (in.Page - 1) * in.Size, limit: in.Size}
 		if in.Days > 0 {
-			since = s.now().Add(-time.Duration(in.Days) * day)
+			q.since = s.now().Add(-time.Duration(in.Days) * day)
 		}
-		runs, more, err := s.runs(ctx, since, maxRuns)
+		runs, tally, err := s.runs(ctx, q)
 		if err != nil {
 			return nil, err
 		}
 		out := &runsOutput{}
-		out.Body.More = more
+		out.Body.Counts = RunCounts{All: tally.all, OK: tally.ok, Failed: tally.failed, Running: tally.running, Canceled: tally.canceled}
+		out.Body.Total = tally.all
+		if q.result != "" {
+			out.Body.Total = map[string]int{"ok": tally.ok, "failed": tally.failed, "running": tally.running, "canceled": tally.canceled}[q.result]
+		}
+		out.Body.More = q.offset+len(runs) < out.Body.Total
 		out.Body.Runs = make([]RunBody, 0, len(runs))
 		for _, r := range runs {
 			out.Body.Runs = append(out.Body.Runs, runBody(r))

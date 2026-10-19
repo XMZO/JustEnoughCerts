@@ -32,7 +32,7 @@ var distributionID = regexp.MustCompile(`^[A-Z0-9]{8,20}$`)
 
 func cloudFrontType() providers.Type {
 	return providers.Type{
-		ID: "aws.cloudfront", Kind: providers.Target, Name: i18n.AwsCloudfrontName, Description: i18n.AwsCloudfrontDescription,
+		ID: "aws.cloudfront", Kind: providers.Target, Name: i18n.AwsCloudfrontName, Description: i18n.AwsCloudfrontDescription, Untested: true,
 		Testable: true,
 		Fields: []providers.Field{
 			{Key: "access_key_id", Label: i18n.AwsFieldAccessKeyId, Kind: providers.Text, Required: true},

@@ -44,7 +44,7 @@ const (
 
 func applyType() providers.Type {
 	return providers.Type{
-		ID: "aliyun.apply", Kind: providers.Source, Name: i18n.AliyunApplyName, Description: i18n.AliyunApplyDescription,
+		ID: "aliyun.apply", Kind: providers.Source, Name: i18n.AliyunApplyName, Description: i18n.AliyunApplyDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		NeedsSolver: true, Challenges: []string{providers.ChallengeHTTP, providers.ChallengeRecord},
 		Fields: []providers.Field{

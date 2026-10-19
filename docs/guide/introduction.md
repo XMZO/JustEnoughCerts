@@ -66,8 +66,9 @@ and servers, and renews them before they expire.
 
 JEC is in early development and has no stable release yet. The test
 releases are 0.1.0-alpha.x, with the image tag `beta`. Deployment to
-Alibaba Cloud ESA and Namecheap SSL Manager have been verified with a real
-account; ESA edge answers have not. See
+Alibaba Cloud ESA, Namecheap SSL Manager and Cloudflare edge answers have
+been verified with a real account; types tested only with a fake are
+tagged "Untested" in the web UI and may not work. See
 [Providers and test coverage](../reference/providers.md) for the test
 status of every provider.
 

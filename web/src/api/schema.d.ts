@@ -378,7 +378,7 @@ export interface paths {
         };
         /**
          * List the issuances and deployments
-         * @description Those created in the last days, the newest first, at most 500.
+         * @description Those created in the last days that the filters ask for, the newest first, a page at a time.
          */
         get: operations["certs-runs"];
         put?: never;
@@ -1806,11 +1806,29 @@ export interface components {
              */
             trigger: "auto" | "manual";
         };
+        RunCounts: {
+            /** Format: int64 */
+            all: number;
+            /** Format: int64 */
+            canceled: number;
+            /** Format: int64 */
+            failed: number;
+            /** Format: int64 */
+            ok: number;
+            /** Format: int64 */
+            running: number;
+        };
         RunsOutputBody: {
-            /** @description There are older ones in the time asked for than one answer holds */
+            counts: components["schemas"]["RunCounts"];
+            /** @description There are pages after this one */
             more: boolean;
-            /** @description The newest first */
+            /** @description The newest first, by the start of their last attempt or else their creation */
             runs: components["schemas"]["RunBody"][];
+            /**
+             * Format: int64
+             * @description The runs all filters ask for, every page
+             */
+            total: number;
         };
         RuntimeBody: {
             /** @description The URL people open, from JEC_BASE_URL; links in notifications need it */
@@ -1969,6 +1987,7 @@ export interface components {
                     [key: string]: string;
                 };
             };
+            untested?: boolean;
             url?: string;
         };
         TypeSummary: {
@@ -2009,6 +2028,8 @@ export interface components {
                     [key: string]: string;
                 };
             };
+            /** @description Tested only against a stand-in for the service's API, never with a real account: it may not work */
+            untested?: boolean;
             url?: string;
         };
         TypesOutputBody: {
@@ -2895,6 +2916,15 @@ export interface operations {
             query?: {
                 /** @description How many days back to list; 0 for all */
                 days?: number;
+                /** @description Only runs of this action */
+                action?: "issue" | "renew" | "deploy";
+                /** @description Only runs of this result; a pending run that failed before is failed */
+                result?: "ok" | "failed" | "running" | "canceled";
+                /** @description Only runs of certificates whose primary domain holds this text */
+                q?: string;
+                page?: number;
+                /** @description Runs a page holds */
+                size?: number;
             };
             header?: never;
             path?: never;

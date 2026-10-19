@@ -35,7 +35,7 @@ const timeout = 30 * time.Second
 
 func cdnType() providers.Type {
 	return providers.Type{
-		ID: "huaweicloud.cdn", Kind: providers.Target, Name: i18n.HuaweicloudCdnName, Description: i18n.HuaweicloudCdnDescription,
+		ID: "huaweicloud.cdn", Kind: providers.Target, Name: i18n.HuaweicloudCdnName, Description: i18n.HuaweicloudCdnDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "access_key_id", Label: i18n.HuaweicloudFieldAccessKeyId, Kind: providers.Text, Required: true},

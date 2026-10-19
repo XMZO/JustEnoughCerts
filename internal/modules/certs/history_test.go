@@ -56,6 +56,32 @@ func TestRuns(t *testing.T) {
 	if len(out.Runs) != 3 || out.Runs[2].Trigger != "auto" || out.Runs[2].State != "done" {
 		t.Errorf("all of them: %+v", out.Runs)
 	}
+
+	// The filters and the counts: the counts are by result, for the time,
+	// the action and the text asked for.
+	var page struct {
+		Runs   []RunBody `json:"runs"`
+		Total  int       `json:"total"`
+		Counts RunCounts `json:"counts"`
+		More   bool      `json:"more"`
+	}
+	f.call(f.api.Get("/runs?days=0&result=failed"), http.StatusOK, &page)
+	if len(page.Runs) != 1 || page.Runs[0].Kind != "deployment" || page.Total != 1 ||
+		page.Counts != (RunCounts{All: 3, OK: 2, Failed: 1}) {
+		t.Errorf("the failed ones: %+v", page)
+	}
+	f.call(f.api.Get("/runs?days=0&action=deploy&q=OLD.EX"), http.StatusOK, &page)
+	if len(page.Runs) != 2 || page.Counts != (RunCounts{All: 2, OK: 1, Failed: 1}) {
+		t.Errorf("the deployments of old.example.com: %+v", page)
+	}
+	f.call(f.api.Get("/runs?days=0&q=_"), http.StatusOK, &page)
+	if len(page.Runs) != 0 {
+		t.Errorf("an underscore matched as a wildcard: %+v", page)
+	}
+	f.call(f.api.Get("/runs?days=0&size=2&page=2"), http.StatusOK, &page)
+	if len(page.Runs) != 1 || page.Total != 3 || page.More || page.Runs[0].Domain != "old.example.com" {
+		t.Errorf("the second page: %+v", page)
+	}
 }
 
 func TestRunsLimit(t *testing.T) {
@@ -64,8 +90,8 @@ func TestRunsLimit(t *testing.T) {
 		f.now = start.Add(time.Duration(i) * time.Minute)
 		f.issueNew("example" + strconv.Itoa(i) + ".com")
 	}
-	runs, more, err := f.svc.runs(t.Context(), time.Time{}, 2)
-	if err != nil || !more || len(runs) != 2 || runs[0].Domain != "example2.com" || runs[0].State != "pending" {
-		t.Errorf("runs %+v, more %v, %v", runs, more, err)
+	runs, tally, err := f.svc.runs(t.Context(), runQuery{limit: 2})
+	if err != nil || tally.all != 3 || tally.running != 3 || len(runs) != 2 || runs[0].Domain != "example2.com" || runs[0].State != "pending" {
+		t.Errorf("runs %+v, tally %+v, %v", runs, tally, err)
 	}
 }
