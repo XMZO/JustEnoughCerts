@@ -162,6 +162,12 @@ func clientFrom(ctx context.Context) string {
 func (s *Service) Middleware(ctx huma.Context, next func(huma.Context)) {
 	ctx = huma.WithValue(ctx, clientKey{}, s.client(ctx))
 	ctx = huma.WithValue(ctx, actorKey{}, &actor{})
+	if via, ok := ctx.Context().Value(localKey{}).(string); ok {
+		if sess, ok := s.authorizeLocal(ctx, via); ok {
+			next(huma.WithValue(ctx, sessionKey{}, sess))
+		}
+		return
+	}
 	if token, ok := bearer(ctx); ok {
 		if sess, ok := s.authorizeToken(ctx, token); ok {
 			next(huma.WithValue(ctx, sessionKey{}, sess))

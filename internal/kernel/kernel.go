@@ -3,14 +3,18 @@
 package kernel
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"maps"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -20,6 +24,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/buildinfo"
@@ -170,6 +175,14 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	}
 	configfileapi.Register(a.Kernel(), cfgFile, configfileapi.Options{Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log})
 	var wellKnown []wellKnownHandler
+	// The calls of the API from inside go through the router, once built.
+	var handler http.Handler
+	call := func(ctx context.Context, via, method, path string, body, out any) error {
+		if handler == nil {
+			return errors.New("the API is not ready")
+		}
+		return callAPI(ctx, handler, cfg.BasePath()+api.Prefix, via, method, path, body, out)
+	}
 	for _, m := range set.Modules() {
 		id := m.Manifest().ID
 		r := &module.Registry{
@@ -192,6 +205,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 			},
 			Config: func(s configfile.Section) error { return cfgFile.Add(id, s) },
 			Zone:   tz.Location,
+			Call:   call,
 		}
 		if err := m.Register(r); err != nil {
 			return nil, fmt.Errorf("module %s: %w", id, err)
@@ -218,7 +232,47 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 			router.Handle(cfg.BasePath(), ui)
 		}
 	}
+	handler = router
 	return &App{store: st, modules: set, api: a, handler: router, bus: bus, jobs: sched, restart: restart}, nil
+}
+
+// callAPI answers a module's call of the API from inside JEC
+// (module.Registry.Call): a request through the router, marked as local
+// for the session check, which lets it act as the account.
+func callAPI(ctx context.Context, h http.Handler, prefix, via, method, path string, body, out any) error {
+	var r io.Reader
+	if body != nil {
+		data, err := json.Marshal(body)
+		if err != nil {
+			return err
+		}
+		r = bytes.NewReader(data)
+	}
+	req, err := http.NewRequestWithContext(auth.WithLocal(ctx, via), method, prefix+path, r)
+	if err != nil {
+		return err
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	req.Header.Set("Accept", "application/json")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code >= http.StatusBadRequest {
+		e := &module.CallError{Status: rec.Code}
+		var problem struct {
+			Code   i18n.Key       `json:"code"`
+			Params map[string]any `json:"params"`
+		}
+		if json.Unmarshal(rec.Body.Bytes(), &problem) == nil {
+			e.Code, e.Params = problem.Code, problem.Params
+		}
+		return e
+	}
+	if out == nil || rec.Body.Len() == 0 {
+		return nil
+	}
+	return json.Unmarshal(rec.Body.Bytes(), out)
 }
 
 // recorder is a module's recorder of operations (module.Registry.Audit).

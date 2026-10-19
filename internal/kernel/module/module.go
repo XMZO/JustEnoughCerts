@@ -10,6 +10,7 @@ package module
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -126,7 +127,26 @@ type Registry struct {
 	// renewals start, are in it. It may change while JEC runs, so ask each
 	// time.
 	Zone func() *time.Location
+	// Call calls JEC's own API from inside, for a module that acts for the
+	// account another way than a browser does, as a chat bot does: method
+	// and path as under /api/v1, with a query if any; body sent as JSON
+	// unless nil; the answer decoded into out unless nil. via names who
+	// acts, as the audit log shows it. It has the rights of an API token
+	// that writes: managing the account is out of its reach. An answer
+	// other than a success comes back as *CallError. It works once JEC
+	// runs.
+	Call func(ctx context.Context, via, method, path string, body, out any) error
 }
+
+// CallError is an answer of the API to Registry.Call that is not a
+// success: its status, and the error it tells, by message key.
+type CallError struct {
+	Status int
+	Code   i18n.Key
+	Params map[string]any
+}
+
+func (e *CallError) Error() string { return fmt.Sprintf("api: %d %s", e.Status, e.Code) }
 
 // Request is an operation of the API that may have changed something, as
 // Registry.Audit hands it on.

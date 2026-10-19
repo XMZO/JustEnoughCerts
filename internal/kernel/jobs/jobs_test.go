@@ -352,3 +352,89 @@ func TestTrigger(t *testing.T) {
 	}
 	scope.Trigger("nonexistent") // no job of that name: nothing happens
 }
+
+// TestWorkers: a worker runs while its module is on, stops when it goes
+// off and starts again when it is back; one that returns on its own starts
+// again after a pause.
+func TestWorkers(t *testing.T) {
+	f := newFixture(t)
+	s := f.scheduler()
+	started := make(chan struct{}, 4)
+	var quit atomic.Bool
+	if err := s.Scope("certs").Work(Worker{Name: "listen", Run: func(ctx context.Context) {
+		started <- struct{}{}
+		if quit.Load() {
+			return
+		}
+		<-ctx.Done()
+	}}); err == nil {
+		t.Fatal("a worker added once the scheduler ran")
+	}
+	s = New(f.db, slog.New(slog.DiscardHandler), func(m string) bool {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		return !f.off[m]
+	})
+	s.now = f.clock.now
+	if err := s.Scope("certs").Work(Worker{Name: "listen", Run: func(ctx context.Context) {
+		started <- struct{}{}
+		if quit.Load() {
+			return
+		}
+		<-ctx.Done()
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Scope("certs").Work(Worker{Name: "listen", Run: func(context.Context) {}}); err == nil {
+		t.Error("a worker added twice")
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	wait := func(what string) {
+		t.Helper()
+		select {
+		case <-started:
+		case <-time.After(5 * time.Second):
+			t.Fatalf("the worker did not start %s", what)
+		}
+	}
+	settle := func() {
+		// Until the worker's goroutine is seen to have returned, if it did.
+		for range 100 {
+			s.supervise(ctx)
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+
+	s.supervise(ctx)
+	wait("at first")
+	f.mu.Lock()
+	f.off["certs"] = true
+	f.mu.Unlock()
+	settle()
+	f.mu.Lock()
+	f.off["certs"] = false
+	f.mu.Unlock()
+	s.supervise(ctx)
+	wait("once its module was back on")
+
+	quit.Store(true)
+	f.mu.Lock()
+	f.off["certs"] = true
+	f.mu.Unlock()
+	settle()
+	f.mu.Lock()
+	f.off["certs"] = false
+	f.mu.Unlock()
+	s.supervise(ctx)
+	wait("after it was stopped")
+	settle()
+	if len(started) != 0 {
+		t.Fatal("the worker started again at once after it returned")
+	}
+	f.clock.add(workerPause)
+	s.supervise(ctx)
+	wait("after the pause")
+	cancel()
+	s.wg.Wait()
+}

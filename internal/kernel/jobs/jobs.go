@@ -1,10 +1,15 @@
 // Package jobs runs the periodic jobs of the kernel and the modules, such
-// as looking for certificates to renew (PLAN.md 4.4).
+// as looking for certificates to renew (PLAN.md 4.4), and the workers of
+// the modules, which run all along, such as listening to a chat bot.
 //
 // A job runs every Every, counted from the start of its last run. That start
 // is stored, so restarting JEC does not shift the schedule; a job that is
 // due, or has never run, starts shortly after startup. A job never overlaps
 // itself, and a module's jobs run only while the module is on.
+//
+// A worker runs while its module is on: it starts once the scheduler runs,
+// its context ends when the module goes off or JEC stops, and it starts
+// again when the module is back on, or a while after it returned.
 package jobs
 
 import (
@@ -25,6 +30,7 @@ const (
 	recheck     = time.Minute      // how soon a job skipped while its module was off is due again
 	tickEvery   = time.Second      // how often due jobs are looked for
 	maxErrorLen = 1000             // bytes of an error message stored
+	workerPause = 30 * time.Second // from a worker's return to its next start
 )
 
 var namePattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
@@ -41,6 +47,26 @@ type Job struct {
 	// Run does the work. An error is logged, and the job runs again at its
 	// next time; retrying sooner is up to the job.
 	Run func(ctx context.Context) error
+}
+
+// Worker is work that runs as long as its module is on.
+type Worker struct {
+	// Name tells the module's workers apart.
+	Name string
+	// Run works until ctx is done. Returning before that, as on a fatal
+	// error, has it run again after a pause.
+	Run func(ctx context.Context)
+}
+
+// worker is a Worker of a module, with whether it runs.
+type worker struct {
+	Worker
+	id       string // <module>.<name>
+	module   string
+	cancel   context.CancelFunc // while it runs
+	done     chan struct{}      // closed once it returned
+	stopping bool               // its module went off: no pause once it returns
+	after    time.Time          // not before then, after it returned
 }
 
 // entry is a Job of a module, with its schedule.
@@ -64,6 +90,7 @@ type Scheduler struct {
 	mu      sync.Mutex
 	started bool
 	jobs    []*entry // sorted by ID
+	workers []*worker
 	wg      sync.WaitGroup
 	kick    chan struct{}
 }
@@ -114,6 +141,28 @@ func (s *Scope) Add(job Job) error {
 	return nil
 }
 
+// Work adds a worker, before the scheduler runs.
+func (s *Scope) Work(w Worker) error {
+	switch {
+	case !namePattern.MatchString(w.Name):
+		return fmt.Errorf("worker name %q: want lowercase letters, digits and underscores, starting with a letter", w.Name)
+	case w.Run == nil:
+		return fmt.Errorf("worker %s has nothing to run", w.Name)
+	}
+	id := s.module + "." + w.Name
+	sched := s.sched
+	sched.mu.Lock()
+	defer sched.mu.Unlock()
+	switch {
+	case sched.started:
+		return fmt.Errorf("worker %s: add workers while the module registers", id)
+	case slices.ContainsFunc(sched.workers, func(o *worker) bool { return o.id == id }):
+		return fmt.Errorf("worker %s exists already", id)
+	}
+	sched.workers = append(sched.workers, &worker{Worker: w, id: id, module: s.module})
+	return nil
+}
+
 // Trigger makes the module's job name due now, as when there is work for
 // it that should not wait for its next time. A job already running runs
 // again once it ends, so that it sees the new work.
@@ -144,6 +193,7 @@ func (s *Scheduler) Run(ctx context.Context) {
 	defer t.Stop()
 	for {
 		s.tick(ctx)
+		s.supervise(ctx)
 		select {
 		case <-ctx.Done():
 			s.wg.Wait()
@@ -212,6 +262,52 @@ func (s *Scheduler) tick(ctx context.Context) int {
 		}
 	}
 	return n
+}
+
+// supervise starts the workers whose modules are on, and stops those whose
+// modules went off; one that returned starts again after a pause.
+func (s *Scheduler) supervise(ctx context.Context) {
+	if ctx.Err() != nil {
+		return
+	}
+	now := s.now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, w := range s.workers {
+		if w.cancel != nil {
+			select {
+			case <-w.done:
+				w.cancel, w.after = nil, now.Add(workerPause)
+				if w.stopping {
+					w.after, w.stopping = now, false
+				}
+			default:
+			}
+		}
+		on := s.enabled(w.module)
+		switch {
+		case w.cancel != nil && !on && !w.stopping:
+			w.cancel()
+			w.stopping = true
+		case w.cancel == nil && on && !now.Before(w.after):
+			wctx, cancel := context.WithCancel(ctx)
+			w.cancel, w.done = cancel, make(chan struct{})
+			s.wg.Add(1)
+			go s.work(wctx, w, w.done)
+		}
+	}
+}
+
+// work runs a worker until it returns, turning a panic into a log line.
+func (s *Scheduler) work(ctx context.Context, w *worker, done chan struct{}) {
+	defer s.wg.Done()
+	defer close(done)
+	defer func() {
+		if r := recover(); r != nil {
+			s.log.Error("worker panicked", "worker", w.id, "panic", r, "stack", string(debug.Stack()))
+		}
+	}()
+	w.Run(ctx)
 }
 
 // run runs a job once and stores when it started and how it ended.

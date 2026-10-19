@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/config"
@@ -395,6 +397,8 @@ func TestSecretKey(t *testing.T) {
 type auditor struct {
 	mu   *sync.Mutex
 	seen *[]module.Request
+	// call is the module's Registry.Call, once it registered.
+	call *func(ctx context.Context, via, method, path string, body, out any) error
 }
 
 func (auditor) Manifest() module.Manifest {
@@ -404,6 +408,9 @@ func (auditor) Manifest() module.Manifest {
 func (auditor) Migrations() fs.FS { return nil }
 
 func (a auditor) Register(r *module.Registry) error {
+	if a.call != nil {
+		*a.call = r.Call
+	}
 	r.Audit(func(_ context.Context, req module.Request) {
 		a.mu.Lock()
 		defer a.mu.Unlock()
@@ -430,7 +437,8 @@ func TestAudit(t *testing.T) {
 	var logs syncBuffer
 	var mu sync.Mutex
 	var seen []module.Request
-	app, err := New(t.Context(), cfg, slog.New(slog.NewTextHandler(&logs, nil)), []module.Module{auditor{mu: &mu, seen: &seen}})
+	var call func(ctx context.Context, via, method, path string, body, out any) error
+	app, err := New(t.Context(), cfg, slog.New(slog.NewTextHandler(&logs, nil)), []module.Module{auditor{mu: &mu, seen: &seen, call: &call}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -450,6 +458,12 @@ func TestAudit(t *testing.T) {
 		out := seen
 		seen = nil
 		return out
+	}
+
+	// A call from inside before the setup made the account: turned away.
+	var refused *module.CallError
+	if err := call(t.Context(), "bot", http.MethodPost, "/auditor/poke", nil, nil); !errors.As(err, &refused) || refused.Status != http.StatusUnauthorized {
+		t.Fatalf("a call from inside before the setup: %v", err)
 	}
 
 	// Turned away for want of a session: not recorded.
@@ -472,6 +486,24 @@ func TestAudit(t *testing.T) {
 		p.User != "admin" || p.Client != "127.0.0.1" || p.UserAgent == "" || p.At.IsZero() {
 		t.Errorf("poke recorded as %+v", p)
 	}
+
+	// A call from inside: as the account, named after whom it is for; the
+	// account itself is out of its reach.
+	var manifest struct{ Version string }
+	if err := call(t.Context(), "bot", http.MethodGet, "/manifest", nil, &manifest); err != nil || manifest.Version == "" {
+		t.Fatalf("manifest from inside: %v %+v", err, manifest)
+	}
+	if err := call(t.Context(), "bot", http.MethodPost, "/auditor/poke", nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := took(); len(got) != 1 || got[0].Operation != "auditor-poke" || got[0].User != "admin" || got[0].Token != "bot" {
+		t.Errorf("a call from inside recorded as %+v", got)
+	}
+	err = call(t.Context(), "bot", http.MethodPut, "/account/password", map[string]string{"current": "correct horse", "password": "another horse"}, nil)
+	if !errors.As(err, &refused) || refused.Status != http.StatusForbidden || refused.Code != i18n.KernelErrorTokenSessionOnly {
+		t.Errorf("the account from inside: %v", err)
+	}
+	took()
 
 	// A failed sign-in, by no one; a sign-in, by whom it signed in.
 	c.call(http.MethodDelete, "/jec/api/v1/session", "")
