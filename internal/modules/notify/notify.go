@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -50,13 +52,20 @@ type service struct {
 // failed in a way that may pass.
 func (s *service) handle(ctx context.Context, ev events.Event) error {
 	var write func(language.Tag) contracts.Note
-	if ev.Type == contracts.CertificatesDigest {
+	switch ev.Type {
+	case contracts.CertificatesDigest:
 		var d contracts.Digest
 		if err := ev.Decode(&d); err != nil {
 			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
 		}
 		write = func(tag language.Tag) contracts.Note { return s.digestNote(tag, ev, d) }
-	} else {
+	case contracts.SiteExpiring:
+		var d contracts.SiteEvent
+		if err := ev.Decode(&d); err != nil {
+			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
+		}
+		write = func(tag language.Tag) contracts.Note { return s.siteNote(tag, ev, d) }
+	default:
 		var data contracts.CertificateEvent
 		if err := ev.Decode(&data); err != nil {
 			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
@@ -328,6 +337,32 @@ func (s *service) digestNote(tag language.Tag, ev events.Event, d contracts.Dige
 	} else {
 		lines = append(lines, w.text(i18n.NotifyNoteDigestNoRenewals, nil))
 	}
+	if n.Link != "" {
+		lines = append(lines, w.text(i18n.NotifyNoteLink, i18n.Args{"url": n.Link}))
+	}
+	n.Text = strings.Join(lines, "\n")
+	n.Subject = w.subject(n.Title)
+	return n
+}
+
+// siteNote writes the note about the certificate of a watched site.
+func (s *service) siteNote(tag language.Tag, ev events.Event, d contracts.SiteEvent) contracts.Note {
+	w := writer{s: s, tag: tag}
+	site := d.Host
+	if d.Port != 443 {
+		site = net.JoinHostPort(d.Host, strconv.Itoa(d.Port))
+	}
+	if d.Name != "" {
+		site = d.Name + " (" + site + ")"
+	}
+	n := contracts.Note{Event: ev.Type, Time: ev.Time, Data: ev.Data, Link: s.link("/sites")}
+	if d.Expiry == contracts.ExpiryExpired {
+		n.Title = w.text(i18n.NotifyNoteSiteExpiredTitle, i18n.Args{"site": site})
+	} else {
+		days := max(int(d.NotAfter.Sub(s.now())/(24*time.Hour)), 0)
+		n.Title = w.text(i18n.NotifyNoteSiteExpiringTitle, i18n.Args{"site": site, "days": days})
+	}
+	lines := []string{w.text(i18n.NotifyNoteSiteEnds, i18n.Args{"date": w.day(d.NotAfter), "issuer": d.Issuer})}
 	if n.Link != "" {
 		lines = append(lines, w.text(i18n.NotifyNoteLink, i18n.Args{"url": n.Link}))
 	}

@@ -15,6 +15,7 @@ message at once.
 | Deployment failed | On |
 | Certificate expiring or expired | On |
 | Old certificate still served (found by the online check) | On |
+| A watched site's certificate ends soon or ended (see [Site watch](sites.md)) | On |
 | New certificate (issued or uploaded) | Off |
 | Deployment succeeded | Off |
 | Weekly digest, on Monday from 9:00 in the panel's time zone: certificates needing attention and renewals of the coming week | Off |

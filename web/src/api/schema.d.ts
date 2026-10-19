@@ -1072,6 +1072,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/watch/sites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the sites watched, with what each served when last checked */
+        get: operations["watch-list"];
+        put?: never;
+        /** Watch a site, which is checked at once */
+        post: operations["watch-add"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watch/sites/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stop watching a site */
+        delete: operations["watch-delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watch/sites/{id}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check a site now */
+        post: operations["watch-check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1117,6 +1169,12 @@ export interface components {
             renewBeforeDays?: number;
             /** @description The target provider instances to deploy each version to, in order */
             targets?: number[];
+        };
+        AddInputBody1: {
+            /** @description A host, with a port when it is not 443, or a URL */
+            host: string;
+            /** @description What people call it */
+            name?: string;
         };
         AutoBackupBody: {
             /**
@@ -1701,6 +1759,9 @@ export interface components {
             /** @description The soonest to expire first */
             certificates: components["schemas"]["CertificateBody"][];
         };
+        ListOutputBody2: {
+            sites: components["schemas"]["SiteBody"][];
+        };
         LogLineBody: {
             /** Format: date-time */
             at: string;
@@ -2023,6 +2084,35 @@ export interface components {
             code?: string;
             password: string;
             username: string;
+        };
+        SiteBody: {
+            /**
+             * Format: date-time
+             * @description When the next check comes
+             */
+            checkAt: string;
+            /** Format: date-time */
+            checkedAt?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description What went wrong, as the TLS library said it, for invalid and unreachable */
+            error?: string;
+            fingerprint?: string;
+            host: string;
+            /** Format: int64 */
+            id: number;
+            issuer?: string;
+            name?: string;
+            names: string[];
+            /** Format: date-time */
+            notAfter?: string;
+            /** Format: int64 */
+            port: number;
+            /**
+             * @description pending: not checked yet; expiring: ends within three weeks; invalid: not trusted, or not for the host; unreachable: no TLS on the port, the last certificate seen kept
+             * @enum {string}
+             */
+            state: "pending" | "ok" | "expiring" | "expired" | "invalid" | "unreachable";
         };
         StatesOutputBody: {
             certificates: components["schemas"]["CheckTallyBody"][];
@@ -4612,6 +4702,128 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RuntimeBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "watch-list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListOutputBody2"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "watch-add": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddInputBody1"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "watch-delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "watch-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteBody"];
                 };
             };
             /** @description Error */

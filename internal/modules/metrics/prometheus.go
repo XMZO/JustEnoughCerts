@@ -44,6 +44,18 @@ type deployment struct {
 	} `json:"error"`
 }
 
+// site is a site the watch module watches.
+type site struct {
+	ID       int64      `json:"id"`
+	Host     string     `json:"host"`
+	Port     int        `json:"port"`
+	State    string     `json:"state"`
+	NotAfter *time.Time `json:"notAfter"`
+}
+
+// The states of a watched site, as the API tells them.
+var siteStates = []string{"pending", "ok", "expiring", "expired", "invalid", "unreachable"}
+
 type tally struct {
 	CertificateID int64 `json:"certificateId"`
 	Old           int   `json:"old"`
@@ -160,7 +172,34 @@ func (m *Module) render(ctx context.Context) ([]byte, error) {
 			fmt.Fprintf(&b, "jec_certificate_unreachable{%s} %d\n", labels(c), byID[c.ID].Unreachable)
 		}
 	}
+	// The watched sites, unless their module is off.
+	var watched struct {
+		Sites []site `json:"sites"`
+	}
+	err = m.call(ctx, via, http.MethodGet, "/watch/sites", nil, &watched)
+	if err != nil && (!errors.As(err, &ce) || ce.Status != http.StatusNotFound) {
+		return nil, fmt.Errorf("metrics: the sites: %w", err)
+	}
+	if err == nil {
+		family("jec_site_expiry_timestamp_seconds", "gauge", "When the certificate a watched site served last ends, in Unix seconds.")
+		for _, s := range watched.Sites {
+			if s.NotAfter != nil {
+				fmt.Fprintf(&b, "jec_site_expiry_timestamp_seconds{%s} %d\n", siteLabels(s), s.NotAfter.Unix())
+			}
+		}
+		family("jec_site_state", "gauge", "1 for the state a watched site is in, 0 for the others.")
+		for _, s := range watched.Sites {
+			for _, st := range siteStates {
+				fmt.Fprintf(&b, "jec_site_state{%s,state=%s} %d\n", siteLabels(s), quote(st), bit(s.State == st))
+			}
+		}
+	}
 	return []byte(b.String()), nil
+}
+
+// siteLabels are those of a watched site: its host and port.
+func siteLabels(s site) string {
+	return "host=" + quote(s.Host) + ",port=" + quote(strconv.Itoa(s.Port))
 }
 
 // labels are those of a certificate: its ID and its primary domain.

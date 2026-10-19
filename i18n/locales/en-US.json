@@ -292,7 +292,10 @@
       "two_factor_disable": "Turn off two-factor authentication",
       "two_factor_enable": "Turn on two-factor authentication",
       "two_factor_secret": "Start setting up two-factor authentication",
-      "update_account": "Change the account settings"
+      "update_account": "Change the account settings",
+      "watch_add": "Watch a site",
+      "watch_check": "Check a site",
+      "watch_delete": "Stop watching a site"
     },
     "page": {
       "empty": "Nothing recorded yet.",
@@ -1858,7 +1861,8 @@
         "expiring": "When a certificate is about to expire, or has expired",
         "issue_failed": "When an issuance fails",
         "issued": "When a new certificate is issued or uploaded",
-        "served_old": "A website still serves the old certificate"
+        "served_old": "A website still serves the old certificate",
+        "site_expiring": "A watched site's certificate ends soon or ended"
       },
       "field": {
         "locale": "Language of the notes"
@@ -2339,6 +2343,11 @@
       "retry": "JEC tries again at {time}.",
       "served_old": "The certificate it serves ends on {served}, the version in use on {current}: the target, such as a CDN, may not have taken the new one.",
       "served_old_title": "{domain} still serves the old certificate",
+      "site": {
+        "ends": "It ends on {date}; issued by {issuer}.",
+        "expired_title": "The certificate of {site} has ended",
+        "expiring_title": "The certificate of {site} ends in {days, plural, =0 {less than a day} one {# day} other {# days}}"
+      },
       "subject": "[JEC] {title}",
       "target_gone": "a deleted target",
       "valid_until": "Valid until {date}."
@@ -3230,6 +3239,52 @@
     },
     "test": {
       "cdn_ok": "Connected to Volcengine CDN; {count, plural, one {# accelerated domain} other {# accelerated domains}}."
+    }
+  },
+  "watch": {
+    "column": {
+      "actions": "Actions",
+      "checked": "Checked",
+      "ends": "Ends",
+      "issuer": "Issuer",
+      "site": "Site",
+      "state": "State"
+    },
+    "error": {
+      "host": "Enter a host name or an address, with a port when it is not 443, or a URL.",
+      "too_many": "JEC watches {max} sites at most.",
+      "watched": "This site is watched already."
+    },
+    "field": {
+      "host": "Site",
+      "host_help": "A host name, with a port when it is not 443, or a URL, such as https://example.com.",
+      "name": "Name",
+      "name_help": "Optional, to tell it apart."
+    },
+    "module": {
+      "description": "Watches the certificates of sites JEC does not manage, and tells before they end.",
+      "name": "Site watch"
+    },
+    "page": {
+      "add": "Watch a site",
+      "check": "Check {site} now",
+      "days_ago": "{days, plural, one {ended # day ago} other {ended # days ago}}",
+      "days_left": "{days, plural, =0 {ends today} one {# day left} other {# days left}}",
+      "delete": "Stop watching {site}",
+      "delete_body": "JEC stops checking the site; nothing changes there.",
+      "empty": "No site watched yet. Add a partner's or another team's site to hear before its certificate ends.",
+      "foot": "Checked every 6 hours, an hour after a site did not answer. Notes come three weeks and a week before an end, through the channels set for it.",
+      "intro": "The certificates of sites JEC does not manage: when they end, and whether they are trusted.",
+      "title": "Site watch",
+      "unknown": "Unknown"
+    },
+    "state": {
+      "expired": "Expired",
+      "expiring": "Ending soon",
+      "invalid": "Not trusted",
+      "ok": "Healthy",
+      "pending": "Not checked yet",
+      "unreachable": "No answer"
     }
   },
   "webhook": {

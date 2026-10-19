@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Blocks, ChevronRight, Globe, KeyRound, LogOut, Package, ScrollText, Server, Settings } from '@lucide/vue'
+import { Bell, Blocks, ChevronRight, Globe, KeyRound, LogOut, Package, Radar, ScrollText, Server, Settings } from '@lucide/vue'
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
@@ -37,6 +37,7 @@ const config = computed(() => [
 
 const modulesOn = computed(() => manifest.data.value?.modules.filter((m) => m.required || m.switched).length)
 const audited = computed(() => manifest.data.value?.modules.some((m) => m.id === 'audit' && m.enabled) ?? false)
+const watching = computed(() => manifest.data.value?.modules.some((m) => m.id === 'watch' && m.enabled) ?? false)
 
 const signedIn = computed(() => (session.data.value ? t('kernel.shell.signed_in', { username: session.data.value.username }) : ''))
 
@@ -53,6 +54,15 @@ async function leave() {
   <PageHeader :title="t('kernel.shell.more')" />
 
   <div class="flex flex-col gap-3 px-4 pt-3 sm:mt-4 sm:gap-4 sm:p-0">
+    <RouterLink
+      v-if="watching"
+      to="/sites"
+      class="flex min-h-12 items-center gap-3 rounded-lg border border-line bg-surface-raised px-4 text-ink no-underline hover:bg-surface-sunken hover:text-ink"
+    >
+      <Radar class="size-5 flex-none text-ink-muted" aria-hidden="true" />
+      <span class="min-w-0 flex-1">{{ t('watch.page.title') }}</span>
+      <ChevronRight class="size-4 flex-none text-ink-muted" aria-hidden="true" />
+    </RouterLink>
     <section aria-labelledby="config" class="overflow-hidden rounded-lg border border-line bg-surface-raised">
       <h2 id="config" class="m-0 px-4 pt-3 pb-1 text-heading font-semibold">{{ t('kernel.shell.config') }}</h2>
       <RouterLink

@@ -85,6 +85,25 @@ const (
 	CertificateServedOld = "certificate.served_old"
 )
 
+// Events of the sites module, which watches the certificates of sites JEC
+// does not manage. Their subject is the site's ID, in decimal.
+const (
+	// SiteExpiring: the certificate a site serves ends within three weeks,
+	// within a week, or ended; see Expiry. Payload SiteEvent.
+	SiteExpiring = "site.expiring"
+)
+
+// SiteEvent is the payload of the events of the sites module.
+type SiteEvent struct {
+	SiteID   int64     `json:"siteId"`
+	Host     string    `json:"host"`
+	Port     int       `json:"port"`
+	Name     string    `json:"name,omitempty"` // what people call it, if anything
+	NotAfter time.Time `json:"notAfter"`
+	Expiry   Expiry    `json:"expiry"`
+	Issuer   string    `json:"issuer"`
+}
+
 // Expiry says how close a certificate is to its end, in increasing order of
 // urgency.
 type Expiry string

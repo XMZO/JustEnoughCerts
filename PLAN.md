@@ -241,6 +241,8 @@ stateDiagram-v2
 
 Provider 是模块的一种：每个 Provider 都是一个独立模块，按 4.2 的方式增删。
 
+**站点监控**（模块 `watch`，`internal/modules/watch`）：不由 JEC 管理的网站证书（合作方、其他团队的站点）也能盯着：填主机名（可带端口）或网址，JEC 只做 TLS 握手、不校验地拿到证书链，再用系统根证书和主机名做一次 `x509.Verify` 判断是否可信；每 6 小时一次，连不上 1 小时后再试，最多 8 个同时连。到期前 3 周、1 周和过期后各通知一次（事件 `site.expiring`，默认开），站点换了证书重新计。页面 `/sites`，接口 `/api/v1/watch/sites`，Prometheus 指标 `jec_site_*`。
+
 ### 5.1 接口草图
 
 ```go

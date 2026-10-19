@@ -347,3 +347,23 @@ func TestDigestNote(t *testing.T) {
 		t.Errorf("all well: %q\n%s", n.Title, n.Text)
 	}
 }
+
+func TestSiteNote(t *testing.T) {
+	f := newFixture(t)
+	en := f.notifier("ops", map[string]string{"locale": "en-US"}) // site notes are on by default
+	off := f.notifier("quiet", map[string]string{"locale": "en-US", "on_site_expiring": "false"})
+	d := contracts.SiteEvent{SiteID: 2, Host: "partner.example.com", Port: 8443, Name: "Partner", Issuer: "R12",
+		NotAfter: start.Add(5*24*time.Hour + time.Hour), Expiry: contracts.ExpiryUrgent}
+	raw, _ := json.Marshal(d)
+	if err := f.svc.handle(t.Context(), events.Event{ID: 1, Type: contracts.SiteExpiring, Source: "watch", Subject: "2", Data: raw, Time: start}); err != nil {
+		t.Fatal(err)
+	}
+	notes := f.notes(en)
+	if len(notes) != 1 || len(f.notes(off)) != 0 {
+		t.Fatalf("notes %v, quiet %v", notes, f.notes(off))
+	}
+	if n := notes[0]; n.Title != "The certificate of Partner (partner.example.com:8443) ends in 5 days" ||
+		!strings.HasPrefix(n.Text, "It ends on 2026-10-22; issued by R12.") || n.Link != "https://jec.example.com/sites" {
+		t.Errorf("note %q\n%s\n%s", n.Title, n.Text, n.Link)
+	}
+}

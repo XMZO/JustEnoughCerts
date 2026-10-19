@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Blocks, Ellipsis, Globe, History, KeyRound, LayoutGrid, LogOut, Menu, Package, ScrollText, Server, Settings, ShieldCheck, X } from '@lucide/vue'
+import { Bell, Blocks, Ellipsis, Globe, History, KeyRound, LayoutGrid, LogOut, Menu, Package, Radar, ScrollText, Server, Settings, ShieldCheck, X } from '@lucide/vue'
 import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
@@ -46,6 +46,10 @@ const links = computed<Link[]>(() => [
   { to: '/history', label: 'certs.runs.title', icon: History },
 ])
 const tabs = computed<Link[]>(() => [...links.value, { to: '/more', label: 'kernel.shell.more', icon: Ellipsis }])
+// The sidebar has the watched sites too, while their module is on; on
+// phones, the More tab.
+const watching = computed(() => manifest.data.value?.modules.some((m) => m.id === 'watch' && m.enabled) ?? false)
+const main = computed<Link[]>(() => [...links.value, ...(watching.value ? [{ to: '/sites', label: 'watch.page.title', icon: Radar } satisfies Link] : [])])
 // Where providers are configured, with the credentials they share; on
 // phones, the More tab lists them.
 const config: Link[] = [
@@ -121,7 +125,7 @@ async function leave() {
       </div>
       <nav :aria-label="t('kernel.shell.navigation')" class="flex flex-col gap-0.5">
         <RouterLink
-          v-for="link in links"
+          v-for="link in main"
           :key="link.to"
           :to="link.to"
           :aria-current="current(link.to) ? 'page' : undefined"

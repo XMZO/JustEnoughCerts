@@ -42,6 +42,8 @@ domain.
 | `jec_certificate_unreachable` | The domains that answer nothing over TLS on port 443 (likewise) |
 | `jec_certificates` | Certificates by state |
 | `jec_build_info` | The version of JEC, in the label `version` |
+| `jec_site_expiry_timestamp_seconds` | When the certificate a [watched site](../usage/sites.md) served last ends; labels `host` and `port` |
+| `jec_site_state` | 1 for the state a watched site is in (label `state`), 0 for the others |
 
 An alert for certificates that end within 14 days:
 

@@ -56,6 +56,7 @@ export const router = createRouter({
           component: () => import('./pages/HistoryPage.vue'),
           meta: { title: 'certs.runs.title', for: 'app' },
         },
+        { path: 'sites', name: 'sites', component: () => import('./pages/SitesPage.vue'), meta: { title: 'watch.page.title', for: 'app' } },
         {
           path: 'sources',
           name: 'sources',

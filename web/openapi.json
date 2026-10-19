@@ -95,6 +95,26 @@
         },
         "type": "object"
       },
+      "AddInputBody1": {
+        "additionalProperties": false,
+        "properties": {
+          "host": {
+            "description": "A host, with a port when it is not 443, or a URL",
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "description": "What people call it",
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        "required": [
+          "host"
+        ],
+        "type": "object"
+      },
       "AutoBackupBody": {
         "additionalProperties": false,
         "properties": {
@@ -1686,6 +1706,21 @@
         ],
         "type": "object"
       },
+      "ListOutputBody2": {
+        "additionalProperties": false,
+        "properties": {
+          "sites": {
+            "items": {
+              "$ref": "#/components/schemas/SiteBody"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "sites"
+        ],
+        "type": "object"
+      },
       "LogLineBody": {
         "additionalProperties": false,
         "properties": {
@@ -2582,6 +2617,80 @@
         "required": [
           "username",
           "password"
+        ],
+        "type": "object"
+      },
+      "SiteBody": {
+        "additionalProperties": false,
+        "properties": {
+          "checkAt": {
+            "description": "When the next check comes",
+            "format": "date-time",
+            "type": "string"
+          },
+          "checkedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "error": {
+            "description": "What went wrong, as the TLS library said it, for invalid and unreachable",
+            "type": "string"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "notAfter": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "port": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "state": {
+            "description": "pending: not checked yet; expiring: ends within three weeks; invalid: not trusted, or not for the host; unreachable: no TLS on the port, the last certificate seen kept",
+            "enum": [
+              "pending",
+              "ok",
+              "expiring",
+              "expired",
+              "invalid",
+              "unreachable"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "host",
+          "port",
+          "state",
+          "names",
+          "checkAt",
+          "createdAt"
         ],
         "type": "object"
       },
@@ -6461,6 +6570,157 @@
         "summary": "Choose the time zone JEC tells times in, or go back to the server's",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/watch/sites": {
+      "get": {
+        "operationId": "watch-list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListOutputBody2"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the sites watched, with what each served when last checked",
+        "tags": [
+          "watch",
+          "watch"
+        ]
+      },
+      "post": {
+        "operationId": "watch-add",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddInputBody1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Watch a site, which is checked at once",
+        "tags": [
+          "watch",
+          "watch"
+        ]
+      }
+    },
+    "/watch/sites/{id}": {
+      "delete": {
+        "operationId": "watch-delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Stop watching a site",
+        "tags": [
+          "watch",
+          "watch"
+        ]
+      }
+    },
+    "/watch/sites/{id}/check": {
+      "post": {
+        "operationId": "watch-check",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Check a site now",
+        "tags": [
+          "watch",
+          "watch"
         ]
       }
     }

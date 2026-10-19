@@ -120,6 +120,7 @@
 - 每日自动备份（内核 `system/autobackup.go`）：设置页“数据和备份”选保留份数（关闭、3、7、14、30，存在 `kernel_meta` 的 `auto_backup`），内核的任务 `kernel.backup` 每小时看一次，最近一份满 23 小时就在数据目录的 `backups/` 里做一份（`jec-<UTC 时间>.db`，先写 `.part` 再改名，权限 600），删掉超出份数的；关闭时不删已有的。
 - 日历订阅（模块 `calendar`，表 `calendar_feed`）：通知页底部的开关（`web/src/components/CalendarFeed.vue`），开启后给一个带随机密钥的公开地址 `GET /api/v1/calendar/ics/{key}?lang=…`（日历应用登录不了），事件是到期（按面板时区的全天事件，提前 7 天提醒）和续期开始；换新地址后旧的失效。经 `r.Call` 读证书。
 - 每周概况（事件 `certificates.digest`，`contracts.Digest`）：证书模块的任务 `certs.digest` 每小时看一次，周一 9 点后（面板时区）每周发一次（`certs_settings` 的 `digest_week` 记 ISO 周）；通知渠道的“每周一上午发一份概况”开关（`on_digest`）默认关，通知模块的 `digestNote` 写消息。
+- 站点监控（模块 `watch`，表 `watch_sites`，页面 `/sites`，侧栏在“签发记录”下面、手机在“更多”里）：监控不由 JEC 管理的网站证书，每 6 小时连一次（连不上 1 小时后再试，最多 8 个同时连），状态 pending/ok/expiring（21 天内）/expired/invalid（`x509.Verify` 不过）/unreachable；到期前 3 周、1 周和过期时发 `site.expiring`（`contracts.SiteEvent`，通知开关 `on_site_expiring` 默认开，换证书重新计）。Prometheus 指标也带上了站点。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

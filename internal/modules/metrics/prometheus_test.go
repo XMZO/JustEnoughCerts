@@ -21,12 +21,13 @@ func fakeAPI(monitor bool) func(context.Context, string, string, string, any, an
 			 "deployments": [{"state": "failed"}, {"state": "pending", "error": {"key": "x"}}, {"state": "done"}]},
 			{"id": 1, "domains": ["a\"b.example.com"], "state": "issuing", "targets": []}]}`,
 		"/monitor/states": `{"certificates": [{"certificateId": 2, "old": 1, "unreachable": 2}]}`,
+		"/watch/sites":    `{"sites": [{"id": 1, "host": "partner.example.com", "port": 8443, "state": "ok", "notAfter": "2027-01-01T00:00:00Z"}]}`,
 	}
 	return func(_ context.Context, via, method, path string, _, out any) error {
 		if via != "Prometheus" || method != http.MethodGet {
 			panic(via + " " + method)
 		}
-		if path == "/monitor/states" && !monitor {
+		if (path == "/monitor/states" || path == "/watch/sites") && !monitor {
 			return &module.CallError{Status: http.StatusNotFound}
 		}
 		return json.Unmarshal([]byte(answers[path]), out)
@@ -53,6 +54,8 @@ func TestRender(t *testing.T) {
 		`jec_certificate_served_old{id="2",domain="b.example.com"} 1`,
 		`jec_certificate_unreachable{id="1",domain="a\"b.example.com"} 0`,
 		"# TYPE jec_certificate_state gauge",
+		`jec_site_expiry_timestamp_seconds{host="partner.example.com",port="8443"} 1798761600`,
+		`jec_site_state{host="partner.example.com",port="8443",state="ok"} 1`,
 	} {
 		if !strings.Contains(text, want+"\n") {
 			t.Errorf("no %s in:\n%s", want, text)

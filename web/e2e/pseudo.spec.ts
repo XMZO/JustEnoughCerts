@@ -538,6 +538,24 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page.getByRole('link', { name: label('calendar.page.subscribe') })).toBeVisible()
   expect.soft(await problems(page), 'the calendar feed').toEqual([])
 
+  // Site watch: the page, a site added that does not answer, and the dialog
+  // that stops watching it.
+  await page.goto('./sites')
+  expect.soft(await problems(page), 'site watch').toEqual([])
+  await page.getByRole('button', { name: label('watch.page.add') }).filter({ visible: true }).first().click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'watch a site').toEqual([])
+  await dialog.getByLabel(label('watch.field.host')).fill('127.0.0.1:9')
+  await dialog.getByLabel(label('watch.field.name')).fill('e2e site')
+  await dialog.locator('button[type=submit]').click()
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  await expect(page.getByText(label('watch.state.unreachable')).filter({ visible: true }).first()).toBeVisible()
+  expect.soft(await problems(page), 'a site that does not answer').toEqual([])
+  await page.getByRole('button', { name: message('watch.page.delete', { site: '127.0.0.1:9' }) }).filter({ visible: true }).first().click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'stop watching a site').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
+
   // Credentials: the page, a new one, and a provider that takes its keys
   // from it, whose fields for them then go.
   await page.goto('./credentials')
@@ -898,7 +916,7 @@ test('the dark theme keeps its contrast', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' })
   const signIn = await page.request.post('api/v1/session', { data: { username: 'admin', password: 'correct horse' } })
   expect(signIn.ok()).toBe(true)
-  const pages = ['./', './certificates', './certificates/1', './history', './sources', './dns', './targets', './notify']
+  const pages = ['./', './certificates', './certificates/1', './history', './sites', './sources', './dns', './targets', './notify']
   for (const path of [...pages, './credentials', './modules', './settings', './audit']) {
     await page.goto(path)
     await page.waitForLoadState('networkidle')
