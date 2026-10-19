@@ -10,3 +10,11 @@ import "context"
 type Tester interface {
 	Test(ctx context.Context) (Message, error)
 }
+
+// ZoneHolder is a solver of DNS that can tell whether the account it uses
+// holds the zone of a name, so that a certificate whose domains it cannot
+// prove is told of before an issuance fails. A type whose providers are
+// ZoneHolders says so with providers.Type.Zones.
+type ZoneHolder interface {
+	ZoneOf(ctx context.Context, name string) (zone string, held bool, err error)
+}

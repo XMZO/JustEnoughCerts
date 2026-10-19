@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	tchttp "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/http"
@@ -112,6 +113,29 @@ func (t *tencent) Domains(ctx context.Context) ([]string, int, error) {
 		names = append(names, d.Name)
 	}
 	return names, max(out.DomainCountInfo.AllTotal, len(names)), nil
+}
+
+// Holds looks zone up among the domains of the account.
+func (t *tencent) Holds(ctx context.Context, zone string) (bool, error) {
+	var out struct {
+		DomainList []struct {
+			Name string `json:"Name"`
+		} `json:"DomainList"`
+	}
+	err := t.call(ctx, "DescribeDomainList", map[string]any{"Keyword": zone, "Limit": 100}, &out)
+	// DNSPod answers an error, not an empty list, when nothing matches.
+	if err != nil && strings.Contains(err.Error(), "ResourceNotFound") {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	for _, d := range out.DomainList {
+		if strings.EqualFold(d.Name, zone) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // cutLast splits s around the last sep.

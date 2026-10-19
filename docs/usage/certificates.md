@@ -25,7 +25,11 @@ Domains are handled as follows:
   `*.example.com`.
 - Domains are converted to lowercase, internationalized domain names to
   Punycode, and duplicates are removed.
-- Wildcard certificates require DNS validation.
+- Wildcard certificates require DNS validation; with `*.example.com` alone,
+  the page offers to add `example.com` itself.
+- With Tencent Cloud DNSPod, Alibaba Cloud DNS, Cloudflare or Huawei Cloud
+  DNS, the page checks that the account holds each domain, and says so
+  when one is missing, before an issuance fails over it.
 - The same certificate, by fingerprint, can be added only once.
 
 The key type is RSA 2048, 3072 or 4096, or ECDSA P-256 or P-384; the

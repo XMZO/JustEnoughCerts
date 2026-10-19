@@ -36,6 +36,7 @@ type TypeSummary struct {
 	Challenge    string         `json:"challenge,omitempty" enum:"dns,http" doc:"For a solver: how it proves control of a domain, through DNS records or files on the web server"`
 	Records      bool           `json:"records,omitempty" doc:"For a solver of DNS: it adds records of any type too, as some sources ask"`
 	Testable     bool           `json:"testable,omitempty" doc:"Its instances can be tested"`
+	Zones        bool           `json:"zones,omitempty" doc:"For a solver of DNS: its instances tell whether their account holds the zone of a domain"`
 	Experimental bool           `json:"experimental,omitempty"`
 	Untested     bool           `json:"untested,omitempty" doc:"Tested only against a stand-in for the service's API, never with a real account: it may not work"`
 	// CredentialKind is the kind of credential the type can take some of
@@ -152,7 +153,7 @@ func Register(a huma.API, r *providers.Registry) {
 		for _, t := range r.Types(providers.Kind(in.Kind)) {
 			sum := TypeSummary{
 				ID: t.ID, Kind: t.Kind, Module: t.Module, Name: t.Name, Description: t.Description,
-				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, OwnKey: t.OwnKey, Revocable: t.Revocable, Testable: t.Testable, Experimental: t.Experimental, Untested: t.Untested,
+				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, OwnKey: t.OwnKey, Revocable: t.Revocable, Testable: t.Testable, Zones: t.Zones, Experimental: t.Experimental, Untested: t.Untested,
 				CredentialKind: t.CredentialKind, Texts: t.Texts,
 			}
 			switch {
@@ -240,6 +241,14 @@ func Register(a huma.API, r *providers.Registry) {
 	})
 
 	huma.Register(a, huma.Operation{
+		OperationID: "providers-zones", Method: http.MethodGet, Path: "/providers/{id}/zones",
+		Summary:     "Tell whether the account of a solver of DNS holds the zones of domains",
+		Description: "For types marked zones: the zone of each domain, as its SOA says, and whether the account holds it, so that a certificate the solver cannot prove is told of before an issuance fails.",
+	}, func(ctx context.Context, in *zonesInput) (*zonesOutput, error) {
+		return zones(ctx, r, in.ID, in.Domains)
+	})
+
+	huma.Register(a, huma.Operation{
 		OperationID: "providers-delete", Method: http.MethodDelete, Path: "/providers/{id}", DefaultStatus: http.StatusNoContent,
 		Summary: "Delete a configured provider, unless a certificate uses it",
 	}, func(ctx context.Context, in *idInput) (*struct{}, error) {
@@ -251,6 +260,62 @@ func Register(a huma.API, r *providers.Registry) {
 
 // testTimeout bounds a test, which may reach a server across the world.
 const testTimeout = time.Minute
+
+type zonesInput struct {
+	ID      int64    `path:"id"`
+	Domains []string `query:"domain,explode" minItems:"1" maxItems:"50" doc:"The domains, a wildcard as *.example.com"`
+}
+
+// ZoneBody is what a solver tells of the zone of a domain.
+type ZoneBody struct {
+	Domain string `json:"domain"`
+	Zone   string `json:"zone,omitempty" doc:"The zone of the domain, as its SOA says; missing when the DNS does not tell"`
+	Held   *bool  `json:"held,omitempty" doc:"Whether the account holds the zone; missing when it could not be told"`
+}
+
+type zonesOutput struct {
+	Body struct {
+		Domains []ZoneBody `json:"domains"`
+	}
+}
+
+// zoneTimeout bounds the look-up of one domain.
+const zoneTimeout = 15 * time.Second
+
+func zones(ctx context.Context, r *providers.Registry, id int64, domains []string) (*zonesOutput, error) {
+	scope := r.Scope("kernel")
+	t, err := scope.Type(ctx, id)
+	if err != nil {
+		return nil, apiError(err)
+	}
+	if !t.Zones {
+		return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil)
+	}
+	p, _, err := scope.Open(ctx, id)
+	if err != nil {
+		return nil, apiError(err)
+	}
+	if c, ok := p.(interface{ Close() error }); ok {
+		defer func() { _ = c.Close() }()
+	}
+	holder, ok := p.(contracts.ZoneHolder)
+	if !ok {
+		return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil)
+	}
+	out := &zonesOutput{}
+	out.Body.Domains = make([]ZoneBody, 0, len(domains))
+	for _, d := range domains {
+		zctx, cancel := context.WithTimeout(ctx, zoneTimeout)
+		zone, held, err := holder.ZoneOf(zctx, d)
+		cancel()
+		b := ZoneBody{Domain: d, Zone: zone}
+		if err == nil {
+			b.Held = &held
+		}
+		out.Body.Domains = append(out.Body.Domains, b)
+	}
+	return out, nil
+}
 
 func test(ctx context.Context, r *providers.Registry, id int64) (*testOutput, error) {
 	scope := r.Scope("kernel")

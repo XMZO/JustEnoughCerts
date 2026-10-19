@@ -127,6 +127,7 @@
 - 吊销检查（`certs/revocation.go`，`PLAN.md` 4.6）：任务 `certs.revocation` 每 12 小时经 OCSP（没有时用 CRL，按下次更新时间缓存，每次都核对签名）查当前版本是否被 CA 吊销（版本的 `ca_revoked_at`、`ca_revoke_reason`、`status_check`）；被吊销时证书状态是 `revoked`，发 `certificate.revoked`（`contracts.Revocation`，通知默认开），有来源的立即续期（`schedule.due`）。测试用 `cryptoxtest.CA.Sign`/`Signer` 做带 OCSP、CRL 地址的证书和应答。
 - 搜索跳转（`web/src/components/QuickJump.vue`）：Ctrl/⌘+K、侧栏“搜索”、平板顶栏、手机“更多”打开（`shell.ts` 的 `jumpOpen`），找证书（`certs/search.ts` 的 `matches`）、页面、服务商（跳到 `?edit=<id>`，服务商页据此打开编辑框），第一次打开才挂载。
 - 证书列表的批量操作（宽屏表格的复选框，`certs.bulk.*`）：选中的一起立即续期、重新部署（`CertActionDialog` 支持多张）、删除，逐张调用原有接口；下载可附 PFX（`pfx`、`pfxPassword`、`pfxLegacy`）；添加证书只填通配符时提示加上主域名。
+- DNS 区域预检：`dnsrecord.API.Holds`（四家各自按名字查一个域名）和 `dnsrecord.ZoneOf`（先按 SOA 找区域）；验证类型标 `Zones`、实例实现 `contracts.ZoneHolder`（lego 模块的这四家），接口 `GET /api/v1/providers/{id}/zones?domain=…`（GET，不进审计）；添加证书页在 DNS 服务商下面提示不在账号里的域名。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

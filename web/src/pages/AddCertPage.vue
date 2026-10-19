@@ -6,7 +6,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiError, networkError } from '../api/client'
 import { useAddCertificate, useCertSettings, useIssueCertificate, type KeyType } from '../api/certs'
 import { revealError, useApiError } from '../api/errors'
-import { useProviders, useProviderTypes, type Provider } from '../api/providers'
+import { useProviders, useProviderTypes, useZones, type Provider } from '../api/providers'
 import { keyText } from '../certs/life'
 import DomainInput from '../components/DomainInput.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -112,6 +112,12 @@ const adding = ref(false)
 const pickedSolver = ref<number>()
 const solver = computed(() => usable.value.find((p) => p.id === pickedSolver.value)?.id ?? usable.value[0]?.id)
 const solverProvider = computed(() => usable.value.find((p) => p.id === solver.value))
+// Whether the solver's account holds the zones of the domains, for a type
+// that can tell: a domain it cannot prove fails the issuance.
+const zoneDomains = computed(() => [...new Set(bulk.value ? batch.value.flat() : domains.value)].slice(0, 50))
+const zones = useZones(solver, zoneDomains, () => needsSolver.value && !!solverProvider.value && !!solverType(solverProvider.value)?.zones)
+const notHeld = computed(() => (zones.data.value ?? []).filter((z) => z.held === false))
+const allHeld = computed(() => !!zones.data.value?.length && zones.data.value.every((z) => z.held === true))
 // What the solver's last test said, as its card says it.
 const solverTest = computed(() => {
   const last = solverProvider.value?.lastTest
@@ -396,6 +402,12 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
             </JecField>
             <p v-if="solverTest" :class="['m-0 flex items-start gap-1.5 text-small [overflow-wrap:anywhere]', solverTest.ok ? 'text-ok-ink' : 'text-warn-ink']">
               <component :is="solverTest.ok ? CircleCheck : TriangleAlert" class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ solverTest.text }}
+            </p>
+            <p v-for="z in notHeld" :key="z.domain" role="status" class="m-0 flex items-start gap-1.5 text-small text-warn-ink [overflow-wrap:anywhere]">
+              <TriangleAlert class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ t('certs.add.zone_missing', { domain: z.domain, zone: z.zone ?? '' }) }}
+            </p>
+            <p v-if="allHeld" role="status" class="m-0 flex items-start gap-1.5 text-small text-ok-ink">
+              <CircleCheck class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ t('certs.add.zones_held') }}
             </p>
             <RouterLink to="/dns" class="self-start text-small">{{ t('certs.add.manage_solvers') }}</RouterLink>
           </template>

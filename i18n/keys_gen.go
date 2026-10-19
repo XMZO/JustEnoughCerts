@@ -501,6 +501,8 @@ const (
 	CertsAddSource                           Key = "certs.add.source"
 	CertsAddTargets                          Key = "certs.add.targets"
 	CertsAddValidation                       Key = "certs.add.validation"
+	CertsAddZoneMissing                      Key = "certs.add.zone_missing"
+	CertsAddZonesHeld                        Key = "certs.add.zones_held"
 	CertsAttentionDeployFailed               Key = "certs.attention.deploy_failed"
 	CertsAttentionExpired                    Key = "certs.attention.expired"
 	CertsAttentionExpiredDetail              Key = "certs.attention.expired_detail"

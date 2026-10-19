@@ -509,6 +509,8 @@ export type MessageKey =
   | "certs.add.source"
   | "certs.add.targets"
   | "certs.add.validation"
+  | "certs.add.zone_missing"
+  | "certs.add.zones_held"
   | "certs.attention.deploy_failed"
   | "certs.attention.expired"
   | "certs.attention.expired_detail"

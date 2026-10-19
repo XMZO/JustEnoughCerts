@@ -924,6 +924,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/providers/{id}/zones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tell whether the account of a solver of DNS holds the zones of domains
+         * @description For types marked zones: the zone of each domain, as its SOA says, and whether the account holds it, so that a certificate the solver cannot prove is told of before an issuance fails.
+         */
+        get: operations["providers-zones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/session": {
         parameters: {
             query?: never;
@@ -2362,6 +2382,7 @@ export interface components {
             };
             untested?: boolean;
             url?: string;
+            zones?: boolean;
         };
         TypeSummary: {
             /** @description A third party's name for the type, shown as it is */
@@ -2404,6 +2425,8 @@ export interface components {
             /** @description Tested only against a stand-in for the service's API, never with a real account: it may not work */
             untested?: boolean;
             url?: string;
+            /** @description For a solver of DNS: its instances tell whether their account holds the zone of a domain */
+            zones?: boolean;
         };
         TypesOutputBody: {
             types: components["schemas"]["TypeSummary"][];
@@ -2503,6 +2526,16 @@ export interface components {
         When: {
             key: string;
             value: string;
+        };
+        ZoneBody: {
+            domain: string;
+            /** @description Whether the account holds the zone; missing when it could not be told */
+            held?: boolean;
+            /** @description The zone of the domain, as its SOA says; missing when the DNS does not tell */
+            zone?: string;
+        };
+        ZonesOutputBody: {
+            domains: components["schemas"]["ZoneBody"][];
         };
     };
     responses: never;
@@ -4516,6 +4549,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TestOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "providers-zones": {
+        parameters: {
+            query?: {
+                /** @description The domains, a wildcard as *.example.com */
+                domain?: string[];
+            };
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZonesOutputBody"];
                 };
             };
             /** @description Error */

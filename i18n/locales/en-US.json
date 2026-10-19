@@ -658,7 +658,9 @@
       "solver": "Validation method",
       "source": "Source",
       "targets": "Deploy to",
-      "validation": "Domain validation"
+      "validation": "Domain validation",
+      "zone_missing": "{zone} is not in this DNS provider's account, so validating {domain} would fail. Choose another DNS provider, or check its account and keys.",
+      "zones_held": "This account holds every domain."
     },
     "attention": {
       "deploy_failed": "{domain} could not be deployed",

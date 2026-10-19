@@ -141,6 +141,22 @@ func (c *cloudflare) Domains(ctx context.Context) ([]string, int, error) {
 	return names, max(total, len(names)), nil
 }
 
+// Holds looks zone up among the zones the token sees.
+func (c *cloudflare) Holds(ctx context.Context, zone string) (bool, error) {
+	var zones []struct {
+		Name string `json:"name"`
+	}
+	if _, err := c.send(ctx, c.zone, http.MethodGet, "/zones?name="+url.QueryEscape(zone), nil, &zones); err != nil {
+		return false, err
+	}
+	for _, z := range zones {
+		if strings.EqualFold(z.Name, zone) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (c *cloudflare) Add(ctx context.Context, r Record) (string, error) {
 	if err := valid(r); err != nil {
 		return "", err

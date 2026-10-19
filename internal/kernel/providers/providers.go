@@ -137,7 +137,11 @@ type Type struct {
 	Records bool `json:"records,omitempty"`
 	// Testable types make providers that can check their settings
 	// (contracts.Tester), through POST /api/v1/providers/{id}/test.
-	Testable     bool `json:"testable,omitempty"`
+	Testable bool `json:"testable,omitempty"`
+	// Zones types make solvers that tell whether their account holds a
+	// domain's zone (contracts.ZoneHolder), through POST
+	// /api/v1/providers/{id}/zones.
+	Zones        bool `json:"zones,omitempty"`
 	Experimental bool `json:"experimental,omitempty"`
 	// Untested is set on a type tested only against a stand-in for the
 	// service's API, never with a real account: it may not work.

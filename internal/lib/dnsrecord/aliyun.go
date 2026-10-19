@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
 	openapiutil "github.com/alibabacloud-go/darabonba-openapi/v2/utils"
@@ -104,6 +105,26 @@ func (a *aliyun) Domains(ctx context.Context) ([]string, int, error) {
 		names = append(names, d.DomainName)
 	}
 	return names, max(out.TotalCount, len(names)), nil
+}
+
+// Holds looks zone up among the domains of the account.
+func (a *aliyun) Holds(ctx context.Context, zone string) (bool, error) {
+	var out struct {
+		Domains struct {
+			Domain []struct {
+				DomainName string `json:"DomainName"`
+			} `json:"Domain"`
+		} `json:"Domains"`
+	}
+	if err := a.call(ctx, "DescribeDomains", map[string]string{"KeyWord": zone, "SearchMode": "EXACT", "PageSize": "10"}, &out); err != nil {
+		return false, err
+	}
+	for _, d := range out.Domains.Domain {
+		if strings.EqualFold(d.DomainName, zone) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (a *aliyun) Remove(ctx context.Context, _ Record, id string) error {

@@ -302,3 +302,76 @@ func TestDomains(t *testing.T) {
 	t.Cleanup(func() { huaweiEndpoint, huaweiProject = "", "" })
 	check("huaweicloud", map[string]string{"HUAWEICLOUD_ACCESS_KEY_ID": "AK", "HUAWEICLOUD_SECRET_ACCESS_KEY": "SK", "HUAWEICLOUD_REGION": "cn-south-1"}, []string{"example.com"}, 1)
 }
+
+func TestHolds(t *testing.T) {
+	serve := func(answer func(r *http.Request) string) *httptest.Server {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, answer(r))
+		}))
+		t.Cleanup(srv.Close)
+		return srv
+	}
+	check := func(code string, settings map[string]string) {
+		t.Helper()
+		api, err := Open(code, settings)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for zone, want := range map[string]bool{"example.com": true, "other.com": false} {
+			if got, err := api.Holds(t.Context(), zone); err != nil || got != want {
+				t.Errorf("%s holds %s = %v %v", code, zone, got, err)
+			}
+		}
+	}
+
+	tc := serve(func(r *http.Request) string {
+		var params map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&params)
+		if params["Keyword"] == "example.com" {
+			return `{"Response":{"DomainList":[{"Name":"example.com"},{"Name":"sub.example.com"}],"RequestId":"r"}}`
+		}
+		return `{"Response":{"Error":{"Code":"ResourceNotFound.NoDataOfDomain","Message":"none"},"RequestId":"r"}}`
+	})
+	oldTC, oldScheme := tencentEndpoint, tencentScheme
+	tencentEndpoint, tencentScheme = strings.TrimPrefix(tc.URL, "http://"), "HTTP"
+	t.Cleanup(func() { tencentEndpoint, tencentScheme = oldTC, oldScheme })
+	check("tencentcloud", map[string]string{"TENCENTCLOUD_SECRET_ID": "AKID1", "TENCENTCLOUD_SECRET_KEY": "k"})
+
+	ali := serve(func(r *http.Request) string {
+		_ = r.ParseForm()
+		if r.Form.Get("SearchMode") != "EXACT" || r.Form.Get("KeyWord") != "example.com" {
+			return `{"RequestId":"r","TotalCount":0,"Domains":{"Domain":[]}}`
+		}
+		return `{"RequestId":"r","TotalCount":1,"Domains":{"Domain":[{"DomainName":"example.com"}]}}`
+	})
+	oldAli, oldProtocol := aliyunEndpoint, aliyunProtocol
+	aliyunEndpoint, aliyunProtocol = strings.TrimPrefix(ali.URL, "http://"), "HTTP"
+	t.Cleanup(func() { aliyunEndpoint, aliyunProtocol = oldAli, oldProtocol })
+	check("alidns", map[string]string{"ALICLOUD_ACCESS_KEY": "LTAI1", "ALICLOUD_SECRET_KEY": "s"})
+
+	cf := serve(func(r *http.Request) string {
+		if r.URL.Query().Get("name") == "example.com" {
+			return `{"success":true,"result":[{"name":"example.com"}],"result_info":{"total_count":1}}`
+		}
+		return `{"success":true,"result":[],"result_info":{"total_count":0}}`
+	})
+	check("cloudflare", map[string]string{"CF_DNS_API_TOKEN": "dns", "CF_ZONE_API_TOKEN": "zone", "CLOUDFLARE_BASE_URL": cf.URL})
+
+	hw := serve(func(r *http.Request) string {
+		if r.URL.Query().Get("name") == "example.com" {
+			return `{"zones":[{"id":"z1","name":"example.com."},{"id":"z2","name":"a.example.com."}],"metadata":{"total_count":2}}`
+		}
+		return `{"zones":[],"metadata":{"total_count":0}}`
+	})
+	huaweiEndpoint, huaweiProject = hw.URL, "p1"
+	t.Cleanup(func() { huaweiEndpoint, huaweiProject = "", "" })
+	check("huaweicloud", map[string]string{"HUAWEICLOUD_ACCESS_KEY_ID": "AK", "HUAWEICLOUD_SECRET_ACCESS_KEY": "SK", "HUAWEICLOUD_REGION": "cn-south-1"})
+
+	// The zone of a name is found in the DNS first.
+	inZone(t)
+	api, _ := Open("cloudflare", map[string]string{"CF_DNS_API_TOKEN": "dns", "CF_ZONE_API_TOKEN": "zone", "CLOUDFLARE_BASE_URL": cf.URL})
+	if zone, held, err := ZoneOf(t.Context(), api, "*.www.example.com"); err != nil || zone != "example.com" || !held {
+		t.Errorf("ZoneOf = %s %v %v", zone, held, err)
+	}
+}

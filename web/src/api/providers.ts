@@ -114,3 +114,19 @@ export function useUpdateProvider() {
 export function useDeleteProvider() {
   return useProvidersMutation((id: number) => unwrap(api.DELETE('/providers/{id}', { params: { path: { id } } })))
 }
+
+/**
+ * useZones asks a solver of DNS whose type tells zones whether its account
+ * holds the zones of domains, while enabled: before an issuance that would
+ * fail for want of one.
+ */
+export function useZones(id: MaybeRefOrGetter<number | undefined>, domains: MaybeRefOrGetter<string[]>, enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: computed(() => [...all, 'zones', toValue(id), [...toValue(domains)].sort()] as const),
+    queryFn: async () =>
+      (await unwrap(api.GET('/providers/{id}/zones', { params: { path: { id: toValue(id) ?? 0 }, query: { domain: toValue(domains) } } }))).domains,
+    enabled: computed(() => toValue(enabled) && toValue(id) !== undefined && toValue(domains).length > 0),
+    staleTime: 5 * 60_000,
+    retry: false,
+  })
+}

@@ -3192,6 +3192,9 @@
           },
           "url": {
             "type": "string"
+          },
+          "zones": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -3301,6 +3304,10 @@
           },
           "url": {
             "type": "string"
+          },
+          "zones": {
+            "description": "For a solver of DNS: its instances tell whether their account holds the zone of a domain",
+            "type": "boolean"
           }
         },
         "required": [
@@ -3551,6 +3558,41 @@
         "required": [
           "key",
           "value"
+        ],
+        "type": "object"
+      },
+      "ZoneBody": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "type": "string"
+          },
+          "held": {
+            "description": "Whether the account holds the zone; missing when it could not be told",
+            "type": "boolean"
+          },
+          "zone": {
+            "description": "The zone of the domain, as its SOA says; missing when the DNS does not tell",
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "type": "object"
+      },
+      "ZonesOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "domains": {
+            "items": {
+              "$ref": "#/components/schemas/ZoneBody"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "domains"
         ],
         "type": "object"
       }
@@ -6343,6 +6385,61 @@
           }
         },
         "summary": "Test a configured provider"
+      }
+    },
+    "/providers/{id}/zones": {
+      "get": {
+        "description": "For types marked zones: the zone of each domain, as its SOA says, and whether the account holds it, so that a certificate the solver cannot prove is told of before an issuance fails.",
+        "operationId": "providers-zones",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "The domains, a wildcard as *.example.com",
+            "explode": true,
+            "in": "query",
+            "name": "domain",
+            "schema": {
+              "description": "The domains, a wildcard as *.example.com",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 50,
+              "minItems": 1,
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZonesOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Tell whether the account of a solver of DNS holds the zones of domains"
       }
     },
     "/session": {

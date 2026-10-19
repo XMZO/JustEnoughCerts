@@ -658,7 +658,9 @@
       "solver": "验证方式",
       "source": "证书来源",
       "targets": "部署到",
-      "validation": "域名验证"
+      "validation": "域名验证",
+      "zone_missing": "{zone} 不在这个 DNS 服务商的账号里，{domain} 的验证会失败。请换一个 DNS 服务商，或检查它的账号和密钥。",
+      "zones_held": "这个账号管理着全部域名。"
     },
     "attention": {
       "deploy_failed": "{domain} 部署失败",

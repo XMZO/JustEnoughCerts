@@ -20,7 +20,18 @@ type records struct {
 var (
 	_ contracts.RecordSolver = (*records)(nil)
 	_ contracts.Tester       = (*records)(nil)
+	_ contracts.ZoneHolder   = (*records)(nil)
 )
+
+// ZoneOf finds the zone of name in the DNS and asks the provider whether
+// the account holds it.
+func (s *records) ZoneOf(ctx context.Context, name string) (string, bool, error) {
+	api, err := dnsrecord.Open(s.code, s.settings)
+	if err != nil {
+		return "", false, err
+	}
+	return dnsrecord.ZoneOf(ctx, api, name)
+}
 
 // shown is how many of the domains a test names.
 const shown = 5

@@ -35,6 +35,20 @@ type API interface {
 	// account, with how many there are, as a test of the keys that
 	// changes nothing.
 	Domains(ctx context.Context) (names []string, total int, err error)
+	// Holds tells whether the account manages zone, a domain without a
+	// final dot.
+	Holds(ctx context.Context, zone string) (bool, error)
+}
+
+// ZoneOf returns the zone name belongs to, as its SOA says, and whether
+// the account of api manages it.
+func ZoneOf(ctx context.Context, api API, name string) (zone string, held bool, err error) {
+	zone, err = findZone(ctx, strings.ToLower(strings.TrimSuffix(strings.TrimPrefix(name, "*."), ".")))
+	if err != nil {
+		return "", false, err
+	}
+	held, err = api.Holds(ctx, zone)
+	return zone, held, err
 }
 
 // listed is how many domains Domains lists at most.

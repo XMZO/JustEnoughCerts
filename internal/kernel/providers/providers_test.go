@@ -106,6 +106,10 @@ func newFixture(t *testing.T) *fixture {
 		func(_ context.Context, in providers.Instance) (any, error) { return probe(in.Config["RESULT"]), nil }); err != nil {
 		t.Fatal(err)
 	}
+	if err := f.reg.Scope("zonal").Add(providers.Type{ID: "zonal.dns", Kind: providers.Solver, Brand: "Zonal", Zones: true, Fields: []providers.Field{}},
+		func(context.Context, providers.Instance) (any, error) { return zonal{}, nil }); err != nil {
+		t.Fatal(err)
+	}
 	cloud := f.reg.Scope("cloud")
 	for _, typ := range []providers.Type{cdnType, storeType, mailType} {
 		if err := cloud.Add(typ, func(_ context.Context, in providers.Instance) (any, error) {
@@ -143,6 +147,19 @@ func (f *fixture) create(body map[string]any) providersapi.InstanceBody {
 
 // probe is a target whose test goes as its setting says.
 type probe string
+
+// zonal holds example.com, not other.org, and cannot tell of the rest.
+type zonal struct{}
+
+func (zonal) ZoneOf(_ context.Context, name string) (string, bool, error) {
+	switch strings.TrimPrefix(name, "*.") {
+	case "example.com", "www.example.com":
+		return "example.com", true, nil
+	case "other.org":
+		return "other.org", false, nil
+	}
+	return "", false, errors.New("no SOA")
+}
 
 func (p probe) Test(context.Context) (contracts.Message, error) {
 	switch p {
@@ -259,7 +276,7 @@ func TestTypes(t *testing.T) {
 	f := newFixture(t)
 	var out struct{ Types []providersapi.TypeSummary }
 	resp := f.api.Get("/providers/types?kind=solver")
-	if err := json.Unmarshal(resp.Body.Bytes(), &out); err != nil || len(out.Types) != 2 || out.Types[0].ID != "dns.acme_dns" || out.Types[0].Module != "dns" {
+	if err := json.Unmarshal(resp.Body.Bytes(), &out); err != nil || len(out.Types) != 3 || out.Types[0].ID != "dns.acme_dns" || out.Types[0].Module != "dns" {
 		t.Errorf("solver types: %s", resp.Body.String())
 	}
 	if resp := f.api.Get("/providers/types"); !strings.Contains(resp.Body.String(), "mail.smtp") {
@@ -486,5 +503,36 @@ func TestTest(t *testing.T) {
 	if err := json.Unmarshal(f.api.Get("/providers/types?kind=target").Body.Bytes(), &list); err != nil || len(list.Types) != 3 ||
 		list.Types[2].ID != "probe.target" || !list.Types[2].Testable || list.Types[0].Testable {
 		t.Errorf("types %+v: %v", list.Types, err)
+	}
+}
+
+func TestZones(t *testing.T) {
+	f := newFixture(t)
+	z := f.create(map[string]any{"type": "zonal.dns", "name": "zonal"})
+	resp := f.api.Get("/providers/" + strconv.FormatInt(z.ID, 10) + "/zones?domain=*.example.com&domain=other.org&domain=broken.test")
+	var out struct{ Domains []providersapi.ZoneBody }
+	if resp.Code != http.StatusOK || json.Unmarshal(resp.Body.Bytes(), &out) != nil || len(out.Domains) != 3 {
+		t.Fatalf("zones = %d %s", resp.Code, resp.Body)
+	}
+	if d := out.Domains[0]; d.Domain != "*.example.com" || d.Zone != "example.com" || d.Held == nil || !*d.Held {
+		t.Errorf("held %+v", d)
+	}
+	if d := out.Domains[1]; d.Zone != "other.org" || d.Held == nil || *d.Held {
+		t.Errorf("not held %+v", d)
+	}
+	if d := out.Domains[2]; d.Zone != "" || d.Held != nil {
+		t.Errorf("unknown %+v", d)
+	}
+	// A type that cannot tell refuses.
+	solver := f.create(map[string]any{"type": "dns.acme_dns", "name": "x", "config": map[string]string{"API_USER": "u"}, "secrets": map[string]string{"API_KEY": "k"}})
+	f.fails(http.MethodGet, "/providers/"+strconv.FormatInt(solver.ID, 10)+"/zones?domain=example.com", nil, http.StatusUnprocessableEntity)
+	var list struct{ Types []providersapi.TypeSummary }
+	if err := json.Unmarshal(f.api.Get("/providers/types?kind=solver").Body.Bytes(), &list); err != nil {
+		t.Fatal(err)
+	}
+	for _, typ := range list.Types {
+		if typ.Zones != (typ.ID == "zonal.dns") {
+			t.Errorf("type %s zones %v", typ.ID, typ.Zones)
+		}
 	}
 }

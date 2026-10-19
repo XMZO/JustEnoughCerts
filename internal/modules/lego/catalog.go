@@ -79,6 +79,7 @@ func providerType(p catalogProvider) providers.Type {
 		// tests their keys by the domains they list.
 		Records:  slices.Contains(dnsrecord.Codes, p.Code),
 		Testable: slices.Contains(dnsrecord.Codes, p.Code),
+		Zones:    slices.Contains(dnsrecord.Codes, p.Code),
 	}
 	switch {
 	case slices.Contains(china, p.Code):

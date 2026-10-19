@@ -85,6 +85,23 @@ func (h *huawei) Domains(context.Context) ([]string, int, error) {
 	return names, total, nil
 }
 
+// Holds looks zone up among the public zones of the account.
+func (h *huawei) Holds(_ context.Context, zone string) (bool, error) {
+	limit := int32(100)
+	res, err := h.zones(&model.ListPublicZonesRequest{Name: &zone, Limit: &limit})
+	if err != nil {
+		return false, fmt.Errorf("dnsrecord: Huawei Cloud zones: %w", err)
+	}
+	if res.Zones != nil {
+		for _, z := range *res.Zones {
+			if z.Name != nil && strings.EqualFold(strings.TrimSuffix(*z.Name, "."), zone) {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
 func (h *huawei) Add(ctx context.Context, r Record) (string, error) {
 	if err := valid(r); err != nil {
 		return "", err
