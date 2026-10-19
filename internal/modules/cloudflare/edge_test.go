@@ -40,7 +40,9 @@ type fakeEdge struct {
 func (f *fakeEdge) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if r.Header.Get("Authorization") != "Bearer t0ken" {
+	token := r.Header.Get("Authorization") == "Bearer t0ken"
+	globalKey := r.Header.Get("Authorization") == "" && r.Header.Get("X-Auth-Email") == "me@example.com" && r.Header.Get("X-Auth-Key") == "k3y"
+	if !token && !globalKey {
 		answer(w, http.StatusForbidden, nil, 10000)
 		return
 	}
@@ -198,11 +200,16 @@ func answer(w http.ResponseWriter, status int, result any, code int) {
 
 func newEdge(t *testing.T, f *fakeEdge, config map[string]string) *edge {
 	t.Helper()
+	return newEdgeSigned(t, f, config, map[string]string{"api_token": "t0ken"})
+}
+
+func newEdgeSigned(t *testing.T, f *fakeEdge, config, secrets map[string]string) *edge {
+	t.Helper()
 	srv := httptest.NewServer(f)
 	t.Cleanup(srv.Close)
 	m := New()
 	m.base, m.check, m.poll, m.propagate = srv.URL, &http.Client{Transport: f}, time.Millisecond, 50*time.Millisecond
-	p, err := m.edgeFactory(t.Context(), providers.Instance{Config: config, Secrets: map[string]string{"api_token": "t0ken"}})
+	p, err := m.edgeFactory(t.Context(), providers.Instance{Config: config, Secrets: secrets})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -318,5 +325,22 @@ func TestEdgeFailures(t *testing.T) {
 	e.token = "wrong"
 	if err := e.PutFile(ctx, file); problemKey(err) != i18n.CloudflareErrorAuth {
 		t.Errorf("refused token: %v", err)
+	}
+}
+
+// The email of an account with its Global API Key signs in as a token
+// does; with neither, the instance says what to enter.
+func TestEdgeGlobalKey(t *testing.T) {
+	f := &fakeEdge{zones: map[string]string{"example.com": "z"}, kv: map[string][]byte{}}
+	e := newEdgeSigned(t, f, map[string]string{"api_email": "me@example.com", "domain": "www.example.com"}, map[string]string{"api_key": "k3y"})
+	if msg, err := e.Test(t.Context()); err != nil || msg.Key != i18n.CloudflareTestEdgeOk {
+		t.Fatalf("global key: %v %v", msg, err)
+	}
+	m := New()
+	if _, err := m.edgeFactory(t.Context(), providers.Instance{Config: map[string]string{"api_email": "me@example.com"}}); problemKey(err) != i18n.CloudflareErrorSignIn {
+		t.Errorf("no key: %v", err)
+	}
+	if _, err := factory(t.Context(), providers.Instance{Config: map[string]string{"zone": "example.com"}}); problemKey(err) != i18n.CloudflareErrorSignIn {
+		t.Errorf("custom, nothing to sign in with: %v", err)
 	}
 }

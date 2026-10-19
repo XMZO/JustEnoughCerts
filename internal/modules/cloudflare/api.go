@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/buildinfo"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
@@ -20,11 +22,26 @@ import (
 // api is the address of Cloudflare's API.
 const api = "https://api.cloudflare.com/client/v4"
 
-// rest is a client of Cloudflare's API, with a token.
+// rest is a client of Cloudflare's API, signing in with an API token, or
+// else with the email of an account and its Global API Key.
 type rest struct {
-	client *http.Client
-	base   string
-	token  string
+	client     *http.Client
+	base       string
+	token      string
+	email, key string
+}
+
+// signIn reads how the instance signs in to the API, of fields api_token,
+// or api_email and api_key.
+func signIn(in providers.Instance, client *http.Client, base string) (rest, error) {
+	r := rest{
+		client: client, base: base, token: strings.TrimSpace(in.Value("api_token")),
+		email: strings.TrimSpace(in.Value("api_email")), key: strings.TrimSpace(in.Value("api_key")),
+	}
+	if r.token == "" && (r.email == "" || r.key == "") {
+		return rest{}, retry.Permanent(&contracts.Problem{Key: i18n.CloudflareErrorSignIn})
+	}
+	return r, nil
 }
 
 // apiError is an error the API answered.
@@ -73,7 +90,12 @@ func (a *rest) send(ctx context.Context, method, path, contentType string, body 
 	if err != nil {
 		return nil, retry.Permanent(err)
 	}
-	req.Header.Set("Authorization", "Bearer "+a.token)
+	if a.token != "" {
+		req.Header.Set("Authorization", "Bearer "+a.token)
+	} else {
+		req.Header.Set("X-Auth-Email", a.email)
+		req.Header.Set("X-Auth-Key", a.key)
+	}
 	req.Header.Set("User-Agent", "JEC/"+buildinfo.Get().Version)
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)

@@ -71,7 +71,9 @@ func edgeType() providers.Type {
 		Name: i18n.CloudflareEdgeName, Description: i18n.CloudflareEdgeDescription,
 		Tags: []string{"http"}, Testable: true,
 		Fields: []providers.Field{
-			{Key: "api_token", Label: i18n.CloudflareFieldApiToken, Help: i18n.CloudflareFieldEdgeTokenHelp, Kind: providers.Text, Secret: true, Required: true},
+			{Key: "api_token", Label: i18n.CloudflareFieldApiToken, Help: i18n.CloudflareFieldEdgeTokenHelp, Kind: providers.Text, Secret: true},
+			{Key: "api_email", Label: i18n.CloudflareFieldApiEmail, Help: i18n.CloudflareFieldApiEmailHelp, Kind: providers.Text},
+			{Key: "api_key", Label: i18n.CloudflareFieldApiKey, Help: i18n.CloudflareFieldApiKeyHelp, Kind: providers.Text, Secret: true},
 			{Key: "zone", Label: i18n.CloudflareFieldZone, Help: i18n.CloudflareFieldEdgeZoneHelp, Kind: providers.Text},
 			{Key: "domain", Label: i18n.CloudflareFieldDomain, Help: i18n.CloudflareFieldDomainHelp, Kind: providers.Text},
 			httpx.ProxyField(),
@@ -128,8 +130,12 @@ func (m *Module) edgeFactory(_ context.Context, in providers.Instance) (any, err
 		return nil, retry.Permanent(err)
 	}
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	r, err := signIn(in, client, m.base)
+	if err != nil {
+		return nil, err
+	}
 	return &edge{
-		rest:   rest{client: client, base: m.base, token: strings.TrimSpace(in.Value("api_token"))},
+		rest:   r,
 		m:      m,
 		zone:   strings.ToLower(strings.TrimSuffix(strings.TrimSpace(in.Config["zone"]), ".")),
 		domain: strings.ToLower(strings.TrimSuffix(strings.TrimSpace(in.Config["domain"]), ".")),

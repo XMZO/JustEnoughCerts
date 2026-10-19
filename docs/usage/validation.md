@@ -84,7 +84,10 @@ vendors such as Namecheap would otherwise be challenged by.
 
 The API token needs Workers Scripts and Workers KV Storage of the account
 and Workers Routes and Zone of the zone, to edit, and Zone WAF of the zone,
-to edit, for the rule. Bot Fight Mode cannot be skipped by a rule; turn it
+to edit, for the rule. The account's email with its Global API Key works
+too, though it can do anything the account can. The zone and its
+credentials are those of the account that serves the website: for a
+custom hostname, the account of the SaaS zone. Bot Fight Mode cannot be skipped by a rule; turn it
 off if the zone has it on. For a custom hostname, enter the SaaS zone as
 the zone.
 

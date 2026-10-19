@@ -29,8 +29,12 @@ var (
 	}
 	Cloudflare = providers.CredentialKind{
 		ID: "cloudflare", Name: i18n.CredentialsCloudflareName, Description: i18n.CredentialsCloudflareDescription,
+		// An API token, or else the email of an account with its Global
+		// API Key, which can do anything the account can.
 		Fields: []providers.Field{
-			{Key: "api_token", Label: i18n.CredentialsCloudflareApiToken, Kind: providers.Text, Secret: true, Required: true},
+			{Key: "api_token", Label: i18n.CredentialsCloudflareApiToken, Kind: providers.Text, Secret: true},
+			{Key: "api_email", Label: i18n.CredentialsCloudflareApiEmail, Kind: providers.Text},
+			{Key: "api_key", Label: i18n.CredentialsCloudflareApiKey, Kind: providers.Text, Secret: true},
 		},
 	}
 	AWS = providers.CredentialKind{

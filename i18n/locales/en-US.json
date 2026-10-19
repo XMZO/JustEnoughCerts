@@ -1042,10 +1042,15 @@
       "not_served": "{url} does not serve the validation file from the internet. Check that Cloudflare proxies the domain, and the zone's security settings.",
       "not_served_closed": "{url} does not serve the validation file from the internet. JEC could not add the rule that lets these requests past the zone's security, as the token may lack Zone WAF to edit, so Cloudflare may stop the fetches; Bot Fight Mode cannot be skipped by a rule at all.",
       "route_taken": "Another Worker, {script}, handles {pattern}; JEC leaves it alone.",
+      "sign_in": "Enter an API token, or the account's email with its Global API Key.",
       "throttled": "Cloudflare refused for now: too many requests. JEC tries again later.",
       "zone": "The token sees no zone {zone}."
     },
     "field": {
+      "api_email": "Account email",
+      "api_email_help": "Instead of a token: the email the account signs in with, together with its Global API Key.",
+      "api_key": "Global API Key",
+      "api_key_help": "Under My Profile → API Tokens → Global API Key. It can do anything the account can; a token with only the rights needed is safer.",
       "api_token": "API token",
       "api_token_help": "Made under My Profile, API Tokens, with the permission Zone, SSL and Certificates, Edit; and Zone, Zone, Read to name the zone by its domain.",
       "certificate_id": "Custom certificate ID",
@@ -1091,9 +1096,11 @@
       "secret_key": "Secret Key"
     },
     "cloudflare": {
+      "api_email": "Account email",
+      "api_key": "Global API Key",
       "api_token": "API token",
-      "description": "Made under My Profile → API Tokens at Cloudflare, with the rights of what uses it: Zone → DNS → Edit for DNS validation, Zone → SSL and Certificates → Edit for custom certificates.",
-      "name": "Cloudflare API token"
+      "description": "An API token, made under My Profile → API Tokens at Cloudflare with the rights of what uses it (Zone → DNS → Edit for DNS validation, Zone → SSL and Certificates → Edit for custom certificates); or else the account's email with its Global API Key, which can do anything the account can, so a token is safer.",
+      "name": "Cloudflare API token or key"
     },
     "huaweicloud": {
       "access_key_id": "Access Key ID (AK)",

@@ -25,7 +25,9 @@ func customType() providers.Type {
 		ID: "cloudflare.custom", Kind: providers.Target, Name: i18n.CloudflareCustomName, Description: i18n.CloudflareCustomDescription,
 		Testable: true,
 		Fields: []providers.Field{
-			{Key: "api_token", Label: i18n.CloudflareFieldApiToken, Help: i18n.CloudflareFieldApiTokenHelp, Kind: providers.Text, Secret: true, Required: true},
+			{Key: "api_token", Label: i18n.CloudflareFieldApiToken, Help: i18n.CloudflareFieldApiTokenHelp, Kind: providers.Text, Secret: true},
+			{Key: "api_email", Label: i18n.CloudflareFieldApiEmail, Help: i18n.CloudflareFieldApiEmailHelp, Kind: providers.Text},
+			{Key: "api_key", Label: i18n.CloudflareFieldApiKey, Help: i18n.CloudflareFieldApiKeyHelp, Kind: providers.Text, Secret: true},
 			{Key: "zone", Label: i18n.CloudflareFieldZone, Help: i18n.CloudflareFieldZoneHelp, Kind: providers.Text, Required: true},
 			{Key: "certificate_id", Label: i18n.CloudflareFieldCertificateId, Help: i18n.CloudflareFieldCertificateIdHelp, Kind: providers.Text, Advanced: true},
 			httpx.ProxyField(),
@@ -58,8 +60,12 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 		return nil, retry.Permanent(err)
 	}
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	r, err := signIn(in, client, api)
+	if err != nil {
+		return nil, err
+	}
 	return &zone{
-		rest:        rest{client: client, base: api, token: strings.TrimSpace(in.Value("api_token"))},
+		rest:        r,
 		zone:        strings.ToLower(strings.TrimSuffix(strings.TrimSpace(in.Config["zone"]), ".")),
 		certificate: strings.TrimSpace(in.Config["certificate_id"]),
 	}, nil

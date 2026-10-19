@@ -42,7 +42,7 @@ JEC 通过 [lego](https://github.com/go-acme/lego) 支持 221 家 DNS 服务商�
 
 网站经 Cloudflare 代理时（包括 Cloudflare for SaaS 的自定义主机名），由 JEC 部署的 Worker 从 Workers KV 直接应答验证请求，不经过源站，网站服务器无需任何改动。首次使用时，JEC 自动创建 Workers KV 命名空间 `jec_validation`、Worker `jec-validation`、域名 `/.well-known/` 到它的路由（自定义主机名则是 SaaS 区域所有主机的 `/.well-known/`，没有对应文件的请求照常转给源站），以及一条排在区域最前面的自定义规则，让这些文件的请求通过区域的安全设置，否则证书颁发机构和 Namecheap 等厂商的检查可能被质询拦下。
 
-API 令牌需要账户的 Workers 脚本、Workers KV 存储，以及区域的 Workers 路由、区域的编辑权限；添加上述规则另需区域 WAF 的编辑权限。Bot Fight Mode 无法用规则放行，区域开启了它时须关闭。网站是自定义主机名时，“区域”填写 SaaS 的区域。
+API 令牌需要账户的 Workers 脚本、Workers KV 存储，以及区域的 Workers 路由、区域的编辑权限；添加上述规则另需区域 WAF 的编辑权限。也可以使用账号邮箱加 Global API Key，但它能操作整个账号。区域和凭据都属于实际承载网站的账号：自定义主机名属于 SaaS 区域所在的账号。Bot Fight Mode 无法用规则放行，区域开启了它时须关闭。网站是自定义主机名时，“区域”填写 SaaS 的区域。
 
 ## 插件
 

@@ -111,7 +111,7 @@ func credentialOf(code string) *providers.CredentialUse {
 	case "edgeone":
 		return credentials.Use(credentials.TencentCloud, "EDGEONE_SECRET_ID", "EDGEONE_SECRET_KEY")
 	case "cloudflare":
-		return credentials.Use(credentials.Cloudflare, "CF_DNS_API_TOKEN")
+		return credentials.Use(credentials.Cloudflare, "CF_DNS_API_TOKEN", "CF_API_EMAIL", "CF_API_KEY")
 	case "route53":
 		return credentials.Use(credentials.AWS, "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")
 	case "huaweicloud":
