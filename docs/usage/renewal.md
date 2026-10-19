@@ -52,3 +52,10 @@ does, and verifies the certificate actually served:
   notification is sent;
 - the Online check section of the certificate's page shows the result for
   each domain, and can run a check at once.
+
+Where the DNS of a domain answers by region, sending visitors from
+mainland China to Alibaba Cloud ESA and others to Cloudflare, say, JEC
+connects as each of them would and shows the two results apart, as one
+line when both sides serve the same certificate. A certificate from
+another CA, such as a CDN's own, shows as not deployed by JEC, without an
+alert; only an older certificate from the same CA raises one.

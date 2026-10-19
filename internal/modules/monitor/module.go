@@ -17,6 +17,7 @@ import (
 	"embed"
 	"io/fs"
 	"log/slog"
+	"net/netip"
 	"time"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
@@ -24,6 +25,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/dnscheck"
 )
 
 //go:embed migrations/*.sql
@@ -32,9 +34,11 @@ var migrationFiles embed.FS
 // Module is the monitor module.
 type Module struct {
 	now func() time.Time
-	// serve connects to a domain and returns the certificate it serves;
-	// tests replace it.
-	serve func(ctx context.Context, domain string) (*x509.Certificate, error)
+	// serve connects to an address, or to a domain when "", for the domain
+	// and returns the certificate it serves; target says where the DNS of a
+	// name sends the visitors of a subnet. Tests replace them.
+	serve  func(ctx context.Context, domain, address string) (*x509.Certificate, error)
+	target func(ctx context.Context, name string, subnet netip.Prefix) (string, error)
 
 	db     *sql.DB
 	events *events.Scope
@@ -42,7 +46,7 @@ type Module struct {
 }
 
 // New returns the module.
-func New() *Module { return &Module{now: time.Now, serve: served} }
+func New() *Module { return &Module{now: time.Now, serve: served, target: dnscheck.Target} }
 
 // Manifest describes the module.
 func (*Module) Manifest() module.Manifest {

@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
+	"slices"
 	"strings"
 	"time"
 
@@ -130,4 +132,92 @@ func answers(ctx context.Context, r record, addr string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// MainlandChina and Abroad stand for visitors from mainland China and
+// from elsewhere: subnets they come from, as the authoritative servers of
+// a zone that answers by region see them (EDNS Client Subnet, RFC 7871).
+var (
+	MainlandChina = netip.MustParsePrefix("114.114.114.0/24")
+	Abroad        = netip.MustParsePrefix("8.8.8.0/24")
+)
+
+// Target returns where the authoritative servers of the zone of name send
+// visitors from subnet: the name that the CNAMEs of name lead to beyond
+// what they answer, without a final dot, or else the addresses of name,
+// sorted and joined by commas, so that two targets compare as strings.
+// Servers that do not answer by region answer as for anyone.
+func Target(ctx context.Context, name string, subnet netip.Prefix) (string, error) {
+	zone, err := Zone(ctx, name)
+	if err != nil {
+		return "", err
+	}
+	ns, err := net.DefaultResolver.LookupNS(ctx, zone)
+	if err != nil {
+		return "", fmt.Errorf("dnscheck: the name servers of %s: %w", zone, err)
+	}
+	last := errors.New("dnscheck: no name server to ask")
+	for _, n := range ns {
+		target, err := targetAt(ctx, name, subnet, net.JoinHostPort(strings.TrimSuffix(n.Host, "."), "53"))
+		if err == nil {
+			return target, nil
+		}
+		last = err
+	}
+	return "", last
+}
+
+// targetAt asks the server at addr where visitors from subnet go for name.
+func targetAt(ctx context.Context, name string, subnet netip.Prefix, addr string) (string, error) {
+	m := new(dns.Msg)
+	m.SetQuestion(dns.Fqdn(name), dns.TypeA)
+	m.RecursionDesired = false
+	family := uint16(1)
+	if subnet.Addr().Is6() {
+		family = 2
+	}
+	opt := &dns.OPT{Hdr: dns.RR_Header{Name: ".", Rrtype: dns.TypeOPT}}
+	opt.SetUDPSize(1232)
+	opt.Option = append(opt.Option, &dns.EDNS0_SUBNET{
+		Code: dns.EDNS0SUBNET, Family: family, Address: net.IP(subnet.Addr().AsSlice()),
+		SourceNetmask: uint8(subnet.Bits()), //nolint:gosec // the length of a prefix is at most 128
+	})
+	m.Extra = append(m.Extra, opt)
+	c := &dns.Client{Timeout: 5 * time.Second}
+	in, _, err := c.ExchangeContext(ctx, m, addr)
+	if err == nil && in.Truncated {
+		c.Net = "tcp"
+		in, _, err = c.ExchangeContext(ctx, m, addr)
+	}
+	if err != nil {
+		return "", fmt.Errorf("dnscheck: ask %s: %w", addr, err)
+	}
+	at := dns.Fqdn(name)
+	for range 10 { // the CNAMEs the server answers with
+		next := ""
+		var addrs []string
+		for _, rr := range in.Answer {
+			if !strings.EqualFold(rr.Header().Name, at) {
+				continue
+			}
+			switch v := rr.(type) {
+			case *dns.A:
+				addrs = append(addrs, v.A.String())
+			case *dns.CNAME:
+				next = v.Target
+			}
+		}
+		if len(addrs) > 0 {
+			slices.Sort(addrs)
+			return strings.Join(addrs, ","), nil
+		}
+		if next == "" {
+			break
+		}
+		at = next
+	}
+	if !strings.EqualFold(at, dns.Fqdn(name)) {
+		return strings.ToLower(strings.TrimSuffix(at, ".")), nil
+	}
+	return "", fmt.Errorf("dnscheck: %s has no address at %s", name, addr)
 }

@@ -229,6 +229,8 @@ stateDiagram-v2
 
 实现在 `internal/modules/monitor`（模块 ID `monitor`，默认开）：像浏览器一样连到每张证书的域名（443 端口，带 SNI，不校验证书：要看的是哪一张），核对线上返回的是不是当前版本。
 
+- **按地区分开检查**：域名的权威 DNS 按地区解析时（ECS，`dnscheck.Target` 用中国大陆和海外的网段各问一次），两边去处不同就分别连（`monitor_results.view` 为 `cn`、`global`），两边拿到同一张证书时合成一行（`view` 为空）。线上证书的签发者组织和当前版本的不同时（例如 CDN 自己的证书），算“另一张证书”只显示、不告警；当前版本的签发者在某条线路上看到当前版本时记下（`monitor_certificates.issuer`）。用户的 sukimoe.com 就是这样：大陆走 ESA（JEC 部署），海外走 Cloudflare for SaaS（Cloudflare 自己的证书）。
+
 - **知道哪些证书**：订阅证书模块的 `certificate.issued`、`current`、`deployed`、`deleted`，记在 `monitor_certificates`（域名、当前版本和指纹、成为当前版本的时间、下次检查时间）。启动后不久和之后每天发一次 `certificates.announce`，让证书模块把全部证书报一遍，所以升级前已有的证书也会检查。
 - **什么时候查**：新版本 30 分钟后（留出部署时间）；部署到某个目标 2 分钟后；平时每 6 小时；发现旧证书后每 30 分钟复查。`monitor.check` 任务每分钟看一次，一次最多查 20 张证书，同时最多 4 个连接，每个 15 秒超时。通配符域名连不上，跳过。
 - **结果**（`monitor_results`，每个域名一行）：`ok` 是当前版本；`old` 是覆盖这个域名、但比当前版本早到期的证书，也就是还没换上新的；`other` 是别的名字的证书或更新的证书；`unreachable` 是 443 端口没有 TLS 回应（证书可能用在别处，只显示、不告警）。

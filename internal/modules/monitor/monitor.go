@@ -18,14 +18,23 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/dnscheck"
 )
 
 // What a domain served.
 const (
 	stateOK          = "ok"          // the version in use
-	stateOld         = "old"         // an older certificate for the domain
-	stateOther       = "other"       // a certificate for other names, or a newer one
+	stateOld         = "old"         // an older certificate for the domain, from the same CA
+	stateOther       = "other"       // someone else's certificate, a CDN's own say, or a newer one
 	stateUnreachable = "unreachable" // nothing over TLS on port 443
+)
+
+// How visitors reach a domain: one way for all, or, where its DNS answers
+// by region, one way for mainland China and another for elsewhere.
+const (
+	viewAll    = ""
+	viewChina  = "cn"
+	viewGlobal = "global"
 )
 
 // When domains are checked.
@@ -78,6 +87,7 @@ func (m *Module) handle(ctx context.Context, ev events.Event) error {
 			   domains = excluded.domains,
 			   current_since = CASE WHEN version_id = excluded.version_id THEN current_since ELSE excluded.current_since END,
 			   check_at = CASE WHEN version_id = excluded.version_id THEN check_at ELSE excluded.check_at END,
+			   issuer = CASE WHEN version_id = excluded.version_id THEN issuer ELSE '' END,
 			   version_id = excluded.version_id, fingerprint = excluded.fingerprint, not_after = excluded.not_after`,
 			d.CertificateID, string(domains), d.VersionID, d.Fingerprint, d.NotAfter.UnixMilli(), ev.Time.UnixMilli(), check.UnixMilli())
 		return err
@@ -133,6 +143,8 @@ type tracked struct {
 	notAfter     time.Time
 	currentSince time.Time
 	checkAt      time.Time
+	// issuer is the CA of the version, once a domain served it.
+	issuer string
 }
 
 func (m *Module) load(ctx context.Context, q interface {
@@ -143,8 +155,8 @@ func (m *Module) load(ctx context.Context, q interface {
 	var domains string
 	var notAfter, since, checkAt int64
 	err := q.QueryRowContext(ctx,
-		"SELECT domains, version_id, fingerprint, not_after, current_since, check_at FROM monitor_certificates WHERE certificate_id = ?", id).
-		Scan(&domains, &t.version, &t.fingerprint, &notAfter, &since, &checkAt)
+		"SELECT domains, version_id, fingerprint, not_after, current_since, check_at, issuer FROM monitor_certificates WHERE certificate_id = ?", id).
+		Scan(&domains, &t.version, &t.fingerprint, &notAfter, &since, &checkAt, &t.issuer)
 	if errors.Is(err, sql.ErrNoRows) {
 		return t, errUnknown
 	}
@@ -155,15 +167,24 @@ func (m *Module) load(ctx context.Context, q interface {
 	return t, json.Unmarshal([]byte(domains), &t.domains)
 }
 
-// result is what a domain served.
+// result is what a domain served, as visitors of a view reach it.
 type result struct {
 	domain      string
+	view        string
 	state       string
 	fingerprint string
 	notAfter    time.Time
 	issuer      string
 	err         string
+	// ca names the issuer of what it served, and valid tells that it is
+	// for the domain: what tells an older version from another's.
+	ca    string
+	valid bool
 }
+
+// view is how visitors reach a domain: through address, or through the
+// domain itself when "".
+type view struct{ name, address string }
 
 // check connects to each domain of certificate id, but wildcards, stores
 // what they served, tells of a domain that still serves an older
@@ -179,17 +200,39 @@ func (m *Module) check(ctx context.Context, id int64) ([]result, error) {
 			domains = append(domains, d)
 		}
 	}
-	results := make([]result, len(domains))
+	type job struct {
+		domain string
+		view   view
+	}
+	var jobs []job
+	for _, d := range domains {
+		for _, v := range m.views(ctx, d) {
+			jobs = append(jobs, job{d, v})
+		}
+	}
+	results := make([]result, len(jobs))
 	var wg sync.WaitGroup
 	slots := make(chan struct{}, probes)
-	for i, d := range domains {
+	for i, j := range jobs {
 		wg.Go(func() {
 			slots <- struct{}{}
 			defer func() { <-slots }()
-			results[i] = m.probe(ctx, t, d)
+			results[i] = m.probe(ctx, j.domain, j.view)
 		})
 	}
 	wg.Wait()
+	results = merged(results)
+	// The CA of the version in use, as served now or before, tells an older
+	// version of it from a certificate of someone else's.
+	issuer := t.issuer
+	for _, r := range results {
+		if r.fingerprint == t.fingerprint {
+			issuer = r.ca
+		}
+	}
+	for i := range results {
+		results[i].state = classify(results[i], t, issuer)
+	}
 
 	now := m.now()
 	tx, err := m.db.BeginTx(ctx, nil)
@@ -206,16 +249,24 @@ func (m *Module) check(ctx context.Context, id int64) ([]result, error) {
 	}
 	next := now.Add(every)
 	settled := !now.Before(t.currentSince.Add(grace))
+	if issuer != t.issuer {
+		if _, err := tx.ExecContext(ctx, "UPDATE monitor_certificates SET issuer = ? WHERE certificate_id = ?", issuer, id); err != nil {
+			return nil, err
+		}
+	}
+	var kept []string
 	for _, r := range results {
+		kept = append(kept, r.domain+"\x00"+r.view)
 		var alerted string
-		if err := tx.QueryRowContext(ctx, "SELECT alerted FROM monitor_results WHERE certificate_id = ? AND domain = ?", id, r.domain).Scan(&alerted); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		if err := tx.QueryRowContext(ctx, "SELECT alerted FROM monitor_results WHERE certificate_id = ? AND domain = ? AND view = ?",
+			id, r.domain, r.view).Scan(&alerted); err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, err
 		}
 		switch {
 		case r.state == stateOld && settled && alerted != t.fingerprint:
 			err := m.events.PublishTx(ctx, tx, contracts.CertificateServedOld, strconv.FormatInt(id, 10), contracts.CertificateEvent{
 				CertificateID: id, Domains: t.domains, VersionID: t.version, Fingerprint: t.fingerprint, NotAfter: t.notAfter.UTC(),
-				Check: &contracts.Check{Domain: r.domain, Fingerprint: r.fingerprint, NotAfter: r.notAfter.UTC()},
+				Check: &contracts.Check{Domain: r.domain, View: r.view, Fingerprint: r.fingerprint, NotAfter: r.notAfter.UTC()},
 			})
 			if err != nil {
 				return nil, err
@@ -237,18 +288,19 @@ func (m *Module) check(ctx context.Context, id int64) ([]result, error) {
 			notAfter = r.notAfter.UnixMilli()
 		}
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO monitor_results (certificate_id, domain, state, fingerprint, not_after, issuer, error, checked_at, alerted)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-			 ON CONFLICT (certificate_id, domain) DO UPDATE SET state = excluded.state, fingerprint = excluded.fingerprint,
+			`INSERT INTO monitor_results (certificate_id, domain, view, state, fingerprint, not_after, issuer, error, checked_at, alerted)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			 ON CONFLICT (certificate_id, domain, view) DO UPDATE SET state = excluded.state, fingerprint = excluded.fingerprint,
 			   not_after = excluded.not_after, issuer = excluded.issuer, error = excluded.error, checked_at = excluded.checked_at,
 			   alerted = excluded.alerted`,
-			id, r.domain, r.state, r.fingerprint, notAfter, r.issuer, r.err, now.UnixMilli(), alerted); err != nil {
+			id, r.domain, r.view, r.state, r.fingerprint, notAfter, r.issuer, r.err, now.UnixMilli(), alerted); err != nil {
 			return nil, err
 		}
 	}
-	// Domains the certificate no longer has.
-	if _, err := tx.ExecContext(ctx, `DELETE FROM monitor_results WHERE certificate_id = ? AND domain NOT IN (SELECT value FROM json_each(?))`,
-		id, mustJSON(domains)); err != nil {
+	// Domains the certificate no longer has, and views that came together.
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM monitor_results WHERE certificate_id = ? AND domain || char(0) || view NOT IN (SELECT value FROM json_each(?))`,
+		id, mustJSON(kept)); err != nil {
 		return nil, err
 	}
 	if _, err := tx.ExecContext(ctx, "UPDATE monitor_certificates SET check_at = ? WHERE certificate_id = ?", next.UnixMilli(), id); err != nil {
@@ -257,31 +309,85 @@ func (m *Module) check(ctx context.Context, id int64) ([]result, error) {
 	return results, tx.Commit()
 }
 
-// probe connects to domain and says what it served, compared with the
-// version t uses.
-func (m *Module) probe(ctx context.Context, t tracked, domain string) result {
-	r := result{domain: domain}
-	leaf, err := m.serve(ctx, domain)
+// views tells how visitors reach domain: one way, unless its DNS sends
+// those from mainland China and those from elsewhere to different places,
+// which are then checked apart. When the DNS cannot tell, one way.
+func (m *Module) views(ctx context.Context, domain string) []view {
+	china, err := m.target(ctx, domain, dnscheck.MainlandChina)
+	if err != nil {
+		return []view{{}}
+	}
+	global, err := m.target(ctx, domain, dnscheck.Abroad)
+	if err != nil || global == china {
+		return []view{{}}
+	}
+	// Addresses come joined by commas: one of them is enough.
+	first := func(s string) string { a, _, _ := strings.Cut(s, ","); return a }
+	return []view{{viewChina, first(china)}, {viewGlobal, first(global)}}
+}
+
+// merged puts the two views of a domain back together when they served the
+// same certificate, or failed alike: nothing to tell apart.
+func merged(results []result) []result {
+	var out []result
+	for i := 0; i < len(results); i++ {
+		r := results[i]
+		if r.view == viewChina && i+1 < len(results) {
+			if g := results[i+1]; g.domain == r.domain && g.view == viewGlobal && g.fingerprint == r.fingerprint && (g.err == "") == (r.err == "") {
+				r.view = viewAll
+				i++
+			}
+		}
+		out = append(out, r)
+	}
+	return out
+}
+
+// probe connects to domain as visitors of v reach it and says what it
+// served.
+func (m *Module) probe(ctx context.Context, domain string, v view) result {
+	r := result{domain: domain, view: v.name}
+	leaf, err := m.serve(ctx, domain, v.address)
 	if err != nil {
 		r.state, r.err = stateUnreachable, truncate(err.Error(), 500)
 		return r
 	}
 	r.fingerprint, r.notAfter, r.issuer = cryptox.Fingerprint(leaf), leaf.NotAfter, issuerName(leaf)
-	switch {
-	case r.fingerprint == t.fingerprint:
-		r.state = stateOK
-	case leaf.VerifyHostname(domain) == nil && leaf.NotAfter.Before(t.notAfter):
-		r.state = stateOld
-	default:
-		r.state = stateOther
-	}
+	r.ca, r.valid = caOf(leaf), leaf.VerifyHostname(domain) == nil
 	return r
 }
 
-// served connects to domain on port 443 as a browser does and returns the
-// leaf of what it serves.
-func served(ctx context.Context, domain string) (*x509.Certificate, error) {
-	return servedAt(ctx, domain, net.JoinHostPort(domain, "443"))
+// classify says what r served compared with the version t uses, whose CA is
+// issuer when known: an older certificate for the domain is an older
+// version only when the same CA issued it, else someone else's, such as
+// the own certificate of a CDN in front of the website for some visitors.
+func classify(r result, t tracked, issuer string) string {
+	switch {
+	case r.err != "":
+		return stateUnreachable
+	case r.fingerprint == t.fingerprint:
+		return stateOK
+	case r.valid && r.notAfter.Before(t.notAfter) && (issuer == "" || r.ca == issuer):
+		return stateOld
+	}
+	return stateOther
+}
+
+// caOf names the CA that issued c: its organization, or else its name.
+func caOf(c *x509.Certificate) string {
+	if len(c.Issuer.Organization) > 0 {
+		return c.Issuer.Organization[0]
+	}
+	return c.Issuer.CommonName
+}
+
+// served connects to address, or to domain when "", on port 443 as a
+// browser does for domain, and returns the leaf of what it serves.
+func served(ctx context.Context, domain, address string) (*x509.Certificate, error) {
+	if address == "" {
+		address = domain
+	}
+	return servedAt(ctx, domain, net.JoinHostPort(address, "443"))
 }
 
 // servedAt connects to address for domain and returns the leaf it serves.

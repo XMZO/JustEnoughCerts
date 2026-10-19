@@ -2006,8 +2006,12 @@
     "state": {
       "ok": "Serves the version in use",
       "old": "Still serves an older certificate, which ends on {date}",
-      "other": "Serves another certificate, from {issuer}, which ends on {date}",
+      "other": "Serves another certificate, not one JEC deployed: from {issuer}, ending on {date}",
       "unreachable": "Nothing answered over TLS on port 443"
+    },
+    "view": {
+      "cn": "Mainland China",
+      "global": "Elsewhere"
     }
   },
   "namecheap": {

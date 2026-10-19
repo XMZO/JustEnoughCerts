@@ -2,12 +2,16 @@ package monitor
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"strconv"
 	"sync"
 	"testing"
@@ -21,6 +25,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox/cryptoxtest"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/dnscheck"
 )
 
 var start = time.Date(2026, 10, 18, 8, 0, 0, 0, time.UTC)
@@ -32,8 +37,9 @@ type fixture struct {
 	ca  *cryptoxtest.CA
 	now time.Time
 
-	mu     sync.Mutex
-	served map[string]*x509.Certificate // by domain; none is unreachable
+	mu      sync.Mutex
+	served  map[string]*x509.Certificate // by domain, or by the address of a view; none is unreachable
+	targets map[string][2]string         // where the DNS of a domain sends mainland China and elsewhere
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -51,15 +57,31 @@ func newFixture(t *testing.T) *fixture {
 	}
 	bus := events.New(st.DB(), slog.New(slog.DiscardHandler), func(string) bool { return true })
 	bus.Seal()
-	f := &fixture{t: t, ca: cryptoxtest.NewCA(t), now: start, served: map[string]*x509.Certificate{}}
+	f := &fixture{t: t, ca: cryptoxtest.NewCA(t), now: start, served: map[string]*x509.Certificate{}, targets: map[string][2]string{}}
 	f.m = &Module{now: func() time.Time { return f.now }, db: st.DB(), events: bus.Scope("monitor"), log: slog.New(slog.DiscardHandler)}
-	f.m.serve = func(_ context.Context, domain string) (*x509.Certificate, error) {
+	f.m.serve = func(_ context.Context, domain, address string) (*x509.Certificate, error) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
-		if c := f.served[domain]; c != nil {
+		if address == "" {
+			address = domain
+		}
+		if c := f.served[address]; c != nil {
 			return c, nil
 		}
 		return nil, errors.New("dial tcp: connection refused")
+	}
+	// A DNS that does not answer by region, unless split says otherwise.
+	f.m.target = func(_ context.Context, name string, subnet netip.Prefix) (string, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		t, ok := f.targets[name]
+		switch {
+		case !ok:
+			return "", errors.New("no answer")
+		case subnet == dnscheck.MainlandChina:
+			return t[0], nil
+		}
+		return t[1], nil
 	}
 	_, f.api = humatest.New(t)
 	registerAPI(f.api, f.m)
@@ -69,6 +91,34 @@ func newFixture(t *testing.T) *fixture {
 // leaf is a certificate for names that ends after days.
 func (f *fixture) leaf(days int, names ...string) *x509.Certificate {
 	return f.ca.Leaf(f.t, cryptoxtest.NewKey(f.t), f.now.Add(-time.Hour), f.now.Add(time.Duration(days)*24*time.Hour), names...)
+}
+
+// split has the DNS of domain send mainland China to china and elsewhere to
+// global.
+func (f *fixture) split(domain, china, global string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.targets[domain] = [2]string{china, global}
+}
+
+// foreign is a certificate for names from a CA of org, not the test CA, that
+// ends after days: as the own certificate of a CDN.
+func (f *fixture) foreign(org string, days int, names ...string) *x509.Certificate {
+	f.t.Helper()
+	key := cryptoxtest.NewKey(f.t)
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(7), Subject: pkix.Name{CommonName: names[0], Organization: []string{org}}, DNSNames: names,
+		NotBefore: f.now.Add(-time.Hour), NotAfter: f.now.Add(time.Duration(days) * 24 * time.Hour),
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, key.Public(), key)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	c, err := x509.ParseCertificate(der)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	return c
 }
 
 func (f *fixture) serve(domain string, c *x509.Certificate) {
@@ -263,5 +313,69 @@ func TestServedAt(t *testing.T) {
 	}
 	if _, err := servedAt(t.Context(), "example.com", "127.0.0.1:1"); err == nil {
 		t.Error("nothing listening, and no error")
+	}
+}
+
+// A domain whose DNS sends mainland China to the CDN JEC deploys to and
+// elsewhere to another CDN: the other CDN's own certificate is shown, not
+// told of; an older version on one side is told of, for that side; the two
+// sides alike again make one line.
+func TestViews(t *testing.T) {
+	f := newFixture(t)
+	f.split("example.com", "cn.cdn.example", "global.cdn.example")
+	v1 := f.leaf(90, "example.com", "www.example.com", "*.example.com")
+	f.tell(contracts.CertificateIssued, 1, v1)
+	f.serve("cn.cdn.example", v1)
+	f.serve("global.cdn.example", f.foreign("Elsewhere", 30, "example.com"))
+	f.serve("www.example.com", v1)
+
+	f.now = start.Add(grace)
+	if _, err := f.m.check(t.Context(), 1); err != nil {
+		t.Fatal(err)
+	}
+	b := f.certificate()
+	if len(b.Results) != 3 || b.Results[0].View != viewChina || b.Results[0].State != stateOK ||
+		b.Results[1].View != viewGlobal || b.Results[1].State != stateOther || b.Results[1].Issuer != "example.com" ||
+		b.Results[2].Domain != "www.example.com" || b.Results[2].View != viewAll || b.Results[2].State != stateOK {
+		t.Fatalf("results %+v", b.Results)
+	}
+	if len(f.alerts()) != 0 {
+		t.Fatal("told of the other CDN's certificate")
+	}
+
+	// Mainland China falls back to an older version: told of, for it.
+	f.serve("cn.cdn.example", f.leaf(20, "example.com"))
+	if _, err := f.m.check(t.Context(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if b := f.certificate(); b.Results[0].State != stateOld || b.Results[1].State != stateOther {
+		t.Fatalf("results %+v", b.Results)
+	}
+	rows, err := f.m.db.QueryContext(t.Context(), "SELECT data FROM kernel_events WHERE type = ?", contracts.CertificateServedOld)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var views []string
+	for rows.Next() {
+		var data string
+		var d contracts.CertificateEvent
+		if rows.Scan(&data) != nil || json.Unmarshal([]byte(data), &d) != nil {
+			t.Fatal(data)
+		}
+		views = append(views, d.Check.Domain+" "+d.Check.View)
+	}
+	_ = rows.Close()
+	if len(views) != 1 || views[0] != "example.com cn" {
+		t.Errorf("alerts %v", views)
+	}
+
+	// Both sides serve the version in use: one line again.
+	f.serve("cn.cdn.example", v1)
+	f.serve("global.cdn.example", v1)
+	if _, err := f.m.check(t.Context(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if b := f.certificate(); len(b.Results) != 2 || b.Results[0].View != viewAll || b.Results[0].State != stateOK {
+		t.Errorf("results %+v", b.Results)
 	}
 }

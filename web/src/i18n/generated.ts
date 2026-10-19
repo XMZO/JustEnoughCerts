@@ -1478,6 +1478,8 @@ export type MessageKey =
   | "monitor.state.old"
   | "monitor.state.other"
   | "monitor.state.unreachable"
+  | "monitor.view.cn"
+  | "monitor.view.global"
   | "namecheap.error.add_record"
   | "namecheap.error.api"
   | "namecheap.error.auth"

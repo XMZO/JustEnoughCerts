@@ -4,7 +4,7 @@ import { computed, type Component } from 'vue'
 
 import { useApiError } from '../api/errors'
 import { useCheckNow, useMonitor, useMonitorOn, type MonitorResult } from '../api/monitor'
-import { useT } from '../i18n'
+import { useT, type MessageKey } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import JecAlert from './JecAlert.vue'
 import JecButton from './JecButton.vue'
@@ -26,6 +26,13 @@ const looks: Record<MonitorResult['state'], { icon: Component; tone: string }> =
   old: { icon: TriangleAlert, tone: 'text-warn-ink' },
   other: { icon: Info, tone: 'text-ink-muted' },
   unreachable: { icon: Unplug, tone: 'text-ink-muted' },
+}
+
+// A domain whose DNS sends visitors from mainland China and from elsewhere
+// apart is checked for each of them.
+const views: Record<NonNullable<MonitorResult['view']>, MessageKey> = {
+  cn: 'monitor.view.cn',
+  global: 'monitor.view.global',
 }
 
 function line(r: MonitorResult): string {
@@ -60,10 +67,13 @@ function line(r: MonitorResult): string {
         <span>{{ t('monitor.section.pending') }} <time :datetime="body.checkAt">{{ intl.dateTime(body.checkAt) }}</time></span>
       </p>
       <ul v-else class="m-0 flex list-none flex-col p-0">
-        <li v-for="r in body.results" :key="r.domain" class="flex items-start gap-2 border-b border-line py-2 last:border-b-0">
+        <li v-for="r in body.results" :key="`${r.domain} ${r.view ?? ''}`" class="flex items-start gap-2 border-b border-line py-2 last:border-b-0">
           <component :is="looks[r.state].icon" :class="['mt-0.5 size-4 flex-none', looks[r.state].tone]" aria-hidden="true" />
           <div class="min-w-0 flex-1">
-            <span class="block font-semibold [overflow-wrap:anywhere]" translate="no">{{ r.domain }}</span>
+            <span class="flex flex-wrap items-center gap-x-2">
+              <span class="font-semibold [overflow-wrap:anywhere]" translate="no">{{ r.domain }}</span>
+              <span v-if="r.view" class="rounded-sm bg-surface-sunken px-1.5 text-caption text-ink-muted">{{ t(views[r.view]) }}</span>
+            </span>
             <span class="block text-small">{{ line(r) }}</span>
             <span v-if="r.error" class="block font-mono text-caption text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ r.error }}</span>
           </div>

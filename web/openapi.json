@@ -308,7 +308,7 @@
             "type": "string"
           },
           "results": {
-            "description": "What each domain served the last time it was checked, in the order of the certificate's domains",
+            "description": "What each domain served the last time it was checked, in the order of the certificate's domains, and for a domain checked apart for mainland China and elsewhere, mainland China first",
             "items": {
               "$ref": "#/components/schemas/DomainCheckBody"
             },
@@ -899,12 +899,20 @@
             "type": "string"
           },
           "state": {
-            "description": "ok: the version in use; old: an older certificate for the domain; other: a certificate for other names, or a newer one; unreachable: nothing over TLS on port 443",
+            "description": "ok: the version in use; old: an older certificate for the domain from the same CA; other: someone else's certificate, such as a CDN's own, or one for other names, or a newer one; unreachable: nothing over TLS on port 443",
             "enum": [
               "ok",
               "old",
               "other",
               "unreachable"
+            ],
+            "type": "string"
+          },
+          "view": {
+            "description": "cn: as visitors from mainland China reach the domain; global: as those from elsewhere do; absent when its DNS sends them the same way",
+            "enum": [
+              "cn",
+              "global"
             ],
             "type": "string"
           }

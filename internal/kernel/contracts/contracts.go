@@ -88,6 +88,9 @@ type CertificateEvent struct {
 // connected to it.
 type Check struct {
 	Domain string `json:"domain"`
+	// View is "cn" or "global" when the domain was checked as visitors from
+	// mainland China or from elsewhere reach it, its DNS sending them apart.
+	View string `json:"view,omitempty"`
 	// Fingerprint and NotAfter are those of the certificate it served.
 	Fingerprint string    `json:"fingerprint"`
 	NotAfter    time.Time `json:"notAfter,omitzero"`

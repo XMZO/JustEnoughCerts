@@ -1099,7 +1099,7 @@ export interface components {
              * @description When its domains are checked next
              */
             checkAt?: string;
-            /** @description What each domain served the last time it was checked, in the order of the certificate's domains */
+            /** @description What each domain served the last time it was checked, in the order of the certificate's domains, and for a domain checked apart for mainland China and elsewhere, mainland China first */
             results: components["schemas"]["DomainCheckBody"][];
             /** @description Wildcard domains, which cannot be connected to */
             skipped: string[];
@@ -1308,10 +1308,15 @@ export interface components {
              */
             notAfter?: string;
             /**
-             * @description ok: the version in use; old: an older certificate for the domain; other: a certificate for other names, or a newer one; unreachable: nothing over TLS on port 443
+             * @description ok: the version in use; old: an older certificate for the domain from the same CA; other: someone else's certificate, such as a CDN's own, or one for other names, or a newer one; unreachable: nothing over TLS on port 443
              * @enum {string}
              */
             state: "ok" | "old" | "other" | "unreachable";
+            /**
+             * @description cn: as visitors from mainland China reach the domain; global: as those from elsewhere do; absent when its DNS sends them the same way
+             * @enum {string}
+             */
+            view?: "cn" | "global";
         };
         DownloadInputBody: {
             /** @description The password of the signed-in account, asked again before a private key leaves JEC */
