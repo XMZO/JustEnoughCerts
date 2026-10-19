@@ -1,49 +1,54 @@
-# Providers and how far they are tested
+# Providers and test coverage
 
-Every source, validation, target and notifier of JEC, and what it was
-tested against; at the end, what the vendors ask for. The tests that need a server run in CI where the server
-does; the others, live tests, run against throwaway containers when
-their environment variables are set (see each module's `live_test.go`).
+[中文](providers.zh-CN.md)
 
-- **Real service**: tried with a real account of the service.
-- **Real software**: the service's own software, run in a container.
-- **Emulator**: software that speaks the service's API, such as moto for
-  AWS or Pebble for an ACME CA.
-- **Fake**: a stand-in of the API written from its documentation, or from
-  a client that uses it; the requests JEC sends are checked, not what the
-  service does with them.
+This page lists every certificate source, validation method, deploy target
+and notification channel of JEC with the way it is tested, followed by the
+requirements of the vendors. Tests that need a server run in CI wherever
+the server can; the others are live tests, which run against throwaway
+containers when their environment variables are set (see each module's
+`live_test.go`).
 
-Reports of what works with a real account, or does not, are welcome.
+The tests fall into four kinds:
+
+| Kind | Meaning |
+|---|---|
+| Real service | Tested with a real account of the service |
+| Real software | Tested against the service's own software, run in a container |
+| Emulator | Tested against software that implements the service's API, such as moto for AWS or Pebble for an ACME CA |
+| Fake | A stand-in for the API, written from its documentation or from an existing client; it checks the requests JEC sends, not how the service handles them |
+
+Reports of results with real accounts are welcome.
 
 ## Certificate sources
 
-| Type | What | Tested against |
+| Type | Description | Tested with |
 |---|---|---|
 | `acme.account` | Any ACME CA, with External Account Binding | Emulator: Pebble, in CI |
-| `namecheap.ssl_manager` | Namecheap SSL Manager (experimental) | Fake, after its client |
+| `namecheap.ssl_manager` | Namecheap SSL Manager (experimental) | Fake, written after its official client |
 | `files.watch` | Certificates another client renews on this machine | The file system |
-| `aliyun.fetch` | Certificates Alibaba Cloud's Certificate Management Service issued | Fake |
-| `aliyun.apply` | Certificates applied for at Alibaba Cloud, its personal test ones by default | Fake |
-| `tencentcloud.fetch` | Certificates Tencent Cloud's SSL Certificates issued | Fake, at the HTTP level through the SDK's client |
-| `tencentcloud.free` | Tencent Cloud's free certificates, for domains in its DNSPod | Fake, at the HTTP level through the SDK's client |
+| `aliyun.fetch` | Certificates issued by Alibaba Cloud Certificate Management Service | Fake |
+| `aliyun.apply` | Certificates applied for at Alibaba Cloud, personal test certificates by default | Fake |
+| `tencentcloud.fetch` | Certificates issued by Tencent Cloud SSL Certificates | Fake, at the HTTP level of the SDK's client |
+| `tencentcloud.free` | Tencent Cloud free certificates, for domains in the same account's DNSPod | Fake, at the HTTP level of the SDK's client |
 | Upload | PEM, PFX/P12 | Unit tests |
 
 ## Domain validation
 
-| Type | What | Tested against |
+| Type | Description | Tested with |
 |---|---|---|
-| `lego.*` | 221 DNS providers through lego | Fake, for the subprocess JEC runs them in; the providers are lego's |
-| `lego.tencentcloud`, `lego.alidns`, `lego.cloudflare`, `lego.huaweicloud` adding any record | The TXT and CNAME records of vendors' validations, through JEC's own clients | Fake (Huawei Cloud's through its SDK) |
-| `manual.dns` | DNS records added by hand | Fake resolver |
+| `lego.*` | The 221 DNS providers of lego | Fake, for the subprocess JEC runs them in; the providers themselves are lego's |
+| `lego.tencentcloud`, `lego.alidns`, `lego.cloudflare`, `lego.huaweicloud` (any record) | The TXT and CNAME records of vendors' validations, added through JEC's own clients | Fake (Huawei Cloud's through its SDK) |
+| `manual.dns` | DNS records added manually | Fake resolver |
 | `files.webroot` | A website directory on this machine | The file system |
 | `ssh.webroot` | A website directory over SSH | An SSH server in the test |
-| `wellknown.answer` | JEC answers /.well-known/ itself | Real HTTP |
-| `esa.edge` | Alibaba Cloud ESA's edge, through Edge KV and an Edge Routine | Fake API; the routine's code runs in Node.js |
+| `wellknown.answer` | JEC answering `/.well-known/` requests itself | Real HTTP |
+| `esa.edge` | Answers at Alibaba Cloud ESA's edge, through Edge KV and an Edge Routine | Fake API; the routine's code runs in Node.js |
 | `plugins.*` | Plugins | Real programs |
 
 ## Deploy targets
 
-| Type | What | Tested against |
+| Type | Description | Tested with |
 |---|---|---|
 | `esa.site` | Alibaba Cloud ESA | Fake, with Alibaba Cloud's SDK |
 | `aliyun.cdn`, `aliyun.dcdn` | Alibaba Cloud CDN and DCDN | Fake |
@@ -53,74 +58,77 @@ Reports of what works with a real account, or does not, are welcome.
 | `aliyun.alb` | Alibaba Cloud ALB load balancers | Fake |
 | `huaweicloud.cdn` | Huawei Cloud CDN | Fake |
 | `cloudflare.custom` | Cloudflare custom certificates | Fake |
-| `tencentcloud.ssl` | Tencent Cloud SSL Certificates, to CDN, EdgeOne, CLB and more | Fake |
+| `tencentcloud.ssl` | Tencent Cloud SSL Certificates, updating CDN, EdgeOne, CLB and other resources | Fake |
 | `qiniu.cdn` | Qiniu Cloud CDN | Fake |
-| `upyun.cdn` | UPYUN CDN, through its console's interface (experimental) | Fake, after other tools' clients |
-| `volcengine.cdn` | Volcengine CDN | Fake; the official SDK signs |
+| `upyun.cdn` | UPYUN CDN, through its console's interface (experimental) | Fake, written after other tools' clients |
+| `volcengine.cdn` | Volcengine CDN | Fake; signatures made by the official SDK |
 | `baiducloud.cdn` | Baidu AI Cloud CDN | Fake; signatures checked against the official SDK's |
 | `aws.acm` | AWS Certificate Manager, for CloudFront and load balancers | Emulator: moto |
 | `baota.site` | BaoTa (aaPanel) websites | Fake |
 | `onepanel.certificate` | 1Panel certificates | Fake |
 | `npm.certificate` | Nginx Proxy Manager | Real software: NPM 2.16 |
 | `caddy.admin` | Caddy, through its admin API | Real software: Caddy 2.11 |
-| `synology.dsm` | Synology DSM | Fake, after acme.sh's deploy hook |
+| `synology.dsm` | Synology DSM | Fake, written after acme.sh's deploy hook |
 | `proxmox.node` | Proxmox VE nodes | Fake |
 | `kubernetes.secret` | Kubernetes TLS Secrets | Real software: kube-apiserver 1.36 with RBAC |
 | `docker.container` | Docker containers | Real software: Docker 29 |
-| `files.directory` | A directory on this machine, then a command | The file system |
-| `ssh.server` | A server over SSH, then a command | An SSH server in the test |
-| `webhook.deploy` | A webhook of yours | Real HTTP |
+| `files.directory` | A directory on this machine, optionally followed by a command | The file system |
+| `ssh.server` | A server over SSH, optionally followed by a command | An SSH server in the test |
+| `webhook.deploy` | A custom webhook | Real HTTP |
 | `plugins.*` | Plugins | Real programs |
 
-## Notifiers
+## Notification channels
 
-| Type | What | Tested against |
+| Type | Description | Tested with |
 |---|---|---|
 | `email.smtp` | Email through SMTP | Real software: Mailpit's SMTP server |
 | `ntfy.topic` | ntfy | Real software: ntfy |
 | `gotify.app` | Gotify | Real software: Gotify |
 | `telegram.bot` | Telegram | Fake |
-| `webhook.notify` | A webhook of yours | Real HTTP |
+| `webhook.notify` | A custom webhook | Real HTTP |
 | `dingtalk.robot`, `feishu.bot`, `wecom.robot` | DingTalk, Feishu (Lark) and WeCom group robots | Fake |
 | `serverchan.sendkey` | ServerChan | Fake |
 | `bark.device` | Bark | Fake |
 | `discord.webhook` | Discord | Fake |
 | `slack.webhook` | Slack, Mattermost, Rocket.Chat | Fake |
 | `pushover.user` | Pushover | Fake |
-| `hooks.script` | A script of yours, run by the built-in shell | Real scripts |
+| `hooks.script` | A custom script, run by the built-in shell | Real scripts |
 | `plugins.*` | Plugins | Real programs |
 
-## What the vendors ask for
+## Vendor requirements
 
-Some sources and targets work only on the vendor's terms. Where a CA
-speaks ACME, with External Account Binding when it asks for an account,
-prefer that, or upload its certificates by hand: the vendors' own
+Some sources and targets are available only on the vendor's terms. Where a
+CA supports ACME, with External Account Binding when it requires an
+account, prefer ACME or upload its certificates manually: the vendors' own
 interfaces are optional modules.
 
 - **Namecheap SSL Manager** (`namecheap.ssl_manager`, experimental): for
-  certificates bought from Namecheap directly. Each is activated, or
-  reissued, in Namecheap's panel with Server-side automation, which gives
-  a one-time token valid for 24 hours. Single-domain certificates only,
-  validated by a file on the website.
-- **Namecheap's own API** (not in JEC yet): open to accounts with 20
-  domains, a balance of $50, or $50 spent in the last two years, and only
-  from IPv4 addresses on the account's allowlist.
-- **Alibaba Cloud's personal test certificates** (`aliyun.apply`): DigiCert
-  DV for three months, 20 a year, on the China site only; claim them in
-  the console of the Certificate Management Service first. Other DV
-  resource plans work the same way.
-- **Tencent Cloud's free certificates** (`tencentcloud.free`): TrustAsia DV
-  for three months, one domain each and no wildcards, for domains in the
-  DNSPod of the same account, which validates them by itself; an account
-  gets a limited number of them.
-- **Alibaba Cloud ESA** (`esa.site`): the free plan holds two custom
-  certificates a site, so JEC removes the one it replaces after deploying.
-  Answers at the edge (`esa.edge`) need a plan with Functions and Pages,
-  and Edge KV.
+  certificates bought directly from Namecheap. Each certificate must be
+  activated or reissued in the Namecheap dashboard with Server-side
+  automation, which provides a one-time token valid for 24 hours.
+  Single-domain certificates only, validated by a file on the website;
+  JEC also supports DNS validation, but whether Namecheap uses it is yet
+  to be confirmed.
+- **Namecheap's own API** (not yet implemented): available to accounts
+  with 20 domains, a balance of $50 or $50 spent in the last two years,
+  and only from IPv4 addresses on the account's allowlist.
+- **Alibaba Cloud personal test certificates** (`aliyun.apply`): DigiCert
+  DV, valid for three months, 20 a year, on the China site only; the quota
+  must first be claimed in the console of Certificate Management Service.
+  Other DV resource plans work the same way.
+- **Tencent Cloud free certificates** (`tencentcloud.free`): TrustAsia DV,
+  valid for three months, one domain each and no wildcards; the domain
+  must be hosted in the DNSPod of the same account, and Tencent Cloud
+  completes the validation itself; each account has a quota.
+- **Alibaba Cloud ESA** (`esa.site`): the free plan holds at most two
+  custom certificates per site, so JEC removes the replaced certificate
+  after deploying a new one. Edge answers (`esa.edge`) require a plan with
+  Functions and Pages, and Edge KV.
 - **Cloudflare custom certificates** (`cloudflare.custom`): Business and
   Enterprise plans only.
 - **UPYUN** (`upyun.cdn`, experimental): signs in to the console with the
-  account's password, which an account with two-step verification cannot
-  do.
-- **Synology DSM** (`synology.dsm`): an administrator's account; with
-  two-step verification, its secret, from which JEC makes the codes.
+  account's password, so accounts with two-step verification are not
+  supported.
+- **Synology DSM** (`synology.dsm`): requires an administrator account;
+  with two-step verification enabled, its secret is required, from which
+  JEC generates the codes.

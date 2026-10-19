@@ -1,111 +1,131 @@
-# Trying JEC with real accounts
+# Testing with real accounts
 
 [中文](trying.zh-CN.md)
 
-Alibaba Cloud ESA, ESA's edge answers and Namecheap's SSL Manager have only
-been tested against fakes so far (see [providers.md](providers.md)). This
-list goes through them step by step with real accounts, for websites on
-ESA, DNS at Tencent Cloud's DNSPod and certificates bought from Namecheap,
-and says what each step should show and what to note when it does not.
-For free certificates only, step 4 is the end.
+Deployment to Alibaba Cloud ESA, ESA edge answers and Namecheap SSL
+Manager have so far been tested only against fakes; see
+[Providers and test coverage](providers.md). This guide describes how to
+verify them with real accounts, using the setup below as an example, and
+states the expected result of each step and what to record when it fails:
 
-Try it with a test release or the main branch: replace `latest` with
-`beta` for the image in `deploy/docker-compose.yml`. Enter every key in
-JEC's pages, never in a file, a screenshot or a chat.
+- the website is hosted on Alibaba Cloud ESA;
+- its DNS is hosted at Tencent Cloud DNSPod;
+- the certificate is bought from Namecheap.
 
-## 1. The keys
+For free certificates only, steps 1 to 4 are sufficient.
 
-- **Alibaba Cloud**: a RAM user with an AccessKey, allowed what deploying
-  to ESA takes: `esa:ListSites`, `esa:ListCertificates`,
-  `esa:SetCertificate` and `esa:DeleteCertificate`; for edge answers,
-  `esa:*Kv*` and `esa:*Routine*` too (`PLAN.md` 5.4 lists each).
-- **Tencent Cloud**: a CAM sub-user with `QcloudDNSPodFullAccess`, and an
-  API key for it.
+## Before you begin
 
-Add them on the Credentials page as an Alibaba Cloud AccessKey and a
-Tencent Cloud API key. Or skip that: choosing a new credential while
-adding the providers below keeps the keys as one.
+- Use a test release or the main branch: in `deploy/docker-compose.yml`,
+  change the image tag from `latest` to `beta`.
+- Enter every key in JEC's web interface only, never in a file, a
+  screenshot or a chat message.
 
-## 2. The deploy target: Alibaba Cloud ESA
+## 1. Create the access keys
 
-Deploy targets → Add a deploy target → Alibaba Cloud ESA site: the
-Alibaba Cloud credential, the China site (`esa.cn-hangzhou.aliyuncs.com`)
-and the site's name in ESA. Save, then Test.
+| Platform | Action | Permissions |
+|---|---|---|
+| Alibaba Cloud | Create a RAM user and an AccessKey | `esa:ListSites`, `esa:ListCertificates`, `esa:SetCertificate`, `esa:DeleteCertificate`; for edge answers, also `esa:*Kv*` and `esa:*Routine*` (detailed in `PLAN.md` 5.4) |
+| Tencent Cloud | Create a CAM sub-user and an API key | `QcloudDNSPodFullAccess` |
 
-- It should say it is connected, and how many certificates the site holds.
-- When it says the rights fall short or there is no such site, note what
-  it says and the error code in the log.
+On the Credentials page, add an Alibaba Cloud AccessKey and a Tencent
+Cloud API key. Alternatively, choose a new credential when adding the
+providers below; the keys entered are then saved as a credential.
 
-## 3. The validation: DNSPod
+## 2. Add the deploy target: Alibaba Cloud ESA
 
-Domain validation → Add → search for Tencent Cloud DNS: the Tencent Cloud
-credential. Save, then Test: it should say how many domains the account
-manages, yours among them.
+1. On the Deploy targets page, choose Add a target → Alibaba Cloud ESA
+   site.
+2. Select the Alibaba Cloud credential, the China endpoint
+   (`esa.cn-hangzhou.aliyuncs.com`) and the site's name in ESA.
+3. Save, then choose Test.
 
-## 4. A free certificate first
+Expected result: the connection succeeds and the number of certificates on
+the site is shown. If the test reports insufficient permissions or a
+missing site, record the message and the error code in the log.
 
-1. On Certificate sources, add an ACME account with Let's Encrypt.
-2. On Certificates, add a certificate for a domain of the ESA site: the
-   ACME account as its source, DNSPod as its validation, ESA as its
-   target.
-3. The issuance page logs each step: the order, the TXT record, the CA's
-   check, the certificate. Once issued, it is deployed to ESA.
-4. In ESA's console, the site should hold a certificate named `jec-…`;
-   after another issuance (Issue now on the certificate's page), the one
-   before should be gone, so that the free plan's two places never fill
-   up.
-5. A few minutes later, the certificate's online check should find the new
-   certificate.
+## 3. Add the validation method: DNSPod
 
-When something fails, copy the whole log of the issuance or the
-deployment (it holds no keys), and note what ESA's console shows.
+1. On the Domain validation page, choose Add a validation method, search
+   for "Tencent Cloud DNS" and select the Tencent Cloud credential.
+2. Save, then choose Test.
 
-## 5. ESA's edge answers (optional)
+Expected result: the connection succeeds and the domains the account
+manages are listed, the domain under test among them.
 
-On Domain validation, add ESA edge answers with the Alibaba Cloud
-credential and a domain of the ESA site to test with, then Test. The first
-time, JEC makes the Edge KV namespace `jec_validation`, the Edge Routine
-`jec-validation` and the site's route of `/.well-known/` to it, which may
-take a minute or two; when the test runs out of time, test again a little
-later.
+## 4. Issue a free certificate
 
-Then a certificate can use ESA edge answers as its validation (ACME then
-takes HTTP-01). Note whether the routine and the route show in ESA's
-console, how long the test took, and any error.
+1. On the Certificate sources page, add an ACME account with Let's Encrypt
+   as its certificate authority.
+2. On the Certificates page, add a certificate for a domain of the ESA
+   site, with the ACME account as its source, DNSPod as its validation
+   method and ESA as its deploy target.
+3. The issuance page logs each step: placing the order, adding the TXT
+   record, the validation by the CA and downloading the certificate. The
+   certificate is then deployed to ESA automatically.
+4. The ESA console should list a certificate whose name starts with
+   `jec-`. After a second issuance (Issue now on the certificate's page),
+   the previous certificate should be removed, so that the two certificate
+   slots of the free plan never fill up.
+5. After a few minutes, the online check on the certificate's page should
+   report the new certificate.
+
+If a step fails, copy the complete log from the issuance or deployment page
+(logs contain no secrets) and record what the ESA console shows.
+
+## 5. ESA edge answers (optional)
+
+1. On the Domain validation page, add "Answered at ESA's edge" with the
+   Alibaba Cloud credential, enter a domain of the ESA site as the domain
+   to test with, and choose Test.
+2. The first test creates the Edge KV namespace `jec_validation`, the Edge
+   Routine `jec-validation` and the site's route for `/.well-known/`, which
+   may take one to two minutes. If the test times out, run it again later.
+3. Once the test passes, add another certificate with "Answered at ESA's
+   edge" as its validation method; ACME then uses HTTP-01.
+
+Record whether the routine and the route appear in the ESA console, how
+long the test took, and any errors.
 
 ## 6. Namecheap SSL Manager
 
-1. On the Modules page, switch the Namecheap module on (it is marked
-   experimental).
-2. In Namecheap's panel, activate or reissue the PositiveSSL certificate
-   with Server-side automation, and copy the one-time token it gives
-   (valid for 24 hours, for one use).
-3. On Certificate sources, add Namecheap SSL Manager with the token, save,
-   and Test at once: the test registers with the token.
-4. Add the certificate: its single domain, Namecheap as its source, and
-   ESA edge answers as its validation (or a web root, or JEC answering);
-   should Namecheap validate by DNS, DNSPod.
-5. The issuance waits for the source, looking at Namecheap every five
-   minutes; it may take hours, or a day.
+1. On the Modules page, enable the Namecheap module, which is marked
+   Experimental.
+2. In the Namecheap dashboard, activate or reissue the PositiveSSL
+   certificate with Server-side automation, and copy the one-time token it
+   provides (valid for 24 hours and for a single use).
+3. On the Certificate sources page, add Namecheap SSL Manager with the
+   one-time token, save, and choose Test immediately; the test performs the
+   registration.
+4. Add a certificate for the domain of that certificate (single-domain
+   certificates only), with Namecheap as its source and "Answered at ESA's
+   edge" (or a web root, or JEC answering) as its validation method. If
+   Namecheap requires DNS validation, choose DNSPod instead.
+5. The issuance enters the "Waiting on the source" state and checks
+   Namecheap every five minutes; completion may take from several hours to
+   a day.
 
-Some things only a real account tells (`PLAN.md` 5.6); please note what
-the log shows of them:
+The following can only be confirmed with a real account (see `PLAN.md`
+5.6); record what the log shows:
 
-- Which of the account's certificates JEC sees once registered: the one
-  activated with Server-side automation only, or all.
-- What the log's state at Namecheap says between the validation and the
-  certificate.
+- Which certificates of the account JEC sees after registering: only the
+  one activated with Server-side automation, or all of them.
+- The state at Namecheap shown in the log between the submission of the
+  validation and the issuance.
 - Whether Namecheap validates by a file over HTTP or by DNS; for DNS,
-  whether the record's name is the full one or a relative one.
+  whether the record name is a full name or a relative one.
 - Whether waits such as "the CSR did not come from this issuance" or
-  "Namecheap has no certificate yet" show up.
-- Whether the next certificate, 200 days later, takes a new token.
+  "Namecheap has no certificate yet" appear.
+- Whether the next certificate, 200 days later, requires a new token.
 
-## 7. What to note, and not to send
+## 7. What to report
 
-- Whether each step went through, and what the page said.
-- The whole log of a step that failed.
-- The states at Namecheap, and what changed in ESA's console.
+Please report:
 
-Never send the AccessKey, API keys, the one-time token, the `secret.key`
-of the data directory or the database.
+- the result of each step and the messages shown;
+- the complete log of each failed step, copied from the issuance or
+  deployment page;
+- the states at Namecheap and the changes in the ESA console.
+
+Never send AccessKeys, API keys, one-time tokens, the `secret.key` file of
+the data directory or the database.

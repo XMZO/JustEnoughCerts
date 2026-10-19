@@ -1,98 +1,104 @@
-# 服务商和它们测到了哪一步
+# 服务商支持与测试情况
 
-JEC 的每种证书来源、验证方式、部署目标和通知渠道，以及对着什么测过；最后是各家的使用条件。需要服务端的测试，能在 CI 里跑的在 CI 里跑；其他的是“现场测试”，设置了对应的环境变量时对着一次性容器运行（见各模块的 `live_test.go`）。
+[English](providers.md)
 
-- **真实服务**：用这个服务的真实账号试过。
-- **真实软件**：这个服务自己的软件，跑在容器里。
-- **模拟器**：能说这个服务的接口的软件，比如模拟 AWS 的 moto、模拟 ACME CA 的 Pebble。
-- **替身**：照着接口文档、或者照着用这个接口的客户端写的假服务端；检查的是 JEC 发出的请求，不是服务那边会怎么处理。
+本文列出 JEC 的全部证书来源、验证方式、部署目标与通知渠道及其测试方式，并说明各厂商的使用条件。依赖服务端的测试凡能在 CI 中运行的均在 CI 中运行；其余为现场测试，设置相应的环境变量后针对一次性容器运行（参见各模块的 `live_test.go`）。
 
-欢迎反馈用真实账号试过哪些能用、哪些不行。
+测试方式分为以下四类：
+
+| 测试方式 | 说明 |
+|---|---|
+| 真实服务 | 使用该服务的真实账号测试 |
+| 真实软件 | 在容器中运行该服务自身的软件进行测试 |
+| 模拟器 | 使用实现该服务接口的软件测试，例如模拟 AWS 的 moto、模拟 ACME CA 的 Pebble |
+| 替身 | 依据接口文档或现有客户端编写的模拟服务端；仅校验 JEC 发出的请求，不反映服务端的实际处理 |
+
+欢迎反馈使用真实账号的测试结果。
 
 ## 证书来源
 
-| 类型 | 是什么 | 测过的对象 |
+| 类型 | 说明 | 测试方式 |
 |---|---|---|
-| `acme.account` | 任意 ACME CA，支持 External Account Binding | 模拟器：Pebble，在 CI 里 |
-| `namecheap.ssl_manager` | Namecheap SSL Manager（实验） | 替身，照着它的客户端 |
-| `files.watch` | 本机另一个客户端续期的证书 | 文件系统 |
+| `acme.account` | 任意 ACME CA，支持 External Account Binding | 模拟器：Pebble（CI） |
+| `namecheap.ssl_manager` | Namecheap SSL Manager（实验性） | 替身，依据其官方客户端编写 |
+| `files.watch` | 本机其他客户端续期的证书 | 文件系统 |
 | `aliyun.fetch` | 阿里云数字证书管理服务签发的证书 | 替身 |
-| `aliyun.apply` | 向阿里云申请证书（默认个人测试证书） | 替身 |
-| `tencentcloud.fetch` | 腾讯云 SSL 证书服务签发的证书 | 替身，HTTP 层经 SDK 的客户端 |
-| `tencentcloud.free` | 腾讯云免费证书（域名在同一账号的 DNSPod） | 替身，HTTP 层经 SDK 的客户端 |
+| `aliyun.apply` | 向阿里云申请的证书（默认为个人测试证书） | 替身 |
+| `tencentcloud.fetch` | 腾讯云 SSL 证书服务签发的证书 | 替身（经 SDK 客户端的 HTTP 层） |
+| `tencentcloud.free` | 腾讯云免费证书（域名托管于同一账号的 DNSPod） | 替身（经 SDK 客户端的 HTTP 层） |
 | 上传 | PEM、PFX/P12 | 单元测试 |
 
 ## 域名验证
 
-| 类型 | 是什么 | 测过的对象 |
+| 类型 | 说明 | 测试方式 |
 |---|---|---|
-| `lego.*` | 经 lego 支持的 221 家 DNS 服务商 | 替身，测的是 JEC 运行它们的子进程；服务商的实现是 lego 的 |
-| `lego.tencentcloud`、`lego.alidns`、`lego.cloudflare`、`lego.huaweicloud` 加任意记录 | 厂商验证要的 TXT、CNAME 记录，用 JEC 自己的客户端 | 替身（华为云经 SDK 发到替身） |
-| `manual.dns` | 手动添加的 DNS 记录 | 假的 DNS 查询 |
-| `files.webroot` | 本机的网站目录 | 文件系统 |
-| `ssh.webroot` | 经 SSH 的网站目录 | 测试里的 SSH 服务器 |
-| `wellknown.answer` | JEC 自己应答 /.well-known/ | 真实 HTTP |
-| `esa.edge` | 阿里云 ESA 边缘应答，经边缘 KV 和边缘函数 | 替身接口；函数代码在 Node.js 里实际运行 |
+| `lego.*` | lego 支持的 221 家 DNS 服务商 | 替身，测试 JEC 运行服务商的子进程；服务商实现由 lego 提供 |
+| `lego.tencentcloud`、`lego.alidns`、`lego.cloudflare`、`lego.huaweicloud`（任意记录） | 证书厂商验证所需的 TXT、CNAME 记录，经 JEC 自带的客户端添加 | 替身（华为云经其 SDK） |
+| `manual.dns` | 手动添加的 DNS 记录 | 模拟的 DNS 查询 |
+| `files.webroot` | 本机网站目录 | 文件系统 |
+| `ssh.webroot` | 经 SSH 访问的网站目录 | 测试内置的 SSH 服务器 |
+| `wellknown.answer` | 由 JEC 应答 `/.well-known/` 请求 | 真实 HTTP |
+| `esa.edge` | 阿里云 ESA 边缘应答（边缘 KV 与边缘函数） | 替身接口；函数代码在 Node.js 中实际运行 |
 | `plugins.*` | 插件 | 真实程序 |
 
 ## 部署目标
 
-| 类型 | 是什么 | 测过的对象 |
+| 类型 | 说明 | 测试方式 |
 |---|---|---|
-| `esa.site` | 阿里云 ESA | 替身，用阿里云的 SDK |
-| `aliyun.cdn`、`aliyun.dcdn` | 阿里云 CDN 和全站加速 | 替身 |
+| `esa.site` | 阿里云 ESA | 替身（使用阿里云 SDK） |
+| `aliyun.cdn`、`aliyun.dcdn` | 阿里云 CDN 与全站加速 | 替身 |
 | `aliyun.cas` | 阿里云数字证书管理服务 | 替身 |
-| `aliyun.oss` | 阿里云 OSS 存储空间的自定义域名 | 替身 |
+| `aliyun.oss` | 阿里云 OSS 自定义域名 | 替身 |
 | `aliyun.clb` | 阿里云传统型负载均衡（CLB） | 替身 |
 | `aliyun.alb` | 阿里云应用型负载均衡（ALB） | 替身 |
 | `huaweicloud.cdn` | 华为云 CDN | 替身 |
 | `cloudflare.custom` | Cloudflare 自定义证书 | 替身 |
-| `tencentcloud.ssl` | 腾讯云 SSL 证书，更新到 CDN、EdgeOne、CLB 等 | 替身 |
+| `tencentcloud.ssl` | 腾讯云 SSL 证书服务，更新 CDN、EdgeOne、CLB 等资源 | 替身 |
 | `qiniu.cdn` | 七牛云 CDN | 替身 |
-| `upyun.cdn` | 又拍云 CDN，经控制台的接口（实验） | 替身，照其他工具的客户端写 |
-| `volcengine.cdn` | 火山引擎 CDN | 替身，签名用官方 SDK |
-| `baiducloud.cdn` | 百度智能云 CDN | 替身，签名和官方 SDK 的核对过 |
-| `aws.acm` | AWS Certificate Manager，供 CloudFront 和负载均衡使用 | 模拟器：moto |
-| `baota.site` | 宝塔（aaPanel）网站 | 替身 |
+| `upyun.cdn` | 又拍云 CDN，经控制台接口（实验性） | 替身，参照其他工具的客户端编写 |
+| `volcengine.cdn` | 火山引擎 CDN | 替身；签名由官方 SDK 生成 |
+| `baiducloud.cdn` | 百度智能云 CDN | 替身；签名已与官方 SDK 核对 |
+| `aws.acm` | AWS Certificate Manager，供 CloudFront 与负载均衡使用 | 模拟器：moto |
+| `baota.site` | 宝塔面板（aaPanel）网站 | 替身 |
 | `onepanel.certificate` | 1Panel 证书 | 替身 |
 | `npm.certificate` | Nginx Proxy Manager | 真实软件：NPM 2.16 |
-| `caddy.admin` | 经管理接口装进 Caddy | 真实软件：Caddy 2.11 |
-| `synology.dsm` | 群晖 DSM | 替身，照着 acme.sh 的部署脚本 |
+| `caddy.admin` | Caddy（经管理接口） | 真实软件：Caddy 2.11 |
+| `synology.dsm` | 群晖 DSM | 替身，参照 acme.sh 的部署脚本编写 |
 | `proxmox.node` | Proxmox VE 节点 | 替身 |
-| `kubernetes.secret` | Kubernetes 的 TLS Secret | 真实软件：kube-apiserver 1.36，带 RBAC |
+| `kubernetes.secret` | Kubernetes TLS Secret | 真实软件：kube-apiserver 1.36（启用 RBAC） |
 | `docker.container` | Docker 容器 | 真实软件：Docker 29 |
-| `files.directory` | 本机目录，再执行命令 | 文件系统 |
-| `ssh.server` | 经 SSH 的服务器，再执行命令 | 测试里的 SSH 服务器 |
-| `webhook.deploy` | 你自己的 Webhook | 真实 HTTP |
+| `files.directory` | 本机目录，可在写入后执行命令 | 文件系统 |
+| `ssh.server` | 经 SSH 访问的服务器，可在写入后执行命令 | 测试内置的 SSH 服务器 |
+| `webhook.deploy` | 自定义 Webhook | 真实 HTTP |
 | `plugins.*` | 插件 | 真实程序 |
 
 ## 通知渠道
 
-| 类型 | 是什么 | 测过的对象 |
+| 类型 | 说明 | 测试方式 |
 |---|---|---|
-| `email.smtp` | SMTP 邮件 | 真实软件：Mailpit 的 SMTP 服务器 |
+| `email.smtp` | 电子邮件（SMTP） | 真实软件：Mailpit 的 SMTP 服务器 |
 | `ntfy.topic` | ntfy | 真实软件：ntfy |
 | `gotify.app` | Gotify | 真实软件：Gotify |
 | `telegram.bot` | Telegram | 替身 |
-| `webhook.notify` | 你自己的 Webhook | 真实 HTTP |
+| `webhook.notify` | 自定义 Webhook | 真实 HTTP |
 | `dingtalk.robot`、`feishu.bot`、`wecom.robot` | 钉钉、飞书（Lark）、企业微信群机器人 | 替身 |
 | `serverchan.sendkey` | Server酱 | 替身 |
 | `bark.device` | Bark | 替身 |
 | `discord.webhook` | Discord | 替身 |
 | `slack.webhook` | Slack、Mattermost、Rocket.Chat | 替身 |
 | `pushover.user` | Pushover | 替身 |
-| `hooks.script` | 你自己的脚本，由内置的 shell 运行 | 真实脚本 |
+| `hooks.script` | 自定义脚本，由内置 shell 运行 | 真实脚本 |
 | `plugins.*` | 插件 | 真实程序 |
 
-## 各家的使用条件
+## 厂商使用条件
 
-有些来源和部署目标只能在厂商给的条件下用。CA 支持 ACME（要账号时带 External Account Binding）的，优先用 ACME，或者手动上传它签的证书：厂商自己的接口都是可选的模块。
+部分证书来源与部署目标须满足厂商的条件方可使用。证书颁发机构支持 ACME（需要账号时提供 External Account Binding）的，建议优先使用 ACME，或手动上传其签发的证书；厂商专有接口均为可选模块。
 
-- **Namecheap SSL Manager**（`namecheap.ssl_manager`，实验）：只用于直接在 Namecheap 买的证书。每张证书在 Namecheap 面板激活或重签时选 Server-side automation，得到 24 小时内有效的一次性令牌。只支持单域名证书，用网站上的文件验证。
-- **Namecheap 官方 API**（JEC 还没有做）：账号里要有 20 个域名，或者余额 50 美元，或者近两年消费满 50 美元，而且只能从账号白名单里的 IPv4 地址调用。
-- **阿里云个人测试证书**（`aliyun.apply`）：DigiCert DV，3 个月，每年 20 张，只在中国站，要先在数字证书管理服务的控制台领取额度。买了其他 DV 资源包的用法一样。
-- **腾讯云免费证书**（`tencentcloud.free`）：TrustAsia DV，3 个月，每张一个域名，不能是通配符；域名要托管在同一账号的 DNSPod，由腾讯云自己完成验证；每个账号的数量有上限。
-- **阿里云 ESA**（`esa.site`）：免费版每个站点最多 2 张自定义证书，所以 JEC 部署新证书后会删掉被替换的那张。边缘应答（`esa.edge`）要套餐带“函数和 Pages”和“边缘 KV”。
-- **Cloudflare 自定义证书**（`cloudflare.custom`）：只有 Business 和 Enterprise 套餐能用。
-- **又拍云**（`upyun.cdn`，实验）：用账号密码登录控制台，开了两步验证的账号用不了。
-- **群晖 DSM**（`synology.dsm`）：要管理员账号；开了两步验证的，要填它的密钥，由 JEC 算出验证码。
+- **Namecheap SSL Manager**（`namecheap.ssl_manager`，实验性）：仅适用于直接在 Namecheap 购买的证书。每张证书须在 Namecheap 控制台激活或重签时选择 Server-side automation，以获取有效期 24 小时的一次性令牌。仅支持单域名证书，通过网站文件验证；JEC 也支持 DNS 验证，但 Namecheap 是否采用尚待确认。
+- **Namecheap 官方 API**（尚未实现）：账号须满足以下条件之一：拥有 20 个域名、余额达到 50 美元、近两年消费满 50 美元；并且仅允许从账号白名单中的 IPv4 地址调用。
+- **阿里云个人测试证书**（`aliyun.apply`）：DigiCert DV，有效期 3 个月，每年 20 张，仅限中国站；须先在数字证书管理服务控制台领取额度。其他 DV 资源包的用法相同。
+- **腾讯云免费证书**（`tencentcloud.free`）：TrustAsia DV，有效期 3 个月，每张仅含一个域名且不支持通配符；域名须托管于同一账号的 DNSPod，由腾讯云自动完成验证；每个账号的申请数量有上限。
+- **阿里云 ESA**（`esa.site`）：免费版每个站点最多 2 张自定义证书，因此 JEC 在部署新证书后删除被替换的证书。边缘应答（`esa.edge`）要求套餐包含“函数和 Pages”与“边缘 KV”。
+- **Cloudflare 自定义证书**（`cloudflare.custom`）：仅限 Business 与 Enterprise 套餐。
+- **又拍云**（`upyun.cdn`，实验性）：使用账号密码登录控制台，不支持已开启两步验证的账号。
+- **群晖 DSM**（`synology.dsm`）：须使用管理员账号；已开启两步验证的账号须提供其密钥，由 JEC 生成验证码。

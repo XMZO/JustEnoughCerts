@@ -4,108 +4,129 @@
 
 [简体中文](README.zh-CN.md)
 
-The documentation is also on the web: <https://xmzo.github.io/JustEnoughCerts/>
+Documentation: <https://xmzo.github.io/JustEnoughCerts/>
 
 Just Enough Certs (JEC) is a self-hosted SSL/TLS certificate manager. It
-gets certificates from wherever you buy or issue them, proves that you
-control the domains, deploys the certificates to your CDNs and servers, and
-renews them before they expire. Its name and look are a nod to the
+obtains certificates from a range of sources, completes domain validation
+automatically, deploys the certificates to CDNs and servers, and renews
+them before they expire. Its name and visual style pay homage to the
 Minecraft mod JEI.
 
 > [!WARNING]
-> JEC is in early development. The 0.0.x releases are the skeleton: the
-> server, the setup wizard and signing in, in English and Chinese. The
-> test releases (0.1.0-alpha.x, image tag `beta` in place of `latest` in
-> `docker-compose.yml`) and the main branch do what the list below says
-> works, but have not been tried end to end against a real Alibaba Cloud
-> ESA site. See the roadmap in [PLAN.md](PLAN.md) (in Chinese).
+> JEC is in early development and has no stable release yet. The test
+> releases (0.1.0-alpha.x, image tag `beta`) provide the features listed
+> below, but deployment to Alibaba Cloud ESA, ESA edge answers and
+> Namecheap SSL Manager have not yet been verified end to end with real
+> accounts. See the roadmap in [PLAN.md](PLAN.md) (in Chinese).
 
 ## Features
 
-Working on the main branch:
+### Certificate sources
 
-- Certificates from any ACME CA, with External Account Binding, or
-  uploaded by hand, as PEM or as a PFX/P12 file, or taken in with their
-  keys from where certbot or acme.sh renews them on the same machine, or
-  from Alibaba Cloud's and Tencent Cloud's certificate services, which
-  issued them; or applied for at Alibaba Cloud with a key of JEC's own,
-  such as its free personal test certificates, or as Tencent Cloud's free
-  certificates, for domains in its DNSPod.
-- Namecheap's paid certificates, such as PositiveSSL, with JEC acting as
-  the client of Namecheap's SSL Manager. Experimental and off until you
-  switch it on; not yet tried against a real account.
-- Domain validation through DNS records at any of the 221 providers that
-  [lego](https://github.com/go-acme/lego) supports, or added by hand at
-  any other (the TXT and CNAME records a vendor such as Namecheap may ask
-  for go in by themselves at Tencent Cloud DNSPod, Alibaba Cloud DNS,
-  Cloudflare and Huawei Cloud DNS), or over HTTP: files in
-  a website's directory, local or over SSH, answers from JEC itself once
-  the website's proxy or CDN sends `/.well-known/` on to it, or, for
-  websites on Alibaba Cloud ESA, answers at ESA's edge from Edge KV,
-  through an Edge Routine JEC deploys, without the origin.
-- Deployment of each new certificate to Alibaba Cloud ESA (removing the one
-  it replaces), to Alibaba Cloud CDN and DCDN, its Certificate
-  Management Service, custom domains of OSS buckets, and CLB and ALB
-  load balancers, to Huawei Cloud's CDN, to
-  Qiniu Cloud's, Volcengine's and Baidu AI Cloud's CDNs (and UPYUN's,
-  experimentally), to custom
-  certificates of Cloudflare,
-  through Tencent Cloud's SSL Certificates to its CDN, EdgeOne, CLB and
-  more, and through AWS Certificate Manager to CloudFront and load
-  balancers; to websites of BaoTa (aaPanel) and 1Panel, to Nginx Proxy
-  Manager, Synology DSM and Proxmox VE nodes; into Caddy through its admin
-  API; to local directories and to
-  servers over SSH, each with a command afterwards, such as reloading
-  nginx; into Docker containers, which are then signaled to reload, or
-  restarted; into Kubernetes TLS Secrets; and to webhooks, as JSON or in
-  a format of your own.
-- Renewal once a certificate enters its renewal window, at the time of
-  day set on the Settings page (02:00 by default), or at once with a week
-  or less left, or earlier when the CA suggests so through ACME Renewal
-  Information, as before a revocation; failures are retried with a
-  growing delay.
-- Notifications through Telegram, email (SMTP), webhooks, the group
-  robots of DingTalk, Feishu (Lark) and WeCom, ServerChan, Bark, ntfy,
-  Gotify, Discord, Slack (and Mattermost or Rocket.Chat) and Pushover,
-  each in the language you choose for it; anything else through a
-  webhook in a format of your own, or a script run by JEC's built-in
-  shell.
-- A history of every issuance, renewal and deployment, with its full log.
-- Online checks: JEC connects to each domain as a browser does and tells
-  you when one still serves the old certificate after a renewal, as when a
-  CDN did not take the new one.
-- Everything beyond the kernel is a module, switched on and off on the
-  Modules page or left out at build time.
-- Plugins, programs in any language, add certificate sources, deploy
-  targets, notification channels and ways to validate domains without
-  rebuilding JEC ([docs/plugins.md](docs/plugins.md)).
-- Credentials: the keys of a cloud account or an SSH key, kept once and
-  shared by the sources, DNS providers and deploy targets that use them,
-  so that a new key is entered in one place; the Credentials page shows
-  which providers use each, and when one last did.
-- The configuration as a YAML file: the credentials, the providers, the
-  certificates and the renewal defaults, to keep in Git or to take to
-  another JEC. An import shows what it would add and change before it
-  does, and deletes nothing.
-- Sign-in with a password and, if you like, the codes of an authenticator
-  app (two-factor authentication), or through an OpenID Connect provider
-  such as Authelia, Authentik, Keycloak or Google (single sign-on); API tokens for scripts; an audit log of
-  what was done through the panel, by whom and from where; strict security
-  headers.
-- A web app that installs to a phone's home screen (PWA).
-- One small container image or one static binary, with SQLite.
+- Any ACME certificate authority, including External Account Binding (EAB).
+- Manual upload of PEM or PFX/PKCS #12 files.
+- Read-only import of the certificates and keys that certbot or acme.sh
+  renews on the same machine.
+- Retrieval of certificates issued by Alibaba Cloud Certificate Management
+  Service and Tencent Cloud SSL Certificates.
+- Applications to Alibaba Cloud with a key generated by JEC, such as for
+  its free personal test certificates, and Tencent Cloud free certificates
+  for domains hosted in DNSPod.
+- Paid certificates bought from Namecheap, such as PositiveSSL, with JEC
+  acting as a Namecheap SSL Manager client. This is experimental, disabled
+  by default and not yet verified with a real account.
 
-Planned: a documentation site, and the certificate APIs of more vendors, such as Namecheap's own.
+### Domain validation
 
-How far each provider is tested, against a real account, the real
-software, an emulator or a fake, and what the vendors ask for, such as
-the plans their certificates need: [docs/providers.md](docs/providers.md).
-To try ESA, its edge answers and Namecheap's SSL Manager with real
-accounts, step by step: [docs/trying.md](docs/trying.md).
+- DNS: the 221 DNS providers supported by
+  [lego](https://github.com/go-acme/lego), or records added manually at any
+  other provider. Arbitrary TXT and CNAME records required by certificate
+  vendors such as Namecheap are added automatically at Tencent Cloud
+  DNSPod, Alibaba Cloud DNS, Cloudflare and Huawei Cloud DNS. ACME
+  supports CNAME delegation of `_acme-challenge`.
+- HTTP: validation files written to a website directory, locally or over
+  SSH; answers served by JEC itself when the website's reverse proxy or
+  CDN forwards `/.well-known/` to it; and, for sites on Alibaba Cloud ESA,
+  answers served at the edge from Edge KV by an Edge Routine that JEC
+  deploys, without reaching the origin.
 
-## Quick start
+### Deploy targets
 
-With Docker Compose:
+| Category | Targets |
+|---|---|
+| Alibaba Cloud | ESA (removing the replaced certificate), CDN, DCDN, Certificate Management Service, OSS custom domains, CLB and ALB load balancers |
+| Other clouds | Tencent Cloud SSL Certificates (updating CDN, EdgeOne, CLB and other resources), Huawei Cloud CDN, Qiniu Cloud CDN, Volcengine CDN, Baidu AI Cloud CDN, UPYUN CDN (experimental), Cloudflare custom certificates, AWS Certificate Manager (for CloudFront and load balancers) |
+| Panels and server software | BaoTa (aaPanel), 1Panel, Nginx Proxy Manager, Synology DSM, Proxmox VE, Caddy (through its admin API) |
+| Files and containers | Local directories and SSH servers (each optionally followed by a command, such as reloading nginx), Docker containers (signaled or restarted afterwards), Kubernetes TLS Secrets |
+| Custom | Webhooks (JEC's JSON format or a custom template), plugins |
+
+Targets that write files support custom file names, permissions and
+owners, and can also write a combined file (the private key and the full
+chain, as HAProxy expects) and a PKCS #12 file.
+
+### Renewal
+
+- A certificate in its renewal window is renewed at the daily check time
+  (02:00 by default, in a configurable time zone), or immediately when
+  seven days or fewer remain.
+- ACME Renewal Information (ARI, RFC 9773) is honored, so that a
+  certificate is renewed earlier when the CA advises it, for example
+  before a revocation.
+- Failed issuances and deployments are retried with exponential backoff;
+  the number of retries is configurable.
+
+### Notifications
+
+Telegram, email (SMTP), webhooks, DingTalk, Feishu (Lark), WeCom,
+ServerChan, Bark, ntfy, Gotify, Discord, Slack (and Mattermost or
+Rocket.Chat) and Pushover, each with its own message language. Other
+systems can be integrated through a webhook in a custom format or a
+script run by the built-in shell. Channels that reach services abroad
+accept a proxy of their own.
+
+### Operations and security
+
+- History: every issuance, renewal and deployment is recorded with its
+  full log.
+- Online checks: JEC connects to each domain as a browser does and sends a
+  notification when a domain still serves the old certificate after a
+  renewal, for example when a CDN has not applied the new one.
+- Credentials: cloud access keys and SSH keys are stored once and shared
+  by the sources, validation methods and deploy targets that use them; the
+  Credentials page shows the users of each credential and when it was last
+  used.
+- Configuration as YAML: the credentials, providers, certificates, renewal
+  defaults and time zone can be exported to a YAML file, kept in Git or
+  imported into another instance. An import previews all changes and never
+  deletes anything.
+- Sign-in and access: password sign-in with optional TOTP two-factor
+  authentication, or single sign-on through an OpenID Connect provider
+  such as Authelia, Authentik, Keycloak or Google; read-only or read-write
+  API tokens; an audit log of the actions taken through the panel, with
+  the account and the client address; strict security headers.
+- Progressive web app (PWA), installable on a phone's home screen.
+
+### Architecture
+
+- Everything outside the kernel is a module, which can be enabled or
+  disabled on the Modules page, or excluded at build time.
+- Plugins, written in any language, add certificate sources, deploy
+  targets, notification channels and validation methods without
+  rebuilding JEC; see [docs/plugins.md](docs/plugins.md).
+- JEC ships as a single static binary or a small container image, and
+  stores its data in SQLite.
+
+Planned: the certificate APIs of more vendors, such as Namecheap's own API.
+
+The test coverage of each provider (real account, real software, emulator
+or fake) and the vendors' requirements are listed in
+[docs/providers.md](docs/providers.md). The steps for verifying deployment
+to ESA, ESA edge answers and Namecheap SSL Manager with real accounts are
+in [docs/trying.md](docs/trying.md).
+
+## Installation
+
+### Docker Compose
 
 ```sh
 mkdir jec && cd jec
@@ -116,26 +137,45 @@ docker logs jec 2>&1 | grep setup_token
 ```
 
 Open `http://<host>:8080`, enter the setup token from the log and create
-your account. Until an account exists, each start of the server logs a new
-token, so only someone who can read the log can claim the server.
+the administrator account. Until the account exists, the server logs a new
+token at each start, so only someone with access to the logs can complete
+the setup.
 
-The container runs as user 65532:65532 and keeps everything, the database
-included, in `./data`: back up that directory, or download a backup of the
-database on the Settings page, where Restore takes one back: JEC then
-stops and Docker starts it again with it, the database before it kept in
-`./data`. By hand, stop JEC and put the backup in `./data` as `jec.db`.
-To run as the owner of an existing directory
-instead, set `user:` in `docker-compose.yml`.
+### Binaries
 
-Private keys and credentials are encrypted in the database with the key in
-`./data/secret.key`, which JEC creates on first start. Without that file,
-nothing encrypted can be read again, so keep it with the database backups,
-or keep the key elsewhere and pass it as `JEC_SECRET_KEY`.
+Each release provides static binaries for Linux and macOS, on amd64 and
+arm64. There are no Windows builds; on Windows, use Docker or WSL.
 
-To change the password, or turn on two-factor authentication with an
-authenticator app, use the Settings page. Forgot the password, or lost the
-app? Set a new password on the server; this also turns two-factor
-authentication off and signs the account out everywhere:
+```sh
+tar -xzf jec_<version>_linux_amd64.tar.gz
+./jec serve -data-dir /var/lib/jec
+```
+
+## Operation
+
+### Data and backups
+
+- The container runs as user 65532:65532 and stores all data, the
+  database included, in `./data`. To run as the owner of an existing
+  directory instead, set `user:` in `docker-compose.yml`.
+- Back up the `./data` directory, or download a database backup from the
+  Settings page.
+- To restore a backup, choose Restore on the Settings page and upload it:
+  JEC stops, Docker restarts it with the backup, and the previous database
+  is kept in `./data` under a new name. To restore manually, stop JEC and
+  place the backup in `./data` as `jec.db`.
+- Private keys and credentials are encrypted in the database with the
+  master key in `./data/secret.key`, which JEC creates on first start.
+  Without that file the encrypted data cannot be recovered, so back it up
+  together with the database, or keep the key elsewhere and pass it in
+  `JEC_SECRET_KEY`.
+
+### Accounts
+
+The password and two-factor authentication are managed on the Settings
+page. If the password or the authenticator is lost, reset the password on
+the server; this also turns two-factor authentication off and ends all of
+the account's sessions:
 
 ```sh
 docker exec -it jec /jec reset-password
@@ -143,45 +183,37 @@ docker exec -it jec /jec reset-password
 
 ### Behind a reverse proxy
 
-Set `JEC_BASE_URL` to the URL people open, such as
-`https://certs.example.com` or `https://example.com/certs/` for a sub-path.
-With an `https` URL the session cookie is only sent over HTTPS.
-Notifications link to the pages they are about only when it is set.
-Set `JEC_TRUSTED_PROXIES` to the address of the proxy too, such as
-`127.0.0.1` or the network of its containers, `172.16.0.0/12`: JEC then
-takes the client from `X-Forwarded-For`, and locks out after failed
-sign-ins the client rather than everyone behind the proxy.
-
-### Without Docker
-
-Each release has static binaries for Linux and macOS, on amd64 and arm64.
-There are no Windows builds; use Docker or WSL there.
-
-```sh
-tar -xzf jec_<version>_linux_amd64.tar.gz
-./jec serve -data-dir /var/lib/jec
-```
+- `JEC_BASE_URL`: the URL users open, such as `https://certs.example.com`,
+  or `https://example.com/certs/` for a sub-path. With an `https` URL, the
+  session cookie is sent over HTTPS only. Notifications link to the pages
+  they concern only when this is set.
+- `JEC_TRUSTED_PROXIES`: the addresses or networks of the reverse proxies,
+  such as `127.0.0.1` or the container network `172.16.0.0/12`. JEC then
+  reads the client address from `X-Forwarded-For`, so that failed sign-ins
+  lock out the client rather than everyone behind the proxy.
 
 ### The API
 
-Everything the panel does goes through its API, described at
-`/api/v1/openapi.json`. For scripts and other programs, make an API token
-in Settings → API tokens, read-only or read and write, and send it as a
-bearer token:
+Every function of the panel is available through its API, described at
+`/api/v1/openapi.json`. For scripts and other programs, create a read-only
+or read-write token under Settings → API tokens and send it as a bearer
+token:
 
 ```sh
 curl -H "Authorization: Bearer jec_..." https://certs.example.com/api/v1/certs/certificates
 ```
 
-No token changes the password, two-factor authentication or the tokens.
+API tokens cannot change the password, two-factor authentication or the
+tokens themselves.
 
-### The configuration as YAML
+### Exporting and importing the configuration
 
-Settings → Data and backups → Configuration file exports the providers,
-the certificates and the renewal defaults as YAML, and imports such a
-file, to keep the configuration in Git or to take it to another JEC.
-This is not `config.yaml`, which holds how the server runs. Certificates
-name their providers by name:
+Under Settings → Data and backups → Configuration file, the credentials,
+providers, certificates, renewal defaults and time zone can be exported as
+YAML, and such a file can be imported, to keep the configuration in Git or
+to move it to another instance. This file is unrelated to `config.yaml`,
+which configures the server itself. Certificates refer to providers by
+name:
 
 ```yaml
 version: 1
@@ -202,10 +234,12 @@ providers:
       region: cn-hangzhou
       access_key_id: LTAI...
       site: example.com
+time_zone: Asia/Shanghai
 renewal:
   renew_before_days: 30
   check_time: "02:00"
   key_type: rsa-2048
+  retries: 7
 certificates:
   - domains: [example.com, "*.example.com"]
     source: Let's Encrypt
@@ -213,19 +247,27 @@ certificates:
     targets: [ESA]
 ```
 
-An import adds what JEC lacks and changes what it has: providers found
-by their kind and name, certificates by their domains. It deletes
-nothing; secrets the file leaves out stay as they are (a provider it adds
-needs its own), and a certificate keeps its source. JEC first lists what the file would change, and changes
-nothing while an entry has an error. An export leaves the secrets out
-unless you ask for them, with your password. The same goes through the
-API: `GET /api/v1/config`, `POST /api/v1/config/check` to see what a file
-would change, and `POST /api/v1/config/import`.
+An import follows these rules:
 
-## Configuration
+- It adds what JEC lacks and updates what it has: providers are matched by
+  kind and name, certificates by their domains.
+- It deletes nothing. Secrets missing from the file stay unchanged (a new
+  provider needs its secrets in the file), and an existing certificate
+  keeps its source.
+- It lists every change first, and changes nothing while any entry has an
+  error.
+- An export omits the secrets unless they are requested, which requires
+  the password.
 
-Each setting comes from, in increasing order of precedence: its default,
-the config file, an environment variable and a command-line flag.
+The API offers the same: `GET /api/v1/config` (export),
+`POST /api/v1/config/check` (preview) and `POST /api/v1/config/import`
+(import).
+
+## Configuration reference
+
+Each setting is taken, in increasing order of precedence, from its
+default, the configuration file, an environment variable and a
+command-line flag.
 
 | Flag | Environment | `config.yaml` | Default |
 |---|---|---|---|
@@ -240,25 +282,23 @@ the config file, an environment variable and a command-line flag.
 | `-config` | `JEC_CONFIG` | | `<data-dir>/config.yaml`, if it exists |
 | | `JEC_SECRET_KEY` | | `<data-dir>/secret.key` |
 
-Set `JEC_HSTS` to `true` only when the panel is reached over HTTPS alone:
-browsers then refuse plain HTTP to it for a year.
-
-`JEC_DNS_RESOLVERS` lists the DNS resolvers, such as
-`223.5.5.5,119.29.29.29`, that find the zone of a validation record
-before its authoritative servers are asked for it: for a machine whose
-own resolver answers wrongly, as a split-horizon one does.
-
-`JEC_SECRET_KEY` is base64 of 32 random bytes, as from
-`openssl rand -base64 32`. It can only come from the environment, and JEC
-refuses to start when it is not the key the database was encrypted with.
+- `JEC_HSTS`: set it to `true` only when the panel is always reached over
+  HTTPS; browsers then refuse plain HTTP to it for a year.
+- `JEC_DNS_RESOLVERS`: recursive DNS resolvers, such as
+  `223.5.5.5,119.29.29.29`, that find the zone of a validation record
+  before its authoritative servers are queried. It is needed only when the
+  machine's own resolver answers incorrectly, as with split-horizon DNS.
+- `JEC_SECRET_KEY`: 32 random bytes in base64, as generated by
+  `openssl rand -base64 32`. It can only be passed through the
+  environment, and JEC refuses to start when it does not match the key the
+  database was encrypted with.
 
 `jec <command> -h` lists the flags of a command.
 
 ## Verifying a release
 
-The checksums and the images are signed with
-[cosign](https://github.com/sigstore/cosign), keyless, by the release
-workflow:
+The release workflow signs the checksum file and the container images with
+[cosign](https://github.com/sigstore/cosign), keyless. To verify them:
 
 ```sh
 cosign verify-blob checksums.txt --bundle checksums.txt.sigstore.json \
@@ -271,46 +311,47 @@ cosign verify ghcr.io/xmzo/justenoughcerts:<version> \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
-Each archive comes with an SPDX SBOM, and each image with an SBOM and
-build provenance attestations.
+Each archive includes an SPDX SBOM, and each image an SBOM and build
+provenance attestations.
 
 ## Development
 
-You need Go 1.26 or newer, Node.js 24 and pnpm 10 (`corepack enable`).
+Requirements: Go 1.26 or later, Node.js 24 and pnpm 10 (`corepack enable`).
 
 ```sh
 make web         # build the web UI into web/dist, which the Go build embeds
 make run         # run the server with ./data
 make dev         # the web UI with hot reload on :5173, proxying /api to make run
-make test        # Go tests with the race detector, then the web UI's
+make test        # Go tests with the race detector, then the web UI's tests
 make lint        # golangci-lint, the type check and ESLint
-make i18n-check  # the i18n gates
+make i18n-check  # the i18n checks
 make gen         # after changing messages or the API: regenerate keys and types
 make new-module id=acme category=source  # scaffold a module
 ```
 
-Each target is a plain `go`, `pnpm` or `docker` command, so on Windows run
-those directly; `make help` lists them all.
+Each target runs a single `go`, `pnpm` or `docker` command, which can be
+run directly on Windows; `make help` lists all targets.
 
-Some rules the checks enforce:
+Automated checks enforce the following rules:
 
-- Every text the UI shows lives in `i18n/locales/*.json`, one file per
-  language; code refers to it by generated constants. After changing a
-  locale file, run `go run ./tools/i18n fix`.
-- Code, comments and scripts are in English.
-- Modules talk only through the kernel: a module never imports another
-  module, and the kernel never imports a module.
+- All UI text is defined in `i18n/locales/*.json`, one file per language,
+  and referenced in code through generated constants. Run
+  `go run ./tools/i18n fix` after editing a locale file.
+- Code, comments and scripts are written in English.
+- Modules communicate only through the kernel: a module never imports
+  another module, and the kernel never imports a module.
 
-[PLAN.md](PLAN.md) holds the architecture, the module interfaces and the
-roadmap, and [docs/design](docs/design) the design system and the page
-designs. To translate JEC into another language, see
+[PLAN.md](PLAN.md) describes the architecture, the module interfaces and
+the roadmap; [docs/design](docs/design) contains the design system and the
+page designs. For translating JEC, see
 [docs/translating.md](docs/translating.md).
 
-The documentation site is this README and the guides in `docs/`, in
-English and Chinese, put together by `docs/site/pages.mjs` and built with
-VitePress: `pnpm -C docs/site install`, then `pnpm -C docs/site dev` to
-see it at `http://localhost:5173/JustEnoughCerts/`. The docs workflow
-publishes it from main.
+The documentation site consists of this README and the guides in `docs/`,
+in English and Chinese: `docs/site/pages.mjs` assembles the pages and
+VitePress builds them. To preview it locally, run
+`pnpm -C docs/site install`, then `pnpm -C docs/site dev`, and open
+`http://localhost:5173/JustEnoughCerts/`. The docs workflow publishes the
+site whenever main changes.
 
 ## License
 

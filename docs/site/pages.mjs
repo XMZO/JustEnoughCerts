@@ -81,7 +81,7 @@ export function rewrite(text, from, to) {
     }
     // The link to the other language, alone on a line near the top, and
     // the one to this site.
-    if (i < 10 && (/^\[(English|简体中文)\]\([^)]+\)$/.test(line) || line.includes('xmzo.github.io/JustEnoughCerts'))) continue
+    if (i < 10 && (/^\[(English|简体中文|中文)\]\([^)]+\)$/.test(line) || line.includes('xmzo.github.io/JustEnoughCerts'))) continue
     const start = /^> \[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]$/.exec(line)
     if (start) {
       const [kind, title] = alerts[lang][start[1]]
