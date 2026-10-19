@@ -44,7 +44,7 @@ func runResetPassword(ctx context.Context, args []string, stdout, stderr io.Writ
 }
 
 func resetPassword(ctx context.Context, cfg config.Config, username string, prompt io.Writer) (string, error) {
-	st, err := store.Open(ctx, cfg.DataDir)
+	st, err := store.OpenURL(ctx, cfg.DataDir, cfg.DatabaseURL)
 	if err != nil {
 		return "", err
 	}

@@ -18,6 +18,7 @@
 | `-log-format` | `JEC_LOG_FORMAT` | `log.format` | `text`（或 `json`） |
 | `-config` | `JEC_CONFIG` | | `<data-dir>/config.yaml`（如存在） |
 | | `JEC_SECRET_KEY` | | `<data-dir>/secret.key` |
+| | `JEC_DATABASE_URL` | `database_url` | 数据目录中的 SQLite，参见 [PostgreSQL](postgresql.zh-CN.md) |
 
 `jec <命令> -h` 列出命令的全部参数。配置文件示例：
 

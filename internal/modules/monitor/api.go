@@ -80,7 +80,7 @@ func registerAPI(a huma.API, m *Module) {
 		Summary: "Sum up the checks of every certificate",
 	}, func(ctx context.Context, _ *struct{}) (*statesOutput, error) {
 		rows, err := m.db.QueryContext(ctx,
-			`SELECT certificate_id, sum(state = 'old'), sum(state = 'unreachable') FROM monitor_results
+			`SELECT certificate_id, count(CASE WHEN state = 'old' THEN 1 END), count(CASE WHEN state = 'unreachable' THEN 1 END) FROM monitor_results
 			 GROUP BY certificate_id ORDER BY certificate_id`)
 		if err != nil {
 			return nil, err

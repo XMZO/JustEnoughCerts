@@ -68,13 +68,16 @@ func TestMigrateFailureRollsBack(t *testing.T) {
 		t.Fatal("a broken migration applied")
 	}
 	var n int
-	if err := s.DB().QueryRowContext(t.Context(), "SELECT count(*) FROM sqlite_schema WHERE name = 'a_ok'").Scan(&n); err != nil || n != 0 {
-		t.Errorf("the failed migration left a_ok behind: %d, %v", n, err)
+	if err := s.DB().QueryRowContext(t.Context(), "SELECT count(*) FROM a_ok").Scan(&n); err == nil {
+		t.Error("the failed migration left a_ok behind")
 	}
 }
 
 func TestPragmas(t *testing.T) {
 	s := open(t)
+	if s.Dialect() != SQLite {
+		t.Skip("PRAGMAs are SQLite's")
+	}
 	for pragma, want := range map[string]string{
 		"journal_mode": "wal",
 		"foreign_keys": "1",

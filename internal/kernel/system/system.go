@@ -4,7 +4,6 @@ package system
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -40,7 +39,10 @@ type Options struct {
 	// KeyFromEnv tells that the master key comes from JEC_SECRET_KEY, not
 	// from the key file in DataDir.
 	KeyFromEnv bool
-	DB         *sql.DB
+	// Database is the kind of database JEC keeps its data in, sqlite or
+	// postgres; Backup writes a copy of it to a new SQLite file at path.
+	Database string
+	Backup   func(ctx context.Context, path string) error
 	// Confirm checks the password of the signed-in account, as
 	// auth.Service.ConfirmPassword does.
 	Confirm func(ctx context.Context, password string) error
@@ -60,6 +62,7 @@ type RuntimeBody struct {
 	Listen    string `json:"listen" doc:"The address the HTTP server binds to, from JEC_LISTEN"`
 	BaseURL   string `json:"baseURL,omitempty" doc:"The URL people open, from JEC_BASE_URL; links in notifications need it"`
 	SecretKey string `json:"secretKey" enum:"env,file" doc:"Where the master key comes from: JEC_SECRET_KEY, or the key file in dataDir"`
+	Database  string `json:"database" enum:"sqlite,postgres" doc:"Where the data is: SQLite in dataDir, or the PostgreSQL that JEC_DATABASE_URL names"`
 	// The proxies are addresses and ranges, data to show as they are.
 	TrustedProxies string `json:"trustedProxies,omitempty" doc:"The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES"`
 	HSTS           bool   `json:"hsts" doc:"Answers send Strict-Transport-Security, as JEC_HSTS asks"`
@@ -149,6 +152,7 @@ func Register(a huma.API, o Options) {
 func (o Options) runtime() RuntimeBody {
 	info := RuntimeBody{
 		DataDir: o.DataDir, Listen: o.Listen, BaseURL: o.BaseURL, SecretKey: "file", TrustedProxies: o.TrustedProxies, HSTS: o.HSTS,
+		Database:       o.Database,
 		ServerTimeZone: o.Zone.Server().String(),
 	}
 	if o.KeyFromEnv {
@@ -232,9 +236,10 @@ func (o Options) stage(ctx context.Context, file huma.FormFile) error {
 	return os.Rename(upload, filepath.Join(o.DataDir, store.RestoreFile))
 }
 
-// backup copies the database as it is now: VACUUM INTO writes a
-// consistent copy while JEC goes on. The copy goes to the data directory,
-// which is the one place JEC may write to (the image has no /tmp).
+// backup copies the database as it is now, consistent while JEC goes on,
+// into a SQLite file (store.Store.Snapshot). The copy goes to the data
+// directory, which is the one place JEC may write to (the image has no
+// /tmp).
 func (o Options) backup(ctx context.Context) ([]byte, error) {
 	dir, err := os.MkdirTemp(o.DataDir, "backup-")
 	if err != nil {
@@ -242,7 +247,7 @@ func (o Options) backup(ctx context.Context) ([]byte, error) {
 	}
 	defer func() { _ = os.RemoveAll(dir) }()
 	path := filepath.Join(dir, store.FileName)
-	if _, err := o.DB.ExecContext(ctx, "VACUUM INTO ?", path); err != nil {
+	if err := o.Backup(ctx, path); err != nil {
 		return nil, fmt.Errorf("backup: %w", err)
 	}
 	return os.ReadFile(path)

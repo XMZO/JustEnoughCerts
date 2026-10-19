@@ -69,7 +69,7 @@ func (m *Module) record(ctx context.Context, req module.Request) {
 		agent = agent[:maxUserAgent]
 	}
 	_, err := m.db.ExecContext(context.WithoutCancel(ctx),
-		`INSERT INTO audit_log (at, operation, method, path, status, user, client, user_agent, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO audit_log (at, operation, method, path, status, "user", client, user_agent, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		req.At.UnixMilli(), req.Operation, req.Method, req.Path, req.Status, req.User, req.Client, agent, req.Token)
 	if err != nil {
 		m.log.Error("record an operation", "operation", req.Operation, "err", err)
@@ -114,7 +114,7 @@ func (m *Module) find(ctx context.Context, q query) ([]entry, tally, error) {
 	if text := strings.ToLower(strings.TrimSpace(q.text)); text != "" {
 		like := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(text) + "%"
 		var holds []string
-		for _, column := range []string{"path", "user", "client", "token", "operation"} {
+		for _, column := range []string{"path", `"user"`, "client", "token", "operation"} {
 			holds = append(holds, "lower("+column+`) LIKE ? ESCAPE '\'`)
 			args = append(args, like)
 		}
@@ -128,7 +128,7 @@ func (m *Module) find(ctx context.Context, q query) ([]entry, tally, error) {
 	}
 	var t tally
 	err := m.db.QueryRowContext(ctx,
-		"SELECT count(*), coalesce(sum(status < 400), 0), coalesce(sum(status >= 400), 0) FROM audit_log WHERE "+where, args...).
+		"SELECT count(*), count(CASE WHEN status < 400 THEN 1 END), count(CASE WHEN status >= 400 THEN 1 END) FROM audit_log WHERE "+where, args...).
 		Scan(&t.all, &t.ok, &t.failed)
 	if err != nil {
 		return nil, tally{}, err
@@ -140,7 +140,7 @@ func (m *Module) find(ctx context.Context, q query) ([]entry, tally, error) {
 		where += " AND status >= 400"
 	}
 	rows, err := m.db.QueryContext(ctx,
-		`SELECT id, at, operation, method, path, status, user, client, user_agent, token FROM audit_log
+		`SELECT id, at, operation, method, path, status, "user", client, user_agent, token FROM audit_log
 		 WHERE `+where+` ORDER BY at DESC, id DESC LIMIT ? OFFSET ?`, append(args, q.limit, q.offset)...)
 	if err != nil {
 		return nil, tally{}, err

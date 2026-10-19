@@ -2324,6 +2324,14 @@
             "description": "Where the database and the key file are",
             "type": "string"
           },
+          "database": {
+            "description": "Where the data is: SQLite in dataDir, or the PostgreSQL that JEC_DATABASE_URL names",
+            "enum": [
+              "sqlite",
+              "postgres"
+            ],
+            "type": "string"
+          },
           "hsts": {
             "description": "Answers send Strict-Transport-Security, as JEC_HSTS asks",
             "type": "boolean"
@@ -2357,6 +2365,7 @@
           "dataDir",
           "listen",
           "secretKey",
+          "database",
           "hsts",
           "serverTimeZone"
         ],
@@ -4315,12 +4324,12 @@
             }
           },
           {
-            "description": "Only runs of certificates whose primary domain holds this text",
+            "description": "Only runs of certificates one of whose domains holds this text",
             "explode": false,
             "in": "query",
             "name": "q",
             "schema": {
-              "description": "Only runs of certificates whose primary domain holds this text",
+              "description": "Only runs of certificates one of whose domains holds this text",
               "maxLength": 200,
               "type": "string"
             }

@@ -2,6 +2,7 @@ package store
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -28,7 +29,11 @@ func backup(t *testing.T, check string) string {
 		t.Fatal(err)
 	}
 	path := filepath.Join(t.TempDir(), "backup.db")
-	if _, err := st.DB().ExecContext(t.Context(), "VACUUM INTO ?", path); err != nil {
+	err = st.Snapshot(t.Context(), path, func(ctx context.Context, dst *Store) error {
+		_, err := dst.Migrate(ctx, "kernel", migrations.FS)
+		return err
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 	return path
@@ -59,16 +64,15 @@ func TestCheckBackup(t *testing.T) {
 		t.Errorf("a text file: %v", err)
 	}
 	// Some SQLite database, but not JEC's.
-	plain, err := Open(t.Context(), t.TempDir())
+	foreign := filepath.Join(t.TempDir(), "other.db")
+	plain, err := OpenFile(t.Context(), foreign)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer plain.Close()
-	foreign := filepath.Join(t.TempDir(), "other.db")
 	if _, err := plain.DB().ExecContext(t.Context(), "CREATE TABLE things (id INTEGER)"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := plain.DB().ExecContext(t.Context(), "VACUUM INTO ?", foreign); err != nil {
+	if err := plain.Close(); err != nil {
 		t.Fatal(err)
 	}
 	if err := CheckBackup(t.Context(), foreign, verify, nil); !errors.Is(err, ErrNotBackup) {

@@ -9,7 +9,7 @@ CREATE TABLE audit_log (
     method     TEXT NOT NULL,
     path       TEXT NOT NULL,
     status     INTEGER NOT NULL,
-    user       TEXT NOT NULL,
+    "user"     TEXT NOT NULL,
     client     TEXT NOT NULL,
     user_agent TEXT NOT NULL
 ) STRICT;

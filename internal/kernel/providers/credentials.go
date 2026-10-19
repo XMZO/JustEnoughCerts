@@ -297,8 +297,8 @@ func (r *Registry) CreateCredentialTx(ctx context.Context, tx *sql.Tx, kind, nam
 	plain, _ := json.Marshal(config)
 	var id int64
 	err := tx.QueryRowContext(ctx,
-		"INSERT INTO kernel_credentials (kind, name, config, secrets, created_at, updated_at) VALUES (?, ?, ?, x'', ?, ?) RETURNING id",
-		kind, name, string(plain), now, now).Scan(&id)
+		"INSERT INTO kernel_credentials (kind, name, config, secrets, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+		kind, name, string(plain), []byte{}, now, now).Scan(&id)
 	if err != nil {
 		return 0, err
 	}

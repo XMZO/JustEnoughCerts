@@ -1967,6 +1967,7 @@
       "current_password": "当前密码",
       "data": "数据和备份",
       "data_dir": "数据目录",
+      "database": "数据库",
       "days": "{days, plural, other {# 天}}",
       "hsts": "只用 HTTPS（HSTS）",
       "hsts_off": "未开启",

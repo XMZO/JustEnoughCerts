@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -85,17 +84,20 @@ func (m *Module) handle(ctx context.Context, ev events.Event) error {
 			 VALUES (?, ?, ?, ?, ?, ?, ?)
 			 ON CONFLICT (certificate_id) DO UPDATE SET
 			   domains = excluded.domains,
-			   current_since = CASE WHEN version_id = excluded.version_id THEN current_since ELSE excluded.current_since END,
-			   check_at = CASE WHEN version_id = excluded.version_id THEN check_at ELSE excluded.check_at END,
-			   issuer = CASE WHEN version_id = excluded.version_id THEN issuer ELSE '' END,
+			   current_since = CASE WHEN monitor_certificates.version_id = excluded.version_id
+			     THEN monitor_certificates.current_since ELSE excluded.current_since END,
+			   check_at = CASE WHEN monitor_certificates.version_id = excluded.version_id
+			     THEN monitor_certificates.check_at ELSE excluded.check_at END,
+			   issuer = CASE WHEN monitor_certificates.version_id = excluded.version_id THEN monitor_certificates.issuer ELSE '' END,
 			   version_id = excluded.version_id, fingerprint = excluded.fingerprint, not_after = excluded.not_after`,
 			d.CertificateID, string(domains), d.VersionID, d.Fingerprint, d.NotAfter.UnixMilli(), ev.Time.UnixMilli(), check.UnixMilli())
 		return err
 	case contracts.CertificateDeployed:
 		// The version in use reached a target: look soon.
+		at := m.now().Add(afterDeploy).UnixMilli()
 		_, err := m.db.ExecContext(ctx,
-			"UPDATE monitor_certificates SET check_at = min(check_at, ?) WHERE certificate_id = ? AND fingerprint = ?",
-			m.now().Add(afterDeploy).UnixMilli(), d.CertificateID, d.Fingerprint)
+			"UPDATE monitor_certificates SET check_at = ? WHERE certificate_id = ? AND fingerprint = ? AND check_at > ?",
+			at, d.CertificateID, d.Fingerprint, at)
 		return err
 	case contracts.CertificateDeleted:
 		_, err := m.db.ExecContext(ctx, "DELETE FROM monitor_certificates WHERE certificate_id = ?", d.CertificateID)
@@ -254,9 +256,9 @@ func (m *Module) check(ctx context.Context, id int64) ([]result, error) {
 			return nil, err
 		}
 	}
-	var kept []string
+	kept := map[[2]string]bool{}
 	for _, r := range results {
-		kept = append(kept, r.domain+"\x00"+r.view)
+		kept[[2]string{r.domain, r.view}] = true
 		var alerted string
 		if err := tx.QueryRowContext(ctx, "SELECT alerted FROM monitor_results WHERE certificate_id = ? AND domain = ? AND view = ?",
 			id, r.domain, r.view).Scan(&alerted); err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -298,10 +300,28 @@ func (m *Module) check(ctx context.Context, id int64) ([]result, error) {
 		}
 	}
 	// Domains the certificate no longer has, and views that came together.
-	if _, err := tx.ExecContext(ctx,
-		`DELETE FROM monitor_results WHERE certificate_id = ? AND domain || char(0) || view NOT IN (SELECT value FROM json_each(?))`,
-		id, mustJSON(kept)); err != nil {
+	rows, err := tx.QueryContext(ctx, "SELECT domain, view FROM monitor_results WHERE certificate_id = ?", id)
+	if err != nil {
 		return nil, err
+	}
+	var gone [][2]string
+	for rows.Next() {
+		var k [2]string
+		if err := rows.Scan(&k[0], &k[1]); err != nil {
+			_ = rows.Close()
+			return nil, err
+		}
+		if !kept[k] {
+			gone = append(gone, k)
+		}
+	}
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		return nil, err
+	}
+	for _, k := range gone {
+		if _, err := tx.ExecContext(ctx, "DELETE FROM monitor_results WHERE certificate_id = ? AND domain = ? AND view = ?", id, k[0], k[1]); err != nil {
+			return nil, err
+		}
 	}
 	if _, err := tx.ExecContext(ctx, "UPDATE monitor_certificates SET check_at = ? WHERE certificate_id = ?", next.UnixMilli(), id); err != nil {
 		return nil, err
@@ -425,14 +445,6 @@ func earliest(a, b time.Time) time.Time {
 		return b
 	}
 	return a
-}
-
-func mustJSON(v any) string {
-	data, err := json.Marshal(v)
-	if err != nil {
-		panic(fmt.Sprintf("monitor: %v", err))
-	}
-	return string(data)
 }
 
 func truncate(s string, n int) string {

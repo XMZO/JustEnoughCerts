@@ -50,6 +50,11 @@ type Config struct {
 	DNSResolvers string `yaml:"dns_resolvers"`
 	// Log configures the process log.
 	Log Log `yaml:"log"`
+	// DatabaseURL names the PostgreSQL database to keep the data in, as
+	// postgres://user:password@host/name; empty keeps it in SQLite in
+	// DataDir. From JEC_DATABASE_URL or the config file, never a flag,
+	// which other processes can read.
+	DatabaseURL string `yaml:"database_url"`
 	// SecretKey is the master key sealing the stored secrets, base64 of 32
 	// bytes, from JEC_SECRET_KEY only: never a flag, which other processes
 	// can read, nor the config file. Empty means the key file in DataDir.
@@ -116,6 +121,7 @@ const (
 	fileFlag = "config"
 	fileEnv  = "JEC_CONFIG"
 	keyEnv   = "JEC_SECRET_KEY"
+	dbEnv    = "JEC_DATABASE_URL"
 )
 
 // Loader resolves the configuration of one command from its flags, the
@@ -181,6 +187,9 @@ func (l *Loader) Load(lookupEnv func(string) (string, bool)) (Config, error) {
 	if v, ok := env(keyEnv); ok {
 		cfg.SecretKey = v
 	}
+	if v, ok := env(dbEnv); ok {
+		cfg.DatabaseURL = v
+	}
 	if err := cfg.normalize(); err != nil {
 		return Config{}, err
 	}
@@ -226,6 +235,10 @@ func (c *Config) normalize() error {
 		if c.BaseURL, err = normalizeBaseURL(c.BaseURL); err != nil {
 			return err
 		}
+	}
+
+	if c.DatabaseURL != "" && !strings.HasPrefix(c.DatabaseURL, "postgres://") && !strings.HasPrefix(c.DatabaseURL, "postgresql://") {
+		return errors.New("database URL: want postgres:// or postgresql://")
 	}
 
 	if _, err := clientip.New(c.TrustedProxies); err != nil {

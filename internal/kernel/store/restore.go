@@ -50,6 +50,41 @@ func ApplyRestore(dataDir string, now time.Time) (string, error) {
 	return kept, nil
 }
 
+// ApplyRestoreTo takes the backup waiting in dataDir into st, whose
+// database is no file to swap, as PostgreSQL's: the backup, migrated as st
+// is by migrate, takes the place of its rows. A copy of what st held is
+// kept in dataDir first, as a SQLite file under a name of now, which it
+// returns; "" when no backup was waiting.
+func ApplyRestoreTo(ctx context.Context, st *Store, dataDir string, now time.Time, migrate func(context.Context, *Store) error) (string, error) {
+	pending := filepath.Join(dataDir, RestoreFile)
+	if _, err := os.Stat(pending); errors.Is(err, fs.ErrNotExist) {
+		return "", nil
+	} else if err != nil {
+		return "", err
+	}
+	kept := FileName + ".before-restore-" + now.UTC().Format("20060102-150405")
+	if err := st.Snapshot(ctx, filepath.Join(dataDir, kept), migrate); err != nil {
+		return "", fmt.Errorf("keep the database before the restore: %w", err)
+	}
+	src, err := OpenFile(ctx, pending)
+	if err != nil {
+		return "", fmt.Errorf("restore the backup: %w", err)
+	}
+	err = migrate(ctx, src)
+	if err == nil {
+		err = Copy(ctx, src, st)
+	}
+	if err = errors.Join(err, src.Close()); err != nil {
+		return "", fmt.Errorf("restore the backup: %w", err)
+	}
+	for _, suffix := range []string{"", "-wal", "-shm"} {
+		if err := os.Remove(pending + suffix); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return "", err
+		}
+	}
+	return kept, nil
+}
+
 // CheckBackup tells whether the file at path is a database of JEC that
 // this program can take in place of its own: sound, sealed with the key
 // verify accepts the check value of, and with no migration of an owner

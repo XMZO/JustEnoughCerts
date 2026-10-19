@@ -23,7 +23,7 @@ const github = 'https://github.com/XMZO/JustEnoughCerts'
 export const sections = [
   { dir: 'guide', pages: ['introduction', 'getting-started', 'installation', 'concepts', 'faq'] },
   { dir: 'usage', pages: ['certificates', 'sources', 'validation', 'targets', 'renewal', 'notifications'] },
-  { dir: 'operations', pages: ['configuration', 'reverse-proxy', 'backup', 'security', 'config-file', 'releases'] },
+  { dir: 'operations', pages: ['configuration', 'reverse-proxy', 'backup', 'postgresql', 'security', 'config-file', 'releases'] },
   { dir: 'reference', pages: ['providers', 'api'] },
   { dir: 'development', pages: ['contributing', 'plugins', 'translating', 'testing'] },
 ]

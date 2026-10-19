@@ -9,7 +9,7 @@ which is `./data` next to `docker-compose.yml`):
 
 | File | Contents |
 |---|---|
-| `jec.db` | The SQLite database: certificates, private keys, providers and credentials (sensitive values encrypted), issuance and deployment records, settings |
+| `jec.db` | The SQLite database: certificates, private keys, providers and credentials (sensitive values encrypted), issuance and deployment records, settings; absent when the data is in [PostgreSQL](postgresql.md) |
 | `secret.key` | The master key, which decrypts the sensitive values of the database; not created when the master key comes from `JEC_SECRET_KEY` |
 | `config.yaml` | The optional configuration of the server; see the [Configuration reference](configuration.md) |
 | `plugins/` | Optional plugin programs; see [Plugins](../development/plugins.md) |

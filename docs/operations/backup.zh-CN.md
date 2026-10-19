@@ -8,7 +8,7 @@ JEC 的全部数据存放在数据目录中（容器中为 `/data`，即 `docker
 
 | 文件 | 内容 |
 |---|---|
-| `jec.db` | SQLite 数据库：证书、私钥、服务商与凭据（敏感内容已加密）、签发与部署记录、设置 |
+| `jec.db` | SQLite 数据库：证书、私钥、服务商与凭据（敏感内容已加密）、签发与部署记录、设置；数据保存在 [PostgreSQL](postgresql.zh-CN.md) 时没有此文件 |
 | `secret.key` | 主密钥，用于解密数据库中的敏感内容；通过 `JEC_SECRET_KEY` 传入主密钥时不生成此文件 |
 | `config.yaml` | 可选的服务器运行配置，参见[配置参考](configuration.zh-CN.md) |
 | `plugins/` | 可选的插件程序，参见[插件](../development/plugins.zh-CN.md) |

@@ -63,6 +63,36 @@ jobs:
           GOARM: "7"
         run: go test -count=1 ./...
 
+  test-postgres:
+    # JEC keeps its data in SQLite or in PostgreSQL: every test runs again
+    # on PostgreSQL, each data directory in a schema of its own.
+    name: test (PostgreSQL 18)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336 # 18.6
+        env:
+          POSTGRES_USER: jec
+          POSTGRES_PASSWORD: jec
+          POSTGRES_DB: jec
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jec -d jec"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-go
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: go test
+        env:
+          JEC_TEST_POSTGRES: postgres://jec:jec@localhost:5432/jec?sslmode=disable
+        run: go test -race -count=1 ./...
+
   lint:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

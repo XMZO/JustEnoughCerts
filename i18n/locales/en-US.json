@@ -1967,6 +1967,7 @@
       "current_password": "Current password",
       "data": "Data and backups",
       "data_dir": "Data directory",
+      "database": "Database",
       "days": "{days, plural, one {# day} other {# days}}",
       "hsts": "HTTPS only (HSTS)",
       "hsts_off": "Off",

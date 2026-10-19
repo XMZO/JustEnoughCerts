@@ -40,8 +40,8 @@ type Run struct {
 }
 
 // runQuery is what a page of the history asks for: the runs created since
-// since, of an action and a result ("" for any), whose primary domain
-// holds text, from offset on, at most limit of them.
+// since, of an action and a result ("" for any), of certificates a domain
+// of which holds text, from offset on, at most limit of them.
 type runQuery struct {
 	since          time.Time
 	action, result string
@@ -58,14 +58,14 @@ type runTally struct{ all, ok, failed, running, canceled int }
 // before counts as failed, as it waits to try again.
 const runsFrom = `
 	WITH base AS (
-		SELECT 'issuance' AS kind, i.id, i.certificate_id, json_extract(c.domains, '$[0]') AS domain, i.reason, i.state, i.attempts,
+		SELECT 'issuance' AS kind, i.id, i.certificate_id, c.domains, i.reason, i.state, i.attempts,
 		       0 AS target, i.error_key, i.error_params, v.not_after, i.created_at, i.started_at, i.finished_at
 		FROM certs_issuances i
 		JOIN certs_certificates c ON c.id = i.certificate_id
 		LEFT JOIN certs_versions v ON v.id = i.version_id
 		WHERE i.created_at >= :since
 		UNION ALL
-		SELECT 'deployment', d.id, d.certificate_id, json_extract(c.domains, '$[0]'), d.reason, d.state, d.attempts,
+		SELECT 'deployment', d.id, d.certificate_id, c.domains, d.reason, d.state, d.attempts,
 		       d.provider_id, d.error_key, d.error_params, v.not_after, d.created_at, d.started_at, d.finished_at
 		FROM certs_deployments d
 		JOIN certs_certificates c ON c.id = d.certificate_id
@@ -80,7 +80,7 @@ const runsFrom = `
 		            ELSE 'running' END AS result
 		FROM base
 	), runs AS (
-		SELECT * FROM tagged WHERE (:action = '' OR action = :action) AND (:text = '' OR domain LIKE :like ESCAPE '\')
+		SELECT * FROM tagged WHERE (:action = '' OR action = :action) AND (:text = '' OR domains LIKE :like ESCAPE '\')
 	)`
 
 // runs returns the runs q asks for, the newest first, and their tally.
@@ -119,7 +119,7 @@ func (s *service) runs(ctx context.Context, q runQuery) ([]Run, runTally, error)
 	}
 
 	rows, err = s.db.QueryContext(ctx, runsFrom+`
-		SELECT kind, id, certificate_id, domain, reason, state, attempts, target, error_key, error_params, not_after, created_at, started_at, finished_at
+		SELECT kind, id, certificate_id, domains, reason, state, attempts, target, error_key, error_params, not_after, created_at, started_at, finished_at
 		FROM runs WHERE :result = '' OR result = :result
 		ORDER BY at DESC, kind, id DESC LIMIT :limit OFFSET :offset`,
 		append(args, sql.Named("result", q.result), sql.Named("limit", q.limit), sql.Named("offset", q.offset))...)
@@ -130,15 +130,18 @@ func (s *service) runs(ctx context.Context, q runQuery) ([]Run, runTally, error)
 	out := []Run{}
 	for rows.Next() {
 		var r Run
-		var domain, params sql.NullString
+		var domains, params sql.NullString
 		var notAfter, started, finished sql.NullInt64
 		var created int64
 		// The key is scanned as it is: it was stored from a message.
-		if err := rows.Scan(&r.Kind, &r.ID, &r.CertificateID, &domain, &r.Reason, &r.State, &r.Attempts, &r.Target,
+		if err := rows.Scan(&r.Kind, &r.ID, &r.CertificateID, &domains, &r.Reason, &r.State, &r.Attempts, &r.Target,
 			&r.Error.Key, &params, &notAfter, &created, &started, &finished); err != nil {
 			return nil, tally, err
 		}
-		r.Domain = domain.String
+		var names []string
+		if json.Unmarshal([]byte(domains.String), &names) == nil && len(names) > 0 {
+			r.Domain = names[0]
+		}
 		if params.String != "" {
 			if err := json.Unmarshal([]byte(params.String), &r.Error.Params); err != nil {
 				return nil, tally, fmt.Errorf("%s %d: error params: %w", r.Kind, r.ID, err)
@@ -209,7 +212,7 @@ type runsInput struct {
 	Days   int    `query:"days" minimum:"0" maximum:"36500" default:"30" doc:"How many days back to list; 0 for all"`
 	Action string `query:"action" enum:"issue,renew,deploy" doc:"Only runs of this action"`
 	Result string `query:"result" enum:"ok,failed,running,canceled" doc:"Only runs of this result; a pending run that failed before is failed"`
-	Q      string `query:"q" maxLength:"200" doc:"Only runs of certificates whose primary domain holds this text"`
+	Q      string `query:"q" maxLength:"200" doc:"Only runs of certificates one of whose domains holds this text"`
 	Page   int    `query:"page" minimum:"1" default:"1"`
 	Size   int    `query:"size" minimum:"1" maximum:"5000" default:"500" doc:"Runs a page holds"`
 }

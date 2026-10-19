@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -77,15 +78,18 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	if err != nil {
 		return nil, err
 	}
-	// A backup restored through the API waits for this start.
-	kept, err := store.ApplyRestore(cfg.DataDir, time.Now())
-	if err != nil {
-		return nil, err
+	// A backup restored through the API waits for this start: SQLite's
+	// takes the place of the database file before it opens.
+	if store.DialectOf(cfg.DatabaseURL) == store.SQLite {
+		kept, err := store.ApplyRestore(cfg.DataDir, time.Now())
+		if err != nil {
+			return nil, err
+		}
+		if kept != "" {
+			log.Warn("restored a backup; the database before it is kept", "file", kept)
+		}
 	}
-	if kept != "" {
-		log.Warn("restored a backup; the database before it is kept", "file", kept)
-	}
-	st, err := store.Open(ctx, cfg.DataDir)
+	st, err := store.OpenURL(ctx, cfg.DataDir, cfg.DatabaseURL)
 	if err != nil {
 		return nil, err
 	}
@@ -94,13 +98,18 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 			err = errors.Join(err, st.Close())
 		}
 	}()
-
-	if err := migrate(ctx, st, log, owner, migrations.FS); err != nil {
+	migrateAll := func(ctx context.Context, st *store.Store) error { return MigrateAll(ctx, st, log, set.Modules()) }
+	if err := migrateAll(ctx, st); err != nil {
 		return nil, err
 	}
-	for _, m := range set.Modules() {
-		if err := migrate(ctx, st, log, m.Manifest().ID, m.Migrations()); err != nil {
+	// PostgreSQL's database takes the backup in, rows and all.
+	if st.Dialect() == store.Postgres {
+		kept, err := store.ApplyRestoreTo(ctx, st, cfg.DataDir, time.Now(), migrateAll)
+		if err != nil {
 			return nil, err
+		}
+		if kept != "" {
+			log.Warn("restored a backup; a copy of the database before it is kept", "file", kept)
 		}
 	}
 	if err := set.Load(ctx, st.DB()); err != nil {
@@ -164,7 +173,8 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		DataDir: cfg.DataDir, Listen: cfg.Listen, BaseURL: cfg.BaseURL, KeyFromEnv: cfg.SecretKey != "",
 		TrustedProxies: cfg.TrustedProxies, HSTS: cfg.HSTS == "true",
 		VerifyKey: box.Verify, Versions: versions, Restart: func() { restartOnce.Do(func() { close(restart) }) },
-		DB: st.DB(), Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log,
+		Database: string(st.Dialect()), Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log,
+		Backup: func(ctx context.Context, path string) error { return st.Snapshot(ctx, path, migrateAll) },
 		// The releases are asked for through the proxy of the environment, if any.
 		Version: build.Version, Client: &http.Client{Timeout: 30 * time.Second},
 		Zone: tz,
@@ -424,6 +434,49 @@ func origin(baseURL string) string {
 		return ""
 	}
 	return u.Scheme + "://" + u.Host
+}
+
+// ErrNotEmpty refuses to import into a database that holds an account.
+var ErrNotEmpty = errors.New("the database holds data already")
+
+// ImportSQLite copies the SQLite database at path, as JEC kept it in its
+// data directory, into st, both migrated first with mods. A database
+// holding an account already is refused unless replace is set.
+func ImportSQLite(ctx context.Context, path string, st *store.Store, log *slog.Logger, mods []module.Module, replace bool) error {
+	if _, err := os.Stat(path); err != nil {
+		return err
+	}
+	src, err := store.OpenFile(ctx, path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = src.Close() }()
+	if err := MigrateAll(ctx, src, log, mods); err != nil {
+		return err
+	}
+	if err := MigrateAll(ctx, st, log, mods); err != nil {
+		return err
+	}
+	if empty, err := st.Empty(ctx); err != nil {
+		return err
+	} else if !empty && !replace {
+		return ErrNotEmpty
+	}
+	return store.Copy(ctx, src, st)
+}
+
+// MigrateAll applies the migrations of the kernel and of every module of
+// mods, on or off, to st.
+func MigrateAll(ctx context.Context, st *store.Store, log *slog.Logger, mods []module.Module) error {
+	if err := migrate(ctx, st, log, owner, migrations.FS); err != nil {
+		return err
+	}
+	for _, m := range mods {
+		if err := migrate(ctx, st, log, m.Manifest().ID, m.Migrations()); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func migrate(ctx context.Context, st *store.Store, log *slog.Logger, owner string, fsys fs.FS) error {

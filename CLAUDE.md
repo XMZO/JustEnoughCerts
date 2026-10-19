@@ -28,7 +28,7 @@
 - 颜色、字号、间距、圆角全部用 `docs/design/system/tokens.json` 里的 token，浅色和深色两套都校验过对比度。组件样式参考 `docs/design/system/bundle.css`，用法说明在 `docs/design/system/components/`。
 - 唯一的个性元素是**耐久条**（LifeBar，证书剩余寿命）和**物品栏格子**（CertSlot，总览里每张证书一个格子）。这两个造型只表示证书寿命，不用在别处。
 - 任何状态都同时有图标和文字，不只靠颜色。
-- 用户偏好：**不要太多折叠栏和分页**；手机端不要拖得很长，但也不能太密。证书列表在手机上试过三种密度，定下来的是“需要处理的证书整行显示原因 + 正常的证书两列小格”。记录类列表用时间范围筛选代替分页；例外是审计日志，条目会很多（机器人、脚本），按用户要求分页：每页 50 条，筛选和搜索在服务端（`GET /api/v1/audit/entries` 的 `result`、`q`、`ops`、`page`、`size`），分页组件 `web/src/components/JecPager.vue`，页码在地址里。
+- 用户偏好：**不要太多折叠栏和分页**；手机端不要拖得很长，但也不能太密。证书列表在手机上试过三种密度，定下来的是“需要处理的证书整行显示原因 + 正常的证书两列小格”。记录类列表用时间范围筛选代替分页；例外是审计日志和签发记录，条目会很多（机器人、脚本），按用户要求分页：每页 50 条，筛选和搜索在服务端（`GET /api/v1/audit/entries` 的 `result`、`q`、`ops`、`page`、`size`），分页组件 `web/src/components/JecPager.vue`，页码在地址里。
 - 添加证书是一整页表单，不做分步向导。
 
 ## 背景和已经查清的事实
@@ -114,6 +114,8 @@
 - 私有 CA（来源类型 `privateca.ca`，模块 `privateca`）：用用户填的 CA 证书和私钥签发，不要验证，IPv4 地址进 `IPAddresses`，有效期默认 90、最多 825 天且不超过 CA，链里去掉自签名的根。
 - 主题色和方块风（`web/src/theme.ts`）：设置页“外观”可选绿、蓝、青、紫、粉（`tokens.json` 的 `color.accents`，每种都核对过对比度；`data-accent` 也能放在单个元素上，设置里的色块就这样取自己的颜色）和“方块风”（`styles`：全部直角、像素阴影、`JecButton` 的 `jec-bevel` 斜面），都存在浏览器里。
 - 服务商对话框的表单每次打开、每种类型只初始化一次（`ProviderDialog.vue` 的 `formFor`），重新获取类型不会覆盖已经填的内容。换类型时旧表单是 `inert` 的，Playwright 往里 `fill` 会静默丢掉：伪语言测试选类型一律用 `pick(dialog, name)`，等新表单可用再填（CI 上曾因此偶发失败）。
+- PostgreSQL（`PLAN.md` 8.5）：`JEC_DATABASE_URL` 设了就用 PostgreSQL；SQL 和迁移只写一份（SQLite 写法），`internal/kernel/store` 的包装驱动和迁移翻译负责转换；新写的 SQL 照 8.5 的“可移植的写法”办；`jec import-sqlite`；备份、恢复经逐表复制，两种数据库的备份都是 SQLite 文件。本机测试：临时容器起 `postgres:18`，`JEC_TEST_POSTGRES=postgres://…` 跑 `go test ./...`；CI 有 `test (PostgreSQL 18)`。
+- 签发记录也分页了（和审计日志一样，`GET /api/v1/certs/runs` 的 `action`、`result`、`q`、`page`、`size`；`size` 默认 500，总览、部署目标页照旧取一次）。只用替身测过的类型标 `Untested`（`providers.Type.Untested`，界面上的“未实测”标签，`web/src/components/TypeTags.vue`），新加的类型只用替身测过也要标上，用真实账号验证后去掉。多用户和 Namecheap 官方 API 暂不考虑。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

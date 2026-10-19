@@ -210,13 +210,10 @@ func (s *Service) createToken(ctx context.Context, in *createTokenInput) (*creat
 	token := tokenPrefix + base64.RawURLEncoding.EncodeToString(b)
 	hash := sha256.Sum256([]byte(token))
 	now := s.now()
-	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO kernel_api_tokens (user_id, name, token_hash, scope, created_at) VALUES (?, ?, ?, ?, ?)`,
-		u.ID, strings.TrimSpace(in.Body.Name), hash[:], in.Body.Scope, timestamp(now))
-	if err != nil {
-		return nil, err
-	}
-	id, err := res.LastInsertId()
+	var id int64
+	err := s.db.QueryRowContext(ctx,
+		`INSERT INTO kernel_api_tokens (user_id, name, token_hash, scope, created_at) VALUES (?, ?, ?, ?, ?) RETURNING id`,
+		u.ID, strings.TrimSpace(in.Body.Name), hash[:], in.Body.Scope, timestamp(now)).Scan(&id)
 	if err != nil {
 		return nil, err
 	}

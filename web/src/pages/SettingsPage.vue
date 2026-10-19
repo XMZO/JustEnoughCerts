@@ -419,7 +419,9 @@ function pickLocale(e: Event) {
 // The repository's name is data, not words to translate, as are the
 // variables that set how the panel runs.
 const repository = { name: 'XMZO/JustEnoughCerts', url: 'https://github.com/XMZO/JustEnoughCerts' }
-const variables = { baseURL: 'JEC_BASE_URL', listen: 'JEC_LISTEN', trustedProxies: 'JEC_TRUSTED_PROXIES', hsts: 'JEC_HSTS' }
+// The databases, by their own names.
+const databases = { sqlite: 'SQLite', postgres: 'PostgreSQL' } as const
+const variables = { database: 'JEC_DATABASE_URL', baseURL: 'JEC_BASE_URL', listen: 'JEC_LISTEN', trustedProxies: 'JEC_TRUSTED_PROXIES', hsts: 'JEC_HSTS' }
 
 // The cards flow into as many columns as fit, each packed from the top, so
 // that short ones leave no gaps.
@@ -780,6 +782,11 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
         <template v-if="system.data.value">
           <dt class="font-semibold">{{ t('kernel.settings.data_dir') }}</dt>
           <dd :class="[fact, 'font-mono']" translate="no">{{ system.data.value.dataDir }}</dd>
+          <dt>
+            <span class="block font-semibold">{{ t('kernel.settings.database') }}</span>
+            <code class="block text-caption text-ink-muted" translate="no">{{ variables.database }}</code>
+          </dt>
+          <dd :class="fact" translate="no">{{ databases[system.data.value.database] }}</dd>
           <dt>
             <span class="block font-semibold">{{ t('kernel.settings.base_url') }}</span>
             <code class="block text-caption text-ink-muted" translate="no">{{ variables.baseURL }}</code>

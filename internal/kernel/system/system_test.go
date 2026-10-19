@@ -44,7 +44,16 @@ func TestSystem(t *testing.T) {
 	wrong := errors.New("wrong password")
 	_, api := humatest.New(t)
 	Register(api, Options{
-		DataDir: dir, Listen: ":8080", BaseURL: "https://certs.example.com", KeyFromEnv: true, DB: st.DB(),
+		DataDir: dir, Listen: ":8080", BaseURL: "https://certs.example.com", KeyFromEnv: true, Database: string(st.Dialect()),
+		Backup: func(ctx context.Context, path string) error {
+			return st.Snapshot(ctx, path, func(ctx context.Context, dst *store.Store) error {
+				if _, err := dst.DB().ExecContext(ctx, "CREATE TABLE things (name TEXT)"); err != nil {
+					return err
+				}
+				_, err := dst.Migrate(ctx, "kernel", migrations.FS)
+				return err
+			})
+		},
 		Confirm: func(_ context.Context, password string) error {
 			if password != "correct horse" {
 				return wrong

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -39,6 +40,17 @@ func TestUpgradeFromAlpha5(t *testing.T) {
 	}
 	cfg := config.Defaults()
 	cfg.DataDir = data
+	// On PostgreSQL, the data goes in as jec import-sqlite takes it.
+	if store.TestingPostgres() {
+		st, err := store.Open(t.Context(), data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = kernel.ImportSQLite(t.Context(), filepath.Join(data, store.FileName), st, slog.New(slog.DiscardHandler), modules, false)
+		if err = errors.Join(err, st.Close()); err != nil {
+			t.Fatal(err)
+		}
+	}
 	app, err := kernel.New(t.Context(), cfg, slog.New(slog.DiscardHandler), modules)
 	if err != nil {
 		t.Fatal(err)

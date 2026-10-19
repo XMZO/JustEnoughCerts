@@ -58,7 +58,8 @@ and servers, and renews them before they expire.
   kernel is a module, which can be enabled, disabled or excluded at build
   time; plugins can be written in any language.
 - Lightweight deployment: a single static binary or a small container
-  image, with data in SQLite, and an interface in English and Chinese
+  image, with data in SQLite (or [PostgreSQL](../operations/postgresql.md)),
+  and an interface in English and Chinese
   that can be installed on a phone's home screen as a progressive web app
   (PWA).
 

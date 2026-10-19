@@ -1453,6 +1453,7 @@ export type MessageKey =
   | "kernel.settings.current_password"
   | "kernel.settings.data"
   | "kernel.settings.data_dir"
+  | "kernel.settings.database"
   | "kernel.settings.days"
   | "kernel.settings.hsts"
   | "kernel.settings.hsts_off"

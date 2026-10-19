@@ -392,14 +392,11 @@ func (s *Service) setup(ctx context.Context, in *setupInput) (*sessionOutput, er
 		return nil, api.NewError(http.StatusConflict, i18n.KernelErrorSetupDone, nil)
 	}
 	now := timestamp(s.now())
-	res, err := tx.ExecContext(ctx,
+	var id int64
+	err = tx.QueryRowContext(ctx,
 		`INSERT INTO kernel_users (username, password_hash, locale, created_at, updated_at, password_changed_at)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
-		in.Body.Username, hash, locale, now, now, now)
-	if err != nil {
-		return nil, err
-	}
-	id, err := res.LastInsertId()
+		 VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
+		in.Body.Username, hash, locale, now, now, now).Scan(&id)
 	if err != nil {
 		return nil, err
 	}

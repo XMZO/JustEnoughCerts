@@ -1445,6 +1445,7 @@ const (
 	KernelSettingsCurrentPassword         Key = "kernel.settings.current_password"
 	KernelSettingsData                    Key = "kernel.settings.data"
 	KernelSettingsDataDir                 Key = "kernel.settings.data_dir"
+	KernelSettingsDatabase                Key = "kernel.settings.database"
 	KernelSettingsDays                    Key = "kernel.settings.days"
 	KernelSettingsHsts                    Key = "kernel.settings.hsts"
 	KernelSettingsHstsOff                 Key = "kernel.settings.hsts_off"

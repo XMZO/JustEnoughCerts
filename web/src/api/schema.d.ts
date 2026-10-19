@@ -1835,6 +1835,11 @@ export interface components {
             baseURL?: string;
             /** @description Where the database and the key file are */
             dataDir: string;
+            /**
+             * @description Where the data is: SQLite in dataDir, or the PostgreSQL that JEC_DATABASE_URL names
+             * @enum {string}
+             */
+            database: "sqlite" | "postgres";
             /** @description Answers send Strict-Transport-Security, as JEC_HSTS asks */
             hsts: boolean;
             /** @description The address the HTTP server binds to, from JEC_LISTEN */
@@ -2920,7 +2925,7 @@ export interface operations {
                 action?: "issue" | "renew" | "deploy";
                 /** @description Only runs of this result; a pending run that failed before is failed */
                 result?: "ok" | "failed" | "running" | "canceled";
-                /** @description Only runs of certificates whose primary domain holds this text */
+                /** @description Only runs of certificates one of whose domains holds this text */
                 q?: string;
                 page?: number;
                 /** @description Runs a page holds */

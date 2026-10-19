@@ -22,6 +22,7 @@ are managed in the interface and are not covered here.
 | `-log-format` | `JEC_LOG_FORMAT` | `log.format` | `text` (or `json`) |
 | `-config` | `JEC_CONFIG` | | `<data-dir>/config.yaml`, if it exists |
 | | `JEC_SECRET_KEY` | | `<data-dir>/secret.key` |
+| | `JEC_DATABASE_URL` | `database_url` | SQLite in the data directory; see [PostgreSQL](postgresql.md) |
 
 `jec <command> -h` lists the flags of a command. An example configuration
 file:

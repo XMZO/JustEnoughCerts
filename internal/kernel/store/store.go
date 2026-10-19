@@ -1,5 +1,7 @@
-// Package store opens the SQLite database in the data directory and applies
-// the schema migrations of the kernel and of each module.
+// Package store opens the database, SQLite in the data directory or
+// PostgreSQL, and applies the schema migrations of the kernel and of each
+// module. The queries and migrations are written for SQLite; PostgreSQL
+// takes them rewritten (postgres.go, pgschema.go).
 package store
 
 import (
@@ -8,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -21,14 +24,36 @@ const FileName = "jec.db"
 // maxConns bounds the open connections; each holds its own SQLite instance.
 const maxConns = 4
 
-// Store is the process's SQLite database.
+// Store is the process's database.
 type Store struct {
-	db *sql.DB
+	db      *sql.DB
+	dialect Dialect
 }
 
-// Open opens the database in dataDir, creating it if needed.
+// Open opens the SQLite database in dataDir, creating it if needed, or a
+// schema of the PostgreSQL database of the tests (TestPostgresEnv).
 func Open(ctx context.Context, dataDir string) (*Store, error) {
-	db, err := sql.Open("sqlite3", dsn(filepath.Join(dataDir, FileName)))
+	return OpenURL(ctx, dataDir, "")
+}
+
+// OpenURL opens the PostgreSQL database at url, or else as Open does.
+func OpenURL(ctx context.Context, dataDir, url string) (*Store, error) {
+	switch {
+	case url != "":
+		db, err := openPostgres(ctx, url, "")
+		if err != nil {
+			return nil, err
+		}
+		return &Store{db: db, dialect: Postgres}, nil
+	case TestingPostgres():
+		return openTestPostgres(ctx, os.Getenv(TestPostgresEnv), dataDir)
+	}
+	return OpenFile(ctx, filepath.Join(dataDir, FileName))
+}
+
+// OpenFile opens the SQLite database at path, creating it if needed.
+func OpenFile(ctx context.Context, path string) (*Store, error) {
+	db, err := sql.Open("sqlite3", dsn(path))
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
@@ -38,7 +63,7 @@ func Open(ctx context.Context, dataDir string) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	return &Store{db: db}, nil
+	return &Store{db: db, dialect: SQLite}, nil
 }
 
 // dsn builds the connection string. WAL lets readers go on while one
@@ -54,6 +79,9 @@ func dsn(path string) string {
 // DB returns the database handle.
 func (s *Store) DB() *sql.DB { return s.db }
 
+// Dialect tells which database the store holds.
+func (s *Store) Dialect() Dialect { return s.dialect }
+
 // Close closes the database.
 func (s *Store) Close() error { return s.db.Close() }
 
@@ -65,7 +93,13 @@ func (s *Store) Migrate(ctx context.Context, owner string, fsys fs.FS) ([]int64,
 	if fsys == nil {
 		return nil, nil
 	}
-	p, err := goose.NewProvider(goose.DialectSQLite3, s.db, fsys,
+	dialect := goose.DialectSQLite3
+	if s.dialect == Postgres {
+		dialect, fsys = goose.DialectPostgres, pgMigrations(fsys)
+	} else {
+		fsys = sqliteMigrations(fsys)
+	}
+	p, err := goose.NewProvider(dialect, s.db, fsys,
 		goose.WithTableName("migrations_"+owner),
 		goose.WithDisableGlobalRegistry(true))
 	if errors.Is(err, goose.ErrNoMigrations) {

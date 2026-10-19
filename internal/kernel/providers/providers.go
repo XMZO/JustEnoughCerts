@@ -683,8 +683,8 @@ func (r *Registry) CreateWithTx(ctx context.Context, tx *sql.Tx, typ, name strin
 	plain, _ := json.Marshal(config)
 	var id int64
 	err = tx.QueryRowContext(ctx,
-		"INSERT INTO kernel_providers (type, name, config, secrets, created_at, updated_at, credential_id) VALUES (?, ?, ?, x'', ?, ?, ?) RETURNING id",
-		typ, strings.TrimSpace(name), string(plain), now, now, nullID(credential)).Scan(&id)
+		"INSERT INTO kernel_providers (type, name, config, secrets, created_at, updated_at, credential_id) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
+		typ, strings.TrimSpace(name), string(plain), []byte{}, now, now, nullID(credential)).Scan(&id)
 	if err != nil {
 		return 0, err
 	}

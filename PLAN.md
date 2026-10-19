@@ -100,7 +100,7 @@ flowchart LR
 |---|---|---|
 | 后端语言 | **Go** | lego（ACME + 221 家 DNS）和各家云平台的 SDK 都是 Go；标准库自带 x509；单个静态二进制，交叉编译方便 |
 | HTTP | `chi` 路由 + `huma` | huma 能从 Go 代码直接生成 OpenAPI 文档，前端类型和 CLI 都可以由此生成 |
-| 数据库 | **SQLite** | 不需要额外服务；数据访问层留接口，以后可以加 PostgreSQL。驱动用纯 Go 的 `ncruces/go-sqlite3`（M0 实测后选定，见 8.3） |
+| 数据库 | **SQLite**，可选 **PostgreSQL** | SQLite 不需要额外服务，驱动用纯 Go 的 `ncruces/go-sqlite3`（M0 实测后选定，见 8.3）；设了 `JEC_DATABASE_URL` 就用 PostgreSQL（pgx，见 8.5） |
 | 迁移 | `goose` | 启动时自动迁移；每个模块带自己的迁移文件，随二进制嵌入 |
 | ACME | `go-acme/lego` v5 | 支持 EAB 和自定义 CA，DNS 服务商最全 |
 | 通用 DNS 记录增删 | 自己实现，用 lego 已带的各家 SDK | lego 只会加 ACME 用的 TXT 记录；付费证书要加任意 CNAME/TXT，需要单独一层（见 5.3.2） |
@@ -828,6 +828,16 @@ services:
   - 要访问数据目录以外的位置时（文档“安装与升级”有表）：`/etc` 下的目录加 `ReadWritePaths`，Docker 目标加 `SupplementaryGroups=docker`，写入后重载其他服务用 polkit 规则（`org.freedesktop.systemd1.manage-units`，按 `unit`、`verb` 放行），或以 root 运行；其中 `ReadWritePaths` 和 polkit 规则在带 systemd 的容器里实测过。写入时遇到只读文件系统（只读挂载或沙箱）报 `files.error.read_only`，告诉用户怎么放行。
 - 数据目录、端口、Base URL、默认语言都可以用命令行参数、环境变量（`JEC_*`）或 `config.yaml` 配置。优先级：命令行参数 > 环境变量 > 配置文件 > 默认值。
 
+### 8.5 PostgreSQL
+
+`JEC_DATABASE_URL`（或配置文件的 `database_url`，不接受命令行参数）设为 `postgres://…` 时，数据放在 PostgreSQL 里，否则照旧是数据目录里的 SQLite。数据目录仍然要有（主密钥、配置文件、插件、脚本）。
+
+- **只写一份 SQL**：查询和迁移都按 SQLite 写；`internal/kernel/store` 给 PostgreSQL 包了一层驱动（`postgres.go`，在 pgx 的 `stdlib` 之上）：`?` 和 `:name` 换成 `$1`…（同名的用同一个编号），`bool` 参数换成 1、0，`LIKE` 换成 `ILIKE`（SQLite 的 LIKE 不分大小写），字符串、引号名、注释和已经编号的查询（goose 自己的）不动；写事务开始时拿 `pg_advisory_xact_lock(hashtext(current_schema()))`，和 SQLite 的 immediate 事务一样同时只有一个写事务，先读后写的代码不会被抢。迁移经 `pgschema.go` 翻译：去掉 `STRICT`、`WITHOUT ROWID`，`INTEGER PRIMARY KEY` 换成 identity，`INTEGER` 换成 `BIGINT`，`BLOB` 换成 `BYTEA`，外键加 `DEFERRABLE INITIALLY IMMEDIATE`；翻译不了的迁移在旁边放一份 `NNNNN_名字.pg.sql`（证书模块的 00001：两张表互相引用，PostgreSQL 要后加外键），SQLite 看不到它。
+- **可移植的写法**（新代码也照此）：插入后用 `RETURNING id`，不用 `LastInsertId`；不用 `json_extract`、`json_each`、`char()`、两个参数的 `min`/`max`、`sum(条件)`（用 `count(CASE WHEN … THEN 1 END)`）、`x''` 这类 blob 字面量（传 `[]byte{}`）、`rowid`；upsert 里引用原行的列要带表名；`user` 这类 PostgreSQL 保留字作列名要加双引号（审计日志的 `"user"`）；WHERE 里不能用同一个 SELECT 的别名（多套一层 CTE）。
+- **复制**（`copy.go`）：两边迁移到同一版本后逐表复制（目标先清空、外键推迟检查，PostgreSQL 复制完重置 identity）。用在三处：`jec import-sqlite`（停机后把数据目录的 `jec.db` 复制进 PostgreSQL，已有账号时要 `-replace`）；设置页的下载备份（PostgreSQL 时建一个新的 SQLite 文件、迁移后复制，所以两种数据库的备份都是 SQLite 文件、可以互相恢复）；恢复（PostgreSQL 时在下次启动、迁移之后，先把现有数据另存为 `jec.db.before-restore-<时间>`，再用备份替换全部行）。
+- **测试**：设了 `JEC_TEST_POSTGRES` 时，`store.Open` 给每个数据目录一个自己的 schema，全部 Go 测试跑在 PostgreSQL 上（升级测试经 `import-sqlite` 的路子导入 alpha5 的数据）；CI 的 `test (PostgreSQL 18)` 就是这样跑的。pgx 让程序大了约 3.6 MiB（压缩后约 1 MiB）。
+
+
 ## 9. CI/CD（GitHub Actions）
 
 ### 9.1 `ci.yml`：每次推送和 PR
@@ -994,6 +1004,6 @@ JustEnoughCerts/
 - [x] ICU 消息格式的前后端实现：后端自己实现子集，前端用 FormatJS（见 7.2）。
 - [x] 镜像和程序的体积预算：带上 lego 的全部服务商后，程序 80 MiB，压缩包和镜像 27 MiB（实测见 8.3）。
 - [x] 续期什么时候执行：按设计稿的设置页，进入续期窗口后在“每天检查时间”开始（默认 02:00，可改，按面板的时区，默认跟随服务器），只剩一周或更少时立即开始（4.3 的“续期”）。
-- [ ] 除 SQLite 外，何时支持 PostgreSQL。
+- [x] PostgreSQL：已支持（8.5），测试对着 PostgreSQL 18。
 - [x] 文档语言：中英双语（文档站 `docs/`，每页一份英文、一份中文；界面语言跟随浏览器，可手动切换）。
 - [x] 各厂商 API 和工具的使用条件要在文档里写清楚（`docs/reference/providers.md` 的“各家的使用条件”）（例如 Namecheap 官方 API 需要 20 个域名，或账户余额 / 近两年消费达 $50，并设置 IP 白名单；SSL Manager 只给直客，目前只支持单域名证书），并提示优先使用 ACME + EAB 或手动上传。

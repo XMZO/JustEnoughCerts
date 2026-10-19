@@ -49,8 +49,8 @@ Minecraft mod JEI.
   Connect single sign-on, API tokens, an audit log, and revocation of
   issued certificates at their CA.
 - **Lightweight**: a single static binary or a small container image, with
-  data in SQLite; every feature outside the kernel is a module, and
-  plugins can be written in any language.
+  data in SQLite, or PostgreSQL; every feature outside the kernel is a
+  module, and plugins can be written in any language.
 
 ## Quick start
 
