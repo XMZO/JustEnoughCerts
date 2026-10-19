@@ -22,6 +22,7 @@ import {
   useDeleteCertificate,
   useDeployNow,
   useDownload,
+  useIssuance,
   useIssuances,
   useIssueNow,
   useUpdateCertificate,
@@ -30,10 +31,12 @@ import {
 import { useApiError } from '../api/errors'
 import { useProviders, useProviderTypes } from '../api/providers'
 import { deploymentState, failingDeployment } from '../certs/deployment'
-import { issuanceState, reasonText } from '../certs/issuance'
+import { deploySteps, issuanceState, reasonText } from '../certs/issuance'
 import { certLife, colonHex, keyText } from '../certs/life'
+import { useDurationText } from '../certs/runs'
 import CertSlot from '../components/CertSlot.vue'
 import CopyButton from '../components/CopyButton.vue'
+import IssuanceSteps from '../components/IssuanceSteps.vue'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
@@ -91,8 +94,31 @@ const ownKey = computed(() => {
 })
 const solverName = computed(() => solvers.data.value?.find((p) => p.id === cert.value?.solverProvider)?.name)
 const issuances = useIssuances(() => props.id, issued)
+
 const latest = computed(() => cert.value?.issuance)
 const latestLink = computed(() => (latest.value ? `/certificates/${props.id}/issuances/${latest.value.id}` : ''))
+
+// The last run (docs/design/boards/CertDetail): the latest issuance, its
+// steps and the deployments of what it brought, and how it went.
+const lastRun = useIssuance(() => latest.value?.id ?? 0, () => !!latest.value)
+const durationText = useDurationText()
+const runSummary = computed(() => {
+  const d = lastRun.data.value
+  const is = d?.issuance
+  if (!d || !is?.startedAt) return ''
+  const start = intl.dateTime(is.startedAt)
+  const duration = is.finishedAt ? durationText(Math.round((Date.parse(is.finishedAt) - Date.parse(is.startedAt)) / 1000)) : ''
+  if (is.state === 'done') {
+    const deploys = deploySteps(d)
+    if (deploys.some((x) => x.state === 'failed')) return t('certs.detail.run_deploy_failed', { start, duration })
+    if (deploys.some((x) => x.state !== 'done')) return t('certs.detail.run_deploying', { start, duration })
+    return t('certs.detail.run_done', { start, duration })
+  }
+  // A retry has no end yet; nor has an attempt under way.
+  if (is.state === 'failed') return t('certs.detail.run_failed', { start, duration })
+  if (is.state === 'pending' && is.error) return t('certs.detail.run_retrying', { start })
+  return t('certs.detail.run_running', { start })
+})
 const issueNow = useIssueNow(() => props.id)
 const issueError = useApiError(issueNow.error)
 async function startIssue() {
@@ -431,6 +457,17 @@ async function confirmDelete() {
                 </JecButton>
               </li>
             </ol>
+          </section>
+
+          <section v-if="lastRun.data.value" aria-labelledby="last-run" class="flex flex-col gap-1 rounded-lg border border-line bg-surface-raised p-4">
+            <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+              <h2 id="last-run" class="m-0 text-section-title font-semibold">
+                {{ t(lastRun.data.value.issuance.reason === 'renewal' ? 'certs.detail.last_renewal' : 'certs.detail.last_issuance') }}
+              </h2>
+              <RouterLink :to="`/certificates/${id}/issuances/${lastRun.data.value.issuance.id}`" class="text-small">{{ t('certs.detail.full_log') }}</RouterLink>
+            </div>
+            <p v-if="runSummary" class="m-0 text-small text-ink-muted [overflow-wrap:anywhere]">{{ runSummary }}</p>
+            <IssuanceSteps :detail="lastRun.data.value" class="text-small" />
           </section>
 
           <MonitorSection v-if="current" :id="cert.id" />

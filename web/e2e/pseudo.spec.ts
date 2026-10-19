@@ -491,6 +491,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'an issuance with raw details').toEqual([])
   await page.getByRole('link', { name: label('certs.action.details') }).filter({ visible: true }).first().click()
   await expect(page).toHaveURL(/\/certificates\/\d+$/)
+  await expect(page.getByRole('heading', { name: label('certs.detail.last_issuance') })).toBeVisible()
   expect.soft(await problems(page), 'a certificate whose issuance failed').toEqual([])
   await page.goto('./certificates')
   expect.soft(await problems(page), 'certificates with a failed one').toEqual([])

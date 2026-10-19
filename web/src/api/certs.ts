@@ -89,10 +89,11 @@ export function useRuns(days: MaybeRefOrGetter<number>, enabled: MaybeRefOrGette
 }
 
 /** An issuance with its steps and log, polled while it is under way. */
-export function useIssuance(id: MaybeRefOrGetter<number>) {
+export function useIssuance(id: MaybeRefOrGetter<number>, enabled: MaybeRefOrGetter<boolean> = true) {
   const client = useQueryClient()
   return useQuery({
     queryKey: computed(() => [...all, 'issuance', toValue(id)] as const),
+    enabled: computed(() => toValue(enabled)),
     queryFn: async () => {
       const detail = await unwrap(api.GET('/certs/issuances/{id}', { params: { path: { id: toValue(id) } } }))
       if (detail.issuance.state === 'done' || detail.issuance.state === 'failed') {

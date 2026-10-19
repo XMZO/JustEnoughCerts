@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { Circle, CircleCheck, CircleX, Hourglass, LoaderCircle, OctagonX, RotateCw, TriangleAlert } from '@lucide/vue'
+import { CircleCheck, CircleX, Hourglass, RotateCw, TriangleAlert } from '@lucide/vue'
 import { computed } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 
 import { useIssuance, useIssueNow } from '../api/certs'
 import { useApiError } from '../api/errors'
 import { useProviders } from '../api/providers'
-import { stepStateText, stepText } from '../certs/issuance'
+import { deploySteps, stepText } from '../certs/issuance'
 import { certLife } from '../certs/life'
+import IssuanceSteps from '../components/IssuanceSteps.vue'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
 import LifeBar from '../components/LifeBar.vue'
@@ -49,25 +50,13 @@ const via = computed(() => {
   return dns ? t('certs.issuance.via_dns', { source: source.value, dns }) : t('certs.issuance.via', { source: source.value })
 })
 
-// The deployments of the version the issuance brings, to each target, as
-// the steps after it: under way, done or failed, or to come.
-const deploys = computed(() =>
-  (cert.value?.targets ?? []).map((target) => {
-    const d = cert.value?.deployments.find((x) => x.target === target && !!is.value?.versionId && x.versionId === is.value.versionId)
-    let state: 'pending' | 'running' | 'done' | 'failed' = 'pending'
-    if (d?.state === 'done') state = 'done'
-    else if (d?.state === 'failed' || (d?.state === 'pending' && d.error)) state = 'failed'
-    else if (d?.state === 'running') state = 'running'
-    return { target, name: targetName(target), state, at: d?.finishedAt, link: d ? `/certificates/${props.id}/deployments/${d.id}` : undefined }
-  }),
-)
+// The deployments of the version the issuance brings, for the banner.
+const deploys = computed(() => (detail.data.value ? deploySteps(detail.data.value) : []))
 const deployed = computed(() => deploys.value.filter((d) => d.state === 'done').length)
 
 const params = (p?: Record<string, unknown>) => (p ?? {}) as Params
 const message = (l: { key: string; params?: Record<string, unknown> }) => t(l.key as MessageKey, params(l.params))
 
-const stepIcons = { pending: Circle, running: LoaderCircle, done: CircleCheck, failed: OctagonX } as const
-const stepInk = { pending: 'text-ink-muted', running: 'text-info-ink', done: 'text-ok-ink', failed: 'text-danger-ink' } as const
 const progress = computed(() => {
   const at = steps.value.findIndex((s) => s.state === 'running' || s.state === 'failed')
   const current = steps.value[at]
@@ -167,33 +156,7 @@ async function retry() {
         <section aria-labelledby="steps-title" class="flex min-w-0 flex-[1_1_260px] flex-col gap-2 rounded-lg border border-line bg-surface-raised p-4">
           <h2 id="steps-title" class="m-0 text-section-title font-semibold">{{ t('certs.issuance.steps') }}</h2>
           <p class="m-0 text-small text-ink-muted" aria-live="polite">{{ is.state === 'pending' && !is.attempts ? t('certs.issuance.queued') : progress }}</p>
-          <ol class="m-0 flex list-none flex-col gap-1 p-0" :aria-label="t('certs.issuance.steps')">
-            <li v-for="s in steps" :key="s.step" class="grid grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-2 py-1">
-              <component
-                :is="stepIcons[s.state]"
-                :class="['size-5', stepInk[s.state], s.state === 'running' ? 'animate-spin' : '']"
-                aria-hidden="true"
-              />
-              <span :class="['min-w-0', s.state === 'pending' ? 'text-ink-muted' : '', s.state === 'running' ? 'font-semibold' : '']">
-                {{ t(stepText[s.step]) }}
-                <span class="sr-only">{{ t(stepStateText[s.state]) }}</span>
-              </span>
-              <time v-if="s.at" :datetime="s.at" class="text-caption text-ink-muted tabular-nums">{{ intl.time(s.at) }}</time>
-            </li>
-            <li v-for="d in deploys" :key="`deploy-${d.target}`" class="grid grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-2 py-1">
-              <component
-                :is="stepIcons[d.state]"
-                :class="['size-5', stepInk[d.state], d.state === 'running' ? 'animate-spin' : '']"
-                aria-hidden="true"
-              />
-              <span :class="['min-w-0 [overflow-wrap:anywhere]', d.state === 'pending' ? 'text-ink-muted' : '', d.state === 'running' ? 'font-semibold' : '']">
-                <RouterLink v-if="d.link" :to="d.link" class="text-inherit">{{ t('certs.issuance.deploy_step', { target: d.name }) }}</RouterLink>
-                <template v-else>{{ t('certs.issuance.deploy_step', { target: d.name }) }}</template>
-                <span class="sr-only">{{ t(stepStateText[d.state]) }}</span>
-              </span>
-              <time v-if="d.at" :datetime="d.at" class="text-caption text-ink-muted tabular-nums">{{ intl.time(d.at) }}</time>
-            </li>
-          </ol>
+          <IssuanceSteps v-if="detail.data.value" :detail="detail.data.value" />
         </section>
 
         <LogView :lines="lines" :running="running" :filename="`issuance-${issuance}.log`" class="flex-[999_1_480px]" />

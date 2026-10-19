@@ -56,6 +56,15 @@ const activityText = {
   deploy: { ok: 'certs.activity.deploy.ok', failed: 'certs.activity.deploy.failed', running: 'certs.activity.deploy.running' },
 } as const satisfies Record<Run['action'], Record<Exclude<RunResult, 'canceled'>, MessageKey>>
 
+/** seconds says how long a span of s seconds is, in words. */
+export function useDurationText() {
+  const { t } = useT()
+  return (s: number): string => {
+    if (s <= 0) return t('certs.runs.instant')
+    return s < 60 ? t('certs.runs.seconds', { seconds: s }) : t('certs.runs.minutes', { minutes: Math.floor(s / 60), seconds: s % 60 })
+  }
+}
+
 /** useRunText gives the words for runs: notes, durations and lines of the recent activity. */
 export function useRunText() {
   const { t } = useT()
