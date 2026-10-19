@@ -378,7 +378,11 @@ test('every page is translated and fits', async ({ page }, info) => {
   await dialog.getByRole('option', { name: label('files.directory.name') }).click()
   await dialog.getByLabel(label('kernel.providers.field.name')).fill('e2e relative')
   await dialog.getByLabel(label('files.field.directory')).fill('relative/certs')
-  await dialog.locator('button[type=submit]').click()
+  // Saved and tested at once: the dialog stays, with what the test said.
+  await dialog.getByRole('button', { name: label('kernel.providers.save_test') }).click()
+  await expect(dialog.getByRole('alert')).toBeVisible()
+  expect.soft(await problems(page), 'add a deploy target: saved, and a test that failed').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
   await expect(page.locator('dialog[open]')).toHaveCount(0)
   await page.getByRole('article').filter({ hasText: 'e2e relative' }).getByRole('button', { name: label('kernel.providers.test') }).click()
   await expect(page.getByRole('alert')).toBeVisible()

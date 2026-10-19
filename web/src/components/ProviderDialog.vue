@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ArrowLeft, Save } from '@lucide/vue'
+import { ArrowLeft, PlugZap, Save } from '@lucide/vue'
 import { computed, ref, useId, watch } from 'vue'
 
+import { ApiError, networkError } from '../api/client'
 import { revealError, useApiError } from '../api/errors'
 import {
   useCreateProvider,
+  useProviderTest,
   useProviderType,
   useProviderTypes,
   useUpdateProvider,
@@ -12,7 +14,7 @@ import {
   type ProviderKind,
   type ProviderTypeSummary,
 } from '../api/providers'
-import { useT, type MessageKey } from '../i18n'
+import { useT, type MessageKey, type Params } from '../i18n'
 import { credentialChoice, credentialSettings, initialCredential, initialValues, settings, typeName } from '../providers/fields'
 import JecAlert from './JecAlert.vue'
 import JecButton from './JecButton.vue'
@@ -23,7 +25,10 @@ import SearchBox from './SearchBox.vue'
 // Adding or editing a provider (docs/design/boards/TargetsAdd): on the
 // left the types to choose from, searchable, on the right the form the
 // chosen type's fields make. A kind with one type skips the choice; on
-// phones the choice and the form take turns.
+// phones the choice and the form take turns. A testable type can be saved
+// and tested at once, the dialog staying open with what the test said:
+// some tests keep what they find, as a registration, so only a saved
+// provider is tested.
 const props = defineProps<{
   kind: ProviderKind
   title: string
@@ -76,7 +81,14 @@ const values = ref<Record<string, string>>({})
 const credential = ref('')
 const create = useCreateProvider()
 const update = useUpdateProvider()
-const mutation = computed(() => (props.instance ? update : create))
+// The provider as saved so far: the one being edited, or the one this
+// dialog added once it was saved and tested.
+const current = ref<Provider>()
+const mutation = computed(() => (current.value ? update : create))
+const test = useProviderTest()
+// What the last test said, and whether saving is for a test.
+const tested = ref<ApiError | string>()
+const testing = ref(false)
 const errors = useApiError(computed(() => mutation.value.error.value))
 const form = ref<HTMLFormElement>()
 
@@ -85,6 +97,8 @@ watch(
   [open, () => types.data.value],
   ([now]) => {
     if (!now) return
+    current.value = props.instance
+    tested.value = undefined
     if (props.instance) picked.value = props.instance.type
     else if (single.value) picked.value = types.data.value?.[0]?.id
   },
@@ -111,35 +125,53 @@ watch(
   { immediate: true },
 )
 
-async function submit() {
+async function submit(andTest = false) {
   const full = type.data.value
   if (!full) return
+  tested.value = undefined
+  testing.value = andTest
   // A credential chosen fills its fields, which the form then hides.
   const shared = full.credentialKind && credential.value !== credentialChoice.new && credential.value !== credentialChoice.own
   const body = {
     name: name.value,
     ...settings(full, values.value, shared ? (full.credentialFields ?? []) : []),
-    ...credentialSettings(full, credential.value, props.instance),
+    ...credentialSettings(full, credential.value, current.value),
   }
   let saved: Provider
   try {
-    saved = props.instance
-      ? await update.mutateAsync({ id: props.instance.id, ...body })
-      : await create.mutateAsync({ type: full.id, ...body })
+    saved = current.value ? await update.mutateAsync({ id: current.value.id, ...body }) : await create.mutateAsync({ type: full.id, ...body })
   } catch {
+    testing.value = false
     await revealError(form.value)
     return
   }
-  open.value = false
-  emit('saved', saved)
+  const added = !current.value
+  current.value = saved
+  if (added) emit('saved', saved)
+  if (!andTest) {
+    open.value = false
+    return
+  }
+  // The keys typed in are saved now: the form shows them so, and a
+  // credential made of them is the one chosen.
+  values.value = initialValues(full, saved, locale.value)
+  credential.value = initialCredential(full, saved)
+  try {
+    const { message } = await test.mutateAsync(saved.id)
+    tested.value = t(message.key as MessageKey, (message.params ?? {}) as Params)
+  } catch (err) {
+    tested.value = err instanceof ApiError ? err : networkError
+  } finally {
+    testing.value = false
+  }
 }
 </script>
 
 <template>
   <JecDialog v-model:open="open" :title="title">
-    <div :class="['flex gap-4 max-sm:flex-col', picked || single || instance ? '' : 'min-h-[min(60dvh,480px)]']">
+    <div :class="['flex gap-4 max-sm:flex-col', picked || single || current ? '' : 'min-h-[min(60dvh,480px)]']">
       <div
-        v-if="!instance && !single"
+        v-if="!current && !single"
         :class="['flex w-full flex-none flex-col gap-2 sm:w-[220px]', picked ? 'max-sm:hidden' : '']"
         role="group"
         :aria-label="t('kernel.providers.choose')"
@@ -186,13 +218,13 @@ async function submit() {
       <form
         :id="`${uid}-form`"
         ref="form"
-        :class="['flex min-w-0 flex-1 flex-col gap-3', !picked && !single && !instance ? 'max-sm:hidden' : '']"
+        :class="['flex min-w-0 flex-1 flex-col gap-3', !picked && !single && !current ? 'max-sm:hidden' : '']"
         novalidate
-        @submit.prevent="submit"
+        @submit.prevent="submit()"
       >
         <template v-if="type.data.value && type.data.value.id === picked">
           <button
-            v-if="!instance && !single"
+            v-if="!current && !single"
             type="button"
             class="flex min-h-11 cursor-pointer items-center gap-1.5 self-start border-0 bg-transparent p-0 text-small font-semibold text-brand sm:hidden"
             @click="picked = undefined"
@@ -217,15 +249,26 @@ async function submit() {
             :id-prefix="uid"
             :type="type.data.value"
             :errors="errors.fields.value"
-            :saved="instance?.secretKeys"
+            :saved="current?.secretKeys"
           />
+          <p v-if="typeof tested === 'string'" role="status" class="m-0 text-small text-ok-ink [overflow-wrap:anywhere]">{{ tested }}</p>
+          <JecAlert v-else-if="tested" :code="tested.code" :params="tested.params" />
         </template>
         <p v-else-if="!picked" class="m-0 text-ink-muted max-sm:hidden">{{ t('kernel.providers.pick_first') }}</p>
       </form>
     </div>
     <template #footer>
       <JecButton @click="open = false">{{ t('kernel.action.cancel') }}</JecButton>
-      <JecButton type="submit" :form="`${uid}-form`" variant="primary" :busy="mutation.isPending.value" :disabled="!type.data.value || type.data.value.id !== picked">
+      <JecButton v-if="type.data.value?.testable && type.data.value.id === picked" :busy="testing" @click="submit(true)">
+        <PlugZap class="size-4" aria-hidden="true" />{{ t('kernel.providers.save_test') }}
+      </JecButton>
+      <JecButton
+        type="submit"
+        :form="`${uid}-form`"
+        variant="primary"
+        :busy="mutation.isPending.value && !testing"
+        :disabled="!type.data.value || type.data.value.id !== picked"
+      >
         <Save class="size-4" aria-hidden="true" />{{ t('kernel.action.save') }}
       </JecButton>
     </template>

@@ -1615,6 +1615,7 @@
         "title": "通知"
       },
       "pick_first": "先在左边选一个服务商。",
+      "save_test": "保存并测试",
       "search": "搜索服务商",
       "secret_saved": "已保存，留空不修改",
       "secrets_saved": "已保存 {count, plural, other {# 项}}保密设置",

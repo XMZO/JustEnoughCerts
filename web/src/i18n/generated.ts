@@ -1171,6 +1171,7 @@ export type MessageKey =
   | "kernel.providers.notifier.intro"
   | "kernel.providers.notifier.title"
   | "kernel.providers.pick_first"
+  | "kernel.providers.save_test"
   | "kernel.providers.search"
   | "kernel.providers.secret_saved"
   | "kernel.providers.secrets_saved"

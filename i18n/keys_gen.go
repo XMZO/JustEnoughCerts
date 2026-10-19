@@ -1163,6 +1163,7 @@ const (
 	KernelProvidersNotifierIntro          Key = "kernel.providers.notifier.intro"
 	KernelProvidersNotifierTitle          Key = "kernel.providers.notifier.title"
 	KernelProvidersPickFirst              Key = "kernel.providers.pick_first"
+	KernelProvidersSaveTest               Key = "kernel.providers.save_test"
 	KernelProvidersSearch                 Key = "kernel.providers.search"
 	KernelProvidersSecretSaved            Key = "kernel.providers.secret_saved"
 	KernelProvidersSecretsSaved           Key = "kernel.providers.secrets_saved"

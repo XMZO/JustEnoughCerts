@@ -1615,6 +1615,7 @@
         "title": "Notifications"
       },
       "pick_first": "Choose a provider on the left first.",
+      "save_test": "Save and test",
       "search": "Search providers",
       "secret_saved": "Saved; leave empty to keep it",
       "secrets_saved": "{count, plural, one {# secret} other {# secrets}} saved",
