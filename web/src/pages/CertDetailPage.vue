@@ -546,7 +546,7 @@ async function confirmDelete() {
         <div class="flex min-w-0 flex-col gap-3 sm:gap-4 md:col-start-1 md:row-start-2 xl:col-start-2 xl:row-start-1 [&>*:last-child]:flex-1">
           <section v-if="issued" aria-labelledby="issuances" class="flex flex-col gap-2 rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
             <h2 id="issuances" class="m-0 text-heading sm:text-section-title font-semibold">{{ t('certs.detail.issuances') }}</h2>
-            <div v-if="lastRun.data.value" class="flex flex-col gap-1.5 rounded-md bg-surface-sunken px-3 py-2.5">
+            <div v-if="lastRun.data.value" class="flex flex-col gap-1.5 rounded-md border border-line px-3 py-2.5">
               <div class="flex flex-wrap items-baseline justify-between gap-x-3">
                 <h3 class="m-0 text-body font-semibold">
                   {{ t(lastRun.data.value.issuance.reason === 'renewal' ? 'certs.detail.last_renewal' : 'certs.detail.last_issuance') }}
