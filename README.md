@@ -13,9 +13,9 @@ Minecraft mod JEI.
 > [!WARNING]
 > JEC is in early development and has no stable release yet. The test
 > releases (0.1.0-alpha.x, image tag `beta`) provide the features listed
-> below, but deployment to Alibaba Cloud ESA, ESA edge answers and
-> Namecheap SSL Manager have not yet been verified end to end with real
-> accounts. See the roadmap in [PLAN.md](PLAN.md) (in Chinese).
+> below. Deployment to Alibaba Cloud ESA and Namecheap SSL Manager have
+> been verified with a real account; ESA edge answers have not yet. See
+> the roadmap in [PLAN.md](PLAN.md) (in Chinese).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/site/public/preview/overview-en-US-dark.webp">

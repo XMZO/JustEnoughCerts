@@ -25,7 +25,7 @@ Reports of results with real accounts are welcome.
 | Type | Description | Tested with |
 |---|---|---|
 | `acme.account` | Any ACME CA, with External Account Binding; renewal information (ARI) and revocation | Emulator: Pebble, in CI |
-| `namecheap.ssl_manager` | Namecheap SSL Manager (experimental) | Fake, written after its official client |
+| `namecheap.ssl_manager` | Namecheap SSL Manager (experimental) | Real service; fake, written after its official client |
 | `files.watch` | Certificates another client renews on this machine | The file system |
 | `aliyun.fetch` | Certificates issued by Alibaba Cloud Certificate Management Service | Fake |
 | `aliyun.apply` | Certificates applied for at Alibaba Cloud, personal test certificates by default | Fake |
@@ -44,14 +44,14 @@ Reports of results with real accounts are welcome.
 | `ssh.webroot` | A website directory over SSH | An SSH server in the test |
 | `wellknown.answer` | JEC answering `/.well-known/` requests itself | Real HTTP |
 | `esa.edge` | Answers at Alibaba Cloud ESA's edge, through Edge KV and an Edge Routine | Fake API; the routine's code runs in Node.js |
-| `cloudflare.edge` | Answers at Cloudflare's edge, through Workers KV and a Worker | Fake API |
+| `cloudflare.edge` | Answers at Cloudflare's edge, through Workers KV and a Worker | Real service; fake API |
 | `plugins.*` | Plugins | Real programs |
 
 ## Deploy targets
 
 | Type | Description | Tested with |
 |---|---|---|
-| `esa.site` | Alibaba Cloud ESA | Fake, with Alibaba Cloud's SDK |
+| `esa.site` | Alibaba Cloud ESA | Real service; fake, with Alibaba Cloud's SDK |
 | `aliyun.cdn`, `aliyun.dcdn` | Alibaba Cloud CDN and DCDN | Fake |
 | `aliyun.cas` | Alibaba Cloud Certificate Management Service | Fake |
 | `aliyun.oss` | Custom domains of Alibaba Cloud OSS buckets | Fake |
@@ -107,9 +107,8 @@ interfaces are optional modules.
   certificates bought directly from Namecheap. Each certificate must be
   activated or reissued in the Namecheap dashboard with Server-side
   automation, which provides a one-time token valid for 24 hours.
-  Single-domain certificates only, validated by a file on the website;
-  JEC also supports DNS validation, but whether Namecheap uses it is yet
-  to be confirmed.
+  Single-domain certificates only, which also cover `www`; Namecheap
+  validates the domain and `www` by files on the website.
 - **Namecheap's own API** (not yet implemented): available to accounts
   with 20 domains, a balance of $50 or $50 spent in the last two years,
   and only from IPv4 addresses on the account's allowlist.

@@ -86,7 +86,7 @@
 - M3 的验收测试：`cmd/jec/modules_test.go` 的 `TestEverySwitchOff` 带着全部真实模块启动，在运行中逐个停用、再打开每个可停用的模块，检查其余功能照常；新模块自动覆盖。
 - M3 还完成了：腾讯云免费证书 `tencentcloud.free`（`DNS_AUTO`，腾讯云生成私钥，自带私钥的来源；`CollectRequest.State` 让这类来源也能在等待之间保留状态）。只用替身测过。
 - 代理：`httpx` 的客户端不用环境变量的代理；连境外服务的类型加 `httpx.ProxyField()`，客户端用 `httpx.ClientFor(opts, in.Config)`（经代理时去掉 PublicOnly），新加这类类型照办。解析服务器 `JEC_DNS_RESOLVERS`（`dnscheck.UseResolvers`，`jec serve` 启动时设，子进程经环境变量继承）。
-- Cloudflare 边缘应答（验证类型 `cloudflare.edge`，在 `cloudflare` 模块里，`PLAN.md` 5.3.2）：Worker（`worker.js`）+ Workers KV + 路由（按主机，SaaS 自定义主机名退回 `*/.well-known/*`）+ 区域最前面的跳过规则（`ref: jec_validation`），网站服务器不用改动；Cloudflare API 客户端在 `cloudflare/api.go`（API 令牌，或邮箱加 Global API Key：`X-Auth-Email`、`X-Auth-Key`；“Cloudflare 凭据”同样两种都行）。用户的 sukimoe.com 是 0page.de 账号里 0page.de 区域（Business）上 Cloudflare for SaaS 的自定义主机名，区域有对境外 IP 的质询规则，所以要靠 JEC 的跳过规则。Namecheap 来源在等证书时先经证书的验证方式放好 `installed.txt`（Namecheap 找到它才给证书），来源表单顶部有分步引导。只用替身测过。
+- Cloudflare 边缘应答（验证类型 `cloudflare.edge`，在 `cloudflare` 模块里，`PLAN.md` 5.3.2）：Worker（`worker.js`）+ Workers KV + 路由（按主机，SaaS 自定义主机名退回 `*/.well-known/*`）+ 区域最前面的跳过规则（`ref: jec_validation`），网站服务器不用改动；Cloudflare API 客户端在 `cloudflare/api.go`（API 令牌，或邮箱加 Global API Key：`X-Auth-Email`、`X-Auth-Key`；“Cloudflare 凭据”同样两种都行）。用户的 sukimoe.com 是 0page.de 账号里 0page.de 区域（Business）上 Cloudflare for SaaS 的自定义主机名，区域有对境外 IP 的质询规则，所以要靠 JEC 的跳过规则。Namecheap 来源在等证书时先经证书的验证方式放好 `installed.txt`（Namecheap 找到它才给证书），来源表单顶部有分步引导。2026-10-19 在用户的真实账号上走通了 M2 验收场景：Namecheap SSL Manager 经 Cloudflare 边缘应答验证、签出（SSL.com，198 天，带 `www`），部署到阿里云 ESA 并删掉旧证书（试出来的细节在 `PLAN.md` 5.6 的“真实账号试过的结果”）。
 - 反向代理（`docs/operations/reverse-proxy.md`）：`deploy/docker-compose.yml` 只在 `127.0.0.1:8080` 上发布，默认 `JEC_TRUSTED_PROXIES: 172.16.0.0/12`（宿主机上的反向代理经容器网络的网关连进来）；页面里 Caddy、nginx 的配置都实测过，前置 CDN 时由反向代理认 CDN 的头（`deploy/reverse-proxy/cdn-ranges.sh` 写地址段），再以只含客户端的 `X-Forwarded-For` 交给 JEC。`/.well-known/` 的分发器在模块没命中时只去掉该模块设的头，服务器的安全响应头保留。
 - 写文件的部署目标（本地目录、SSH、Docker）共用 `internal/lib/certfiles`：文件名可改（`{domain}`）、可选合并文件和 PKCS #12（`cryptox.EncodePFX`）、权限；属主各自处理。
 - 续期默认值多了“失败后重试”（`certs_settings` 的 `retries`，默认 7，0 到 20，签发和部署都按它；配置文件 `renewal.retries`）。
@@ -107,7 +107,8 @@
 - 按设计稿补了一批界面：总览选中证书的主操作（重试、查看进度、立即续期或检查）、“部署到”、自动续期的证书合成一组、手机上的最近动态；证书列表的来源筛选、“部署到”列和“导入已有证书”（添加页 `?source=upload`）；证书详情逐个目标重新部署；手机上从“更多”进入的页面有返回箭头（`PageHeader` 的 `phoneBack`，`web/src/shell.ts` 的 `fromMore`）。
 - 设置页按设计稿补上了主题（`web/src/theme.ts`，跟随系统、浅色、深色，存在浏览器里）和“检查更新”（`GET /api/v1/system/release`，点了才问 GitHub）。
 - 设置页按用户要求改成紧凑布局（和设计稿 `Settings` 不同，以此为准）：卡片按 `columns-[24rem]` 分列、各列从上往下排满，不折叠、不分页；顺序是外观、续期默认值、数据和备份、账号和安全、关于，宽屏两列时左右差不多高；只读的版本、构建、数据目录、面板地址、监听地址、信任的反向代理、HSTS 都在“关于”里，一项一行，环境变量名作为数据显示在标签下。
-- 下一步：用真实账号验证阿里云 ESA 部署、ESA 边缘应答和 Namecheap 模块（M1/M2 验收，`PLAN.md` 5.4、5.6 列了要确认的点，包括 Namecheap 给不给 DNS 验证；给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
+- 线上巡检按地区分开（`PLAN.md` 4.7）：域名的权威 DNS 按地区解析时，用中国大陆和海外的网段（ECS）各问一次，去处不同就分别连、分别显示；别的 CA 签的证书（如 CDN 自己的）只说明、不报警。证书详情页整页实时刷新（`web/src/api/certs.ts` 的 `untilNext`：进行中 2 秒，等待中在下一次尝试之后，其余每分钟，回到标签页立即刷新），等待来源的签发有“立即查看”。
+- 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定
 

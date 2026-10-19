@@ -2,7 +2,7 @@
 
 [English](testing.md)
 
-阿里云 ESA 部署、ESA 边缘应答与 Namecheap SSL Manager 目前仅通过替身接口测试，参见[服务商支持与测试情况](../reference/providers.zh-CN.md)。本指南以下述场景为例，说明使用真实账号逐项验证的步骤、各步骤的预期结果以及失败时需要记录的信息：
+阿里云 ESA 部署与 Namecheap SSL Manager 已于 2026-10-19 经真实账号验证（结果见第 6 节），ESA 边缘应答目前仅通过替身接口测试，参见[服务商支持与测试情况](../reference/providers.zh-CN.md)。本指南以下述场景为例，说明使用真实账号逐项验证的步骤、各步骤的预期结果以及失败时需要记录的信息：
 
 - 网站托管于阿里云 ESA；
 - DNS 解析托管于腾讯云 DNSPod；
@@ -12,8 +12,8 @@
 
 ## 准备工作
 
-- 按[快速开始](../guide/getting-started.zh-CN.md)部署 JEC。`deploy/docker-compose.yml` 默认使用最新测试版（镜像标签 `beta`）；已部署时，在 `docker-compose.yml` 所在目录执行 `docker compose pull && docker compose up -d` 更新（参见[升级](../guide/installation.zh-CN.md#升级)）。设置页“关于”中的版本应不低于 `0.1.0-alpha.6`。
-- 建议在“通知”页添加通知渠道（如 Telegram 或邮件），以便及时获知签发与部署结果；Namecheap 的签发可能需要一天左右。
+- 按[快速开始](../guide/getting-started.zh-CN.md)部署 JEC。`deploy/docker-compose.yml` 默认使用最新测试版（镜像标签 `beta`）；已部署时，在 `docker-compose.yml` 所在目录执行 `docker compose pull && docker compose up -d` 更新（参见[升级](../guide/installation.zh-CN.md#升级)）。设置页“关于”中的版本应不低于 `0.1.0-alpha.10`。
+- 建议在“通知”页添加通知渠道（如 Telegram 或邮件），以便及时获知签发与部署结果。
 - 所有密钥仅在 JEC 界面中填写，不得写入文件、截图或聊天记录。
 
 ## 1. 创建访问密钥
@@ -66,16 +66,15 @@
 1. 在“模块”页启用 Namecheap 模块（标有“实验”）。
 2. 在 Namecheap 控制台激活或重签 PositiveSSL 证书时选择 Server-side automation，复制所提供的一次性令牌（有效期 24 小时，仅可使用一次）。
 3. 在“证书来源”页添加“Namecheap SSL Manager”并填写一次性令牌，保存后立即选择“测试连接”，以完成注册。
-4. 添加证书：域名填写该证书的域名（仅支持单域名证书），证书来源选择 Namecheap，验证方式选择“ESA 边缘应答”（或网站目录、JEC 自行应答）；如 Namecheap 要求 DNS 验证，则选择 DNSPod。
-5. 签发进入“等待来源”状态，每 5 分钟查询一次 Namecheap 的订单状态，完成可能需要数小时至一天。
+4. 添加证书：域名填写该证书的域名（仅支持单域名证书），证书来源选择 Namecheap，验证方式选择能在网站上放置文件的方式，如“ESA 边缘应答”“Cloudflare 边缘应答”、网站目录或 JEC 自行应答。
+5. 签发进入“等待来源”状态，JEC 每 5 分钟查询一次 Namecheap。JEC 先在网站上放置 SSL Manager 的标记文件，Namecheap 检测到该文件后才列出证书；随后 JEC 提交 CSR 并放置验证文件。
 
-以下信息只能通过真实账号确认（参见 `PLAN.md` 5.6），请留意日志中的相关内容：
+2026-10-19 的实测结果：Namecheap 采用 HTTP 文件验证，主域名与 `www` 各一个文件，签发的证书同时包含 `www`；放置验证文件后约 6 分钟签发，CA 为 SSL.com，有效期 198 天。详细记录见 `PLAN.md` 5.6。
+
+以下信息仍待确认，请留意日志中的相关内容：
 
 - 注册后 JEC 能看到账户中的哪些证书：仅为选择了 Server-side automation 的证书，还是全部证书。
-- 提交验证后、证书签发前，日志中“Namecheap 上的状态”的取值。
-- Namecheap 采用 HTTP 文件验证还是 DNS 验证；若为 DNS 验证，记录名为完整域名还是相对名称。
-- 是否出现“CSR 不是这次签发提交的”“尚无证书”等等待提示。
-- 下一张证书（200 天后）是否需要重新获取令牌注册。
+- 下一张证书（约 200 天后）何时出现，是否需要重新获取令牌注册。
 
 ## 7. 反馈内容
 

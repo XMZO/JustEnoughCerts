@@ -2,8 +2,9 @@
 
 [中文](testing.zh-CN.md)
 
-Deployment to Alibaba Cloud ESA, ESA edge answers and Namecheap SSL
-Manager have so far been tested only against fakes; see
+Deployment to Alibaba Cloud ESA and Namecheap SSL Manager were verified
+with a real account on 2026-10-19 (see section 6 for the results); ESA
+edge answers have so far been tested only against fakes; see
 [Providers and test coverage](../reference/providers.md). This guide describes how to
 verify them with real accounts, using the setup below as an example, and
 states the expected result of each step and what to record when it fails:
@@ -21,11 +22,11 @@ For free certificates only, steps 1 to 4 are sufficient.
   `beta`); to update a running deployment, run
   `docker compose pull && docker compose up -d` in the directory of
   `docker-compose.yml` (see [Upgrades](../guide/installation.md#upgrades)).
-  The version under About on the Settings page must be `0.1.0-alpha.6`
+  The version under About on the Settings page must be `0.1.0-alpha.10`
   or later.
 - Add a notification channel, such as Telegram or email, on the
   Notifications page, so that the results of issuances and deployments
-  reach you; an issuance at Namecheap may take a day.
+  reach you.
 - Enter every key in JEC's web interface only, never in a file, a
   screenshot or a chat message.
 
@@ -118,25 +119,26 @@ long the test took, and any errors.
    one-time token, save, and choose Test immediately; the test performs the
    registration.
 4. Add a certificate for the domain of that certificate (single-domain
-   certificates only), with Namecheap as its source and "Answered at ESA's
-   edge" (or a web root, or JEC answering) as its validation method. If
-   Namecheap requires DNS validation, choose DNSPod instead.
+   certificates only), with Namecheap as its source and a validation
+   method that places files on the website, such as "Answered at ESA's
+   edge", "Answered at Cloudflare's edge", a web root or JEC answering.
 5. The issuance enters the "Waiting on the source" state and checks
-   Namecheap every five minutes; completion may take from several hours to
-   a day.
+   Namecheap every five minutes. JEC first places SSL Manager's marker
+   file on the website; Namecheap lists the certificate only once it
+   detects that file. JEC then submits the CSR and places the validation
+   files.
 
-The following can only be confirmed with a real account (see `PLAN.md`
-5.6); record what the log shows:
+Results of 2026-10-19: Namecheap validated by files over HTTP, one for the
+domain and one for `www`, and the certificate also covers `www`; it was
+issued about six minutes after the files were placed, by SSL.com, valid
+for 198 days. `PLAN.md` 5.6 records the details.
+
+The following remain to be confirmed; record what the log shows:
 
 - Which certificates of the account JEC sees after registering: only the
   one activated with Server-side automation, or all of them.
-- The state at Namecheap shown in the log between the submission of the
-  validation and the issuance.
-- Whether Namecheap validates by a file over HTTP or by DNS; for DNS,
-  whether the record name is a full name or a relative one.
-- Whether waits such as "the CSR did not come from this issuance" or
-  "Namecheap has no certificate yet" appear.
-- Whether the next certificate, 200 days later, requires a new token.
+- When the next certificate, about 200 days later, appears, and whether
+  it requires a new token.
 
 ## 7. What to report
 

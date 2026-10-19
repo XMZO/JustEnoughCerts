@@ -488,7 +488,7 @@ DNS 验证分成两种能力，实现方式不同：
 - 上传被拒且返回码表示配额已满时，如果允许删除旧证书，就先删 JEC 以前部署到这个站点的最旧的一张，再传一次；不允许就报错，让人处理。
 - 新证书传好后，删掉 JEC 以前部署到这里的版本，从不动别的证书；删除失败只记日志，下次部署再删。
 - AccessKey 无效或没有权限、站点不存在、配额已满，都不自动重试；限流和其他错误照常重试。
-- 测试用替身 API；还没有用真实账号验证，M1 验收时验证。
+- 测试用替身 API。2026-10-19 在用户的真实账号上验证过（国内站，免费版站点）：上传后立即生效，部署新版本后删掉了 JEC 以前传的那张。
 
 **边缘应答**（验证类型 `esa.edge`，M2）：HTTP 验证的文件不放源站，存进 ESA 的边缘 KV，由边缘函数在边缘直接回答。套餐要带“函数和 Pages”和“边缘 KV”。设置：接入点、AccessKey、“用来测试的域名”（可不填）。
 
@@ -575,7 +575,7 @@ DNS 验证分成两种能力，实现方式不同：
    - `Certificate Revoked`：从网站卸下。
 4. 每个网站还放两个标记文件：`/.well-known/ssl-manager/installed.txt`（`<Unix 时间> <域名>`）和同目录的 `installed.b64.json`（`{"domain","manager_conflicts":[],"timestamp"}` 的 base64）。文档说 Namecheap 会访问前者，确认工具装好了。
 
-**JEC 的做法**（M2，已实现，还没有用真实账号试过）：模块 `namecheap`，证书来源类型 `namecheap.ssl_manager`，**实验性，默认关闭**（在模块页打开），类型列表和表单里标着“实验”，说明里写明是非公开接口、可能随时失效。JEC 扮演 SSL Manager 的客户端：
+**JEC 的做法**（M2，已实现，2026-10-19 用真实账号走通，见下面的“真实账号试过的结果”）：模块 `namecheap`，证书来源类型 `namecheap.ssl_manager`，**实验性，默认关闭**（在模块页打开），类型列表和表单里标着“实验”，说明里写明是非公开接口、可能随时失效。JEC 扮演 SSL Manager 的客户端：
 
 - 设置只有两项：一次性令牌（保密）和接口地址（高级设置，默认官方地址，只接受 https）。第一次签发或点“测试连接”时用令牌注册；access token 加密存在 `namecheap_integrations`，记下令牌的 SHA-256，换了新令牌就重新注册；同一个实例的调用一次只走一个，因为令牌只能用一次。令牌被拒（4xx）不重试，提示去面板重新生成。
 - access token 按官方的规则刷新（没有过期时间或不到 10 天就刷新；接口回 404 或跳转，一天后再试；429 按 `Retry-After`）；`namecheap.refresh` 任务每 6 小时给每个注册刷新一次，没有证书在签发也不会过期；实例删了，注册也删掉。
@@ -595,9 +595,17 @@ DNS 验证分成两种能力，实现方式不同：
 - 或者在源站或 CDN 上把 `/.well-known/` 转给 JEC，由 JEC 应答；
 - 或者网站在 ESA 上时用 ESA 边缘应答：文件存在 ESA 的边缘 KV，由边缘函数回答，不经过源站。
 
-CDN 不能缓存这些路径；有跳转（如 HTTP 跳 HTTPS）时要确认 CA 会跟随，官方客户端的手动模式也这样提示。这就是 5.3.2 ④ 的 HTTP 文件验证（网站目录、SSH 网站目录、JEC 自己应答、ESA 边缘应答都已实现），标记文件也由它放。协议里还有 DNS 验证（记录类型由服务端给），没有面板的官方客户端只处理 HTTP；JEC 用 5.3.2 ② 的记录管理层也能做 DNS 验证，但 Namecheap 会不会给 Server-side automation 发 DNS 验证，要用真实账号确认。
+CDN 不能缓存这些路径；有跳转（如 HTTP 跳 HTTPS）时要确认 CA 会跟随，官方客户端的手动模式也这样提示。这就是 5.3.2 ④ 的 HTTP 文件验证（网站目录、SSH 网站目录、JEC 自己应答、ESA 边缘应答都已实现），标记文件也由它放。协议里还有 DNS 验证（记录类型由服务端给），没有面板的官方客户端只处理 HTTP；JEC 用 5.3.2 ② 的记录管理层也能做 DNS 验证，但真实账号上 Namecheap 给 Server-side automation 的是 HTTP 文件验证（见下）。
 
-**还不确定，要用真实账号试**：一次注册能看到账户里的哪些证书（只有激活时选了 “Server-side automation” 的那一张，还是全部），第二张证书要不要再注册；交了验证之后、签出之前的状态叫什么；服务端是否真的检查 `installed.txt`；`controlPanel.type` 会不会影响给哪种验证，会不会给 DNS 验证，`recordName` 是完整域名还是相对的名字；access token 的有效期；User-Agent 里多了 JEC 会不会被拒。
+**真实账号试过的结果**（2026-10-19，用户的 PositiveSSL 一年订阅，单域名 sukimoe.com，中国大陆经 ESA、境外经 Cloudflare，验证用 Cloudflare 边缘应答）：
+
+- 注册、`updateMeta`、列证书、交 CSR、取验证、报告已放好、下载、确认安装都按上面的协议走通；User-Agent 带上 JEC 没有被拒。access token 的有效期约 10 年（`expiresAt` 比 `issuedAt` 晚 3785 天）。
+- 服务端确实检查 `installed.txt`：取不到时面板显示 “SSL manager not detected”，列表里没有证书；JEC 放好标记文件后才出现 `Awaiting CSR` 的那张。
+- CSR 只有主域名，签出的证书同时带 `www`：Namecheap 给主域名和 `www` 各一个 HTTP 文件验证（`/.well-known/pki-validation/<UUID>.txt`），没有给 DNS 验证。
+- 报告已放好后约 6 分钟签出，其间 status 的 fingerprint 没变，没有见到别的状态名。CA 是 SSL.com（`SSL.com TLS Issuing RSA CA R1`），有效期 198 天，`notBefore` 比交 CSR 早约 10 分钟。
+- 第一张签出约 20 分钟后，列表里又出现一张 `Awaiting CSR`（是不是在面板里点了重签，待用户确认），当时正好有一次手动签发在等，就签出了第二张，到期时间也是 198 天后。Namecheap 的说明是订阅期内重签免费、不限次数，花的是已付的订阅时间，所以多签一张不占名额。
+
+**还不确定**：一次注册能不能看到账户里别的证书，下一张证书要不要再注册；`controlPanel.type` 会不会影响给哪种验证；临近到期时 Namecheap 什么时候放出下一张 `Awaiting CSR`。
 
 **对证书模块的要求**（M2 的“厂商来源通用框架”，已实现，见 4.3 的“等待来源”）：厂商来源要等 CA 审核，跨多次检查才拿到证书，所以签发要能处在“等待中”而不算失败，私钥要在等待期间加密保存，取回的证书要和当初的私钥配对。
 
