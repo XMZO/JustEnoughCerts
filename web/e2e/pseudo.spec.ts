@@ -766,6 +766,30 @@ test('every page is translated and fits', async ({ page }, info) => {
   const days = page.locator('#renewBeforeDays')
   await expect(days).toBeVisible()
   expect.soft(await problems(page), 'settings').toEqual([])
+  // The background jobs, made up to have each kind, and little space left.
+  const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString()
+  await page.route('**/api/v1/system/health', (route) =>
+    route.fulfill({
+      json: {
+        jobs: [
+          { name: 'certs.renew', module: 'certs', everySeconds: 3600, running: false, startedAt: ago(5), finishedAt: ago(4) },
+          {
+            name: 'watch.domains', module: 'watch', everySeconds: 600, running: false, startedAt: ago(9), finishedAt: ago(8),
+            error: 'Get "https://rdap.example/domain/e2e-shop.com": dial tcp: lookup rdap.example: no such host',
+          },
+          { name: 'monitor.check', module: 'monitor', everySeconds: 60, running: true, startedAt: ago(0) },
+          { name: 'calendar.never', module: 'calendar', everySeconds: 86400, running: false },
+        ],
+        disk: { free: 512 * 1024 ** 2, total: 20 * 1024 ** 3 },
+      },
+    }),
+  )
+  await page.reload()
+  await page.getByRole('button', { name: label('kernel.health.details') }).click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'background jobs').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.close') }).last().click()
+  await page.unroute('**/api/v1/system/health')
   // The dark theme, chosen in this browser, then the system's again.
   await page.getByRole('button', { name: label('kernel.settings.theme_dark') }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')

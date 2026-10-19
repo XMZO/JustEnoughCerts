@@ -237,6 +237,40 @@ func TestFailures(t *testing.T) {
 	}
 }
 
+func TestStatus(t *testing.T) {
+	f := newFixture(t)
+	var n atomic.Int32
+	s := f.scheduler(
+		Job{Name: "fine", Every: time.Hour, Run: counting(&n)},
+		Job{Name: "broken", Every: 2 * time.Hour, Run: func(context.Context) error { return errors.New("dns timeout") }},
+	)
+	list, err := s.Status(t.Context())
+	if err != nil || len(list) != 2 || !list[0].Started.IsZero() || list[0].Error != "" {
+		t.Fatalf("before any run: %+v %v", list, err)
+	}
+	f.clock.add(startDelay)
+	f.tick(s)
+	list, err = s.Status(t.Context())
+	if err != nil || len(list) != 2 {
+		t.Fatalf("status %+v %v", list, err)
+	}
+	broken, fine := list[0], list[1]
+	if broken.Name != "certs.broken" || broken.Module != "certs" || broken.Every != 2*time.Hour || broken.Error != "dns timeout" ||
+		broken.Started.IsZero() || broken.Finished.IsZero() || broken.Running {
+		t.Errorf("broken %+v", broken)
+	}
+	if fine.Name != "certs.fine" || fine.Error != "" || fine.Finished.IsZero() {
+		t.Errorf("fine %+v", fine)
+	}
+	// The jobs of a module that is off are left out.
+	f.mu.Lock()
+	f.off["certs"] = true
+	f.mu.Unlock()
+	if list, err := s.Status(t.Context()); err != nil || len(list) != 0 {
+		t.Errorf("with the module off: %+v %v", list, err)
+	}
+}
+
 func TestShutdown(t *testing.T) {
 	f := newFixture(t)
 	started := make(chan struct{})

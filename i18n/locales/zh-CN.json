@@ -1849,6 +1849,21 @@
       "unauthorized": "请先登录。",
       "unknown_time_zone": "JEC 不认识这个时区。"
     },
+    "health": {
+      "all_ok": "{count, plural, other {共 # 个，全部正常}}",
+      "details": "查看",
+      "disk": "数据目录剩余空间",
+      "disk_free": "{free} 可用，共 {total}",
+      "failed": "{count, plural, other {# 个上次运行失败}}",
+      "help": "JEC 在后台定时续期、检查和发送通知等。上次运行失败的排在前面，下次运行成功后恢复正常；失败也会写进运行日志。",
+      "jobs": "后台任务",
+      "kernel": "JEC 内核",
+      "last_run": "上次运行",
+      "state_failed": "上次运行失败",
+      "state_never": "还没有运行过",
+      "state_ok": "上次运行正常",
+      "state_running": "正在运行"
+    },
     "login": {
       "code": "验证器 App 里的验证码",
       "code_hint": "6 位数字，每 30 秒更新一次。",

@@ -46,6 +46,9 @@ domain.
 | `jec_site_state` | 1 for the state a watched site is in (label `state`), 0 for the others |
 | `jec_domain_expiry_timestamp_seconds` | When a [domain registration](../usage/sites.md#domain-registrations) ends; label `domain` |
 | `jec_domain_state` | 1 for the state a domain is in (label `state`), 0 for the others |
+| `jec_job_failed` | 1 when the last run of a background job (label `job`) failed, else 0 |
+| `jec_data_free_bytes` | The bytes free on the file system of the data directory |
+| `jec_data_size_bytes` | The size of that file system, in bytes |
 
 An alert for certificates that end within 14 days:
 
@@ -57,3 +60,12 @@ An alert for certificates that end within 14 days:
   annotations:
     summary: "{{ $labels.domain }} ends in under 14 days"
 ```
+
+## Health
+
+Without Prometheus, Background jobs and Free space for data under About
+on the Settings page show the same: the background jobs (renewals,
+checks, notes and so on) whose last run failed, with why, and the space
+left on the file system of the data directory, in the warning color below
+1 GB or 5%. The API is `GET /api/v1/system/health`, which a token that may
+only read can read.

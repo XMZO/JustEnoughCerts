@@ -15,6 +15,7 @@ package jobs
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"regexp"
@@ -181,6 +182,64 @@ func (s *Scope) Trigger(name string) {
 	case sched.kick <- struct{}{}:
 	default:
 	}
+}
+
+// Status is a job with its last run.
+type Status struct {
+	Name    string // <module>.<job>
+	Module  string
+	Every   time.Duration
+	Running bool
+	// Started is when the last run started, zero when it never ran;
+	// Finished when it ended, zero while it runs or when it was cut short.
+	Started  time.Time
+	Finished time.Time
+	Error    string // of the last run that ended, "" when it succeeded
+}
+
+// Status returns the jobs of the modules that are on, by name, with their
+// last runs.
+func (s *Scheduler) Status(ctx context.Context) ([]Status, error) {
+	type run struct {
+		started, finished time.Time
+		err               string
+	}
+	last := map[string]run{}
+	rows, err := s.db.QueryContext(ctx, "SELECT name, started_at, finished_at, error FROM kernel_jobs")
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var name, msg string
+		var started int64
+		var finished sql.NullInt64
+		if err := rows.Scan(&name, &started, &finished, &msg); err != nil {
+			_ = rows.Close()
+			return nil, err
+		}
+		r := run{started: time.UnixMilli(started).UTC(), err: msg}
+		if finished.Valid {
+			r.finished = time.UnixMilli(finished.Int64).UTC()
+		}
+		last[name] = r
+	}
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		return nil, err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := []Status{}
+	for _, e := range s.jobs {
+		if !s.enabled(e.module) {
+			continue
+		}
+		r := last[e.id]
+		out = append(out, Status{
+			Name: e.id, Module: e.module, Every: e.Every, Running: e.running,
+			Started: r.started, Finished: r.finished, Error: r.err,
+		})
+	}
+	return out, nil
 }
 
 // Run runs the jobs on schedule until ctx is done, then waits for the

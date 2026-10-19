@@ -1015,6 +1015,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tell how the background jobs went last, and the space left in the data directory */
+        get: operations["system-health"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/release": {
         parameters: {
             query?: never;
@@ -1594,6 +1611,15 @@ export interface components {
              */
             validation?: "dv" | "ov" | "iv" | "ev";
         };
+        DiskBody: {
+            /**
+             * Format: int64
+             * @description Free to JEC
+             */
+            free: number;
+            /** Format: int64 */
+            total: number;
+        };
         DomainBody: {
             /** @description The certificates with names under the domain */
             certificates: number[];
@@ -1733,6 +1759,12 @@ export interface components {
             /** @description The YAML file */
             file: string;
         };
+        HealthBody: {
+            /** @description The file system of the data directory, where the database, backups and key file are; missing where the server cannot tell */
+            disk?: components["schemas"]["DiskBody"];
+            /** @description The jobs of the modules that are on, by name */
+            jobs: components["schemas"]["JobBody"][];
+        };
         InstanceBody: {
             config: {
                 [key: string]: string;
@@ -1842,6 +1874,29 @@ export interface components {
             action: "add" | "change" | "keep" | "skip";
             name?: string;
             problems?: components["schemas"]["Problem"][];
+        };
+        JobBody: {
+            /** @description Why its last run failed, as the job said it; empty when it succeeded */
+            error?: string;
+            /**
+             * Format: int64
+             * @description How often it runs
+             */
+            everySeconds: number;
+            /**
+             * Format: date-time
+             * @description When its last run ended; missing while it runs, or when the run was cut short
+             */
+            finishedAt?: string;
+            module: string;
+            /** @description <module>.<job> */
+            name: string;
+            running: boolean;
+            /**
+             * Format: date-time
+             * @description When its last run started; missing when it never ran
+             */
+            startedAt?: string;
         };
         KindsOutputBody: {
             kinds: components["schemas"]["CredentialKind"][];
@@ -4697,6 +4752,35 @@ export interface operations {
                 };
                 content: {
                     "application/vnd.sqlite3": string;
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "system-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthBody"];
                 };
             };
             /** @description Error */

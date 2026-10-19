@@ -4,6 +4,7 @@ import { api, ApiError, networkError, unwrap } from './client'
 import type { components } from './schema'
 
 export type SystemInfo = components['schemas']['RuntimeBody']
+export type Health = components['schemas']['HealthBody']
 
 /** Where JEC keeps its data and how it is reached. */
 export function useSystem() {
@@ -95,4 +96,9 @@ export async function waitForRestart(): Promise<boolean> {
     else if (down || Date.now() - started > 10_000) return true
   }
   return false
+}
+
+/** How the background jobs went last, and the space left for the data; looked at again each minute. */
+export function useHealth() {
+  return useQuery({ queryKey: ['system', 'health'], queryFn: () => unwrap(api.GET('/system/health')), refetchInterval: 60_000 })
 }

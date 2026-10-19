@@ -2,6 +2,8 @@
 import {
   Ban,
   Check,
+  CircleCheck,
+  CircleDashed,
   Download,
   Equal,
   KeyRound,
@@ -35,7 +37,7 @@ import { saveFile, useCertSettings, useSaveCertSettings, type CertSettingsInput,
 import { useExportConfig, useImportConfig, type ConfigItem, type ConfigReport } from '../api/config'
 import { useApiError } from '../api/errors'
 import { useManifest } from '../api/manifest'
-import { useBackup, useReleaseCheck, useRestore, useSetAutoBackup, useSetTimeZone, useSystem, waitForRestart } from '../api/system'
+import { useBackup, useHealth, useReleaseCheck, useRestore, useSetAutoBackup, useSetTimeZone, useSystem, waitForRestart, type Health } from '../api/system'
 import { keyText } from '../certs/life'
 import CopyButton from '../components/CopyButton.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -253,6 +255,24 @@ async function removeToken(id: number) {
 // How JEC is reached and where its data is, set outside the panel; and a
 // copy of the database, once the password is confirmed.
 const system = useSystem()
+
+// How the background jobs went last, and the space left for the data: a
+// failure nothing else shows. The jobs list, those that failed first.
+const health = useHealth()
+type Job = Health['jobs'][number]
+const failedJobs = computed(() => (health.data.value?.jobs ?? []).filter((j) => j.error))
+const jobsOpen = ref(false)
+const jobsShown = computed(() => [...(health.data.value?.jobs ?? [])].sort((a, b) => Number(!!b.error) - Number(!!a.error)))
+const moduleName = (j: Job) => {
+  if (j.module === 'kernel') return t('kernel.health.kernel')
+  const m = manifest.data.value?.modules.find((x) => x.id === j.module)
+  return m ? t(m.name as MessageKey) : j.module
+}
+// Less than a gigabyte, or a twentieth, left is low.
+const lowDisk = computed(() => {
+  const d = health.data.value?.disk
+  return !!d && (d.free < 1024 ** 3 || d.free < d.total / 20)
+})
 
 // The time zone of the whole panel, saved as soon as it changes: the one
 // chosen, or the server's.
@@ -844,6 +864,28 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
             {{ t(system.data.value.hsts ? 'kernel.settings.hsts_on' : 'kernel.settings.hsts_off') }}
           </dd>
         </template>
+        <template v-if="health.data.value">
+          <dt class="font-semibold">{{ t('kernel.health.jobs') }}</dt>
+          <dd :class="[fact, 'flex flex-wrap items-center justify-end gap-x-2']">
+            <span v-if="failedJobs.length" class="inline-flex items-center gap-1 font-semibold text-warn-ink">
+              <TriangleAlert class="size-4 flex-none" aria-hidden="true" />{{ t('kernel.health.failed', { count: failedJobs.length }) }}
+            </span>
+            <span v-else class="inline-flex items-center gap-1 text-ok-ink">
+              <CircleCheck class="size-4 flex-none" aria-hidden="true" />{{ t('kernel.health.all_ok', { count: health.data.value.jobs.length }) }}
+            </span>
+            <button type="button" class="cursor-pointer border-0 bg-transparent p-0 text-ink underline" @click="jobsOpen = true">
+              {{ t('kernel.health.details') }}
+            </button>
+          </dd>
+          <template v-if="health.data.value.disk">
+            <dt class="font-semibold">{{ t('kernel.health.disk') }}</dt>
+            <dd :class="[fact, lowDisk ? 'font-semibold text-warn-ink' : '']">
+              <TriangleAlert v-if="lowDisk" class="mr-1 inline size-4 align-[-3px]" aria-hidden="true" />{{
+                t('kernel.health.disk_free', { free: intl.bytes(health.data.value.disk.free), total: intl.bytes(health.data.value.disk.total) })
+              }}
+            </dd>
+          </template>
+        </template>
       </dl>
       <div :class="[row, 'flex-wrap']">
         <div class="min-w-0 flex-[1_1_12rem]">
@@ -1237,6 +1279,33 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
       <JecButton type="submit" form="two-factor-off-form" variant="danger" :busy="disable.isPending.value" :disabled="!tfPassword">
         {{ t('kernel.settings.two_factor_turn_off') }}
       </JecButton>
+    </template>
+  </JecDialog>
+  <JecDialog v-model:open="jobsOpen" :title="t('kernel.health.jobs')">
+    <p class="m-0 mb-2 text-small text-ink-muted">{{ t('kernel.health.help') }}</p>
+    <ul class="m-0 list-none p-0">
+      <li v-for="j in jobsShown" :key="j.name" class="flex items-start gap-2.5 border-b border-line py-2 last:border-b-0">
+        <TriangleAlert v-if="j.error" class="mt-0.5 size-4 flex-none text-warn-ink" :aria-label="t('kernel.health.state_failed')" />
+        <LoaderCircle v-else-if="j.running" class="mt-0.5 size-4 flex-none animate-spin text-ink-muted" :aria-label="t('kernel.health.state_running')" />
+        <CircleDashed v-else-if="!j.startedAt" class="mt-0.5 size-4 flex-none text-ink-muted" :aria-label="t('kernel.health.state_never')" />
+        <CircleCheck v-else class="mt-0.5 size-4 flex-none text-ok-ink" :aria-label="t('kernel.health.state_ok')" />
+        <span class="grid min-w-0 flex-1 gap-0.5 text-small">
+          <span class="flex flex-wrap items-baseline gap-x-2">
+            <span class="font-semibold">{{ moduleName(j) }}</span>
+            <code class="text-caption text-ink-muted" translate="no">{{ j.name }}</code>
+          </span>
+          <span class="text-ink-muted">
+            <template v-if="j.startedAt">
+              {{ t('kernel.health.last_run') }} <time :datetime="j.startedAt">{{ intl.dateTime(j.startedAt) }}</time>
+            </template>
+            <template v-else>{{ t('kernel.health.state_never') }}</template>
+          </span>
+          <span v-if="j.error" class="whitespace-pre-wrap text-warn-ink [overflow-wrap:anywhere]" translate="no">{{ j.error }}</span>
+        </span>
+      </li>
+    </ul>
+    <template #footer>
+      <JecButton @click="jobsOpen = false">{{ t('kernel.action.close') }}</JecButton>
     </template>
   </JecDialog>
 </template>

@@ -127,6 +127,31 @@ func (m *Module) render(ctx context.Context) ([]byte, error) {
 	family("jec_build_info", "gauge", "The version of JEC.")
 	fmt.Fprintf(&b, "jec_build_info{version=%s} 1\n", quote(manifest.Version))
 
+	// The background jobs, and the space left for the data.
+	var health struct {
+		Jobs []struct {
+			Name  string `json:"name"`
+			Error string `json:"error"`
+		} `json:"jobs"`
+		Disk *struct {
+			Free  int64 `json:"free"`
+			Total int64 `json:"total"`
+		} `json:"disk"`
+	}
+	if err := m.call(ctx, via, http.MethodGet, "/system/health", nil, &health); err != nil {
+		return nil, fmt.Errorf("metrics: the health: %w", err)
+	}
+	family("jec_job_failed", "gauge", "1 when the last run of a background job failed, else 0.")
+	for _, j := range health.Jobs {
+		fmt.Fprintf(&b, "jec_job_failed{job=%s} %d\n", quote(j.Name), bit(j.Error != ""))
+	}
+	if health.Disk != nil {
+		family("jec_data_free_bytes", "gauge", "The bytes free on the file system of the data directory.")
+		fmt.Fprintf(&b, "jec_data_free_bytes %d\n", health.Disk.Free)
+		family("jec_data_size_bytes", "gauge", "The size of the file system of the data directory, in bytes.")
+		fmt.Fprintf(&b, "jec_data_size_bytes %d\n", health.Disk.Total)
+	}
+
 	family("jec_certificates", "gauge", "Certificates by state.")
 	count := map[string]int{}
 	for _, c := range certs {

@@ -1123,6 +1123,25 @@
         ],
         "type": "object"
       },
+      "DiskBody": {
+        "additionalProperties": false,
+        "properties": {
+          "free": {
+            "description": "Free to JEC",
+            "format": "int64",
+            "type": "integer"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "free",
+          "total"
+        ],
+        "type": "object"
+      },
       "DomainBody": {
         "additionalProperties": false,
         "properties": {
@@ -1500,6 +1519,26 @@
         ],
         "type": "object"
       },
+      "HealthBody": {
+        "additionalProperties": false,
+        "properties": {
+          "disk": {
+            "$ref": "#/components/schemas/DiskBody",
+            "description": "The file system of the data directory, where the database, backups and key file are; missing where the server cannot tell"
+          },
+          "jobs": {
+            "description": "The jobs of the modules that are on, by name",
+            "items": {
+              "$ref": "#/components/schemas/JobBody"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "jobs"
+        ],
+        "type": "object"
+      },
       "InstanceBody": {
         "additionalProperties": false,
         "properties": {
@@ -1762,6 +1801,47 @@
         },
         "required": [
           "action"
+        ],
+        "type": "object"
+      },
+      "JobBody": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "description": "Why its last run failed, as the job said it; empty when it succeeded",
+            "type": "string"
+          },
+          "everySeconds": {
+            "description": "How often it runs",
+            "format": "int64",
+            "type": "integer"
+          },
+          "finishedAt": {
+            "description": "When its last run ended; missing while it runs, or when the run was cut short",
+            "format": "date-time",
+            "type": "string"
+          },
+          "module": {
+            "type": "string"
+          },
+          "name": {
+            "description": "\u003cmodule\u003e.\u003cjob\u003e",
+            "type": "string"
+          },
+          "running": {
+            "type": "boolean"
+          },
+          "startedAt": {
+            "description": "When its last run started; missing when it never ran",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "module",
+          "everySeconds",
+          "running"
         ],
         "type": "object"
       },
@@ -6546,6 +6626,37 @@
           }
         },
         "summary": "Download a copy of the database, once the password is confirmed",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/system/health": {
+      "get": {
+        "operationId": "system-health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Tell how the background jobs went last, and the space left in the data directory",
         "tags": [
           "system"
         ]

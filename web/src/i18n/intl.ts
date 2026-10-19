@@ -24,6 +24,16 @@ export function useIntl() {
     /** dateTime: Oct 21, 14:20 in English. */
     dateTime: (at: string | number | Date) =>
       new Intl.DateTimeFormat(locale.value, { timeZone: zone.value, month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(at)),
+    /** bytes: 1.5 GB, in the largest unit (of 1024) that keeps the number at least 1. */
+    bytes: (n: number) => {
+      const units = ['byte', 'kilobyte', 'megabyte', 'gigabyte', 'terabyte'] as const
+      let i = 0
+      while (n >= 1024 && i < units.length - 1) {
+        n /= 1024
+        i++
+      }
+      return new Intl.NumberFormat(locale.value, { style: 'unit', unit: units[i], unitDisplay: 'short', maximumFractionDigits: n < 10 ? 1 : 0 }).format(n)
+    },
     /** list: a, b, and c in English. */
     list: (items: string[]) => new Intl.ListFormat(locale.value, { type: 'conjunction' }).format(items),
   }

@@ -123,6 +123,7 @@
 - 站点监控（模块 `watch`，表 `watch_sites`，页面 `/sites`，侧栏在“签发记录”下面、手机在“更多”里）：监控不由 JEC 管理的网站证书，每 6 小时连一次（连不上 1 小时后再试，最多 8 个同时连），状态 pending/ok/expiring（21 天内）/expired/invalid（`x509.Verify` 不过）/unreachable；到期前 3 周、1 周和过期时发 `site.expiring`（`contracts.SiteEvent`，通知开关 `on_site_expiring` 默认开，换证书重新计）。Prometheus 指标也带上了站点。同一模块还监控域名注册到期（`PLAN.md` 4.7 后的“域名注册到期”：`watch_domains`，任务 `watch.domains` 同步证书和站点的注册域名并经 RDAP 查询，`domain.expiring` 默认开，接口 `/api/v1/watch/domains`），页面和模块改名“到期监控”；测试用假的 RDAP 服务器，`example.com` 等示例域名不查，所以集成测试不会连注册局。
 - 签发前检查 CAA（`acme/caa.go`、`dnscheck.CAA`）：ACME 下单前按 RFC 8659 从域名往上找第一组 CAA 记录（经 `JEC_DNS_RESOLVERS` 或系统的递归解析器），认识的 CA（`caaIDs`，按目录地址的域名）不在其中就停下并给出要加的记录（`acme.error.caa`/`caa_none`），查不到记录只记一行日志交给 CA 自己查；不认识的 CA（如 Pebble）不查。
 - 又加了：证书列表导出 CSV、批量添加证书（添加页“多张证书”，每行一张，逐张提交，失败的行连同原因留下）、证书备注（`certs_certificates.note`，`PATCH` 的 `note`，详情页“证书信息”里编辑，列表显示、搜索、导出，配置文件的 `note`）、Telegram 的 `/sites`。
+- 运行状况：`GET /api/v1/system/health`（`system/health.go`）给出各后台任务上次运行的结果（`jobs.Scheduler.Status`，只含启用的模块）和数据目录的剩余空间（`disk_unix.go`，linux/darwin 用 `syscall.Statfs`）；设置页“关于”里一行“后台任务”（失败数，点“查看”出列表）和“数据目录剩余空间”（少于 1 GB 或 5% 变警告色）；Prometheus 指标 `jec_job_failed`、`jec_data_free_bytes`、`jec_data_size_bytes`。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

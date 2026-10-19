@@ -48,6 +48,9 @@ type Options struct {
 	// DB keeps the choice of daily backups, which Jobs makes.
 	DB   *sql.DB
 	Jobs *jobs.Scope
+	// JobStatus tells the jobs of the modules that are on, with their last
+	// runs.
+	JobStatus func(ctx context.Context) ([]jobs.Status, error)
 	// Confirm checks the password of the signed-in account, as
 	// auth.Service.ConfirmPassword does.
 	Confirm func(ctx context.Context, password string) error
@@ -96,8 +99,9 @@ type backupOutput struct {
 }
 
 // Register adds GET /system, PUT /system/time-zone, PUT
-// /system/auto-backup, POST /system/backup, POST /system/restore and GET
-// /system/release to a, and the job of daily backups to o.Jobs.
+// /system/auto-backup, POST /system/backup, POST /system/restore, GET
+// /system/release and GET /system/health to a, and the job of daily
+// backups to o.Jobs.
 func Register(a huma.API, o Options) {
 	tags := []string{"system"}
 	client := o.Client
@@ -128,6 +132,7 @@ func Register(a huma.API, o Options) {
 
 	registerAutoBackup(a, o, tags)
 	registerRestore(a, o, tags)
+	registerHealth(a, o, tags)
 	huma.Register(a, huma.Operation{
 		OperationID: "backup", Method: http.MethodPost, Path: "/system/backup", Tags: tags,
 		Summary: "Download a copy of the database, once the password is confirmed",
