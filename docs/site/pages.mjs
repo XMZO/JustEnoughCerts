@@ -21,7 +21,7 @@ const github = 'https://github.com/XMZO/JustEnoughCerts'
 
 // The sections of the site, in the order of the sidebar, with their pages.
 export const sections = [
-  { dir: 'guide', pages: ['introduction', 'getting-started', 'installation', 'concepts'] },
+  { dir: 'guide', pages: ['introduction', 'getting-started', 'installation', 'concepts', 'faq'] },
   { dir: 'usage', pages: ['certificates', 'sources', 'validation', 'targets', 'renewal', 'notifications'] },
   { dir: 'operations', pages: ['configuration', 'backup', 'security', 'config-file', 'releases'] },
   { dir: 'reference', pages: ['providers', 'api'] },

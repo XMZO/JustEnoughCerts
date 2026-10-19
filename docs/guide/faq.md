@@ -1,0 +1,76 @@
+# FAQ
+
+[中文](faq.zh-CN.md)
+
+## Which certificate source should I use?
+
+ACME, wherever the certificate authority offers it: certificates from
+Let's Encrypt and other free CAs are issued and renewed without any manual
+step. For paid certificates, use the CA's ACME service with External
+Account Binding where it has one, or a vendor's service that JEC supports;
+otherwise upload the certificates. See [Certificate sources](../usage/sources.md).
+
+## An issuance failed. How do I find out why?
+
+Open the certificate, then the latest issuance: its page lists each step
+with its log, and **Show raw details** adds the raw errors. Common causes are
+credentials of the DNS provider without the permission to add records, a
+DNS provider that does not serve the domain, CAA records that exclude the
+CA, and the CA's rate limits. JEC retries failures on its own; see
+[Failures and retries](../usage/renewal.md#failures-and-retries).
+
+## The validation records never become visible
+
+JEC asks the authoritative DNS servers of the domain whether the records
+are there. The DNS provider set for the certificate must be the one the
+domain's NS records point to. Where the server resolves names differently
+from the internet, set public resolvers in `JEC_DNS_RESOLVERS` (see
+[DNS resolvers](../operations/configuration.md#dns-resolvers)). For a DNS
+provider without an API, delegate `_acme-challenge` with a CNAME record
+to a zone at a supported provider (see [Domain validation](../usage/validation.md)).
+
+## A site still serves the old certificate after the deployment
+
+The online check connects to each domain and reports this, by
+notification too, when the new certificate has not shown 30 minutes
+after it took effect (see [Online checks](../usage/renewal.md#online-checks)).
+Check the deploy target's settings, such as the site or domain it updates,
+and its latest deployment log; CDNs can take some minutes to apply a
+certificate. **Deploy again** on the certificate's page repeats the
+deployment.
+
+## The server cannot reach a CA or a service abroad
+
+ACME accounts and the providers that reach services abroad, such as
+Telegram, Cloudflare and AWS, have a proxy setting of their own among
+their advanced settings (see [Proxies](../operations/configuration.md#proxies)).
+
+## I forgot the password, or lost the authenticator
+
+Reset the password on the server; this also turns two-factor
+authentication off, ends every session and deletes every API token:
+
+```sh
+docker exec -it jec /jec reset-password                               # Docker
+sudo -u jec /usr/local/bin/jec reset-password -data-dir /var/lib/jec  # systemd service
+```
+
+## How do I move JEC to another server?
+
+Stop JEC, copy the whole data directory, `secret.key` included, to the new
+server, and start the same version of JEC or a newer one there. A backup
+downloaded from the Settings page works as well, together with
+`secret.key`. See [Data and backups](../operations/backup.md).
+
+## The master key is lost
+
+JEC refuses to start with a database that another master key encrypted,
+as the private keys and credentials in it cannot be decrypted. Restore
+`secret.key` from a backup of the data directory. Without it, start with
+a new data directory and add the certificates and providers again.
+
+## How do I upgrade?
+
+Pull the new image and recreate the container, or run
+`jec service install` again with the new binary; the database is migrated
+at startup. See [Upgrades](installation.md#upgrades).
