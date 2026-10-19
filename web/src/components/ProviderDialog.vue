@@ -168,7 +168,7 @@ async function submit(andTest = false) {
 </script>
 
 <template>
-  <JecDialog v-model:open="open" :title="title">
+  <JecDialog v-model:open="open" :title="title" wide>
     <div :class="['flex gap-4 max-sm:flex-col', picked || single || current ? '' : 'min-h-[min(60dvh,480px)]']">
       <div
         v-if="!current && !single"

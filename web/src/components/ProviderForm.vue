@@ -11,8 +11,8 @@ import ProviderFieldRow from './ProviderFieldRow.vue'
 
 // The settings of a provider, built from the fields its type declares
 // (PLAN.md 5.5), so that a new provider needs no code here. The fields
-// that apply to the values so far are shown; advanced ones come last,
-// behind a disclosure. A type that takes a credential (PLAN.md 6.1) has
+// that apply to the values so far are shown, side by side as room allows;
+// advanced ones come last, behind a disclosure. A type that takes a credential (PLAN.md 6.1) has
 // the choice of one first: a new one of the keys typed in, one there is,
 // whose fields then go, or keys of the provider's own.
 const props = defineProps<{
@@ -59,6 +59,10 @@ const main = computed(() => shown.value.filter((f) => !f.advanced))
 const advanced = computed(() => shown.value.filter((f) => f.advanced))
 
 const error = (f: ProviderField) => props.errors[`${f.secret ? 'secrets' : 'config'}.${f.key}`]
+// A field of several lines, such as a key, takes a row of its own.
+const wide = (f: ProviderField) => (f.kind === 'multiline' ? 'col-span-full' : '')
+// As many columns as fit: two in a wide dialog, one on a phone.
+const grid = 'grid grid-cols-[repeat(auto-fill,minmax(min(100%,15rem),1fr))] items-start gap-x-4 gap-y-3'
 const saved = (f: ProviderField) => !!f.secret && (props.saved ?? []).includes(f.key)
 
 function set(key: string, value: string) {
@@ -67,7 +71,7 @@ function set(key: string, value: string) {
 </script>
 
 <template>
-  <div class="flex flex-col gap-3">
+  <div :class="grid">
     <JecField :id="`${idPrefix}-name`" label="kernel.providers.field.name" hint="kernel.providers.field.name_help" :error="errors.name">
       <JecInput :id="`${idPrefix}-name`" v-model="name" :invalid="!!errors.name" autocomplete="off" required />
     </JecField>
@@ -88,6 +92,7 @@ function set(key: string, value: string) {
     <ProviderFieldRow
       v-for="f in main"
       :key="f.key"
+      :class="wide(f)"
       :id-prefix="idPrefix"
       :field="f"
       :error="error(f)"
@@ -95,12 +100,13 @@ function set(key: string, value: string) {
       :model-value="values[f.key] ?? ''"
       @update:model-value="(v: string) => set(f.key, v)"
     />
-    <details v-if="advanced.length" class="rounded-md border border-line px-3 py-2" :open="advanced.some((f) => !!error(f))">
+    <details v-if="advanced.length" class="col-span-full rounded-md border border-line px-3 py-2" :open="advanced.some((f) => !!error(f))">
       <summary class="cursor-pointer text-small font-semibold">{{ t('kernel.providers.advanced', { count: advanced.length }) }}</summary>
-      <div class="mt-3 flex flex-col gap-3">
+      <div :class="['mt-3', grid]">
         <ProviderFieldRow
           v-for="f in advanced"
           :key="f.key"
+          :class="wide(f)"
           :id-prefix="idPrefix"
           :field="f"
           :error="error(f)"

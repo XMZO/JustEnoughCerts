@@ -8,7 +8,8 @@ import { useT } from '../i18n'
 // <dialog>: it keeps the focus inside, closes on Esc and gives the focus
 // back to whatever opened it. On phones it fills the screen.
 const open = defineModel<boolean>('open', { required: true })
-withDefaults(defineProps<{ title: string; small?: boolean }>(), { small: false })
+// A wide dialog leaves a form room for two columns of fields beside a list.
+withDefaults(defineProps<{ title: string; small?: boolean; wide?: boolean }>(), { small: false, wide: false })
 
 const { t } = useT()
 const dialog = ref<HTMLDialogElement>()
@@ -37,7 +38,7 @@ watch(
       'm-auto flex-col overflow-hidden border-line bg-surface-raised p-0 text-ink shadow-popover open:flex',
       'max-sm:h-dvh max-sm:max-h-none max-sm:w-full max-sm:max-w-none max-sm:border-0',
       'sm:max-h-[calc(100dvh-48px)] sm:rounded-lg sm:border',
-      small ? 'sm:w-[min(480px,calc(100vw-48px))]' : 'sm:w-[min(720px,calc(100vw-48px))]',
+      small ? 'sm:w-[min(480px,calc(100vw-48px))]' : wide ? 'sm:w-[min(960px,calc(100vw-48px))]' : 'sm:w-[min(720px,calc(100vw-48px))]',
     ]"
     @close="open = false"
   >

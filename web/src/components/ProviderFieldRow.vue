@@ -23,7 +23,7 @@ const inputType = props.field.secret ? 'password' : (types[props.field.kind] ?? 
 </script>
 
 <template>
-  <div class="grid gap-1.5">
+  <div class="grid gap-1">
     <label v-if="field.kind === 'switch'" class="flex items-center gap-2 text-small font-semibold">
       <input
         :id="id"
@@ -80,7 +80,7 @@ const inputType = props.field.secret ? 'password' : (types[props.field.kind] ?? 
       />
     </template>
     <p v-if="error" class="m-0 text-small text-danger-ink">{{ t(error) }}</p>
-    <p v-else-if="field.help" class="m-0 text-small text-ink-muted">{{ t(field.help as MessageKey) }}</p>
-    <p v-else-if="field.doc" lang="en" class="m-0 text-small text-ink-muted [overflow-wrap:anywhere]">{{ field.doc }}</p>
+    <p v-else-if="field.help" class="m-0 text-caption leading-[18px] text-ink-muted">{{ t(field.help as MessageKey) }}</p>
+    <p v-else-if="field.doc" lang="en" class="m-0 text-caption leading-[18px] text-ink-muted [overflow-wrap:anywhere]">{{ field.doc }}</p>
   </div>
 </template>
