@@ -4,6 +4,7 @@ import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import { api, unwrap } from './client'
 import { useManifest } from './manifest'
 import type { components } from './schema'
+import { untilNext } from './certs'
 
 export type MonitorCertificate = components['schemas']['CertificateChecksBody']
 export type MonitorResult = components['schemas']['DomainCheckBody']
@@ -24,6 +25,9 @@ export function useMonitor(id: MaybeRefOrGetter<number>) {
     queryKey: computed(() => [...all, 'certificate', toValue(id)] as const),
     queryFn: () => unwrap(api.GET('/monitor/certificates/{id}', { params: { path: { id: toValue(id) } } })),
     enabled: on,
+    // Just after the next check, or every minute; back on the tab, at once.
+    refetchInterval: (query) => untilNext(query.state.data?.checkAt, 60_000),
+    refetchOnWindowFocus: 'always',
   })
 }
 

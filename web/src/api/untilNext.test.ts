@@ -19,4 +19,6 @@ test('untilNext follows the next try within bounds', () => {
   expect(untilNext('2026-10-19T12:05:00Z')).toBe(30_000)
   expect(untilNext(undefined)).toBe(30_000)
   expect(untilNext('not a time')).toBe(30_000)
+  expect(untilNext('2026-10-19T12:05:00Z', 60_000)).toBe(60_000)
+  expect(untilNext('2026-10-19T12:00:40Z', 60_000)).toBe(41_500)
 })

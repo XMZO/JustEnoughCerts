@@ -58,11 +58,23 @@ export function useCertificates() {
   })
 }
 
-/** One certificate with its versions and chain. */
+/** One certificate with its versions and chain, kept current while it is shown. */
 export function useCertificate(id: MaybeRefOrGetter<number>) {
   return useQuery({
     queryKey: computed(() => [...all, 'detail', toValue(id)] as const),
     queryFn: () => unwrap(api.GET('/certs/certificates/{id}', { params: { path: { id: toValue(id) } } })),
+    // Quick while an issuance or a deployment runs or is about to; just
+    // after the next try while one waits; else every minute. Back on the
+    // tab, at once.
+    refetchInterval: (query) => {
+      const c = query.state.data?.certificate
+      const is = c?.issuance
+      const busy = (state?: string, error?: unknown) => state === 'running' || (state === 'pending' && !error)
+      if (busy(is?.state, is?.error) || c?.deployments.some((d) => busy(d.state, d.error))) return 2000
+      if (is?.state === 'waiting' || is?.state === 'pending') return untilNext(is.nextAt, 60_000)
+      return 60_000
+    },
+    refetchOnWindowFocus: 'always',
   })
 }
 
@@ -88,13 +100,13 @@ export function useRuns(days: MaybeRefOrGetter<number>, enabled: MaybeRefOrGette
   })
 }
 
-/** An issuance with its steps and log, polled while it is under way. */
-/** untilNext is how long to wait to look again at what tries again at nextAt: just after it, between two and 30 seconds. */
-export function untilNext(nextAt?: string | null): number {
+/** untilNext is how long to wait to look again at what tries again at nextAt: just after it, between two seconds and longest. */
+export function untilNext(nextAt?: string | null, longest = 30_000): number {
   const due = nextAt ? Date.parse(nextAt) - Date.now() + 1500 : Number.NaN
-  return Number.isNaN(due) ? 30_000 : Math.min(30_000, Math.max(2000, due))
+  return Number.isNaN(due) ? longest : Math.min(longest, Math.max(2000, due))
 }
 
+/** An issuance with its steps and log, polled while it is under way. */
 export function useIssuance(id: MaybeRefOrGetter<number>, enabled: MaybeRefOrGetter<boolean> = true) {
   const client = useQueryClient()
   return useQuery({
@@ -133,6 +145,8 @@ export function useIssuances(id: MaybeRefOrGetter<number>, enabled: MaybeRefOrGe
       (await unwrap(api.GET('/certs/certificates/{id}/issuances', { params: { path: { id: toValue(id) }, query: { limit: 10 } } })))
         .issuances ?? [],
     enabled: computed(() => toValue(enabled)),
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: 'always',
   })
 }
 
