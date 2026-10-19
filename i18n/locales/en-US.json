@@ -570,6 +570,7 @@
   "certs": {
     "action": {
       "add": "Add certificate",
+      "add_like": "Add one like this",
       "choose_targets": "Choose targets",
       "collect_now": "Check now",
       "copy_fingerprint": "Copy the SHA-256 fingerprint",
@@ -866,6 +867,7 @@
       "deploy_failed": "The deployment failed. The full log says why.",
       "duplicate": "This certificate has been added already.",
       "encrypted_key": "The private key is protected by a passphrase. Remove it first, for example with openssl pkey -in key.pem -out plain.pem, then paste the key again.",
+      "import_failed": "Adding this certificate failed; the log tells why.",
       "ip_dns": "An IP address can be proved only through files on the web server (HTTP validation), never through DNS.",
       "issue_failed": "The issuance failed. The full log says why.",
       "issuing_now": "The certificate is being issued; change it once the issuance ends.",
@@ -1916,7 +1918,8 @@
       "state_failed": "Last run failed",
       "state_never": "Not run yet",
       "state_ok": "Last run fine",
-      "state_running": "Running"
+      "state_running": "Running",
+      "trouble": "A background job failed, or disk space runs low"
     },
     "jump": {
       "label": "Search certificates, pages and providers",

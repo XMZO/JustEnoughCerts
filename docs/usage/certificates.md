@@ -32,7 +32,10 @@ Domains are handled as follows:
   Encrypt certifies addresses with its `shortlived` profile only (see
   [Certificate sources](sources.md)).
 - The page starts from the source, DNS provider and targets the last
-  certificate was added with, as this browser remembers them.
+  certificate was added with, as this browser remembers them. Add one like
+  this, in the list's menu and the certificate's information, starts from
+  that certificate's source, validation, targets, renewal window and key
+  type instead.
 - With Tencent Cloud DNSPod, Alibaba Cloud DNS, Cloudflare or Huawei Cloud
   DNS, the page checks that the account holds each domain, and says so
   when one is missing, before an issuance fails over it.

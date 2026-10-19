@@ -722,6 +722,12 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'revoke a version, refused').toEqual([])
   await page.keyboard.press('Escape')
   await page.unroute(detailRoute)
+  // One like it: the add page starts from its source, validation and
+  // targets.
+  await page.goto(`./certificates/new?from=${issuedId}`)
+  await expect(page.locator('#domain-input')).toBeVisible()
+  await expect(page.getByRole('radio', { checked: true })).toHaveCount(1)
+  expect.soft(await problems(page), 'add a certificate like another').toEqual([])
 
   await page.goto('./certificates')
   expect.soft(await problems(page), 'certificates with a failed one').toEqual([])

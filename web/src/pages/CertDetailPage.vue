@@ -756,7 +756,10 @@ async function confirmDelete() {
 
         <div class="flex min-w-0 flex-col gap-3 sm:gap-4 md:col-start-2 md:row-span-2 md:row-start-1 xl:col-start-3 xl:row-span-1 [&>*:last-child]:flex-1">
           <section aria-labelledby="info" class="rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
-            <h2 id="info" class="m-0 mb-1 text-heading font-semibold sm:text-section-title">{{ t('certs.info.title') }}</h2>
+            <div class="mb-1 flex flex-wrap items-baseline justify-between gap-x-3">
+              <h2 id="info" class="m-0 text-heading font-semibold sm:text-section-title">{{ t('certs.info.title') }}</h2>
+              <RouterLink :to="{ path: '/certificates/new', query: { from: id } }" class="text-small">{{ t('certs.action.add_like') }}</RouterLink>
+            </div>
             <dl class="m-0 grid grid-cols-[fit-content(40%)_minmax(0,1fr)] gap-x-4 gap-y-0.5 text-small">
               <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.memo.title') }}</dt>
               <dd class="m-0 flex min-w-0 items-start gap-1">

@@ -98,6 +98,12 @@ export async function waitForRestart(): Promise<boolean> {
   return false
 }
 
+/** lowDisk tells a file system with less than a gigabyte, or a twentieth, left. */
+export const lowDisk = (d?: Health['disk']) => !!d && (d.free < 1024 ** 3 || d.free < d.total / 20)
+
+/** healthTrouble tells a health that someone should look at: a job whose last run failed, or little space left. */
+export const healthTrouble = (h?: Health) => !!h && (h.jobs.some((j) => j.error) || lowDisk(h.disk))
+
 /** How the background jobs went last, and the space left for the data; looked at again each minute. */
 export function useHealth() {
   return useQuery({ queryKey: ['system', 'health'], queryFn: () => unwrap(api.GET('/system/health')), refetchInterval: 60_000 })

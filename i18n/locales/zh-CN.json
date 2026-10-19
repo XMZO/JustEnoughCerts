@@ -570,6 +570,7 @@
   "certs": {
     "action": {
       "add": "添加证书",
+      "add_like": "以此为模板添加",
       "choose_targets": "选择部署目标",
       "collect_now": "立即检查",
       "copy_fingerprint": "复制 SHA-256 指纹",
@@ -866,6 +867,7 @@
       "deploy_failed": "部署失败。完整日志里有原因。",
       "duplicate": "这张证书已经添加过了。",
       "encrypted_key": "私钥设置了密码。请先去掉密码，例如运行 openssl pkey -in key.pem -out plain.pem，再重新粘贴。",
+      "import_failed": "添加这张证书时出错，详见运行日志。",
       "ip_dns": "IP 地址只能通过网站目录类的验证方式（HTTP 文件验证）证明，不能用 DNS 验证。",
       "issue_failed": "签发失败。完整日志里有原因。",
       "issuing_now": "这张证书正在签发，等签发结束后再改。",
@@ -1916,7 +1918,8 @@
       "state_failed": "上次运行失败",
       "state_never": "还没有运行过",
       "state_ok": "上次运行正常",
-      "state_running": "正在运行"
+      "state_running": "正在运行",
+      "trouble": "有后台任务失败或磁盘空间不足"
     },
     "jump": {
       "label": "搜索证书、页面和服务商",

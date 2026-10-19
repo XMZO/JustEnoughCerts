@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Blocks, Ellipsis, Globe, History, KeyRound, LayoutGrid, LogOut, Menu, Package, Radar, ScrollText, Search, Server, Settings, ShieldCheck, X } from '@lucide/vue'
+import { Bell, Blocks, Ellipsis, Globe, History, KeyRound, LayoutGrid, LogOut, Menu, Package, Radar, ScrollText, Search, Server, Settings, ShieldCheck, TriangleAlert, X } from '@lucide/vue'
 import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
@@ -8,6 +8,7 @@ import { useCertificates } from '../api/certs'
 import { domainNeedsLook, needsLook, useDomains, useSites } from '../api/watch'
 import { needsAttention } from '../certs/life'
 import { useManifest } from '../api/manifest'
+import { healthTrouble, useHealth } from '../api/system'
 import { useT, type MessageKey } from '../i18n'
 import { attention } from '../router'
 import { jumpOpen } from '../shell'
@@ -38,6 +39,8 @@ interface Link {
   label: MessageKey
   icon: typeof LayoutGrid
   count?: number
+  // trouble marks a page with something to look at.
+  trouble?: boolean
 }
 
 const links = computed<Link[]>(() => [
@@ -71,10 +74,12 @@ const config: Link[] = [
 // JEC itself: the modules, the audit log while its module is on, and the
 // settings.
 const audited = computed(() => manifest.data.value?.modules.some((m) => m.id === 'audit' && m.enabled) ?? false)
+// The settings are marked while a background job failed or the disk fills.
+const health = useHealth()
 const system = computed<Link[]>(() => [
   { to: '/modules', label: 'kernel.modules.title', icon: Blocks },
   ...(audited.value ? [{ to: '/audit', label: 'audit.page.title', icon: ScrollText } satisfies Link] : []),
-  { to: '/settings', label: 'kernel.settings.title', icon: Settings },
+  { to: '/settings', label: 'kernel.settings.title', icon: Settings, trouble: healthTrouble(health.data.value) },
 ])
 
 const current = (to: string) => (to === '/' ? route.path === '/' : route.path === to || route.path.startsWith(`${to}/`))
@@ -216,6 +221,7 @@ async function leave() {
         >
           <component :is="link.icon" :class="['size-[18px] flex-none', current(link.to) ? 'text-brand' : '']" aria-hidden="true" />
           <span class="min-w-0 flex-1 truncate" :title="t(link.label)">{{ t(link.label) }}</span>
+          <TriangleAlert v-if="link.trouble" class="size-4 flex-none text-warn-ink" role="img" :aria-label="t('kernel.health.trouble')" />
         </RouterLink>
       </nav>
       <div class="mt-auto flex flex-col gap-2 border-t border-line px-2.5 pt-3 text-caption text-ink-muted">

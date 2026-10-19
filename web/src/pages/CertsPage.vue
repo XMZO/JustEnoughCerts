@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Activity, CircleCheck, CircleX, Download, Eye, FileDown, LoaderCircle, OctagonX, Plus, RefreshCw, Send, ShieldX, Trash2, TriangleAlert, Upload } from '@lucide/vue'
+import { Activity, CircleCheck, CircleX, CopyPlus, Download, Eye, FileDown, LoaderCircle, OctagonX, Plus, RefreshCw, Send, ShieldX, Trash2, TriangleAlert, Upload } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
@@ -218,6 +218,7 @@ function menu(c: Certificate): MenuItem[] {
     items.push({ key: 'deploy', label: t('certs.action.redeploy'), hint: t('certs.menu.redeploy_hint'), icon: Send, run: () => (asking.value = askDeploy(c)) })
   }
   if (c.source !== 'provider') items.push({ key: 'upload', label: t('certs.action.upload'), icon: Upload, to: `/certificates/${c.id}?upload=1` })
+  if (c.source === 'provider') items.push({ key: 'like', label: t('certs.action.add_like'), icon: CopyPlus, to: `/certificates/new?from=${c.id}` })
   items.push({ key: 'delete', label: t('certs.action.delete'), icon: Trash2, danger: true, run: () => (deleting.value = c) })
   return items
 }

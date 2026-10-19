@@ -1551,6 +1551,23 @@
         ],
         "type": "object"
       },
+      "FileProblemBody": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "Why, by message key",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "code"
+        ],
+        "type": "object"
+      },
       "HealthBody": {
         "additionalProperties": false,
         "properties": {
@@ -1568,6 +1585,100 @@
         },
         "required": [
           "jobs"
+        ],
+        "type": "object"
+      },
+      "ImportInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "files": {
+            "description": "Certificates and private keys in any mix, as another tool exported them",
+            "items": {
+              "$ref": "#/components/schemas/Item1"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "type": "array"
+          },
+          "renewBeforeDays": {
+            "format": "int64",
+            "maximum": 365,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "targets": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "maxItems": 50,
+            "type": "array"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "type": "object"
+      },
+      "ImportOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "certificates": {
+            "items": {
+              "$ref": "#/components/schemas/ImportedBody"
+            },
+            "type": "array"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/FileProblemBody"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "certificates",
+          "files"
+        ],
+        "type": "object"
+      },
+      "ImportedBody": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "Why it failed, by message key",
+            "type": "string"
+          },
+          "domains": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "description": "The certificate it was added as, or is already",
+            "format": "int64",
+            "type": "integer"
+          },
+          "notAfter": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "result": {
+            "description": "added; duplicate: JEC has it already; no_key: no private key among the files belongs to it; failed: see code",
+            "enum": [
+              "added",
+              "duplicate",
+              "no_key",
+              "failed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "domains",
+          "notAfter",
+          "result"
         ],
         "type": "object"
       },
@@ -1833,6 +1944,25 @@
         },
         "required": [
           "action"
+        ],
+        "type": "object"
+      },
+      "Item1": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "description": "The file in base64, or PEM text as it is",
+            "maxLength": 1400000,
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 255,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "content"
         ],
         "type": "object"
       },
@@ -4261,6 +4391,48 @@
           }
         },
         "summary": "Add a certificate by uploading it with its private key",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/certificates/import": {
+      "post": {
+        "description": "The files may hold certificates, chains and keys in any mix; each key is paired with its certificate, whose chain is built from all the certificates found. Those JEC has already are left as they are.",
+        "operationId": "certs-import",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Add the certificates among several files, each with the private key that belongs to it",
         "tags": [
           "certs"
         ]

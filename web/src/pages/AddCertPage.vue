@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { CircleCheck, CircleX, Plus, Save, ShieldCheck, TriangleAlert } from '@lucide/vue'
-import { computed, ref, watch, watchEffect } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
-import { useAddCertificate, useCertSettings, useIssueCertificate, type KeyType } from '../api/certs'
+import { useAddCertificate, useCertificates, useCertSettings, useIssueCertificate, type KeyType } from '../api/certs'
 import { revealError, useApiError } from '../api/errors'
 import { useProviders, useProviderTypes, useZones, type Provider } from '../api/providers'
-import { loadLastChoice, saveLastChoice } from '../certs/lastChoice'
+import { loadLastChoice, saveLastChoice, type LastChoice } from '../certs/lastChoice'
 import { keyText } from '../certs/life'
 import DomainInput from '../components/DomainInput.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -38,26 +38,40 @@ const solverTypes = useProviderTypes('solver')
 const targets = useProviders('target')
 const targetTypes = useProviderTypes('target')
 const chosenTargets = ref<number[]>([])
-// What the last certificate was added with, in this browser: the targets
-// start from those still there.
-const last = loadLastChoice()
-watch(
-  () => targets.data.value,
-  (list, before) => {
-    if (list && !before && last.targets) chosenTargets.value = last.targets.filter((id) => list.some((p) => p.id === id))
-  },
-  { immediate: true },
+// What the new certificate starts from: a certificate the link names
+// (?from=<id>), as "add one like this" does, or else what the last one
+// was added with, in this browser. The targets start from those still
+// there.
+const from = Number(route.query.from) || 0
+const certificates = useCertificates()
+const template = computed(() => (from ? certificates.data.value?.find((c) => c.id === from) : undefined))
+const templateReady = computed(() => !from || certificates.isSuccess.value || certificates.isError.value)
+const stored = loadLastChoice()
+const last = computed<LastChoice>(() =>
+  template.value
+    ? { source: template.value.sourceProvider, solver: template.value.solverProvider, targets: template.value.targets }
+    : from
+      ? {}
+      : stored,
 )
+let targetsSet = false
+watchEffect(() => {
+  const list = targets.data.value
+  if (targetsSet || !list || !templateReady.value) return
+  targetsSet = true
+  chosenTargets.value = (last.value.targets ?? []).filter((id) => list.some((p) => p.id === id))
+})
 
-// The choice of source: the one the last certificate was added with, or
-// the first configured one, until someone picks; or an upload when the
-// link asks for one, as importing does.
+// The choice of source: the one of the certificate started from, or the
+// first configured one, until someone picks; or an upload when the link
+// asks for one, as importing does, or the certificate started from is one.
 const picked = ref<'upload' | number | undefined>(route.query.source === 'upload' ? 'upload' : undefined)
 const source = computed<'upload' | number | undefined>(() => {
   if (picked.value !== undefined) return picked.value
-  if (!sources.isSuccess.value) return undefined
+  if (!sources.isSuccess.value || !templateReady.value) return undefined
+  if (template.value?.source === 'upload') return 'upload'
   const list = sources.data.value ?? []
-  return list.find((p) => p.id === last.source)?.id ?? list[0]?.id ?? 'upload'
+  return list.find((p) => p.id === last.value.source)?.id ?? list[0]?.id ?? 'upload'
 })
 const provider = computed(() => (typeof source.value === 'number' ? sources.data.value?.find((p) => p.id === source.value) : undefined))
 const sourceType = computed(() => sourceTypes.data.value?.find((s) => s.id === provider.value?.type))
@@ -124,7 +138,7 @@ const refused = ref<Outcome[]>([])
 const adding = ref(false)
 const pickedSolver = ref<number>()
 const solver = computed(
-  () => usable.value.find((p) => p.id === (pickedSolver.value ?? last.solver))?.id ?? usable.value[0]?.id,
+  () => usable.value.find((p) => p.id === (pickedSolver.value ?? last.value.solver))?.id ?? usable.value[0]?.id,
 )
 const solverProvider = computed(() => usable.value.find((p) => p.id === solver.value))
 // Whether the solver's account holds the zones of the domains, for a type
@@ -171,10 +185,11 @@ const settings = useCertSettings()
 let defaulted = false
 watchEffect(() => {
   const st = settings.data.value
-  if (!st || defaulted) return
+  if (!st || defaulted || !templateReady.value) return
   defaulted = true
-  keyType.value = st.keyType
-  days.value = String(st.renewBeforeDays)
+  const like = template.value
+  keyType.value = like && keyTypes.includes(like.keyType as KeyType) ? (like.keyType as KeyType) : st.keyType
+  days.value = String(like?.renewBeforeDays ?? st.renewBeforeDays)
 })
 
 const uploading = computed(() => source.value === 'upload')

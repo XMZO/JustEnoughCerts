@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Blocks, ChevronRight, Globe, KeyRound, LogOut, Package, Radar, ScrollText, Search, Server, Settings } from '@lucide/vue'
+import { Bell, Blocks, ChevronRight, Globe, KeyRound, LogOut, Package, Radar, ScrollText, Search, Server, Settings, TriangleAlert } from '@lucide/vue'
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
@@ -7,6 +7,7 @@ import { useSession, useSignOut } from '../api/account'
 import { useCredentials } from '../api/credentials'
 import { useManifest } from '../api/manifest'
 import { useProviders } from '../api/providers'
+import { healthTrouble, useHealth } from '../api/system'
 import JecButton from '../components/JecButton.vue'
 import LanguageSwitch from '../components/LanguageSwitch.vue'
 import PageHeader from '../components/PageHeader.vue'
@@ -39,6 +40,10 @@ const config = computed(() => [
 const modulesOn = computed(() => manifest.data.value?.modules.filter((m) => m.required || m.switched).length)
 const audited = computed(() => manifest.data.value?.modules.some((m) => m.id === 'audit' && m.enabled) ?? false)
 const watching = computed(() => manifest.data.value?.modules.some((m) => m.id === 'watch' && m.enabled) ?? false)
+
+// The settings are marked while a background job failed or the disk fills.
+const health = useHealth()
+const trouble = computed(() => healthTrouble(health.data.value))
 
 // The quick jump of the shell, which phones have here.
 const openJump = () => (jumpOpen.value = true)
@@ -112,6 +117,7 @@ async function leave() {
       >
         <Settings class="size-5 flex-none text-ink-muted" aria-hidden="true" />
         <span class="min-w-0 flex-1">{{ t('kernel.settings.title') }}</span>
+        <TriangleAlert v-if="trouble" class="size-4 flex-none text-warn-ink" role="img" :aria-label="t('kernel.health.trouble')" />
         <ChevronRight class="size-4 flex-none text-ink-muted" aria-hidden="true" />
       </RouterLink>
     </section>

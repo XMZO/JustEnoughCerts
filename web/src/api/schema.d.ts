@@ -220,6 +220,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certs/certificates/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add the certificates among several files, each with the private key that belongs to it
+         * @description The files may hold certificates, chains and keys in any mix; each key is paired with its certificate, whose chain is built from all the certificates found. Those JEC has already are left as they are.
+         */
+        post: operations["certs-import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/certs/certificates/issue": {
         parameters: {
             query?: never;
@@ -1809,11 +1829,44 @@ export interface components {
             /** @description The YAML file */
             file: string;
         };
+        FileProblemBody: {
+            /** @description Why, by message key */
+            code: string;
+            name: string;
+        };
         HealthBody: {
             /** @description The file system of the data directory, where the database, backups and key file are; missing where the server cannot tell */
             disk?: components["schemas"]["DiskBody"];
             /** @description The jobs of the modules that are on, by name */
             jobs: components["schemas"]["JobBody"][];
+        };
+        ImportInputBody: {
+            /** @description Certificates and private keys in any mix, as another tool exported them */
+            files: components["schemas"]["Item1"][];
+            /** Format: int64 */
+            renewBeforeDays?: number;
+            targets?: number[];
+        };
+        ImportOutputBody: {
+            certificates: components["schemas"]["ImportedBody"][];
+            files: components["schemas"]["FileProblemBody"][];
+        };
+        ImportedBody: {
+            /** @description Why it failed, by message key */
+            code?: string;
+            domains: string[];
+            /**
+             * Format: int64
+             * @description The certificate it was added as, or is already
+             */
+            id?: number;
+            /** Format: date-time */
+            notAfter: string;
+            /**
+             * @description added; duplicate: JEC has it already; no_key: no private key among the files belongs to it; failed: see code
+             * @enum {string}
+             */
+            result: "added" | "duplicate" | "no_key" | "failed";
         };
         InstanceBody: {
             config: {
@@ -1924,6 +1977,11 @@ export interface components {
             action: "add" | "change" | "keep" | "skip";
             name?: string;
             problems?: components["schemas"]["Problem"][];
+        };
+        Item1: {
+            /** @description The file in base64, or PEM text as it is */
+            content: string;
+            name: string;
         };
         JobBody: {
             /** @description Why its last run failed, as the job said it; empty when it succeeded */
@@ -3037,6 +3095,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CertificateBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportOutputBody"];
                 };
             };
             /** @description Error */

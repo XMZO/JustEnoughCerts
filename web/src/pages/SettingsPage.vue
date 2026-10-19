@@ -37,7 +37,7 @@ import { saveFile, useCertSettings, useSaveCertSettings, type CertSettingsInput,
 import { useExportConfig, useImportConfig, type ConfigItem, type ConfigReport } from '../api/config'
 import { useApiError } from '../api/errors'
 import { useManifest } from '../api/manifest'
-import { useBackup, useHealth, useReleaseCheck, useRestore, useSetAutoBackup, useSetTimeZone, useSystem, waitForRestart, type Health } from '../api/system'
+import { lowDisk, useBackup, useHealth, useReleaseCheck, useRestore, useSetAutoBackup, useSetTimeZone, useSystem, waitForRestart, type Health } from '../api/system'
 import { keyText } from '../certs/life'
 import CopyButton from '../components/CopyButton.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -268,11 +268,7 @@ const moduleName = (j: Job) => {
   const m = manifest.data.value?.modules.find((x) => x.id === j.module)
   return m ? t(m.name as MessageKey) : j.module
 }
-// Less than a gigabyte, or a twentieth, left is low.
-const lowDisk = computed(() => {
-  const d = health.data.value?.disk
-  return !!d && (d.free < 1024 ** 3 || d.free < d.total / 20)
-})
+const diskLow = computed(() => lowDisk(health.data.value?.disk))
 
 // The time zone of the whole panel, saved as soon as it changes: the one
 // chosen, or the server's.
@@ -879,8 +875,8 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           </dd>
           <template v-if="health.data.value.disk">
             <dt class="font-semibold">{{ t('kernel.health.disk') }}</dt>
-            <dd :class="[fact, lowDisk ? 'font-semibold text-warn-ink' : '']">
-              <TriangleAlert v-if="lowDisk" class="mr-1 inline size-4 align-[-3px]" aria-hidden="true" />{{
+            <dd :class="[fact, diskLow ? 'font-semibold text-warn-ink' : '']">
+              <TriangleAlert v-if="diskLow" class="mr-1 inline size-4 align-[-3px]" aria-hidden="true" />{{
                 t('kernel.health.disk_free', { free: intl.bytes(health.data.value.disk.free), total: intl.bytes(health.data.value.disk.total) })
               }}
             </dd>
