@@ -135,6 +135,7 @@ async function retry() {
           <RotateCw class="size-4" aria-hidden="true" />{{ t('certs.action.retry') }}
         </JecButton>
         <JecButton v-if="!running" :to="`/certificates/${id}`">{{ t('certs.action.details') }}</JecButton>
+        <JecButton v-else to="/certificates">{{ t('certs.issuance.background') }}</JecButton>
       </div>
 
       <div class="flex flex-wrap items-start gap-3 sm:gap-4">

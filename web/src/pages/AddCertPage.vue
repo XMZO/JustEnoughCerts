@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Plus, Save, ShieldCheck } from '@lucide/vue'
 import { computed, ref, watchEffect } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { useAddCertificate, useCertSettings, useIssueCertificate, type KeyType } from '../api/certs'
 import { revealError, useApiError } from '../api/errors'
@@ -26,6 +26,7 @@ import { typeName } from '../providers/fields'
 const { t } = useT()
 const intl = useIntl()
 const router = useRouter()
+const route = useRoute()
 
 const sources = useProviders('source')
 const sourceTypes = useProviderTypes('source')
@@ -35,8 +36,9 @@ const targets = useProviders('target')
 const targetTypes = useProviderTypes('target')
 const chosenTargets = ref<number[]>([])
 
-// The choice of source: the first configured one until someone picks.
-const picked = ref<'upload' | number>()
+// The choice of source: the first configured one until someone picks, or
+// an upload when the link asks for one, as importing does.
+const picked = ref<'upload' | number | undefined>(route.query.source === 'upload' ? 'upload' : undefined)
 const source = computed<'upload' | number | undefined>(() => {
   if (picked.value !== undefined) return picked.value
   if (!sources.isSuccess.value) return undefined

@@ -491,11 +491,17 @@
       "copy_serial": "Copy the serial number",
       "delete": "Delete certificate",
       "deploy_now": "Deploy now",
+      "deploy_to": "Deploy now to {target}",
       "details": "View details",
       "download": "Download",
       "download_version": "Download the version {range}",
+      "import": "Import a certificate",
       "issue": "Issue the certificate",
       "issue_now": "Issue now",
+      "progress": "See the progress",
+      "redeploy": "Deploy again",
+      "redeploy_to": "Deploy again to {target}",
+      "renew_now": "Renew now",
       "retry": "Try again",
       "save": "Save certificate",
       "upload": "Upload new certificate",
@@ -569,6 +575,8 @@
       "expired_detail": "{life}. Upload a new certificate to replace it.",
       "failed": "{domain} could not be issued",
       "none": "Nothing needs you right now.",
+      "renewal_detail": "They renew by themselves at {time}; nothing to do.",
+      "renewal_group": "{count, plural, one {# certificate} other {# certificates}} in the renewal window",
       "renewing": "{domain} expires soon",
       "replace": "{domain} needs replacing",
       "replace_detail": "Uploaded certificates are not renewed automatically: {life}.",
@@ -588,7 +596,8 @@
       "left": "Remaining",
       "next": "Next renewal",
       "source": "Source",
-      "state": "Status"
+      "state": "Status",
+      "targets": "Deploys to"
     },
     "config": {
       "error": {
@@ -698,12 +707,15 @@
       "renewal": "Renewal",
       "serial": "Serial number",
       "source": "Source",
+      "targets": "Deploys to",
       "validation": "Validation",
       "validity": "Validity"
     },
     "filter": {
       "all": "All",
-      "label": "Filter by status"
+      "all_sources": "All sources",
+      "label": "Filter by status",
+      "source": "Source"
     },
     "history": {
       "current": "Current",
@@ -754,6 +766,7 @@
       "expired": "{days, plural, one {Expired # day ago} other {Expired # days ago}}",
       "expired_today": "Expired today",
       "left": "{days, plural, one {# day left} other {# days left}}",
+      "pending": "Once issued",
       "today": "Expires today"
     },
     "list": {
@@ -783,8 +796,10 @@
     "next": {
       "auto": "Renews on {date}",
       "first": "Waiting for the first issuance",
+      "gave_up": "No more retries by itself: once the cause is dealt with, retry.",
       "issuing": "Issuing now",
-      "manual": "Replace by hand"
+      "manual": "Replace by hand",
+      "retry": "Retries by itself at {time} (attempt {attempt})."
     },
     "note": {
       "deploy_failed": "{target}: {error}",
@@ -797,7 +812,8 @@
       "hint": "Sorted by days left, the most urgent first. Select a slot to see its summary.",
       "inventory": "All certificates",
       "short_count": "{count, plural, one {# certificate} other {# certificates}}, {attention, plural, one {# needs attention} other {# need attention}}",
-      "summary": "{count, plural, one {# certificate.} other {# certificates.}} {attention, plural, =0 {All of them are healthy.} one {# needs your attention.} other {# need your attention.}}"
+      "summary": "{count, plural, one {# certificate.} other {# certificates.}} {attention, plural, =0 {All of them are healthy.} one {# needs your attention.} other {# need your attention.}}",
+      "summary_renewing": "{count, plural, one {# certificate.} other {# certificates.}} {renewing, plural, one {# renews by itself} other {# renew by themselves}} at {time}; {attention, plural, =0 {the others are fine.} one {# needs you.} other {# need you.}}"
     },
     "plan": {
       "check": "Check that the certificate and the private key match",
@@ -915,7 +931,8 @@
       "running": "in progress"
     },
     "targets": {
-      "intro": "Every new version goes to the targets chosen. A target added gets the current version at once."
+      "intro": "Every new version goes to the targets chosen. A target added gets the current version at once.",
+      "none": "Nowhere"
     },
     "timeline": {
       "marker": "{domain}, expires {date}",
@@ -1543,6 +1560,7 @@
     },
     "more": {
       "account": "Account",
+      "count": "{count, plural, one {#} other {#}}",
       "system": "System"
     },
     "notify": {
@@ -1585,12 +1603,14 @@
         "name": "Name",
         "name_help": "Tells it apart in JEC, such as “Main account”."
       },
+      "manage_modules": "Manage the modules",
       "no_match": "None found.",
       "no_secrets": "No secrets",
       "notifier": {
         "add": "Add a channel",
         "dispatch_off": "The notify module is off, so no notification goes out. Turn it on on the page:",
         "empty": "No channels yet. Add one to hear about problems in time.",
+        "foot": "The modules that are on offer {count, plural, one {# kind of notification} other {# kinds of notification}}.",
         "intro": "When an issuance or a deployment fails, or a certificate is about to expire, these channels tell you.",
         "title": "Notifications"
       },
@@ -1601,12 +1621,14 @@
       "solver": {
         "add": "Add a validation method",
         "empty": "No validation methods yet. Before issuing, add the DNS provider that serves your domains, or the website directory they are served from.",
+        "foot": "There are {count, plural, one {# way} other {# ways}} to validate, the DNS providers by lego; a DNS of your own can be reached through RFC 2136 or a plugin.",
         "intro": "JEC adds the validation records through the API of a DNS provider, or puts the validation files in a website directory, and removes them afterwards.",
         "title": "Domain validation"
       },
       "source": {
         "add": "Add a source",
         "empty": "No sources yet. Add an ACME account, and JEC issues and renews certificates by itself.",
+        "foot": "The modules that are on offer {count, plural, one {# kind of source} other {# kinds of source}}.",
         "intro": "Where certificates come from: certificate authorities that speak ACME, such as Let's Encrypt. Uploads need no setup here.",
         "title": "Certificate sources"
       },
@@ -1627,6 +1649,7 @@
       "target": {
         "add": "Add a target",
         "empty": "No targets yet. Add one, and new versions of certificates go there by themselves.",
+        "foot": "The modules that are on offer {count, plural, one {# kind of target} other {# kinds of target}}. Anything else can be reached through SSH commands, a webhook or a plugin.",
         "intro": "Where certificates go once issued or renewed.",
         "title": "Deploy targets"
       },

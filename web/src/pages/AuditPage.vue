@@ -11,6 +11,7 @@ import PageHeader from '../components/PageHeader.vue'
 import SearchBox from '../components/SearchBox.vue'
 import { useT, type MessageKey } from '../i18n'
 import { useIntl } from '../i18n/intl'
+import { fromMore } from '../shell'
 
 // What was done through the API (module audit), the newest first and
 // grouped by day, filtered by result, time and text instead of paged, as
@@ -152,7 +153,7 @@ const selectClass =
 </script>
 
 <template>
-  <PageHeader :title="t('audit.page.title')" :subtitle="t('audit.page.intro')">
+  <PageHeader :title="t('audit.page.title')" :subtitle="t('audit.page.intro')" :phone-back="fromMore">
     <template #actions>
       <JecButton :disabled="!shown.length" @click="exportCsv"><Download class="size-4" aria-hidden="true" />{{ t('audit.page.export') }}</JecButton>
     </template>

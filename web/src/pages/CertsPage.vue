@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleCheck, CircleX, LoaderCircle, OctagonX, Plus, TriangleAlert } from '@lucide/vue'
+import { CircleCheck, CircleX, FileDown, LoaderCircle, OctagonX, Plus, TriangleAlert } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
@@ -25,6 +25,7 @@ const { t } = useT()
 const intl = useIntl()
 const certificates = useCertificates()
 const sources = useProviders('source')
+const targets = useProviders('target')
 const deployNote = useDeployNote()
 
 const error = computed(() => {
@@ -42,12 +43,22 @@ const attention = (c: Certificate) => needsAttention(c) || servedOld(c)
 type Filter = 'all' | 'attention' | 'ok'
 const filter = ref<Filter>('all')
 const query = ref('')
+// The source of the certificates shown: '' for all, upload, or the ID of a
+// configured one.
+const fromSource = ref('')
 
 const all = computed(() => certificates.data.value ?? [])
 const searched = computed(() => {
   const q = query.value.trim().toLowerCase()
-  return q ? all.value.filter((c) => c.domains.some((d) => d.includes(q))) : all.value
+  return all.value
+    .filter((c) => !q || c.domains.some((d) => d.includes(q)))
+    .filter((c) => !fromSource.value || (fromSource.value === 'upload' ? c.source === 'upload' : String(c.sourceProvider) === fromSource.value))
 })
+// The sources there are certificates of, to choose from.
+const sourceChoices = computed(() => [
+  ...(sources.data.value ?? []).filter((p) => all.value.some((c) => c.sourceProvider === p.id)).map((p) => ({ value: String(p.id), name: p.name })),
+])
+const hasUploads = computed(() => all.value.some((c) => c.source === 'upload'))
 const shown = computed(() =>
   searched.value.filter((c) => filter.value === 'all' || (filter.value === 'attention') === attention(c)),
 )
@@ -67,6 +78,8 @@ interface Row {
   note: string
   /** Where new versions come from: a configured source by its name, or uploads. */
   source: string
+  /** The names of the targets it deploys to. */
+  targets: string[]
   /** What happens next: the renewal, or the upload someone has to do. */
   next: string
 }
@@ -117,6 +130,7 @@ const rows = computed<Row[]>(() =>
       label: t('certs.cert.label', { domain, state: t(stateText[c.state]), life: lifeWords }),
       note: note(c),
       source: c.source === 'provider' ? (sources.data.value?.find((p) => p.id === c.sourceProvider)?.name ?? '') : t('certs.source.upload'),
+      targets: c.targets.map((id) => targets.data.value?.find((p) => p.id === id)?.name ?? '').filter(Boolean),
       next: next(c),
     }
   }),
@@ -140,6 +154,13 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
   <PageHeader :title="t('certs.list.title')" :subtitle="t('certs.list.intro')">
     <template #phone>
       <RouterLink
+        :to="{ path: '/certificates/new', query: { source: 'upload' } }"
+        :aria-label="t('certs.action.import')"
+        class="grid size-11 place-items-center rounded-md text-ink hover:bg-surface-sunken"
+      >
+        <FileDown class="size-4" aria-hidden="true" />
+      </RouterLink>
+      <RouterLink
         to="/certificates/new"
         :aria-label="t('certs.action.add')"
         class="grid size-11 place-items-center rounded-md bg-brand text-on-brand hover:bg-brand-hover hover:text-on-brand"
@@ -148,6 +169,7 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
       </RouterLink>
     </template>
     <template #actions>
+      <JecButton :to="{ path: '/certificates/new', query: { source: 'upload' } }"><FileDown class="size-4" aria-hidden="true" />{{ t('certs.action.import') }}</JecButton>
       <JecButton variant="primary" to="/certificates/new"><Plus class="size-4" aria-hidden="true" />{{ t('certs.action.add') }}</JecButton>
     </template>
   </PageHeader>
@@ -182,6 +204,17 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
             {{ t(f.label) }}<data :value="f.count" class="font-medium text-ink-muted tabular-nums">{{ f.count }}</data>
           </button>
         </div>
+        <label v-if="sourceChoices.length + (hasUploads ? 1 : 0) > 1" class="flex items-center gap-2 text-small text-ink-muted sm:ml-auto">
+          {{ t('certs.filter.source') }}
+          <select
+            v-model="fromSource"
+            class="h-9 max-w-56 rounded-md border border-line-strong bg-surface-raised px-2 text-small text-ink sm:h-[30px]"
+          >
+            <option value="">{{ t('certs.filter.all_sources') }}</option>
+            <option v-for="s in sourceChoices" :key="s.value" :value="s.value" translate="no">{{ s.name }}</option>
+            <option v-if="hasUploads" value="upload">{{ t('certs.source.upload') }}</option>
+          </select>
+        </label>
       </div>
 
       <p v-if="!rows.length" class="m-0 rounded-lg border border-line bg-surface-raised p-4 text-ink-muted">
@@ -194,7 +227,7 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
           <thead>
             <tr>
               <th
-                v-for="col in ['certs.column.domain', 'certs.column.state', 'certs.column.left', 'certs.column.source', 'certs.column.next'] as const"
+                v-for="col in ['certs.column.domain', 'certs.column.state', 'certs.column.left', 'certs.column.source', 'certs.column.targets', 'certs.column.next'] as const"
                 :key="col"
                 scope="col"
                 class="border-b border-line bg-surface-sunken px-3 py-2 text-left text-small font-semibold whitespace-nowrap text-ink-muted"
@@ -211,13 +244,29 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
                 </RouterLink>
               </td>
               <td class="border-b border-line px-3 py-1.5"><StatusBadge :state="r.cert.state" /></td>
-              <td class="border-b border-line px-3 py-1.5"><LifeBar v-if="r.life" :life="r.life" inline /></td>
+              <td class="border-b border-line px-3 py-1.5">
+                <LifeBar v-if="r.life" :life="r.life" inline />
+                <span v-else class="text-small whitespace-nowrap text-ink-muted">{{ t('certs.life.pending') }}</span>
+              </td>
               <td
                 class="max-w-48 truncate border-b border-line px-3 py-1.5 whitespace-nowrap text-ink-muted"
                 :translate="r.cert.source === 'provider' ? 'no' : undefined"
                 :title="r.source"
               >
                 {{ r.source }}
+              </td>
+              <td class="border-b border-line px-3 py-1.5">
+                <span class="flex max-w-60 flex-wrap gap-1.5">
+                  <span
+                    v-for="name in r.targets"
+                    :key="name"
+                    class="inline-flex h-[22px] max-w-full items-center truncate rounded-sm border border-line px-2 text-caption whitespace-nowrap text-ink-muted"
+                    translate="no"
+                    :title="name"
+                  >
+                    {{ name }}
+                  </span>
+                </span>
               </td>
               <td class="max-w-56 truncate border-b border-line px-3 py-1.5 whitespace-nowrap text-ink-muted" :title="r.next">{{ r.next }}</td>
             </tr>

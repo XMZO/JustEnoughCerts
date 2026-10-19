@@ -15,6 +15,8 @@ defineProps<{
   subtitle?: string
   /** The way back: the breadcrumb, and the back button on phones. */
   back?: { to: RouteLocationRaw; label: MessageKey }
+  /** A way back on phones only, as to the More tab a page is reached from there. */
+  phoneBack?: { to: RouteLocationRaw; label: MessageKey }
 }>()
 
 const { t } = useT()
@@ -23,12 +25,12 @@ const { t } = useT()
 <template>
   <header
     class="sticky top-0 z-10 flex h-14 items-center gap-2.5 border-b border-line bg-surface-raised pr-2 pl-4 sm:hidden"
-    :class="back ? 'pl-1' : ''"
+    :class="back || phoneBack ? 'pl-1' : ''"
   >
     <RouterLink
-      v-if="back"
-      :to="back.to"
-      :aria-label="t(back.label)"
+      v-if="back || phoneBack"
+      :to="(back ?? phoneBack)!.to"
+      :aria-label="t((back ?? phoneBack)!.label)"
       class="grid size-11 flex-none place-items-center rounded-md text-ink hover:bg-surface-sunken"
     >
       <ArrowLeft class="size-5" aria-hidden="true" />

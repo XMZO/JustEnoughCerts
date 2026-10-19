@@ -48,6 +48,7 @@ import PageHeader from '../components/PageHeader.vue'
 import { locales, setLocale, useT, type Locale, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import { setTheme, theme, themes, type Theme } from '../theme'
+import { fromMore } from '../shell'
 
 // The settings (docs/design/boards/Settings and SettingsMobile), each saved
 // as soon as it changes. Those of the account, the panel's address and the
@@ -400,7 +401,7 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
 </script>
 
 <template>
-  <PageHeader :title="t('kernel.settings.title')" :subtitle="t('kernel.settings.intro')" />
+  <PageHeader :title="t('kernel.settings.title')" :subtitle="t('kernel.settings.intro')" :phone-back="fromMore" />
 
   <div class="grid items-start gap-3 px-4 pt-3 sm:mt-4 sm:grid-cols-[repeat(auto-fill,minmax(420px,1fr))] sm:gap-4 sm:p-0">
     <p class="m-0 text-ink-muted sm:hidden">{{ t('kernel.settings.intro') }}</p>

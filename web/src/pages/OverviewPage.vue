@@ -4,8 +4,9 @@ import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
-import { useCertificates, useRuns, type Certificate, type CertificateState } from '../api/certs'
-import { useProviders } from '../api/providers'
+import { useCertificates, useDeployOf, useIssueOf, useRuns, type Certificate, type CertificateState } from '../api/certs'
+import { useApiError } from '../api/errors'
+import { useProviders, useProviderTypes } from '../api/providers'
 import { failingDeployment, useDeployNote } from '../certs/deployment'
 import { runAt, runLink, runResult, useRunText } from '../certs/runs'
 import { certLife, lifeText, needsAttention, type Life } from '../certs/life'
@@ -35,7 +36,15 @@ const error = computed(() => {
 
 const all = computed(() => certificates.data.value ?? [])
 const sources = useProviders('source')
+const sourceTypes = useProviderTypes('source')
+const targets = useProviders('target')
 const sourceName = (c: Certificate) => sources.data.value?.find((p) => p.id === c.sourceProvider)?.name ?? ''
+const targetNames = (c: Certificate) => c.targets.map((id) => targets.data.value?.find((p) => p.id === id)?.name ?? '').filter(Boolean)
+// A source with keys of its own collects rather than renews.
+const collects = (c: Certificate) => {
+  const type = sources.data.value?.find((p) => p.id === c.sourceProvider)?.type
+  return !!sourceTypes.data.value?.find((s) => s.id === type)?.ownKey
+}
 const deployNote = useDeployNote()
 const shown = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -51,7 +60,46 @@ const selectedExtra = computed(() => {
   return n > 0 ? `+${n}` : ''
 })
 
-const subtitle = computed(() => t('certs.overview.summary', { count: all.value.length, attention: attention.value.length }))
+// The certificates in their renewal window that renew by themselves need no
+// one: they show apart, with when they renew.
+const renewing = computed(() => attention.value.filter((c) => c.source === 'provider' && c.state === 'expiring'))
+const firstRenewal = computed(() => {
+  const at = renewing.value.map((c) => (c.renewAt ? Date.parse(c.renewAt) : Date.now())).sort((a, b) => a - b)[0]
+  return at === undefined ? '' : intl.dateTime(Math.max(at, Date.now()))
+})
+const subtitle = computed(() => {
+  const others = attention.value.length - renewing.value.length
+  return renewing.value.length
+    ? t('certs.overview.summary_renewing', { count: all.value.length, renewing: renewing.value.length, time: firstRenewal.value, attention: others })
+    : t('certs.overview.summary', { count: all.value.length, attention: attention.value.length })
+})
+
+// What the buttons do: issue a certificate now, or deploy it again.
+const issue = useIssueOf()
+const deploy = useDeployOf()
+const actionError = useApiError(computed(() => issue.error.value ?? deploy.error.value))
+const busy = ref<number | 'renewing' | null>(null)
+async function act(run: () => Promise<unknown>, who: number | 'renewing') {
+  busy.value = who
+  try {
+    await run()
+  } catch {
+    // shown above the summary
+  } finally {
+    busy.value = null
+  }
+}
+const renewAll = () => act(() => Promise.all(renewing.value.map((c) => issue.mutateAsync(c.id))), 'renewing')
+
+/** primary is the main thing to do for c: what the summary's first button does. */
+function primary(c: Certificate): { label: MessageKey; to?: string; run?: () => Promise<unknown> } | null {
+  if (c.source !== 'provider') return null // uploads have their own button
+  if (c.state === 'issuing' && c.issuance) return { label: 'certs.action.progress', to: `/certificates/${c.id}/issuances/${c.issuance.id}` }
+  if (c.state === 'deploy_failed') return { label: 'certs.action.deploy_now', run: () => deploy.mutateAsync(c.id) }
+  if (c.state === 'failed') return { label: 'certs.action.retry', run: () => issue.mutateAsync(c.id) }
+  return { label: collects(c) ? 'certs.action.collect_now' : 'certs.action.renew_now', run: () => issue.mutateAsync(c.id) }
+}
+const selectedPrimary = computed(() => (selected.value ? primary(selected.value) : null))
 
 const order: CertificateState[] = ['failed', 'deploy_failed', 'expired', 'expiring', 'issuing', 'deploying', 'ok']
 const counts = computed(() =>
@@ -74,7 +122,10 @@ function plan(c: Certificate, l: Life | null): string {
   if (c.state === 'deploy_failed') return deployNote(c)
   if (c.source === 'provider') {
     if (c.state === 'issuing') return t('certs.next.issuing')
-    if (c.state === 'failed') return errorText(c)
+    if (c.state === 'failed' && c.issuance?.state === 'pending' && c.issuance.nextAt) {
+      return t('certs.next.retry', { time: intl.dateTime(c.issuance.nextAt), attempt: c.issuance.attempts + 1 })
+    }
+    if (c.state === 'failed') return t('certs.next.gave_up')
     if (!c.current) return t('certs.next.first')
     return t('certs.next.auto', { date: intl.date(Date.parse(c.current.notAfter) - c.renewBeforeDays * day) })
   }
@@ -84,10 +135,11 @@ function plan(c: Certificate, l: Life | null): string {
 }
 
 // What needs someone: a failed issuance or deployment shows its reason and
-// leads to its log; an uploaded certificate near its end asks for a new
-// upload.
+// leads to its log, with a button to try again; an uploaded certificate
+// near its end asks for a new upload. Those that renew by themselves come
+// as one, which needs no one.
 const todo = computed(() =>
-  attention.value.map((c) => {
+  attention.value.filter((c) => !renewing.value.includes(c)).map((c) => {
     const l = certLife(c)
     const domain = c.domains[0] ?? ''
     const expired = c.state === 'expired' || c.state === 'failed' || c.state === 'deploy_failed'
@@ -100,6 +152,7 @@ const todo = computed(() =>
         detail: deployNote(c),
         to: `/certificates/${c.id}/deployments/${deployment.id}`,
         action: 'certs.detail.show_log' as MessageKey,
+        button: { label: 'certs.action.deploy_now' as MessageKey, run: () => deploy.mutateAsync(c.id) },
       }
     }
     if (c.source === 'provider') {
@@ -108,9 +161,10 @@ const todo = computed(() =>
         cert: c,
         expired,
         title: t(failed ? 'certs.attention.failed' : expired ? 'certs.attention.expired' : 'certs.attention.renewing', { domain }),
-        detail: failed ? errorText(c) : t('certs.note.renewing'),
+        detail: failed ? `${errorText(c)} ${plan(c, l)}` : t('certs.note.renewing'),
         to: failed ? `/certificates/${c.id}/issuances/${c.issuance!.id}` : `/certificates/${c.id}`,
         action: (failed ? 'certs.detail.show_log' : 'certs.action.details') as MessageKey,
+        button: failed ? { label: 'certs.action.retry' as MessageKey, run: () => issue.mutateAsync(c.id) } : undefined,
       }
     }
     return {
@@ -120,6 +174,7 @@ const todo = computed(() =>
       detail: t(expired ? 'certs.attention.expired_detail' : 'certs.attention.replace_detail', { life: lifeWords(l) }),
       to: { path: `/certificates/${c.id}`, query: { upload: '1' } },
       action: 'certs.action.upload_short' as MessageKey,
+      button: undefined,
     }
   }),
 )
@@ -181,6 +236,7 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
 
   <div class="flex flex-col gap-3 px-4 pt-3 sm:mt-4 sm:gap-4 sm:p-0">
     <JecAlert v-if="error" :code="error.code" :params="error.params" />
+    <JecAlert v-if="actionError.error.value" :code="actionError.error.value.code" :params="actionError.error.value.params" />
 
     <section
       v-if="certificates.isSuccess.value && !all.length"
@@ -229,18 +285,36 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
             <StatusBadge :state="selected.state" />
           </div>
           <LifeBar v-if="selectedLife" :life="selectedLife" />
+          <p
+            v-if="selected.state === 'failed' && errorText(selected)"
+            class="m-0 flex items-start gap-2 rounded-md bg-danger-soft px-2.5 py-2 text-small text-danger-ink [overflow-wrap:anywhere]"
+          >
+            <OctagonX class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ errorText(selected) }}
+          </p>
           <dl class="m-0 hidden grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-small sm:grid">
             <dt class="text-ink-muted">{{ t('certs.field.source') }}</dt>
             <dd v-if="selected.source === 'provider'" class="m-0 min-w-0 truncate" translate="no" :title="sourceName(selected)">
               {{ sourceName(selected) }}
             </dd>
             <dd v-else class="m-0">{{ t('certs.source.upload') }}</dd>
-            <template v-if="selected.current">
-              <dt class="text-ink-muted">{{ t('certs.field.expires') }}</dt>
-              <dd class="m-0 tabular-nums">
-                <time :datetime="selected.current.notAfter">{{ intl.date(selected.current.notAfter) }}</time>
-              </dd>
-            </template>
+            <dt class="text-ink-muted">{{ t('certs.field.expires') }}</dt>
+            <dd class="m-0 tabular-nums">
+              <time v-if="selected.current" :datetime="selected.current.notAfter">{{ intl.date(selected.current.notAfter) }}</time>
+              <span v-else class="text-ink-muted">{{ t('certs.life.pending') }}</span>
+            </dd>
+            <dt class="text-ink-muted">{{ t('certs.field.targets') }}</dt>
+            <dd class="m-0 flex min-w-0 flex-wrap gap-1.5">
+              <span
+                v-for="name in targetNames(selected)"
+                :key="name"
+                class="inline-flex h-[22px] max-w-full items-center truncate rounded-sm border border-line px-2 text-caption whitespace-nowrap text-ink-muted"
+                translate="no"
+                :title="name"
+              >
+                {{ name }}
+              </span>
+              <span v-if="!targetNames(selected).length" class="text-ink-muted">{{ t('certs.targets.none') }}</span>
+            </dd>
           </dl>
           <p class="m-0 text-small text-ink-muted [overflow-wrap:anywhere]">{{ plan(selected, selectedLife) }}</p>
           <div class="mt-auto flex flex-wrap gap-2">
@@ -253,6 +327,19 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
             >
               {{ t('certs.action.upload') }}
             </JecButton>
+            <JecButton v-else-if="selectedPrimary?.to" variant="primary" size="sm" :to="selectedPrimary.to" class="max-sm:flex-1">
+              {{ t(selectedPrimary.label) }}
+            </JecButton>
+            <JecButton
+              v-else-if="selectedPrimary?.run"
+              variant="primary"
+              size="sm"
+              :busy="busy === selected.id"
+              class="max-sm:flex-1"
+              @click="act(selectedPrimary.run, selected.id)"
+            >
+              {{ t(selectedPrimary.label) }}
+            </JecButton>
             <JecButton size="sm" :to="`/certificates/${selected.id}`" class="max-sm:flex-1">{{ t('certs.action.details') }}</JecButton>
           </div>
         </div>
@@ -261,7 +348,15 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
       <div class="flex flex-wrap items-stretch gap-3 sm:gap-4">
         <section aria-labelledby="todo" class="flex min-w-0 flex-[1_1_300px] flex-col rounded-lg border border-line bg-surface-raised px-3 pt-3 pb-1 sm:p-4">
           <h2 id="todo" class="m-0 mb-0.5 text-heading font-semibold sm:text-section-title">{{ t('certs.attention.title') }}</h2>
-          <p v-if="!todo.length" class="m-0 py-2.5 text-small text-ink-muted">{{ t('certs.attention.none') }}</p>
+          <p v-if="!todo.length && !renewing.length" class="m-0 py-2.5 text-small text-ink-muted">{{ t('certs.attention.none') }}</p>
+          <div v-if="renewing.length" class="flex items-start gap-2.5 border-b border-line py-2.5 last:border-b-0 last:pb-1">
+            <TriangleAlert class="mt-[3px] size-4 flex-none text-warn-ink" aria-hidden="true" />
+            <div class="min-w-0 flex-1">
+              <div class="font-semibold [overflow-wrap:anywhere]">{{ t('certs.attention.renewal_group', { count: renewing.length }) }}</div>
+              <div class="text-small text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.attention.renewal_detail', { time: firstRenewal }) }}</div>
+            </div>
+            <JecButton variant="ghost" size="sm" :busy="busy === 'renewing'" @click="renewAll">{{ t('certs.action.renew_now') }}</JecButton>
+          </div>
           <div
             v-for="item in todo"
             :key="item.cert.id"
@@ -273,6 +368,9 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
               <div class="font-semibold [overflow-wrap:anywhere]">{{ item.title }}</div>
               <div class="text-small text-ink-muted [overflow-wrap:anywhere]">{{ item.detail }}</div>
             </div>
+            <JecButton v-if="item.button" size="sm" :busy="busy === item.cert.id" @click="act(item.button.run, item.cert.id)">
+              {{ t(item.button.label) }}
+            </JecButton>
             <JecButton variant="ghost" size="sm" :to="item.to" class="max-sm:hidden">
               {{ t(item.action) }}
             </JecButton>
@@ -323,9 +421,9 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
           </ol>
         </section>
 
-        <section aria-labelledby="activity" class="hidden min-w-0 flex-[1_1_300px] flex-col gap-0.5 rounded-lg border border-line bg-surface-raised p-4 sm:flex">
+        <section aria-labelledby="activity" class="flex min-w-0 flex-[1_1_300px] flex-col gap-0.5 rounded-lg border border-line bg-surface-raised px-3 pt-3 pb-1 sm:p-4">
           <div class="flex flex-wrap items-baseline justify-between gap-x-3">
-            <h2 id="activity" class="m-0 text-section-title font-semibold">{{ t('certs.activity.title') }}</h2>
+            <h2 id="activity" class="m-0 text-heading font-semibold sm:text-section-title">{{ t('certs.activity.title') }}</h2>
             <RouterLink to="/history" class="text-small">{{ t('certs.activity.all') }}</RouterLink>
           </div>
           <p v-if="recent.isSuccess.value && !activity.length" class="m-0 py-2 text-small text-ink-muted">{{ t('certs.activity.none') }}</p>

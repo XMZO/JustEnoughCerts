@@ -4,7 +4,9 @@ import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
 import { useSession, useSignOut } from '../api/account'
+import { useCredentials } from '../api/credentials'
 import { useManifest } from '../api/manifest'
+import { useProviders } from '../api/providers'
 import JecButton from '../components/JecButton.vue'
 import LanguageSwitch from '../components/LanguageSwitch.vue'
 import PageHeader from '../components/PageHeader.vue'
@@ -17,13 +19,21 @@ const session = useSession()
 const signOut = useSignOut()
 const manifest = useManifest()
 
-const config = [
-  { to: '/sources', label: 'kernel.providers.source.title', icon: Package },
-  { to: '/dns', label: 'kernel.providers.solver.title', icon: Globe },
-  { to: '/targets', label: 'kernel.providers.target.title', icon: Server },
-  { to: '/notify', label: 'kernel.providers.notifier.title', icon: Bell },
-  { to: '/credentials', label: 'kernel.credentials.title', icon: KeyRound },
-] as const
+// Each with how many there are of it.
+const lists = {
+  sources: useProviders('source'),
+  solvers: useProviders('solver'),
+  targets: useProviders('target'),
+  notifiers: useProviders('notifier'),
+  credentials: useCredentials(),
+}
+const config = computed(() => [
+  { to: '/sources', label: 'kernel.providers.source.title', icon: Package, count: lists.sources.data.value?.length },
+  { to: '/dns', label: 'kernel.providers.solver.title', icon: Globe, count: lists.solvers.data.value?.length },
+  { to: '/targets', label: 'kernel.providers.target.title', icon: Server, count: lists.targets.data.value?.length },
+  { to: '/notify', label: 'kernel.providers.notifier.title', icon: Bell, count: lists.notifiers.data.value?.length },
+  { to: '/credentials', label: 'kernel.credentials.title', icon: KeyRound, count: lists.credentials.data.value?.length },
+] as const)
 
 const modulesOn = computed(() => manifest.data.value?.modules.filter((m) => m.required || m.switched).length)
 const audited = computed(() => manifest.data.value?.modules.some((m) => m.id === 'audit' && m.enabled) ?? false)
@@ -53,6 +63,7 @@ async function leave() {
       >
         <component :is="link.icon" class="size-5 flex-none text-ink-muted" aria-hidden="true" />
         <span class="min-w-0 flex-1">{{ t(link.label) }}</span>
+        <span v-if="link.count !== undefined" class="text-small text-ink-muted">{{ t('kernel.more.count', { count: link.count }) }}</span>
         <ChevronRight class="size-4 flex-none text-ink-muted" aria-hidden="true" />
       </RouterLink>
     </section>

@@ -1,5 +1,17 @@
 <script setup lang="ts">
-import { CircleX, Download, Hourglass, LoaderCircle, Pencil, Plus, Send, ShieldCheck, Trash2, Upload } from '@lucide/vue'
+import {
+  CircleX,
+  Download,
+  Hourglass,
+  LoaderCircle,
+  Pencil,
+  Plus,
+  RotateCw,
+  Send,
+  ShieldCheck,
+  Trash2,
+  Upload,
+} from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
@@ -112,13 +124,19 @@ const deployInk = { pending: 'text-ink-muted', running: 'text-info-ink', done: '
 const failing = computed(() => (cert.value?.state === 'deploy_failed' ? failingDeployment(cert.value) : undefined))
 const deployNow = useDeployNow(() => props.id)
 const deployError = useApiError(deployNow.error)
-async function deployAll() {
+// The target being deployed to again, or 0 for all of them.
+const deploying = ref<number>()
+async function deployTo(target?: number) {
+  deploying.value = target ?? 0
   try {
-    await deployNow.mutateAsync(undefined)
+    await deployNow.mutateAsync(target)
   } catch {
     // shown in the section
+  } finally {
+    deploying.value = undefined
   }
 }
+const deployAll = () => deployTo()
 
 // Choosing the targets, in a dialog.
 const choosing = ref(false)
@@ -363,7 +381,7 @@ async function confirmDelete() {
             <div class="flex flex-wrap items-center justify-between gap-2">
               <h2 id="deploys" class="m-0 text-section-title font-semibold">{{ t('certs.detail.deploys') }}</h2>
               <div class="flex flex-wrap gap-2">
-                <JecButton v-if="cert.targets.length && current" size="sm" :busy="deployNow.isPending.value" @click="deployAll">
+                <JecButton v-if="cert.targets.length && current" size="sm" :busy="deploying === 0" @click="deployAll">
                   <Send class="size-4" aria-hidden="true" />{{ t('certs.action.deploy_now') }}
                 </JecButton>
                 <JecButton size="sm" variant="ghost" @click="chooseTargets">
@@ -374,11 +392,11 @@ async function confirmDelete() {
             <JecAlert v-if="deployError.error.value" :code="deployError.error.value.code" :params="deployError.error.value.params" />
             <p v-if="!cert.targets.length" class="m-0 text-small text-ink-muted">{{ t('certs.detail.no_targets') }}</p>
             <ol v-else class="m-0 list-none p-0 text-small">
-              <li v-for="r in deployRows" :key="r.target" class="border-b border-line last:border-b-0">
+              <li v-for="r in deployRows" :key="r.target" class="flex flex-wrap items-center gap-x-2 border-b border-line last:border-b-0">
                 <RouterLink
                   v-if="r.d"
                   :to="`/certificates/${id}/deployments/${r.d.id}`"
-                  class="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-0.5 py-2 text-ink no-underline hover:text-ink"
+                  class="flex min-h-11 min-w-[12rem] flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 py-2 text-ink no-underline hover:text-ink"
                 >
                   <span class="min-w-[8rem] flex-1 [overflow-wrap:anywhere]">
                     <span class="font-semibold" translate="no">{{ r.label.name }}</span>
@@ -387,13 +405,24 @@ async function confirmDelete() {
                   <time v-if="r.d.finishedAt" :datetime="r.d.finishedAt" class="flex-none text-ink-muted tabular-nums">{{ intl.dateTime(r.d.finishedAt) }}</time>
                   <span :class="['flex-none font-semibold', deployInk[r.d.state]]">{{ t(deploymentState(r.d)) }}</span>
                 </RouterLink>
-                <div v-else class="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-0.5 py-2">
+                <div v-else class="flex min-h-11 min-w-[12rem] flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 py-2">
                   <span class="min-w-[8rem] flex-1 [overflow-wrap:anywhere]">
                     <span class="font-semibold" translate="no">{{ r.label.name }}</span>
                     <span class="ml-1.5 text-ink-muted" translate="no">{{ r.label.type }}</span>
                   </span>
                   <span class="flex-none text-ink-muted">{{ t('certs.deployment.state.none') }}</span>
                 </div>
+                <JecButton
+                  v-if="current && r.d?.state !== 'running' && r.d?.state !== 'pending'"
+                  size="sm"
+                  variant="ghost"
+                  class="mb-2 ml-auto flex-none sm:mb-0"
+                  :busy="deploying === r.target"
+                  :aria-label="t(r.d ? 'certs.action.redeploy_to' : 'certs.action.deploy_to', { target: r.label.name })"
+                  @click="deployTo(r.target)"
+                >
+                  <RotateCw class="size-4" aria-hidden="true" />{{ t(r.d ? 'certs.action.redeploy' : 'certs.action.deploy_now') }}
+                </JecButton>
               </li>
             </ol>
           </section>

@@ -11,6 +11,7 @@ import JecDialog from '../components/JecDialog.vue'
 import PageHeader from '../components/PageHeader.vue'
 import { useT, type MessageKey } from '../i18n'
 import { useIntl } from '../i18n/intl'
+import { fromMore } from '../shell'
 
 // The credentials (docs/design/boards/Credentials, PLAN.md 6.1): the keys
 // that several providers share. Each card tells what it is, shows the part
@@ -67,7 +68,7 @@ async function confirmDelete() {
 </script>
 
 <template>
-  <PageHeader :title="t('kernel.credentials.title')" :subtitle="t('kernel.credentials.intro')">
+  <PageHeader :title="t('kernel.credentials.title')" :subtitle="t('kernel.credentials.intro')" :phone-back="fromMore">
     <template #phone>
       <button
         type="button"

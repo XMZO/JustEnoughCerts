@@ -19,6 +19,7 @@ import ProviderDialog from '../components/ProviderDialog.vue'
 import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import { kindPages, summary, typeName, type PageKind } from '../providers/fields'
+import { fromMore } from '../shell'
 
 // The configured providers of one kind (docs/design/boards/Providers):
 // certificate sources, DNS providers for the domain validation, deploy
@@ -190,7 +191,7 @@ async function confirmDelete() {
 </script>
 
 <template>
-  <PageHeader :title="t(page.title)" :subtitle="t(page.intro)">
+  <PageHeader :title="t(page.title)" :subtitle="t(page.intro)" :phone-back="fromMore">
     <template #phone>
       <button
         type="button"
@@ -278,7 +279,19 @@ async function confirmDelete() {
           <JecButton size="sm" variant="ghost" @click="startDelete(c.provider)"><Trash2 class="size-4" aria-hidden="true" />{{ t('kernel.action.delete') }}</JecButton>
         </div>
       </article>
+      <button
+        type="button"
+        class="flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-line-strong bg-transparent p-4 font-semibold text-ink-muted hover:bg-surface-sunken hover:text-ink"
+        @click="adding = true"
+      >
+        <Plus class="size-5" aria-hidden="true" />{{ t(page.add) }}
+      </button>
     </div>
+
+    <p v-if="types.data.value" class="m-0 text-small text-ink-muted">
+      {{ t(page.foot, { count: types.data.value.length }) }}
+      <RouterLink to="/modules" class="whitespace-nowrap">{{ t('kernel.providers.manage_modules') }}</RouterLink>
+    </p>
   </div>
 
   <ProviderDialog v-model:open="adding" :kind="kind" :title="t(page.add)" />

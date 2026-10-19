@@ -491,11 +491,17 @@
       "copy_serial": "复制序列号",
       "delete": "删除证书",
       "deploy_now": "立即部署",
+      "deploy_to": "立即部署到 {target}",
       "details": "查看详情",
       "download": "下载",
       "download_version": "下载 {range} 这一版",
+      "import": "导入已有证书",
       "issue": "签发证书",
       "issue_now": "立即签发",
+      "progress": "查看进度",
+      "redeploy": "重新部署",
+      "redeploy_to": "重新部署到 {target}",
+      "renew_now": "立即续期",
       "retry": "重试",
       "save": "保存证书",
       "upload": "上传新证书",
@@ -569,6 +575,8 @@
       "expired_detail": "{life}，请上传新证书替换它。",
       "failed": "{domain} 签发失败",
       "none": "现在没有需要你处理的事。",
+      "renewal_detail": "{time} 自动续期，不需要操作。",
+      "renewal_group": "{count, plural, other {# 张证书}}进入续期窗口",
       "renewing": "{domain} 即将到期",
       "replace": "{domain} 需要手动更换",
       "replace_detail": "手动上传的证书无法自动续期，{life}。",
@@ -588,7 +596,8 @@
       "left": "剩余",
       "next": "下次续期",
       "source": "来源",
-      "state": "状态"
+      "state": "状态",
+      "targets": "部署到"
     },
     "config": {
       "error": {
@@ -698,12 +707,15 @@
       "renewal": "自动续期",
       "serial": "序列号",
       "source": "来源",
+      "targets": "部署到",
       "validation": "域名验证",
       "validity": "有效期"
     },
     "filter": {
       "all": "全部",
-      "label": "按状态筛选"
+      "all_sources": "全部来源",
+      "label": "按状态筛选",
+      "source": "来源"
     },
     "history": {
       "current": "当前",
@@ -754,6 +766,7 @@
       "expired": "已过期 {days, plural, other {# 天}}",
       "expired_today": "今天已过期",
       "left": "剩 {days, plural, other {# 天}}",
+      "pending": "签发后显示",
       "today": "今天到期"
     },
     "list": {
@@ -783,8 +796,10 @@
     "next": {
       "auto": "{date} 自动续期",
       "first": "等待首次签发",
+      "gave_up": "不会再自动重试，处理好原因后点“重试”。",
       "issuing": "正在签发",
-      "manual": "需手动更换"
+      "manual": "需手动更换",
+      "retry": "将于 {time} 自动重试（第 {attempt} 次）。"
     },
     "note": {
       "deploy_failed": "{target}：{error}",
@@ -797,7 +812,8 @@
       "hint": "按剩余天数排列，最需要处理的在前。点一个格子查看摘要。",
       "inventory": "全部证书",
       "short_count": "{count, plural, other {# 张}}，{attention, plural, other {# 张需要处理}}",
-      "summary": "{count, plural, other {# 张证书。}}{attention, plural, =0 {全部正常。} other {# 张需要你处理。}}"
+      "summary": "{count, plural, other {# 张证书。}}{attention, plural, =0 {全部正常。} other {# 张需要你处理。}}",
+      "summary_renewing": "{count, plural, other {# 张证书。}}{renewing, plural, other {# 张}}将在 {time} 自动续期，{attention, plural, =0 {其余都正常。} other {# 张需要你处理。}}"
     },
     "plan": {
       "check": "检查证书和私钥是否匹配",
@@ -915,7 +931,8 @@
       "running": "进行中"
     },
     "targets": {
-      "intro": "每个新版本都会自动部署到选中的目标。新加的目标会马上部署当前版本。"
+      "intro": "每个新版本都会自动部署到选中的目标。新加的目标会马上部署当前版本。",
+      "none": "不部署"
     },
     "timeline": {
       "marker": "{domain}，{date} 到期",
@@ -1543,6 +1560,7 @@
     },
     "more": {
       "account": "账号",
+      "count": "{count, plural, other {# 个}}",
       "system": "系统"
     },
     "notify": {
@@ -1585,12 +1603,14 @@
         "name": "名称",
         "name_help": "用来在 JEC 里区分它，比如“主账号”。"
       },
+      "manage_modules": "管理模块",
       "no_match": "没有找到。",
       "no_secrets": "没有保密设置",
       "notifier": {
         "add": "添加通知方式",
         "dispatch_off": "通知模块已关闭，所以不会发出任何通知。请在这个页面打开它：",
         "empty": "还没有通知方式。添加一个，出了问题才能及时知道。",
+        "foot": "启用的模块提供 {count, plural, other {# 种通知方式}}。",
         "intro": "签发失败、部署出错或证书快到期时，通过这些渠道告诉你。",
         "title": "通知"
       },
@@ -1601,12 +1621,14 @@
       "solver": {
         "add": "添加验证方式",
         "empty": "还没有验证方式。签发证书前，先添加管理你的域名的 DNS 服务商，或者网站的目录。",
+        "foot": "可以选 {count, plural, other {# 种验证方式}}，DNS 服务商由 lego 提供；自建的 DNS 可以用 RFC 2136 或插件对接。",
         "intro": "JEC 通过 DNS 服务商的 API 添加验证记录，或者把验证文件放进网站目录，验证后删除。",
         "title": "域名验证"
       },
       "source": {
         "add": "添加证书来源",
         "empty": "还没有证书来源。添加一个 ACME 账号，JEC 就能自动签发和续期证书。",
+        "foot": "启用的模块提供 {count, plural, other {# 种证书来源}}。",
         "intro": "证书从哪里来：支持 ACME 的证书颁发机构，例如 Let's Encrypt。手动上传不用在这里设置。",
         "title": "证书来源"
       },
@@ -1627,6 +1649,7 @@
       "target": {
         "add": "添加部署目标",
         "empty": "还没有部署目标。添加一个后，证书的新版本会自动部署过去。",
+        "foot": "启用的模块提供 {count, plural, other {# 种部署目标}}。没有现成的，可以用 SSH 命令、Webhook 或插件对接。",
         "intro": "证书签发或续期后，自动部署到这些地方。",
         "title": "部署目标"
       },

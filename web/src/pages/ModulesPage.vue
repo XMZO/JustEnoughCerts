@@ -10,6 +10,7 @@ import JecSwitch from '../components/JecSwitch.vue'
 import PageHeader from '../components/PageHeader.vue'
 import SearchBox from '../components/SearchBox.vue'
 import { useT, type MessageKey, type Params } from '../i18n'
+import { fromMore } from '../shell'
 
 // The modules (docs/design/boards/Modules and ModulesMobile): every source,
 // solver, target, notifier and feature compiled in, by category, each with
@@ -101,7 +102,7 @@ const tag = 'inline-block max-w-full truncate rounded-sm px-1.5 text-[11px] lead
 </script>
 
 <template>
-  <PageHeader :title="t('kernel.modules.title')" :subtitle="t('kernel.modules.intro')" />
+  <PageHeader :title="t('kernel.modules.title')" :subtitle="t('kernel.modules.intro')" :phone-back="fromMore" />
 
   <div class="flex flex-col gap-3 px-4 pt-3 sm:mt-4 sm:gap-4 sm:p-0">
     <p class="m-0 text-ink-muted sm:hidden">{{ t('kernel.modules.intro') }}</p>

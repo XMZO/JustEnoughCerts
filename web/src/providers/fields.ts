@@ -13,6 +13,7 @@ export const kindPages = {
     intro: 'kernel.providers.source.intro',
     add: 'kernel.providers.source.add',
     empty: 'kernel.providers.source.empty',
+    foot: 'kernel.providers.source.foot',
   },
   solver: {
     path: '/dns',
@@ -20,6 +21,7 @@ export const kindPages = {
     intro: 'kernel.providers.solver.intro',
     add: 'kernel.providers.solver.add',
     empty: 'kernel.providers.solver.empty',
+    foot: 'kernel.providers.solver.foot',
   },
   target: {
     path: '/targets',
@@ -27,6 +29,7 @@ export const kindPages = {
     intro: 'kernel.providers.target.intro',
     add: 'kernel.providers.target.add',
     empty: 'kernel.providers.target.empty',
+    foot: 'kernel.providers.target.foot',
   },
   notifier: {
     path: '/notify',
@@ -34,6 +37,7 @@ export const kindPages = {
     intro: 'kernel.providers.notifier.intro',
     add: 'kernel.providers.notifier.add',
     empty: 'kernel.providers.notifier.empty',
+    foot: 'kernel.providers.notifier.foot',
   },
 } as const satisfies Partial<Record<ProviderKind, Record<string, string>>>
 

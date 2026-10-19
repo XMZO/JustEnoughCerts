@@ -160,6 +160,16 @@ export function useIssueNow(id: MaybeRefOrGetter<number>) {
   return useCertsMutation(() => unwrap(api.POST('/certs/certificates/{id}/issue', { params: { path: { id: toValue(id) } } })))
 }
 
+/** Starts an issuance of the certificate it is given now, as useIssueNow does, for pages of many. */
+export function useIssueOf() {
+  return useCertsMutation((id: number) => unwrap(api.POST('/certs/certificates/{id}/issue', { params: { path: { id } } })))
+}
+
+/** Deploys the current version of the certificate it is given now, to all its targets. */
+export function useDeployOf() {
+  return useCertsMutation((id: number) => unwrap(api.POST('/certs/certificates/{id}/deploy', { params: { path: { id } }, body: {} })))
+}
+
 export function useAddCertificate() {
   return useCertsMutation((body: PEMUpload & { renewBeforeDays?: number; targets?: number[] }) =>
     unwrap(api.POST('/certs/certificates', { body })),
