@@ -444,13 +444,17 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           <span id="theme-label" class="block font-semibold">{{ t('kernel.settings.theme') }}</span>
           <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.theme_help') }}</span>
         </div>
-        <div role="group" aria-labelledby="theme-label" class="inline-flex flex-none gap-0.5 rounded-md border border-line bg-surface-sunken p-0.5">
+        <div
+          role="group"
+          aria-labelledby="theme-label"
+          class="inline-flex flex-none gap-0.5 rounded-md border border-line bg-surface-sunken p-0.5 max-sm:flex max-sm:w-full"
+        >
           <button
             v-for="th in themes"
             :key="th"
             type="button"
             :aria-pressed="theme === th ? 'true' : 'false'"
-            class="h-[30px] cursor-pointer rounded-sm border-0 bg-transparent px-3 text-[13px] font-semibold whitespace-nowrap text-ink-muted hover:text-ink aria-pressed:bg-surface-raised aria-pressed:text-ink aria-pressed:shadow-[0_0_0_1px_var(--line-strong)] max-sm:h-9"
+            class="h-[30px] cursor-pointer rounded-sm border-0 bg-transparent px-3 text-[13px] font-semibold whitespace-nowrap text-ink-muted hover:text-ink aria-pressed:bg-surface-raised aria-pressed:text-ink aria-pressed:shadow-[0_0_0_1px_var(--line-strong)] max-sm:h-auto max-sm:min-h-9 max-sm:min-w-0 max-sm:flex-1 max-sm:px-1.5 max-sm:py-1 max-sm:whitespace-normal"
             @click="setTheme(th)"
           >
             {{ t(themeLabels[th]) }}
