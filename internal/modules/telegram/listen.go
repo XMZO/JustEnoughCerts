@@ -218,7 +218,7 @@ type callback struct {
 // the help.
 var commandViews = map[string]string{
 	"start": viewMain, "menu": viewMain, "certs": viewList + ":0", "todo": viewTodo,
-	"recent": viewRecent, "online": viewOnline, "help": viewHelp,
+	"recent": viewRecent, "online": viewOnline, "sites": viewSites, "help": viewHelp,
 }
 
 // handle answers u: a command with a new message, a button with the
@@ -282,7 +282,8 @@ func (l *listener) commands(ctx context.Context) error {
 		desc i18n.Key
 	}{
 		{"menu", i18n.TelegramCommandMenu}, {"certs", i18n.TelegramCommandCerts}, {"todo", i18n.TelegramCommandTodo},
-		{"recent", i18n.TelegramCommandRecent}, {"online", i18n.TelegramCommandOnline}, {"help", i18n.TelegramCommandHelp},
+		{"recent", i18n.TelegramCommandRecent}, {"online", i18n.TelegramCommandOnline}, {"sites", i18n.TelegramCommandSites},
+		{"help", i18n.TelegramCommandHelp},
 	} {
 		list = append(list, map[string]string{"command": c.name, "description": l.plain(c.desc, nil)})
 	}

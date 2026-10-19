@@ -2946,6 +2946,7 @@
       "recent": "最近动态",
       "refresh": "刷新",
       "renew": "立即续期",
+      "sites": "站点",
       "system": "系统信息",
       "todo": "需要处理（{count}）"
     },
@@ -2977,6 +2978,7 @@
       "menu": "打开菜单",
       "online": "线上检查",
       "recent": "最近动态",
+      "sites": "监控的站点",
       "todo": "需要处理的证书"
     },
     "deploy": {
@@ -3059,6 +3061,11 @@
       "renew": "续期",
       "running": "进行中",
       "waiting": "等待来源"
+    },
+    "sites": {
+      "none": "还没有监控的站点，可以在 JEC 里添加。",
+      "off": "站点监控模块已停用。",
+      "title": "站点监控"
     },
     "state": {
       "deploy_failed": "部署失败",

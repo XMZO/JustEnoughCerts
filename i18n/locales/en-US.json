@@ -2946,6 +2946,7 @@
       "recent": "Recent activity",
       "refresh": "Refresh",
       "renew": "Renew now",
+      "sites": "Sites",
       "system": "System",
       "todo": "Need attention ({count})"
     },
@@ -2977,6 +2978,7 @@
       "menu": "Open the menu",
       "online": "Online checks",
       "recent": "Recent activity",
+      "sites": "Watched sites",
       "todo": "Certificates needing attention"
     },
     "deploy": {
@@ -3059,6 +3061,11 @@
       "renew": "Renewal",
       "running": "under way",
       "waiting": "waiting on the source"
+    },
+    "sites": {
+      "none": "No site is watched yet. Add one in JEC.",
+      "off": "The site watch module is off.",
+      "title": "Site watch"
     },
     "state": {
       "deploy_failed": "Deployment failed",

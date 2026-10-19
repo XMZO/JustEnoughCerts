@@ -67,6 +67,7 @@ chat:
 | `/todo` | The certificates that need attention, and why |
 | `/recent` | The issuances, renewals and deployments of the last 7 days |
 | `/online` | What the online checks found wrong |
+| `/sites` | The [watched sites](sites.md), those to look at first |
 | `/help` | How to use it |
 
 A certificate's page shows its state, the days it has left, its renewal,

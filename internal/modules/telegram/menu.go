@@ -29,6 +29,7 @@ const (
 	viewOnline = "o"
 	viewSystem = "s"
 	viewHelp   = "h"
+	viewSites  = "w"
 	viewCert   = "c"  // c:<id>
 	askRenew   = "ar" // ar:<id>, and so on
 	askDeploy  = "ad"
@@ -68,6 +69,7 @@ const (
 	iconPrev    = "◀️"
 	iconNext    = "▶️"
 	iconCancel  = "✖️"
+	iconSites   = "📡"
 )
 
 // show builds the view data names, or the main one for data it does not
@@ -90,6 +92,8 @@ func (l *listener) show(ctx context.Context, data string) screen {
 		s, err = l.systemView(ctx)
 	case viewHelp:
 		s = l.helpView()
+	case viewSites:
+		s, err = l.sitesView(ctx)
 	case viewCert:
 		s, err = l.certView(ctx, id, "")
 	case askRenew, askDeploy:
@@ -157,7 +161,8 @@ func (l *listener) mainView(ctx context.Context) (screen, error) {
 	rows := [][]button{
 		{l.button(iconList, i18n.TelegramButtonCerts, i18n.Args{"count": len(certs)}, viewList+":0"),
 			l.button(iconWarn, i18n.TelegramButtonTodo, i18n.Args{"count": attention}, viewTodo)},
-		{l.button(iconRecent, i18n.TelegramButtonRecent, nil, viewRecent), l.button(iconOnline, i18n.TelegramButtonOnline, nil, viewOnline)},
+		{l.button(iconRecent, i18n.TelegramButtonRecent, nil, viewRecent), l.button(iconOnline, i18n.TelegramButtonOnline, nil, viewOnline),
+			l.button(iconSites, i18n.TelegramButtonSites, nil, viewSites)},
 		{l.button(iconInfo, i18n.TelegramButtonSystem, nil, viewSystem), l.button(iconHelp, i18n.TelegramButtonHelp, nil, viewHelp)},
 		append([]button{l.button(iconRefresh, i18n.TelegramButtonRefresh, nil, viewMain)}, l.open("")...),
 	}
@@ -314,6 +319,73 @@ func (l *listener) onlineView(ctx context.Context) (screen, error) {
 	return screen{text: strings.Join(lines, "\n"), rows: rows}, nil
 }
 
+// site is a site the watch module watches, as the menu shows it.
+type site struct {
+	Host     string     `json:"host"`
+	Port     int        `json:"port"`
+	Name     string     `json:"name"`
+	State    string     `json:"state"`
+	NotAfter *time.Time `json:"notAfter"`
+}
+
+var siteStates = map[string]i18n.Key{
+	"pending": i18n.WatchStatePending, "ok": i18n.WatchStateOk, "expiring": i18n.WatchStateExpiring,
+	"expired": i18n.WatchStateExpired, "invalid": i18n.WatchStateInvalid, "unreachable": i18n.WatchStateUnreachable,
+}
+
+// sitesView shows the sites watched, those to look at first.
+func (l *listener) sitesView(ctx context.Context) (screen, error) {
+	var out struct {
+		Sites []site `json:"sites"`
+	}
+	lines := []string{iconSites + " <b>" + l.text(i18n.TelegramSitesTitle, nil) + "</b>", ""}
+	var refused *module.CallError
+	if err := l.get(ctx, "/watch/sites", &out); errors.As(err, &refused) && refused.Status == 404 {
+		lines = append(lines, iconOff+" "+l.text(i18n.TelegramSitesOff, nil))
+		return screen{text: strings.Join(lines, "\n"), rows: [][]button{{l.home()}}}, nil
+	} else if err != nil {
+		return screen{}, err
+	}
+	if len(out.Sites) == 0 {
+		lines = append(lines, l.text(i18n.TelegramSitesNone, nil))
+	}
+	rank := map[string]int{"expired": 0, "invalid": 1, "unreachable": 2, "expiring": 3, "pending": 4, "ok": 5}
+	slices.SortStableFunc(out.Sites, func(a, b site) int { return rank[a.State] - rank[b.State] })
+	now := l.m.now()
+	for _, s := range out.Sites {
+		icon := iconOK
+		switch s.State {
+		case "expired", "invalid":
+			icon = iconFail
+		case "unreachable":
+			icon = iconOff
+		case "expiring":
+			icon = iconWarn
+		case "pending":
+			icon = iconBusy
+		}
+		name := s.Host
+		if s.Port != 443 {
+			name += ":" + strconv.Itoa(s.Port)
+		}
+		if s.Name != "" {
+			name = s.Name + " (" + name + ")"
+		}
+		line := icon + " <b>" + html.EscapeString(name) + "</b> · " + l.text(siteStates[s.State], nil)
+		if s.NotAfter != nil {
+			days := int(math.Floor(s.NotAfter.Sub(now).Hours() / 24))
+			left := l.text(i18n.WatchPageDaysLeft, i18n.Args{"days": days})
+			if days < 0 {
+				left = l.text(i18n.WatchPageDaysAgo, i18n.Args{"days": -days})
+			}
+			line += " · " + l.day(*s.NotAfter) + " · " + left
+		}
+		lines = append(lines, line)
+	}
+	rows := [][]button{append([]button{l.button(iconRefresh, i18n.TelegramButtonRefresh, nil, viewSites), l.home()}, l.open("/sites")...)}
+	return screen{text: strings.Join(lines, "\n"), rows: rows}, nil
+}
+
 func (l *listener) systemView(ctx context.Context) (screen, error) {
 	var m manifest
 	if err := l.get(ctx, "/manifest", &m); err != nil {
@@ -356,7 +428,8 @@ func (l *listener) helpView() screen {
 		desc i18n.Key
 	}{
 		{"menu", i18n.TelegramCommandMenu}, {"certs", i18n.TelegramCommandCerts}, {"todo", i18n.TelegramCommandTodo},
-		{"recent", i18n.TelegramCommandRecent}, {"online", i18n.TelegramCommandOnline}, {"help", i18n.TelegramCommandHelp},
+		{"recent", i18n.TelegramCommandRecent}, {"online", i18n.TelegramCommandOnline}, {"sites", i18n.TelegramCommandSites},
+		{"help", i18n.TelegramCommandHelp},
 	} {
 		lines = append(lines, "/"+c.name+" · "+l.text(c.desc, nil))
 	}

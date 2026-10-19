@@ -155,6 +155,12 @@ func (j *jecAPI) call(_ context.Context, via, method, path string, _, out any) e
 		body = map[string]any{"runs": []run{{Certificate: 1, Domain: "example.com", Action: "deploy", Trigger: "auto", State: "done", Target: 12, CreatedAt: renew}}}
 	case "/manifest":
 		body = manifest{Version: "1.2.3", Platform: "linux/amd64", TimeZone: "Asia/Shanghai"}
+	case "/watch/sites":
+		end := renew.Add(-10 * 24 * time.Hour)
+		body = map[string]any{"sites": []site{
+			{Host: "ok.example.org", Port: 443, State: "ok", NotAfter: &end},
+			{Host: "partner.example.org", Port: 8443, Name: "Partner", State: "invalid", NotAfter: &end},
+		}}
 	default:
 		return &module.CallError{Status: http.StatusNotFound, Code: i18n.KernelErrorNotFound}
 	}
@@ -226,7 +232,7 @@ func TestMenu(t *testing.T) {
 	// The commands, in the bot's language, for its chat.
 	cmds := a.wait("setMyCommands")
 	a.wait("skip")
-	if list, _ := cmds["commands"].([]any); len(list) != 6 || list[0].(map[string]any)["description"] != "Open the menu" {
+	if list, _ := cmds["commands"].([]any); len(list) != 7 || list[0].(map[string]any)["description"] != "Open the menu" {
 		t.Errorf("commands %v", cmds)
 	}
 	if scope, _ := cmds["scope"].(map[string]any); scope["chat_id"] != float64(-1001234) {
@@ -240,8 +246,15 @@ func TestMenu(t *testing.T) {
 		!strings.Contains(s, "Next renewal: 2027-04-05 18:00 · example.com") {
 		t.Errorf("menu %q", s)
 	}
-	if got := strings.Join(buttons(main), " "); got != "l:0 t r o s h m url:https://jec.example" {
+	if got := strings.Join(buttons(main), " "); got != "l:0 t r o w s h m url:https://jec.example" {
 		t.Errorf("menu buttons %s", got)
+	}
+
+	// The watched sites, those to look at first.
+	a.push(update{Message: &message{ID: 2, Chat: ours, Text: "/sites"}})
+	if s := text(t, a.wait("sendMessage")); !strings.Contains(s, "Site watch") ||
+		strings.Index(s, "Partner (partner.example.org:8443)") > strings.Index(s, "ok.example.org") || !strings.Contains(s, "Not trusted") {
+		t.Errorf("sites %q", s)
 	}
 
 	// A certificate: how it is, where it goes, what it serves, what it can do.
