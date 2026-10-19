@@ -550,8 +550,8 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page).toHaveURL(/\/certificates\/\d+\/issuances\/\d+$/)
   await expect(page.getByText(label('certs.issuance.next_try')).first()).toBeVisible() // the first attempt failed
   expect.soft(await problems(page), 'an issuance that failed').toEqual([])
-  await page.getByRole('checkbox', { name: label('certs.issuance.show_detail') }).check()
-  expect.soft(await problems(page), 'an issuance with raw details').toEqual([])
+  // No line of its log has raw details, so the log offers none.
+  await expect(page.getByRole('checkbox', { name: label('certs.issuance.show_detail') })).toHaveCount(0)
   await page.getByRole('link', { name: label('certs.action.details') }).filter({ visible: true }).first().click()
   await expect(page).toHaveURL(/\/certificates\/\d+$/)
   await expect(page.getByRole('heading', { name: label('certs.detail.last_issuance') })).toBeVisible()
