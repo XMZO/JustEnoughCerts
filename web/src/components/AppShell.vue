@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { Bell, Blocks, Ellipsis, Globe, History, KeyRound, LayoutGrid, LogOut, Menu, Package, ScrollText, Server, Settings, ShieldCheck, X } from '@lucide/vue'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, watchEffect } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import { useSession, useSignOut } from '../api/account'
 import { useCertificates } from '../api/certs'
 import { useManifest } from '../api/manifest'
 import { useT, type MessageKey } from '../i18n'
+import { setZone } from '../zone'
 import JecMark from './JecMark.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
 
@@ -19,6 +20,8 @@ const router = useRouter()
 const session = useSession()
 const signOut = useSignOut()
 const manifest = useManifest()
+// Times show in the panel's time zone once the manifest tells it.
+watchEffect(() => setZone(manifest.data.value?.timeZone))
 const certificates = useCertificates()
 
 interface Link {

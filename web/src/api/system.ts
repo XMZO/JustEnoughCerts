@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/vue-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 
 import { api, ApiError, networkError, unwrap } from './client'
 import type { components } from './schema'
@@ -8,6 +8,21 @@ export type SystemInfo = components['schemas']['RuntimeBody']
 /** Where JEC keeps its data and how it is reached. */
 export function useSystem() {
   return useQuery({ queryKey: ['system'], queryFn: () => unwrap(api.GET('/system')), staleTime: Infinity })
+}
+
+/**
+ * Chooses the time zone of the whole panel, "" for the server's. The times
+ * shown follow it, by the manifest, and so do the times renewals start.
+ */
+export function useSetTimeZone() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (timeZone: string) => unwrap(api.PUT('/system/time-zone', { body: { timeZone } })),
+    onSuccess: (info) => {
+      client.setQueryData(['system'], info)
+      return client.invalidateQueries()
+    },
+  })
 }
 
 export type ReleaseInfo = components['schemas']['ReleaseBody']

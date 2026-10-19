@@ -923,6 +923,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/time-zone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Choose the time zone JEC tells times in, or go back to the server's */
+        put: operations["set-time-zone"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -986,7 +1003,7 @@ export interface components {
              * @description How many days before the end new certificates renew, or remind, unless set otherwise
              */
             renewBeforeDays: number;
-            /** @description The time zone of checkTime: the server's, which the TZ environment variable sets */
+            /** @description The time zone of checkTime: the one chosen for JEC, or the server's, which the TZ environment variable sets */
             readonly timeZone: string;
         };
         CertSettingsInputBody: {
@@ -1487,6 +1504,8 @@ export interface components {
             modules: components["schemas"]["ModuleInfo"][];
             /** @description GOOS/GOARCH, such as linux/amd64 */
             platform: string;
+            /** @description The IANA name of the time zone the panel shows times in: the one chosen in the settings, or the server's; empty when the server tells none, and the browser's is used */
+            timeZone?: string;
             /** @description Program version */
             version: string;
         };
@@ -1689,6 +1708,10 @@ export interface components {
              * @enum {string}
              */
             secretKey: "env" | "file";
+            /** @description The server's time zone, which TZ sets: an IANA name, or Local when the server tells none */
+            serverTimeZone: string;
+            /** @description The time zone chosen for JEC, an IANA name: the panel shows times in it, messages tell times in it, and renewals start at the check time in it; empty while it is the server's */
+            timeZone?: string;
             /** @description The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES */
             trustedProxies?: string;
         };
@@ -1767,6 +1790,10 @@ export interface components {
         TestOutputBody: {
             /** @description What the test found */
             message: components["schemas"]["Message"];
+        };
+        TimeZoneInputBody: {
+            /** @description An IANA name, such as Asia/Shanghai or UTC; empty for the server's */
+            timeZone: string;
         };
         TokenBody: {
             /** Format: date-time */
@@ -3999,6 +4026,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "set-time-zone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TimeZoneInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeBody"];
+                };
             };
             /** @description Error */
             default: {

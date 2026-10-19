@@ -12,6 +12,7 @@ import PageHeader from '../components/PageHeader.vue'
 import SearchBox from '../components/SearchBox.vue'
 import { useT, type MessageKey } from '../i18n'
 import { useIntl } from '../i18n/intl'
+import { dayKey, stamp } from '../zone'
 
 // Every issuance, renewal and deployment (docs/design/boards/History and
 // HistoryMobile), the newest first and grouped by day: filtered by result,
@@ -74,12 +75,12 @@ interface Group {
 }
 const day = 86_400_000
 const groups = computed(() => {
-  const today = new Date().toDateString()
-  const yesterday = new Date(Date.now() - day).toDateString()
+  const today = dayKey(Date.now())
+  const yesterday = dayKey(Date.now() - day)
   const out: Group[] = []
   for (const r of shown.value) {
     const at = runAt(r)
-    const key = new Date(at).toDateString()
+    const key = dayKey(at)
     let g = out[out.length - 1]
     if (!g || g.key !== key) {
       const relative = key === today ? 'certs.runs.today' : key === yesterday ? 'certs.runs.yesterday' : null
@@ -107,19 +108,14 @@ const columns = [
   'certs.runs.column.duration',
 ] as const
 
-// The rows shown, as CSV: local times, and a byte order mark so that
-// spreadsheets read the text as UTF-8.
-const pad = (n: number) => String(n).padStart(2, '0')
-function local(at: string): string {
-  const d = new Date(at)
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
+// The rows shown, as CSV: times in the panel's zone, and a byte order mark
+// so that spreadsheets read the text as UTF-8.
 const cell = (v: string) => (/[",\r\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v)
 function exportCsv() {
   const lines = [columns.map((c) => t(c))]
   for (const r of shown.value) {
     lines.push([
-      local(runAt(r)),
+      stamp(runAt(r)),
       r.domain,
       `${t(actionText[r.action])} ${t(triggerText[r.trigger])}`,
       t(resultText[runResult(r)]),
@@ -128,8 +124,7 @@ function exportCsv() {
     ])
   }
   const csv = String.fromCharCode(0xfeff) + lines.map((l) => l.map(cell).join(',')).join('\r\n') + '\r\n'
-  const now = new Date()
-  saveFile(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `jec-history-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}.csv`)
+  saveFile(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `jec-history-${dayKey(Date.now()).replaceAll('-', '')}.csv`)
 }
 
 const selectClass =

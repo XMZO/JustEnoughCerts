@@ -12,6 +12,7 @@ import SearchBox from '../components/SearchBox.vue'
 import { useT, type MessageKey } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import { fromMore } from '../shell'
+import { dayKey, stamp } from '../zone'
 
 // What was done through the API (module audit), the newest first and
 // grouped by day, filtered by result, time and text instead of paged, as
@@ -41,6 +42,8 @@ const operations: Partial<Record<string, MessageKey>> = {
   'two-factor-enable': 'audit.op.two_factor_enable',
   'two-factor-disable': 'audit.op.two_factor_disable',
   backup: 'audit.op.backup',
+  restore: 'audit.op.restore',
+  'set-time-zone': 'audit.op.set_time_zone',
   'config-export-secrets': 'audit.op.config_export_secrets',
   'config-check': 'audit.op.config_check',
   'config-import': 'audit.op.config_import',
@@ -112,11 +115,11 @@ interface Group {
 }
 const day = 86_400_000
 const groups = computed(() => {
-  const today = new Date().toDateString()
-  const yesterday = new Date(Date.now() - day).toDateString()
+  const today = dayKey(Date.now())
+  const yesterday = dayKey(Date.now() - day)
   const out: Group[] = []
   for (const e of shown.value) {
-    const key = new Date(e.at).toDateString()
+    const key = dayKey(e.at)
     let g = out[out.length - 1]
     if (!g || g.key !== key) {
       const relative = key === today ? 'audit.page.today' : key === yesterday ? 'audit.page.yesterday' : null
@@ -130,22 +133,16 @@ const groups = computed(() => {
 
 const columns = ['audit.column.time', 'audit.column.action', 'audit.column.account', 'audit.column.result', 'audit.column.client'] as const
 
-// The entries shown, as CSV: local times, and a byte order mark so that
-// spreadsheets read the text as UTF-8.
-const pad = (n: number) => String(n).padStart(2, '0')
-function local(at: string): string {
-  const d = new Date(at)
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-}
+// The entries shown, as CSV: times in the panel's zone, and a byte order
+// mark so that spreadsheets read the text as UTF-8.
 const cell = (v: string) => (/[",\r\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v)
 function exportCsv() {
   const lines = [[...columns.map((c) => t(c)), 'HTTP', 'User-Agent']]
   for (const e of shown.value) {
-    lines.push([local(e.at), `${label(e)} (${raw(e)})`, e.user ?? '', t(resultText[resultOf(e)]), e.client, String(e.status), e.userAgent ?? ''])
+    lines.push([stamp(e.at, true), `${label(e)} (${raw(e)})`, e.user ?? '', t(resultText[resultOf(e)]), e.client, String(e.status), e.userAgent ?? ''])
   }
   const csv = String.fromCharCode(0xfeff) + lines.map((l) => l.map(cell).join(',')).join('\r\n') + '\r\n'
-  const now = new Date()
-  saveFile(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `jec-audit-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}.csv`)
+  saveFile(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `jec-audit-${dayKey(Date.now()).replaceAll('-', '')}.csv`)
 }
 
 const selectClass =

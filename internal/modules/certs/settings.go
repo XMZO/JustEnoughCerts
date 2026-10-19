@@ -22,7 +22,7 @@ type Settings struct {
 	RenewBeforeDays int
 	KeyType         string
 	// CheckTime is the time of day renewals start, in minutes after
-	// midnight in the server's time zone.
+	// midnight in the time zone chosen for JEC.
 	CheckTime int
 }
 
@@ -119,7 +119,7 @@ type schedule struct {
 
 func (s *service) schedule(ctx context.Context) (schedule, error) {
 	st, err := s.settings(ctx)
-	return schedule{checkTime: st.CheckTime, loc: s.loc}, err
+	return schedule{checkTime: st.CheckTime, loc: s.zone()}, err
 }
 
 // renewAt is when the renewal of a version that ends at notAfter starts:
@@ -153,7 +153,7 @@ type CertSettingsBody struct {
 	RenewBeforeDays int    `json:"renewBeforeDays" minimum:"1" maximum:"365" doc:"How many days before the end new certificates renew, or remind, unless set otherwise"`
 	KeyType         string `json:"keyType" enum:"ecdsa-p256,ecdsa-p384,rsa-2048,rsa-3072,rsa-4096" doc:"The key type of new certificates with a source, unless set otherwise"`
 	CheckTime       string `json:"checkTime" pattern:"^([01][0-9]|2[0-3]):[0-5][0-9]$" doc:"The time of day, HH:MM in timeZone, renewals start once certificates enter their renewal window; with a week or less left, they start at once"`
-	TimeZone        string `json:"timeZone" readOnly:"true" doc:"The time zone of checkTime: the server's, which the TZ environment variable sets"`
+	TimeZone        string `json:"timeZone" readOnly:"true" doc:"The time zone of checkTime: the one chosen for JEC, or the server's, which the TZ environment variable sets"`
 }
 
 type certSettingsOutput struct{ Body CertSettingsBody }
@@ -168,7 +168,7 @@ type certSettingsInput struct {
 
 func (s *service) settingsBody(st Settings) CertSettingsBody {
 	return CertSettingsBody{
-		RenewBeforeDays: st.RenewBeforeDays, KeyType: st.KeyType, CheckTime: formatClock(st.CheckTime), TimeZone: s.loc.String(),
+		RenewBeforeDays: st.RenewBeforeDays, KeyType: st.KeyType, CheckTime: formatClock(st.CheckTime), TimeZone: s.zone().String(),
 	}
 }
 

@@ -121,6 +121,11 @@ type Registry struct {
 	// that people export and import as YAML (PLAN.md 11), such as the
 	// certificates. It fails when the section's key is taken.
 	Config func(configfile.Section) error
+	// Zone returns the time zone chosen for JEC, or the server's: messages
+	// tell times in it, and the times of day settings name, such as when
+	// renewals start, are in it. It may change while JEC runs, so ask each
+	// time.
+	Zone func() *time.Location
 }
 
 // Request is an operation of the API that may have changed something, as

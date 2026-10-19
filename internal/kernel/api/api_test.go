@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 
@@ -49,8 +50,11 @@ func setup(t *testing.T) (*httptest.Server, *atomic.Bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err := New(Options{BasePath: "/certs", Origin: "https://certs.example.com", Version: "1.2.3", SessionCookie: "s"},
-		set, slog.New(slog.DiscardHandler))
+	zone := time.FixedZone("Asia/Shanghai", 8*3600)
+	a, err := New(Options{
+		BasePath: "/certs", Origin: "https://certs.example.com", Version: "1.2.3", SessionCookie: "s",
+		TimeZone: func() *time.Location { return zone },
+	}, set, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +260,7 @@ func TestManifest(t *testing.T) {
 	if err := json.Unmarshal(r.body, &body); err != nil {
 		t.Fatal(err)
 	}
-	if body.Version != "1.2.3" || len(body.Modules) != 1 || body.Modules[0].ID != "demo" || !body.Modules[0].Enabled {
+	if body.Version != "1.2.3" || len(body.Modules) != 1 || body.Modules[0].ID != "demo" || !body.Modules[0].Enabled || body.TimeZone != "Asia/Shanghai" {
 		t.Errorf("manifest = %s", r.body)
 	}
 	if strings.Contains(string(r.body), "$schema") {

@@ -19,6 +19,7 @@ import SearchBox from '../components/SearchBox.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
+import { dayKey } from '../zone'
 
 // The overview (docs/design/boards/Main and OverviewMobile): every
 // certificate as a slot, the selected one's summary, what needs attention
@@ -193,13 +194,13 @@ const marks = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
 const recent = useRuns(7)
 const runText = useRunText()
 const activity = computed(() => {
-  const today = new Date().toDateString()
+  const today = dayKey(Date.now())
   return [...(recent.data.value?.runs ?? [])]
     .sort((a, b) => Date.parse(runAt(b)) - Date.parse(runAt(a)))
     .map((r) => ({ run: r, result: runResult(r), text: runText.activity(r), at: runAt(r), link: runLink(r) }))
     .filter((a) => a.text)
     .slice(0, 5)
-    .map((a) => ({ ...a, when: new Date(a.at).toDateString() === today ? intl.clock(a.at) : intl.shortDate(a.at) }))
+    .map((a) => ({ ...a, when: dayKey(a.at) === today ? intl.clock(a.at) : intl.shortDate(a.at) }))
 })
 const activityLooks = {
   ok: { icon: CircleCheck, ink: 'text-ok-ink' },

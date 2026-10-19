@@ -275,6 +275,8 @@
       "providers_delete": "Delete a provider",
       "providers_test": "Test a provider's connection",
       "providers_update": "Change a provider",
+      "restore": "Restore a backup",
+      "set_time_zone": "Change the time zone",
       "setup": "Set up JEC",
       "sign_in": "Sign in",
       "sign_out": "Sign out",
@@ -613,7 +615,7 @@
     },
     "defaults": {
       "check_time": "Daily check time",
-      "check_time_help": "Certificates in their renewal window start renewing at this time, in the server's time zone ({zone}); with a week or less left, at once.",
+      "check_time_help": "Certificates in their renewal window start renewing at this time, in the panel's time zone ({zone}); with a week or less left, at once.",
       "days": "Days before expiry",
       "days_help": "The default of new certificates; each certificate can have its own.",
       "key_type": "Default key type",
@@ -1484,7 +1486,8 @@
       "secrets_intro": "Besides the settings, the file holds the passwords, tokens and keys of the providers, as plain text. Keep it safe, and out of Git.",
       "section": {
         "credentials": "Credentials",
-        "providers": "Providers"
+        "providers": "Providers",
+        "time_zone": "Time zone"
       }
     },
     "credentials": {
@@ -1547,7 +1550,8 @@
       "two_factor_expired": "That took more than ten minutes: start again.",
       "two_factor_on": "Two-factor authentication is on already.",
       "two_factor_required": "Enter the code of your authenticator app.",
-      "unauthorized": "Sign in to continue."
+      "unauthorized": "Sign in to continue.",
+      "unknown_time_zone": "JEC does not know this time zone."
     },
     "login": {
       "code": "Code from your authenticator app",
@@ -1742,6 +1746,9 @@
       "theme_help": "For this browser only.",
       "theme_light": "Light",
       "theme_system": "System",
+      "time_zone": "Time zone",
+      "time_zone_help": "For the whole panel: times here and in notifications, and the daily check time, are in this zone",
+      "time_zone_server": "The server's ({zone})",
       "title": "Settings",
       "tokens": "API tokens",
       "tokens_hint": "For scripts and other programs to use the API of JEC.",

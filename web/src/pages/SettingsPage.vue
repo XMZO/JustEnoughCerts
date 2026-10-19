@@ -35,7 +35,7 @@ import { saveFile, useCertSettings, useSaveCertSettings, type CertSettingsInput,
 import { useExportConfig, useImportConfig, type ConfigItem, type ConfigReport } from '../api/config'
 import { useApiError } from '../api/errors'
 import { useManifest } from '../api/manifest'
-import { useBackup, useReleaseCheck, useRestore, useSystem, waitForRestart } from '../api/system'
+import { useBackup, useReleaseCheck, useRestore, useSetTimeZone, useSystem, waitForRestart } from '../api/system'
 import { keyText } from '../certs/life'
 import CopyButton from '../components/CopyButton.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -49,6 +49,7 @@ import { locales, setLocale, useT, type Locale, type MessageKey, type Params } f
 import { useIntl } from '../i18n/intl'
 import { setTheme, theme, themes, type Theme } from '../theme'
 import { fromMore } from '../shell'
+import { zones } from '../zone'
 
 // The settings (docs/design/boards/Settings and SettingsMobile), each saved
 // as soon as it changes. Those of the account, the panel's address and the
@@ -244,6 +245,21 @@ async function removeToken(id: number) {
 // How JEC is reached and where its data is, set outside the panel; and a
 // copy of the database, once the password is confirmed.
 const system = useSystem()
+
+// The time zone of the whole panel, saved as soon as it changes: the one
+// chosen, or the server's.
+const setTimeZone = useSetTimeZone()
+const zoneError = useApiError(computed(() => setTimeZone.error.value))
+const zoneChoices = computed(() => zones(system.data.value?.timeZone ?? ''))
+const zoneSaved = computed(() => setTimeZone.isSuccess.value && !setTimeZone.isPending.value)
+async function pickZone(e: Event) {
+  try {
+    await setTimeZone.mutateAsync((e.target as HTMLSelectElement).value)
+  } catch {
+    // shown by the field
+  }
+}
+
 const backup = useBackup()
 const backupError = useApiError(computed(() => backup.error.value))
 const backingUp = ref(false)
@@ -407,7 +423,13 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
     <p class="m-0 text-ink-muted sm:hidden">{{ t('kernel.settings.intro') }}</p>
 
     <section aria-labelledby="appearance" :class="panel">
-      <h2 id="appearance" class="m-0 mb-1 text-heading font-semibold sm:text-section-title">{{ t('kernel.settings.appearance') }}</h2>
+      <div class="mb-1 flex flex-wrap items-center justify-between gap-x-3">
+        <h2 id="appearance" class="m-0 text-heading font-semibold sm:text-section-title">{{ t('kernel.settings.appearance') }}</h2>
+        <p v-if="zoneSaved" role="status" class="m-0 inline-flex items-center gap-1 text-small text-ok-ink">
+          <Check class="size-4" aria-hidden="true" />{{ t('kernel.settings.saved') }}
+        </p>
+      </div>
+      <JecAlert v-if="zoneError.alert.value" :code="zoneError.alert.value.code" :params="zoneError.alert.value.params" />
       <div :class="row">
         <div class="min-w-0 flex-1">
           <label for="language" class="block font-semibold">{{ t('kernel.settings.language') }}</label>
@@ -434,6 +456,25 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
             {{ t(themeLabels[th]) }}
           </button>
         </div>
+      </div>
+      <div v-if="system.data.value" :class="row">
+        <div class="min-w-0 flex-1">
+          <label for="timeZone" class="block font-semibold">{{ t('kernel.settings.time_zone') }}</label>
+          <span id="zone-help" class="block text-caption leading-[18px] text-ink-muted">
+            {{ zoneError.fields.value.timeZone ? t(zoneError.fields.value.timeZone) : t('kernel.settings.time_zone_help') }}
+          </span>
+        </div>
+        <select
+          id="timeZone"
+          :value="system.data.value.timeZone ?? ''"
+          aria-describedby="zone-help"
+          :aria-invalid="!!zoneError.fields.value.timeZone || undefined"
+          :class="[control, 'w-44 max-w-[50%] flex-none']"
+          @change="pickZone"
+        >
+          <option value="">{{ t('kernel.settings.time_zone_server', { zone: system.data.value.serverTimeZone }) }}</option>
+          <option v-for="z in zoneChoices" :key="z" :value="z" translate="no">{{ z }}</option>
+        </select>
       </div>
     </section>
 

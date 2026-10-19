@@ -275,6 +275,8 @@
       "providers_delete": "删除服务商",
       "providers_test": "测试服务商连接",
       "providers_update": "修改服务商",
+      "restore": "恢复备份",
+      "set_time_zone": "修改时区",
       "setup": "初始化 JEC",
       "sign_in": "登录",
       "sign_out": "退出登录",
@@ -613,7 +615,7 @@
     },
     "defaults": {
       "check_time": "每天检查时间",
-      "check_time_help": "进入续期窗口的证书在这个时间开始续期，按服务器时区（{zone}）；只剩一周或更少时立即续期。",
+      "check_time_help": "进入续期窗口的证书在这个时间开始续期，按面板的时区（{zone}）；只剩一周或更少时立即续期。",
       "days": "提前续期",
       "days_help": "新证书的默认值，单张证书可以单独改",
       "key_type": "默认密钥类型",
@@ -1484,7 +1486,8 @@
       "secrets_intro": "除了设置，文件里还有服务商的密码、令牌和密钥，都是明文。请妥善保存，不要放进 Git。",
       "section": {
         "credentials": "凭据",
-        "providers": "服务商"
+        "providers": "服务商",
+        "time_zone": "时区"
       }
     },
     "credentials": {
@@ -1547,7 +1550,8 @@
       "two_factor_expired": "超过 10 分钟了，请重新开始。",
       "two_factor_on": "两步验证已经开启了。",
       "two_factor_required": "请输入验证器 App 里的验证码。",
-      "unauthorized": "请先登录。"
+      "unauthorized": "请先登录。",
+      "unknown_time_zone": "JEC 不认识这个时区。"
     },
     "login": {
       "code": "验证器 App 里的验证码",
@@ -1742,6 +1746,9 @@
       "theme_help": "只对这个浏览器生效。",
       "theme_light": "浅色",
       "theme_system": "跟随系统",
+      "time_zone": "时区",
+      "time_zone_help": "整个面板共用：界面和通知里的时间、每天检查时间都按这个时区",
+      "time_zone_server": "跟随服务器（{zone}）",
       "title": "设置",
       "tokens": "API 令牌",
       "tokens_hint": "让脚本和其他程序使用 JEC 的接口。",

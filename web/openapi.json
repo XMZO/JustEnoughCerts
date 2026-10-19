@@ -136,7 +136,7 @@
             "type": "integer"
           },
           "timeZone": {
-            "description": "The time zone of checkTime: the server's, which the TZ environment variable sets",
+            "description": "The time zone of checkTime: the one chosen for JEC, or the server's, which the TZ environment variable sets",
             "readOnly": true,
             "type": "string"
           }
@@ -1508,6 +1508,10 @@
             "description": "GOOS/GOARCH, such as linux/amd64",
             "type": "string"
           },
+          "timeZone": {
+            "description": "The IANA name of the time zone the panel shows times in: the one chosen in the settings, or the server's; empty when the server tells none, and the browser's is used",
+            "type": "string"
+          },
           "version": {
             "description": "Program version",
             "type": "string"
@@ -2068,6 +2072,14 @@
             ],
             "type": "string"
           },
+          "serverTimeZone": {
+            "description": "The server's time zone, which TZ sets: an IANA name, or Local when the server tells none",
+            "type": "string"
+          },
+          "timeZone": {
+            "description": "The time zone chosen for JEC, an IANA name: the panel shows times in it, messages tell times in it, and renewals start at the check time in it; empty while it is the server's",
+            "type": "string"
+          },
           "trustedProxies": {
             "description": "The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES",
             "type": "string"
@@ -2077,7 +2089,8 @@
           "dataDir",
           "listen",
           "secretKey",
-          "hsts"
+          "hsts",
+          "serverTimeZone"
         ],
         "type": "object"
       },
@@ -2326,6 +2339,20 @@
         },
         "required": [
           "message"
+        ],
+        "type": "object"
+      },
+      "TimeZoneInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "timeZone": {
+            "description": "An IANA name, such as Asia/Shanghai or UTC; empty for the server's",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "timeZone"
         ],
         "type": "object"
       },
@@ -5523,6 +5550,47 @@
           }
         },
         "summary": "Restore a backup, once the password is confirmed: JEC stops, to start again with it",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/system/time-zone": {
+      "put": {
+        "operationId": "set-time-zone",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimeZoneInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Choose the time zone JEC tells times in, or go back to the server's",
         "tags": [
           "system"
         ]

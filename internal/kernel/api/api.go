@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -48,6 +49,9 @@ type Options struct {
 	Middlewares []func(huma.Context, func(huma.Context))
 	// SessionCookie is the name of the session cookie, for the document.
 	SessionCookie string
+	// TimeZone returns the time zone chosen for JEC, or the server's, which
+	// the manifest tells.
+	TimeZone func() *time.Location
 }
 
 // API is the HTTP API.
@@ -140,6 +144,7 @@ type ManifestBody struct {
 	Date     string       `json:"date,omitempty" doc:"RFC 3339 time of that revision"`
 	Platform string       `json:"platform" doc:"GOOS/GOARCH, such as linux/amd64"`
 	Modules  []ModuleInfo `json:"modules" doc:"Every module compiled in, by category and ID"`
+	TimeZone string       `json:"timeZone,omitempty" doc:"The IANA name of the time zone the panel shows times in: the one chosen in the settings, or the server's; empty when the server tells none, and the browser's is used"`
 }
 
 func (a *API) registerManifest(set *module.Set, opts Options) {
@@ -153,6 +158,11 @@ func (a *API) registerManifest(set *module.Set, opts Options) {
 		out := &struct{ Body ManifestBody }{Body: ManifestBody{
 			Version: opts.Version, Commit: opts.Commit, Date: opts.Date, Platform: opts.Platform, Modules: []ModuleInfo{},
 		}}
+		if opts.TimeZone != nil {
+			if name := opts.TimeZone().String(); name != "Local" {
+				out.Body.TimeZone = name
+			}
+		}
 		for _, st := range set.Statuses() {
 			out.Body.Modules = append(out.Body.Modules, moduleInfo(st))
 		}

@@ -15,7 +15,9 @@ import (
 
 	"github.com/danielgtaylor/huma/v2/humatest"
 
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/zone"
 )
 
 func TestSystem(t *testing.T) {
@@ -28,6 +30,17 @@ func TestSystem(t *testing.T) {
 	if _, err := st.DB().ExecContext(t.Context(), "CREATE TABLE things (name TEXT); INSERT INTO things VALUES ('kept')"); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := st.Migrate(t.Context(), "kernel", migrations.FS); err != nil {
+		t.Fatal(err)
+	}
+	ny, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tz, err := zone.Open(t.Context(), st.DB(), ny, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatal(err)
+	}
 	wrong := errors.New("wrong password")
 	_, api := humatest.New(t)
 	Register(api, Options{
@@ -38,14 +51,30 @@ func TestSystem(t *testing.T) {
 			}
 			return nil
 		},
-		Now: func() time.Time { return time.Date(2026, 10, 17, 22, 30, 5, 0, time.UTC) },
-		Log: slog.New(slog.DiscardHandler),
+		Now:  func() time.Time { return time.Date(2026, 10, 17, 22, 30, 5, 0, time.UTC) },
+		Log:  slog.New(slog.DiscardHandler),
+		Zone: tz,
 	})
 
 	resp := api.Get("/system")
 	if resp.Code != http.StatusOK || !strings.Contains(resp.Body.String(), `"dataDir":`) ||
-		!strings.Contains(resp.Body.String(), `"listen":":8080","baseURL":"https://certs.example.com","secretKey":"env"`) {
+		!strings.Contains(resp.Body.String(), `"listen":":8080","baseURL":"https://certs.example.com","secretKey":"env"`) ||
+		!strings.Contains(resp.Body.String(), `"serverTimeZone":"America/New_York"`) || strings.Contains(resp.Body.String(), `"timeZone"`) {
 		t.Errorf("GET /system = %d %s", resp.Code, resp.Body.String())
+	}
+
+	// The time zone: one chosen, a name that is none, and the server's again.
+	resp = api.Put("/system/time-zone", map[string]any{"timeZone": "Asia/Shanghai"})
+	if resp.Code != http.StatusOK || !strings.Contains(resp.Body.String(), `"timeZone":"Asia/Shanghai"`) || tz.Location().String() != "Asia/Shanghai" {
+		t.Errorf("choosing a zone = %d %s", resp.Code, resp.Body.String())
+	}
+	resp = api.Put("/system/time-zone", map[string]any{"timeZone": "Mars/Olympus_Mons"})
+	if resp.Code != http.StatusUnprocessableEntity || !strings.Contains(resp.Body.String(), `"location":"body.timeZone","code":"kernel.error.unknown_time_zone"`) {
+		t.Errorf("an unknown zone = %d %s", resp.Code, resp.Body.String())
+	}
+	resp = api.Put("/system/time-zone", map[string]any{"timeZone": ""})
+	if resp.Code != http.StatusOK || strings.Contains(resp.Body.String(), `"timeZone"`) || tz.Location() != ny {
+		t.Errorf("back to the server's = %d %s", resp.Code, resp.Body.String())
 	}
 
 	if resp := api.Post("/system/backup", map[string]any{"password": "wrong horse"}); resp.Code == http.StatusOK {

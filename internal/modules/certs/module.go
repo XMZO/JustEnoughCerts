@@ -58,6 +58,7 @@ func (*Module) Migrations() fs.FS {
 // certificates use.
 func (m *Module) Register(r *module.Registry) error {
 	s := newService(r.DB, r.Events, r.Secrets, r.Providers, r.Log, m.now)
+	s.zone = r.Zone
 	s.issuing.trigger = func() { r.Jobs.Trigger("issue") }
 	s.deploying.trigger = func() { r.Jobs.Trigger("deploy") }
 	registerAPI(r.API, s, r.ConfirmPassword)

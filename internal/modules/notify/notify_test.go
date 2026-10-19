@@ -95,7 +95,7 @@ func newFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 	f.svc = &service{db: st.DB(), prov: f.reg.Scope("notify"), log: slog.New(slog.DiscardHandler), cat: cat,
-		base: "https://jec.example.com", zone: time.UTC, now: func() time.Time { return start }}
+		base: "https://jec.example.com", zone: func() *time.Location { return time.UTC }, now: func() time.Time { return start }}
 	_, f.api = humatest.New(t)
 	registerAPI(f.api, f.svc)
 	return f

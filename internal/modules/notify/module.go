@@ -25,12 +25,11 @@ var migrationFiles embed.FS
 
 // Module is the notify module.
 type Module struct {
-	now  func() time.Time
-	zone *time.Location
+	now func() time.Time
 }
 
 // New returns the module.
-func New() *Module { return &Module{now: time.Now, zone: time.Local} }
+func New() *Module { return &Module{now: time.Now} }
 
 // Manifest describes the module.
 func (*Module) Manifest() module.Manifest {
@@ -58,7 +57,7 @@ func (m *Module) Register(r *module.Registry) error {
 	if err != nil {
 		return err
 	}
-	s := &service{db: r.DB, prov: r.Providers, log: r.Log, cat: cat, base: r.BaseURL, zone: m.zone, now: m.now}
+	s := &service{db: r.DB, prov: r.Providers, log: r.Log, cat: cat, base: r.BaseURL, zone: r.Zone, now: m.now}
 	types := make([]string, 0, len(contracts.NotifyEvents))
 	for _, e := range contracts.NotifyEvents {
 		types = append(types, e.Type)

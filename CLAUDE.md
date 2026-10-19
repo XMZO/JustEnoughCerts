@@ -85,6 +85,7 @@
 - M3 还完成了：向阿里云申请证书 `aliyun.apply`（`PLAN.md` 5.3.1：资源包接口，默认个人测试证书，JEC 自己的私钥和 CSR，DNS 或文件验证，CA 自己来查）；`contracts.Restart`：来源标出订单作废时，证书模块失败或重试都不留私钥和状态（`PLAN.md` 4.3）。阿里云 ALB 目标 `aliyun.alb`（默认证书或扩展证书，改之前等监听配置完），只用替身测过。Caddy 目标 `caddy.admin`（管理接口，`load_pem` 里按 `@id` 原地替换；对着真实的 Caddy 2.11.7 验证过，`live_test.go` 靠 `JEC_TEST_CADDY` 等环境变量运行）。火山引擎 CDN 目标 `volcengine.cdn`（签名用 lego 带的火山引擎 SDK 的 `base.Credentials.Sign`，请求自己发）、百度智能云 CDN 目标 `baiducloud.cdn`（自己实现 bce-auth-v1 签名，测试里和官方 SDK 的签名器核对），都只用替身测过。
 - M3 的验收测试：`cmd/jec/modules_test.go` 的 `TestEverySwitchOff` 带着全部真实模块启动，在运行中逐个停用、再打开每个可停用的模块，检查其余功能照常；新模块自动覆盖。
 - M3 还完成了：腾讯云免费证书 `tencentcloud.free`（`DNS_AUTO`，腾讯云生成私钥，自带私钥的来源；`CollectRequest.State` 让这类来源也能在等待之间保留状态）。只用替身测过。
+- 时区（设置页“外观”，`internal/kernel/zone`，存在 `kernel_meta`）：整个面板共用，默认跟随服务器；`PUT /api/v1/system/time-zone`，清单接口带 `timeZone`；模块用 `r.Zone`（每次现取），续期的每天检查时间和通知里的时间按它；前端 `web/src/zone.ts`（`useIntl` 的日期、按天分组用 `dayKey`、导出 CSV 用 `stamp`，不要再用 `toDateString` 或 `getHours` 之类按浏览器时区的写法）；配置文件里是 `time_zone`。
 - M4 开始：PWA（`web/public/manifest.webmanifest`，图标由 `go run ./tools/icons` 从 favicon 画出，`make gen` 也会跑，测试核对图标是最新的）。
 - M4 还完成了：OIDC 单点登录（模块 `oidc`，授权码 + PKCE，go-jose 校验 ID token，名单里的人以唯一的账号登录；对着真实的 Dex v2.44.0 验证过，`live_test.go` 靠 `JEC_TEST_OIDC` 等环境变量运行）；内核给模块开了 `module.Registry.StartSession`（为账号建会话），GET 操作在 `Metadata` 里标 `api.Audited` 也会进审计日志。
 - 测试里不要访问界面（`/`）：本机的 `web/dist` 是构建过的，CI 里只有 `.gitkeep`，本机过了 CI 也会失败。

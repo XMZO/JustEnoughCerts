@@ -20,6 +20,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/zone"
 )
 
 // Options are what the operations tell and use.
@@ -49,6 +50,8 @@ type Options struct {
 	// Client asks GitHub for them.
 	Version string
 	Client  *http.Client
+	// Zone is the time zone chosen for JEC, which the settings change.
+	Zone *zone.Zone
 }
 
 // RuntimeBody is how this JEC runs: where its data is and how it is reached.
@@ -60,6 +63,14 @@ type RuntimeBody struct {
 	// The proxies are addresses and ranges, data to show as they are.
 	TrustedProxies string `json:"trustedProxies,omitempty" doc:"The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES"`
 	HSTS           bool   `json:"hsts" doc:"Answers send Strict-Transport-Security, as JEC_HSTS asks"`
+	TimeZone       string `json:"timeZone,omitempty" doc:"The time zone chosen for JEC, an IANA name: the panel shows times in it, messages tell times in it, and renewals start at the check time in it; empty while it is the server's"`
+	ServerTimeZone string `json:"serverTimeZone" doc:"The server's time zone, which TZ sets: an IANA name, or Local when the server tells none"`
+}
+
+type timeZoneInput struct {
+	Body struct {
+		TimeZone string `json:"timeZone" maxLength:"64" doc:"An IANA name, such as Asia/Shanghai or UTC; empty for the server's"`
+	}
 }
 
 type backupInput struct {
@@ -75,8 +86,8 @@ type backupOutput struct {
 	Body               []byte
 }
 
-// Register adds GET /system, POST /system/backup, POST /system/restore and
-// GET /system/release to a.
+// Register adds GET /system, PUT /system/time-zone, POST /system/backup,
+// POST /system/restore and GET /system/release to a.
 func Register(a huma.API, o Options) {
 	tags := []string{"system"}
 	client := o.Client
@@ -88,11 +99,21 @@ func Register(a huma.API, o Options) {
 		OperationID: "get-system", Method: http.MethodGet, Path: "/system", Tags: tags,
 		Summary: "Tell where JEC keeps its data and how it is reached",
 	}, func(context.Context, *struct{}) (*struct{ Body RuntimeBody }, error) {
-		info := RuntimeBody{DataDir: o.DataDir, Listen: o.Listen, BaseURL: o.BaseURL, SecretKey: "file", TrustedProxies: o.TrustedProxies, HSTS: o.HSTS}
-		if o.KeyFromEnv {
-			info.SecretKey = "env"
+		return &struct{ Body RuntimeBody }{Body: o.runtime()}, nil
+	})
+	huma.Register(a, huma.Operation{
+		OperationID: "set-time-zone", Method: http.MethodPut, Path: "/system/time-zone", Tags: tags,
+		Summary: "Choose the time zone JEC tells times in, or go back to the server's",
+	}, func(ctx context.Context, in *timeZoneInput) (*struct{ Body RuntimeBody }, error) {
+		err := o.Zone.Choose(ctx, in.Body.TimeZone)
+		if errors.Is(err, zone.ErrUnknown) {
+			return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil).
+				WithField("body.timeZone", i18n.KernelErrorUnknownTimeZone)
 		}
-		return &struct{ Body RuntimeBody }{Body: info}, nil
+		if err != nil {
+			return nil, err
+		}
+		return &struct{ Body RuntimeBody }{Body: o.runtime()}, nil
 	})
 
 	registerRestore(a, o, tags)
@@ -122,6 +143,21 @@ func Register(a huma.API, o Options) {
 			Body:               data,
 		}, nil
 	})
+}
+
+// runtime is what GET /system tells.
+func (o Options) runtime() RuntimeBody {
+	info := RuntimeBody{
+		DataDir: o.DataDir, Listen: o.Listen, BaseURL: o.BaseURL, SecretKey: "file", TrustedProxies: o.TrustedProxies, HSTS: o.HSTS,
+		ServerTimeZone: o.Zone.Server().String(),
+	}
+	if o.KeyFromEnv {
+		info.SecretKey = "env"
+	}
+	if loc := o.Zone.Chosen(); loc != nil {
+		info.TimeZone = loc.String()
+	}
+	return info
 }
 
 // maxRestore bounds the backup a restore takes.

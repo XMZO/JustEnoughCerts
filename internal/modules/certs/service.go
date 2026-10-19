@@ -83,8 +83,9 @@ type service struct {
 	providers *providers.Scope
 	log       *slog.Logger
 	now       func() time.Time
-	// loc is the time zone of the time renewals start: the server's.
-	loc *time.Location
+	// zone returns the time zone of the time renewals start: the one
+	// chosen for JEC, or the server's.
+	zone func() *time.Location
 
 	issuing   *queue[claimed]
 	deploying *queue[deployClaim]
@@ -94,7 +95,7 @@ type service struct {
 
 func newService(db *sql.DB, ev *events.Scope, box *secrets.Scope, prov *providers.Scope, log *slog.Logger, now func() time.Time) *service {
 	s := &service{
-		db: db, events: ev, secrets: box, providers: prov, log: log, now: now, loc: time.Local,
+		db: db, events: ev, secrets: box, providers: prov, log: log, now: now, zone: func() *time.Location { return time.Local },
 		issuing: newQueue[claimed](maxRunning, attemptTimeout), deploying: newQueue[deployClaim](maxDeploying, deployTimeout),
 		running: map[runKey]context.CancelFunc{},
 	}

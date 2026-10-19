@@ -39,8 +39,8 @@ type service struct {
 	cat  *i18n.Catalog
 	// base is the URL JEC is reached at, for links; "" when unknown.
 	base string
-	// zone is where the times in notes are told.
-	zone *time.Location
+	// zone returns the time zone the times in notes are told in.
+	zone func() *time.Location
 	now  func() time.Time
 }
 
@@ -208,7 +208,7 @@ func (w writer) retry(at time.Time) string {
 	if at.IsZero() {
 		return w.text(i18n.NotifyNoteGaveUp, nil)
 	}
-	return w.text(i18n.NotifyNoteRetry, i18n.Args{"time": at.In(w.s.zone).Format("2006-01-02 15:04 MST")})
+	return w.text(i18n.NotifyNoteRetry, i18n.Args{"time": at.In(w.s.zone()).Format("2006-01-02 15:04 MST")})
 }
 
 // subject is title marked as JEC's.
@@ -216,7 +216,7 @@ func (w writer) subject(title string) string {
 	return w.text(i18n.NotifyNoteSubject, i18n.Args{"title": title})
 }
 
-func (w writer) day(t time.Time) string { return t.In(w.s.zone).Format("2006-01-02") }
+func (w writer) day(t time.Time) string { return t.In(w.s.zone()).Format("2006-01-02") }
 
 // note writes the note about ev in the language tag.
 func (s *service) note(ctx context.Context, tag language.Tag, ev events.Event, d contracts.CertificateEvent) contracts.Note {

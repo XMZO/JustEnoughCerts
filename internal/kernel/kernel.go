@@ -35,6 +35,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/system"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/zone"
 	"github.com/XMZO/JustEnoughCerts/web"
 )
 
@@ -103,6 +104,10 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	if err != nil {
 		return nil, err
 	}
+	tz, err := zone.Open(ctx, st.DB(), zone.Server(), log)
+	if err != nil {
+		return nil, err
+	}
 	enabled := func(id string) bool { return id == owner || set.Enabled(id) }
 	bus := events.New(st.DB(), log, enabled)
 	sched := jobs.New(st.DB(), log, enabled)
@@ -136,6 +141,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		Platform:      build.Platform,
 		Middlewares:   []func(huma.Context, func(huma.Context)){accounts.Middleware, audit(set, cfg.BasePath()+api.Prefix, &recorders)},
 		SessionCookie: auth.CookieName,
+		TimeZone:      tz.Location,
 	}, set, log)
 	if err != nil {
 		return nil, err
@@ -155,8 +161,12 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		DB: st.DB(), Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log,
 		// The releases are asked for through the proxy of the environment, if any.
 		Version: build.Version, Client: &http.Client{Timeout: 30 * time.Second},
+		Zone: tz,
 	})
 	cfgFile := configfile.New(st.DB(), registry, enabled)
+	if err := cfgFile.Add(owner, tz.Section()); err != nil {
+		return nil, err
+	}
 	configfileapi.Register(a.Kernel(), cfgFile, configfileapi.Options{Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log})
 	var wellKnown []wellKnownHandler
 	for _, m := range set.Modules() {
@@ -180,6 +190,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 				recorders = append(recorders, recorder{module: id, record: record})
 			},
 			Config: func(s configfile.Section) error { return cfgFile.Add(id, s) },
+			Zone:   tz.Location,
 		}
 		if err := m.Register(r); err != nil {
 			return nil, fmt.Errorf("module %s: %w", id, err)
