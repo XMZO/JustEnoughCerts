@@ -860,6 +860,7 @@
       "deploy_failed": "部署失败。完整日志里有原因。",
       "duplicate": "这张证书已经添加过了。",
       "encrypted_key": "私钥设置了密码。请先去掉密码，例如运行 openssl pkey -in key.pem -out plain.pem，再重新粘贴。",
+      "ip_dns": "IP 地址只能通过网站目录类的验证方式（HTTP 文件验证）证明，不能用 DNS 验证。",
       "issue_failed": "签发失败。完整日志里有原因。",
       "key_mismatch": "私钥和证书不匹配。请确认两者来自同一个订单或同一份 CSR。",
       "names_missing": "签发的证书缺少这些域名：{domains}。",

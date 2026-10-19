@@ -658,6 +658,7 @@ const (
 	CertsErrorDeployFailed                   Key = "certs.error.deploy_failed"
 	CertsErrorDuplicate                      Key = "certs.error.duplicate"
 	CertsErrorEncryptedKey                   Key = "certs.error.encrypted_key"
+	CertsErrorIpDns                          Key = "certs.error.ip_dns"
 	CertsErrorIssueFailed                    Key = "certs.error.issue_failed"
 	CertsErrorKeyMismatch                    Key = "certs.error.key_mismatch"
 	CertsErrorNamesMissing                   Key = "certs.error.names_missing"

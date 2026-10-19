@@ -241,6 +241,8 @@ func (s *service) addIssued(ctx context.Context, in *IssueRequest) (int64, error
 				invalid = invalid.WithField("body.solverProvider", i18n.CertsErrorSolverChallenge)
 			case typ.Solves() == providers.ChallengeHTTP && slices.ContainsFunc(domains, isWildcard):
 				invalid = invalid.WithField("body.solverProvider", i18n.CertsErrorWildcardHttp)
+			case typ.Solves() != providers.ChallengeHTTP && slices.ContainsFunc(domains, isIP):
+				invalid = invalid.WithField("body.solverProvider", i18n.CertsErrorIpDns)
 			}
 		}
 	}

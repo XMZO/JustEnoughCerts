@@ -666,6 +666,7 @@ export type MessageKey =
   | "certs.error.deploy_failed"
   | "certs.error.duplicate"
   | "certs.error.encrypted_key"
+  | "certs.error.ip_dns"
   | "certs.error.issue_failed"
   | "certs.error.key_mismatch"
   | "certs.error.names_missing"

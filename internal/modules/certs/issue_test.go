@@ -424,6 +424,7 @@ func TestIssueChallenges(t *testing.T) {
 		"dns for a source of http": {[]string{"example.com"}, vendor, dns, i18n.CertsErrorSolverChallenge},
 		"http for a source of dns": {[]string{"example.com"}, ca, web, i18n.CertsErrorSolverChallenge},
 		"wildcard over http":       {[]string{"example.com", "*.example.com"}, vendor, web, i18n.CertsErrorWildcardHttp},
+		"an address over dns":      {[]string{"example.com", "192.0.2.1"}, ca, dns, i18n.CertsErrorIpDns},
 	} {
 		e := f.apiError(f.api.Post("/certificates/issue", map[string]any{"domains": tt.domains, "sourceProvider": tt.source, "solverProvider": tt.solver}),
 			http.StatusUnprocessableEntity)
@@ -1062,6 +1063,11 @@ func TestNormalizeDomain(t *testing.T) {
 		{"", ""},
 		{"-a.example.com", ""},
 		{strings.Repeat("a", 64) + ".com", ""},
+		{"192.0.2.1", "192.0.2.1"},
+		{"[2001:DB8::0:1]", "2001:db8::1"},
+		{"::ffff:192.0.2.1", "192.0.2.1"},
+		{"fe80::1%eth0", ""},
+		{"*.192.0.2.1", ""},
 	} {
 		got, ok := normalizeDomain(tt.in)
 		if got != tt.want || ok != (tt.want != "") {

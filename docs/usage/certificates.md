@@ -27,6 +27,10 @@ Domains are handled as follows:
   Punycode, and duplicates are removed.
 - Wildcard certificates require DNS validation; with `*.example.com` alone,
   the page offers to add `example.com` itself.
+- IP addresses, such as `192.0.2.1` and `2001:db8::1`, are taken too, and
+  only a validation through files on the web server proves them; Let's
+  Encrypt certifies addresses with its `shortlived` profile only (see
+  [Certificate sources](sources.md)).
 - The page starts from the source, DNS provider and targets the last
   certificate was added with, as this browser remembers them.
 - With Tencent Cloud DNSPod, Alibaba Cloud DNS, Cloudflare or Huawei Cloud

@@ -1,6 +1,7 @@
 package certs
 
 import (
+	"net/netip"
 	"strings"
 
 	"golang.org/x/net/idna"
@@ -12,12 +13,19 @@ var domainProfile = idna.New(idna.MapForLookup(), idna.BidiRule(), idna.VerifyDN
 
 // normalizeDomain returns the ASCII form of a domain name, in lowercase and
 // without a final dot, or false for a malformed one. A wildcard takes the
-// form *.example.com.
+// form *.example.com. An IP address, which some CAs certify too, comes in
+// its usual form: 192.0.2.1, 2001:db8::1.
 func normalizeDomain(name string) (string, bool) {
 	name = strings.TrimSuffix(strings.TrimSpace(name), ".")
+	if ip, err := netip.ParseAddr(strings.Trim(name, "[]")); err == nil {
+		if ip.Zone() != "" {
+			return "", false
+		}
+		return ip.Unmap().String(), true
+	}
 	base, wildcard := strings.CutPrefix(name, "*.")
-	if base == "" || strings.Contains(base, "*") {
-		return "", false
+	if _, err := netip.ParseAddr(base); base == "" || strings.Contains(base, "*") || err == nil {
+		return "", false // an address has no names under it
 	}
 	ascii, err := domainProfile.ToASCII(base)
 	if err != nil || ascii == "" || len(ascii) > 253 {
@@ -32,6 +40,13 @@ func normalizeDomain(name string) (string, bool) {
 
 // isWildcard reports whether a normalized domain is a wildcard.
 func isWildcard(domain string) bool { return strings.HasPrefix(domain, "*.") }
+
+// isIP reports whether a normalized domain is an IP address, which only
+// files on the web server, never DNS, can prove.
+func isIP(domain string) bool {
+	_, err := netip.ParseAddr(domain)
+	return err == nil
+}
 
 // normalizeDomains normalizes names and drops repeats, keeping the order.
 // bad lists the indexes of the malformed names.

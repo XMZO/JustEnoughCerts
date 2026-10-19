@@ -860,6 +860,7 @@
       "deploy_failed": "The deployment failed. The full log says why.",
       "duplicate": "This certificate has been added already.",
       "encrypted_key": "The private key is protected by a passphrase. Remove it first, for example with openssl pkey -in key.pem -out plain.pem, then paste the key again.",
+      "ip_dns": "An IP address can be proved only through files on the web server (HTTP validation), never through DNS.",
       "issue_failed": "The issuance failed. The full log says why.",
       "key_mismatch": "The private key does not belong to this certificate. Check that both come from the same order or CSR.",
       "names_missing": "The certificate issued lacks {domains}.",
