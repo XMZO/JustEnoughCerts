@@ -30,7 +30,10 @@ func (*Module) Manifest() module.Manifest {
 // Migrations returns nil: the module keeps nothing of its own.
 func (*Module) Migrations() fs.FS { return nil }
 
-// Register adds the ACM type.
+// Register adds the ACM and CloudFront types.
 func (*Module) Register(r *module.Registry) error {
-	return r.Providers.Add(acmType(), factory)
+	if err := r.Providers.Add(acmType(), factory); err != nil {
+		return err
+	}
+	return r.Providers.Add(cloudFrontType(), cloudFrontFactory)
 }

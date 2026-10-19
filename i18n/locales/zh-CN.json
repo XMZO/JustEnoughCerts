@@ -324,12 +324,18 @@
       "description": "把每个新版本重新导入到 ACM 里同一张证书上（JEC 自己导入的，或者按 ARN 指定的），使用它的 CloudFront 等服务随之换上新版本。在这些服务里选一次这张证书就行。",
       "name": "AWS Certificate Manager（ACM）"
     },
+    "cloudfront": {
+      "description": "把证书导入 ACM 的 us-east-1（CloudFront 只从这里取证书），第一次部署时设为分发的证书；以后的版本导入到同一个 ARN，分发自动换上。分发的备用域名要都在证书里。",
+      "name": "AWS CloudFront 分发"
+    },
     "error": {
       "api": "ACM 拒绝了：{message}（{kind}）",
       "denied": "AWS 拒绝了：{message}。请检查 IAM 用户的权限。",
+      "distribution": "CloudFront 分发 ID 不对：{id}",
       "keys": "AWS 拒绝了访问密钥：{message}",
       "network": "连不上 {region} 的 ACM。",
       "no_certificate": "{region} 的 ACM 里没有证书 {arn}。",
+      "no_distribution": "找不到 CloudFront 分发 {id}，请核对分发 ID 和访问密钥所属的账号。",
       "not_imported": "{domain} 这张证书是 ACM 自己签发、自己续期的：请填一张导入证书的 ARN，或者留空。",
       "region": "不是 AWS 区域：{region}",
       "status": "ACM 的回应看不懂（HTTP {status}）。"
@@ -338,12 +344,17 @@
       "access_key_id": "访问密钥 ID",
       "certificate_arn": "证书 ARN",
       "certificate_arn_help": "留空时，JEC 在第一次部署时导入一张自己的证书，之后一直在它上面重新导入。也可以填一张已导入证书的 ARN，改为更新它。",
+      "cloudfront_key_help": "IAM 用户要有 acm:ImportCertificate、acm:DescribeCertificate、acm:ListCertificates、acm:AddTagsToCertificate、cloudfront:GetDistributionConfig 和 cloudfront:UpdateDistribution 权限。",
+      "distribution": "分发 ID",
+      "distribution_help": "CloudFront 控制台里分发的 ID，形如 E2QWRUHAPOMQZL。",
       "region": "区域",
       "region_help": "比如 ap-northeast-1。CloudFront 只用 us-east-1 里的证书。",
       "secret_access_key": "秘密访问密钥",
       "secret_access_key_help": "IAM 用户的密钥，要有 acm:ImportCertificate、acm:DescribeCertificate、acm:ListCertificates 和 acm:AddTagsToCertificate 权限。"
     },
     "log": {
+      "attach": "把证书设为 CloudFront 分发 {id} 的证书",
+      "attached_already": "CloudFront 分发 {id} 已经在用这张证书",
       "gone": "JEC 以前导入的证书 {arn} 不在了：导入一张新的，需要在各服务里重新选择",
       "import": "把证书导入 {region} 的 ACM，名为 {name}",
       "reimport": "把新版本重新导入到 {arn}"
@@ -353,6 +364,7 @@
       "name": "亚马逊云科技（AWS）"
     },
     "test": {
+      "distribution": "找到 CloudFront 分发 {id}（备用域名：{aliases}），现在用的证书：{certificate}",
       "found": "找到了 {domain} 的证书，{count, plural, =0 {还没有资源在用} other {有 # 个资源在用}}。",
       "keys": "密钥在 {region} 可用。JEC 会在第一次部署时导入一张自己的证书。"
     }
@@ -2894,6 +2906,10 @@
     }
   },
   "tencentcloud": {
+    "cdn": {
+      "description": "把证书上传到腾讯云 SSL 证书服务，再直接部署到填写的 CDN 加速域名，不需要域名上已经有证书。",
+      "name": "腾讯云 CDN"
+    },
     "error": {
       "api": "腾讯云返回了错误 {code}，完整日志里有原因；要替换的证书如果没有部署在任何资源上，是不能被替换的。",
       "auth": "腾讯云不认这对 SecretId 和 SecretKey，或者它们缺少需要的权限。",
@@ -2904,19 +2920,24 @@
       "free_gone": "腾讯云上的证书 {id} 已经取消、过期或找不到了，JEC 会重新申请。",
       "free_quota": "这个账号的免费证书额度用完了。请在腾讯云控制台查看，或者改用其他证书来源。",
       "free_refused": "证书 {id} 没有通过审核：{reason}。下次签发时会重新申请。",
+      "hosts": "请填写要部署的域名。",
       "network": "连不上 {endpoint}。",
       "resource": "SSL 证书服务不能更新 {resource} 类型的资源。它能更新：{types}",
       "resources": "请填写要更新的资源类型。",
       "throttled": "腾讯云暂时拒绝了：请求太多。JEC 稍后再试。",
-      "update_slow": "腾讯云没有及时开始更新资源，JEC 稍后再试。"
+      "update_slow": "腾讯云没有及时开始更新资源，JEC 稍后再试。",
+      "zone": "EdgeOne 站点 ID 不对：{zone}"
     },
     "fetch": {
       "description": "取回腾讯云 SSL 证书服务签发的证书和私钥：购买的证书或免费证书，私钥要由腾讯云生成。证书到续期时间后，在腾讯云续费或申请新的免费证书，JEC 会把新证书取回来、部署出去。上传到腾讯云的证书不算。",
       "name": "腾讯云签发的证书"
     },
     "field": {
+      "cdn_domains": "加速域名",
+      "cdn_domains_help": "要部署到的 CDN 加速域名，用逗号分隔；每个都要在证书里。",
       "delete_old": "删除被替换的证书",
       "delete_old_help": "只删除 JEC 上传、已被后来的版本替换的证书。",
+      "direct_key_help": "CAM 子用户要有 SSL 证书服务的上传、部署、删除和查看权限（QcloudSSLFullAccess），以及 CDN 或 EdgeOne 的权限。",
       "fetch_secret_key_help": "最好用只授予 SSL 证书服务的 DescribeCertificates 和 DownloadCertificate 权限的 CAM 子用户。",
       "free_secret_key_help": "最好用只授予 SSL 证书服务的 ApplyCertificate、DescribeCertificate、CompleteCertificate、DownloadCertificate、DescribeCertificates 权限，以及 DNSPod 修改解析权限的 CAM 子用户。",
       "key_algorithm": "密钥类型",
@@ -2929,7 +2950,11 @@
       "secret_id": "SecretId",
       "secret_key": "SecretKey",
       "secret_key_help": "最好用只授予 SSL 证书服务的 UploadCertificate、UpdateCertificateInstance、DeleteCertificate、DescribeCertificates 权限，以及要更新的资源所需权限的 CAM 子用户。",
-      "site": "站点"
+      "site": "站点",
+      "teo_hosts": "域名",
+      "teo_hosts_help": "EdgeOne 站点里要用这张证书的域名，用逗号分隔。",
+      "zone": "站点 ID",
+      "zone_help": "EdgeOne 站点的 ID，形如 zone-2o1abcd，在站点概览里。"
     },
     "free": {
       "description": "向腾讯云 SSL 证书服务申请免费证书（TrustAsia DV，3 个月，一个域名）：腾讯云生成私钥，在同一账号的 DNSPod（腾讯云 DNS 解析）里自动添加验证记录，签好后 JEC 取回、部署出去，到续期时间再申请新的一张。域名要托管在这个账号的 DNSPod 里；免费证书的数量有限额。",
@@ -2940,8 +2965,10 @@
       "rsa": "RSA 2048"
     },
     "log": {
+      "bind_hosts": "设为 EdgeOne 站点 {zone} 里 {hosts} 的证书",
       "delete_failed": "删除 {id} 失败，下次部署会再试。",
       "deleted": "已删除 {id}",
+      "deploy_domains": "部署到 CDN 加速域名 {domains}",
       "fetch_found": "取回证书 {id}，{date} 到期",
       "fetch_look": "在腾讯云 SSL 证书服务里找 {domains} 的证书",
       "fetch_no_chain": "证书 {id} 没有带中间证书：只部署它的网站，有的客户端会不信任",
@@ -2965,6 +2992,10 @@
     "ssl": {
       "description": "把每张新证书上传到 SSL 证书服务，再用“一键更新”让旧证书所在的资源都换上新证书。",
       "name": "腾讯云（SSL 证书服务）"
+    },
+    "teo": {
+      "description": "把证书上传到腾讯云 SSL 证书服务，再设为 EdgeOne 站点里填写的域名的证书。",
+      "name": "腾讯云 EdgeOne"
     },
     "test": {
       "fetch_ok": "已连上腾讯云 SSL 证书服务，能看到 {count, plural, other {# 张证书}}。",

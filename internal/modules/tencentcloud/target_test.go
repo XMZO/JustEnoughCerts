@@ -43,6 +43,26 @@ type fakeAPI struct {
 	completed  []string
 	applyFail  error
 	statusFail error
+	// deployed are the deployments to resources, and bound the hosts of
+	// EdgeOne zones given certificates.
+	deployed []string
+	bound    []string
+}
+
+func (f *fakeAPI) deploy(_ context.Context, id, resource string, instances []string) (int64, error) {
+	if f.fail != nil {
+		return 0, f.fail
+	}
+	f.deployed = append(f.deployed, resource+":"+strings.Join(instances, ",")+">"+id)
+	return 77, nil
+}
+
+func (f *fakeAPI) bindHosts(_ context.Context, zone string, hosts []string, id string) error {
+	if f.fail != nil {
+		return f.fail
+	}
+	f.bound = append(f.bound, zone+":"+strings.Join(hosts, ",")+">"+id)
+	return nil
 }
 
 func (f *fakeAPI) upload(_ context.Context, alias, chain, key string) (string, error) {
@@ -273,6 +293,10 @@ func TestSDK(t *testing.T) {
 			_, _ = io.WriteString(w, `{"Response":{"DeployRecordId":1763489,"DeployStatus":1,"RequestId":"r"}}`)
 		case "DescribeCertificates":
 			_, _ = io.WriteString(w, `{"Response":{"TotalCount":7,"Certificates":[],"RequestId":"r"}}`)
+		case "DeployCertificateInstance":
+			_, _ = io.WriteString(w, `{"Response":{"DeployRecordId":88,"DeployStatus":1,"RequestId":"r"}}`)
+		case "ModifyHostsCertificate":
+			_, _ = io.WriteString(w, `{"Response":{"RequestId":"r"}}`)
 		default:
 			_, _ = io.WriteString(w, `{"Response":{"Error":{"Code":"FailedOperation.DeleteResourceFailed","Message":"in use"},"RequestId":"r"}}`)
 		}
@@ -295,8 +319,18 @@ func TestSDK(t *testing.T) {
 	if code := errorCode(err); code != "FailedOperation.DeleteResourceFailed" {
 		t.Errorf("remove: %q %v", code, err)
 	}
-	if !slices.Equal(actions, []string{"UploadCertificate 2019-12-05", "UpdateCertificateInstance 2019-12-05", "DescribeCertificates 2019-12-05", "DeleteCertificate 2019-12-05"}) {
+	if record, err := api.deploy(t.Context(), "new", "cdn", []string{"example.com"}); err != nil || record != 88 {
+		t.Errorf("deploy %d %v", record, err)
+	}
+	if err := api.bindHosts(t.Context(), "zone-1", []string{"example.com"}, "new"); err != nil {
+		t.Errorf("bind hosts: %v", err)
+	}
+	if !slices.Equal(actions, []string{"UploadCertificate 2019-12-05", "UpdateCertificateInstance 2019-12-05", "DescribeCertificates 2019-12-05",
+		"DeleteCertificate 2019-12-05", "DeployCertificateInstance 2019-12-05", "ModifyHostsCertificate 2022-09-01"}) {
 		t.Errorf("actions %v", actions)
+	}
+	if hosts, _ := got[5]["Hosts"].([]any); got[5]["ZoneId"] != "zone-1" || got[5]["Mode"] != "sslcert" || len(hosts) != 1 {
+		t.Errorf("bind hosts sent %v", got[5])
 	}
 	if got[0]["CertificatePublicKey"] != "CHAIN" || got[0]["CertificatePrivateKey"] != "KEY" || got[0]["Repeatable"] != false || got[0]["CertificateType"] != "SVR" {
 		t.Errorf("upload sent %v", got[0])

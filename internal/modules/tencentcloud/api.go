@@ -55,6 +55,11 @@ type sslAPI interface {
 	status(ctx context.Context, id string) (certStatus, error)
 	// complete has the CA check the validation of certificate id now.
 	complete(ctx context.Context, id string) error
+	// deploy has certificate id deployed to instances of resource, such
+	// as the domains of CDN, and returns the ID of the task.
+	deploy(ctx context.Context, id, resource string, instances []string) (int64, error)
+	// bindHosts makes certificate id that of hosts of EdgeOne zone.
+	bindHosts(ctx context.Context, zone string, hosts []string, id string) error
 }
 
 // certStatus is where a certificate stands: Status is one of the status*
@@ -88,8 +93,10 @@ type issuedCert struct {
 // sdk is sslAPI over the common client of Tencent Cloud's SDK, which signs
 // the requests (TC3-HMAC-SHA256), without the SDK of the service.
 type sdk struct {
-	client *common.Client
-	scheme string
+	client   *common.Client
+	scheme   string
+	cred     *common.Credential
+	endpoint string
 }
 
 func newSDK(id, key, endpoint string) (sslAPI, error) { return dial(id, key, endpoint, "HTTPS") }
@@ -100,18 +107,25 @@ func dial(id, key, endpoint, scheme string) (*sdk, error) {
 	p.HttpProfile.Endpoint = endpoint
 	p.HttpProfile.Scheme = scheme
 	p.HttpProfile.ReqTimeout = 30
-	return &sdk{client: common.NewCommonClient(common.NewCredential(id, key), "", p), scheme: scheme}, nil
+	cred := common.NewCredential(id, key)
+	return &sdk{client: common.NewCommonClient(cred, "", p), scheme: scheme, cred: cred, endpoint: endpoint}, nil
 }
 
-// call sends action with params and decodes the response into out.
+// call sends action of SSL Certificates with params and decodes the
+// response into out.
 func (s *sdk) call(ctx context.Context, action string, params map[string]any, out any) error {
-	req := tchttp.NewCommonRequest("ssl", apiVersion, action)
+	return s.callOf(ctx, s.client, "ssl", apiVersion, action, params, out)
+}
+
+// callOf sends action of service at version through client.
+func (s *sdk) callOf(ctx context.Context, client *common.Client, service, version, action string, params map[string]any, out any) error {
+	req := tchttp.NewCommonRequest(service, version, action)
 	req.SetContext(ctx)
 	if err := req.SetActionParameters(params); err != nil {
 		return err
 	}
 	resp := tchttp.NewCommonResponse()
-	if err := s.client.Send(req, resp); err != nil {
+	if err := client.Send(req, resp); err != nil {
 		return err
 	}
 	var body struct {
@@ -255,6 +269,34 @@ func (s *sdk) status(ctx context.Context, id string) (certStatus, error) {
 
 func (s *sdk) complete(ctx context.Context, id string) error {
 	return s.call(ctx, "CompleteCertificate", map[string]any{"CertificateId": id}, nil)
+}
+
+func (s *sdk) deploy(ctx context.Context, id, resource string, instances []string) (int64, error) {
+	var out struct {
+		DeployRecordID int64 `json:"DeployRecordId"`
+	}
+	err := s.call(ctx, "DeployCertificateInstance", map[string]any{
+		"CertificateId": id, "InstanceIdList": instances, "ResourceType": resource, "Status": 1,
+	}, &out)
+	return out.DeployRecordID, err
+}
+
+// teoVersion is the version of EdgeOne's API, at the endpoint of the
+// site's SSL Certificates with teo in place of ssl.
+const teoVersion = "2022-09-01"
+
+func (s *sdk) bindHosts(ctx context.Context, zone string, hosts []string, id string) error {
+	p := profile.NewClientProfile()
+	p.HttpProfile.Endpoint = s.endpoint
+	if rest, ok := strings.CutPrefix(s.endpoint, "ssl."); ok {
+		p.HttpProfile.Endpoint = "teo." + rest
+	}
+	p.HttpProfile.Scheme = s.scheme
+	p.HttpProfile.ReqTimeout = 30
+	client := common.NewCommonClient(s.cred, "", p)
+	return s.callOf(ctx, client, "teo", teoVersion, "ModifyHostsCertificate", map[string]any{
+		"ZoneId": zone, "Hosts": hosts, "Mode": "sslcert", "ServerCertInfo": []map[string]string{{"CertId": id}},
+	}, nil)
 }
 
 // statusIssued is the status of an issued certificate, and maxListed

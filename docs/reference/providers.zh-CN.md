@@ -55,11 +55,14 @@
 | `huaweicloud.cdn` | 华为云 CDN | 替身 |
 | `cloudflare.custom` | Cloudflare 自定义证书 | 替身 |
 | `tencentcloud.ssl` | 腾讯云 SSL 证书服务，更新 CDN、EdgeOne、CLB 等资源 | 替身 |
+| `tencentcloud.cdn` | 腾讯云 CDN，直接部署到加速域名 | 替身 |
+| `tencentcloud.teo` | 腾讯云 EdgeOne，设为站点域名的证书 | 替身 |
 | `qiniu.cdn` | 七牛云 CDN | 替身 |
 | `upyun.cdn` | 又拍云 CDN，经控制台接口（实验性） | 替身，参照其他工具的客户端编写 |
 | `volcengine.cdn` | 火山引擎 CDN | 替身；签名由官方 SDK 生成 |
 | `baiducloud.cdn` | 百度智能云 CDN | 替身；签名已与官方 SDK 核对 |
 | `aws.acm` | AWS Certificate Manager，供 CloudFront 与负载均衡使用 | 模拟器：moto |
+| `aws.cloudfront` | AWS CloudFront 分发：导入 us-east-1 的 ACM 并设为分发的证书 | 替身 |
 | `baota.site` | 宝塔面板（aaPanel）网站 | 替身 |
 | `onepanel.certificate` | 1Panel 证书 | 替身 |
 | `npm.certificate` | Nginx Proxy Manager | 真实软件：NPM 2.16 |

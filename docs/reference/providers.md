@@ -60,11 +60,14 @@ Reports of results with real accounts are welcome.
 | `huaweicloud.cdn` | Huawei Cloud CDN | Fake |
 | `cloudflare.custom` | Cloudflare custom certificates | Fake |
 | `tencentcloud.ssl` | Tencent Cloud SSL Certificates, updating CDN, EdgeOne, CLB and other resources | Fake |
+| `tencentcloud.cdn` | Tencent Cloud CDN, deployed straight to its domains | Fake |
+| `tencentcloud.teo` | Tencent Cloud EdgeOne, as the certificate of a zone's domains | Fake |
 | `qiniu.cdn` | Qiniu Cloud CDN | Fake |
 | `upyun.cdn` | UPYUN CDN, through its console's interface (experimental) | Fake, written after other tools' clients |
 | `volcengine.cdn` | Volcengine CDN | Fake; signatures made by the official SDK |
 | `baiducloud.cdn` | Baidu AI Cloud CDN | Fake; signatures checked against the official SDK's |
 | `aws.acm` | AWS Certificate Manager, for CloudFront and load balancers | Emulator: moto |
+| `aws.cloudfront` | AWS CloudFront distributions, through ACM in us-east-1 | Fake |
 | `baota.site` | BaoTa (aaPanel) websites | Fake |
 | `onepanel.certificate` | 1Panel certificates | Fake |
 | `npm.certificate` | Nginx Proxy Manager | Real software: NPM 2.16 |

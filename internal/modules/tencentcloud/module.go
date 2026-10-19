@@ -2,7 +2,7 @@
 // through its SSL Certificates service: each new certificate is uploaded
 // there, and replaces the one it follows on every resource that one is
 // deployed to, CDN, EdgeOne, CLB and the others the service updates in one
-// go. The certificates the service issues are a source too, and so are
+// go; or goes straight to the domains of CDN or the hosts of EdgeOne. The certificates the service issues are a source too, and so are
 // the free ones JEC applies for there.
 package tencentcloud
 
@@ -39,6 +39,12 @@ func (*Module) Migrations() fs.FS { return nil }
 // Certificates issued and of the free ones JEC applies for there.
 func (m *Module) Register(r *module.Registry) error {
 	if err := r.Providers.Add(sslType(), m.factory); err != nil {
+		return err
+	}
+	if err := r.Providers.Add(cdnType(), m.directFactory("cdn")); err != nil {
+		return err
+	}
+	if err := r.Providers.Add(teoType(), m.directFactory("teo")); err != nil {
 		return err
 	}
 	if err := r.Providers.Add(fetchType(), m.fetchFactory); err != nil {

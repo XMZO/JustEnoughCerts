@@ -324,12 +324,18 @@
       "description": "Imports each new version over the same certificate of ACM, one JEC imports or one you choose by its ARN, so that CloudFront and the others using it serve the new one. Pick that certificate in them once.",
       "name": "AWS Certificate Manager"
     },
+    "cloudfront": {
+      "description": "Imports the certificate to ACM in us-east-1, where CloudFront takes certificates from, and makes it the distribution's certificate at the first deployment; later versions go over the same ARN, which the distribution serves at once. Every alternate domain name of the distribution has to be in the certificate.",
+      "name": "AWS CloudFront distribution"
+    },
     "error": {
       "api": "ACM refused: {message} ({kind})",
       "denied": "AWS refused: {message}. Check the permissions of the IAM user.",
+      "distribution": "This is no CloudFront distribution ID: {id}",
       "keys": "AWS refused the access keys: {message}",
       "network": "Could not reach ACM in {region}.",
       "no_certificate": "ACM in {region} has no certificate {arn}.",
+      "no_distribution": "CloudFront distribution {id} is not there; check its ID and the account of the access key.",
       "not_imported": "The certificate for {domain} is one ACM issues and renews itself: enter the ARN of an imported certificate, or leave it empty.",
       "region": "Not an AWS region: {region}",
       "status": "The answer of ACM made no sense (HTTP {status})."
@@ -338,12 +344,17 @@
       "access_key_id": "Access key ID",
       "certificate_arn": "Certificate ARN",
       "certificate_arn_help": "Leave it empty for JEC to import a certificate of its own at the first deployment and keep importing over it. Or enter the ARN of an imported certificate to update.",
+      "cloudfront_key_help": "The IAM user needs acm:ImportCertificate, acm:DescribeCertificate, acm:ListCertificates, acm:AddTagsToCertificate, cloudfront:GetDistributionConfig and cloudfront:UpdateDistribution.",
+      "distribution": "Distribution ID",
+      "distribution_help": "The distribution's ID in the CloudFront console, such as E2QWRUHAPOMQZL.",
       "region": "Region",
       "region_help": "Such as eu-central-1. CloudFront takes its certificates from us-east-1 alone.",
       "secret_access_key": "Secret access key",
       "secret_access_key_help": "Of an IAM user allowed acm:ImportCertificate, acm:DescribeCertificate, acm:ListCertificates and acm:AddTagsToCertificate."
     },
     "log": {
+      "attach": "Making it the certificate of CloudFront distribution {id}",
+      "attached_already": "CloudFront distribution {id} serves this certificate already",
       "gone": "The certificate {arn} that JEC imported before is gone: importing a new one, to pick in the services again",
       "import": "Importing the certificate to ACM in {region}, as {name}",
       "reimport": "Importing the new version over {arn}"
@@ -353,6 +364,7 @@
       "name": "Amazon Web Services"
     },
     "test": {
+      "distribution": "Found CloudFront distribution {id} (alternate domain names: {aliases}), serving: {certificate}",
       "found": "Found the certificate for {domain}, used by {count, plural, =0 {nothing yet} one {# resource} other {# resources}}.",
       "keys": "The keys work in {region}. JEC imports a certificate of its own at the first deployment."
     }
@@ -2894,6 +2906,10 @@
     }
   },
   "tencentcloud": {
+    "cdn": {
+      "description": "Uploads the certificate to Tencent Cloud SSL Certificates, then deploys it straight to the CDN domains given, with no certificate there before.",
+      "name": "Tencent Cloud CDN"
+    },
     "error": {
       "api": "Tencent Cloud returned the error {code}. The full log says why; a certificate to replace that is deployed to no resource cannot be replaced.",
       "auth": "Tencent Cloud refused the SecretId and SecretKey, or they lack the permissions needed.",
@@ -2904,19 +2920,24 @@
       "free_gone": "Certificate {id} at Tencent Cloud is cancelled, expired or gone; JEC applies anew.",
       "free_quota": "This account has no free certificates left. See Tencent Cloud's console, or use another source.",
       "free_refused": "Certificate {id} was refused: {reason}. JEC applies anew at the next issuance.",
+      "hosts": "Give the domains to deploy to.",
       "network": "Could not reach {endpoint}.",
       "resource": "SSL Certificates updates no resources of the type {resource}. It updates: {types}",
       "resources": "Enter the types of resource to update.",
       "throttled": "Tencent Cloud refused for now: too many requests. JEC tries again later.",
-      "update_slow": "Tencent Cloud did not start updating the resources in time; JEC tries again later."
+      "update_slow": "Tencent Cloud did not start updating the resources in time; JEC tries again later.",
+      "zone": "This is no EdgeOne zone ID: {zone}"
     },
     "fetch": {
       "description": "Takes in the certificates, with their keys, that Tencent Cloud's SSL Certificates issued: bought ones or free ones, whose key Tencent Cloud made. Once one is due, renew it there or apply for the next free one, and JEC takes the new one in and deploys it. Certificates uploaded to Tencent Cloud do not count.",
       "name": "Certificates issued at Tencent Cloud"
     },
     "field": {
+      "cdn_domains": "CDN domains",
+      "cdn_domains_help": "The CDN domains to deploy to, separated by commas; each has to be in the certificate.",
       "delete_old": "Delete the replaced certificates",
       "delete_old_help": "Only those JEC uploaded, once a later version replaced them.",
+      "direct_key_help": "The CAM sub-user needs to upload, deploy, delete and list in SSL Certificates (QcloudSSLFullAccess), and the rights of CDN or EdgeOne.",
       "fetch_secret_key_help": "Best from a CAM user granted DescribeCertificates and DownloadCertificate of SSL Certificates only.",
       "free_secret_key_help": "Best from a CAM user granted ApplyCertificate, DescribeCertificate, CompleteCertificate, DownloadCertificate and DescribeCertificates of SSL Certificates only, with leave to change the records in DNSPod.",
       "key_algorithm": "Key type",
@@ -2929,7 +2950,11 @@
       "secret_id": "SecretId",
       "secret_key": "SecretKey",
       "secret_key_help": "Best from a CAM user granted UploadCertificate, UpdateCertificateInstance, DeleteCertificate and DescribeCertificates of SSL Certificates only, with what the resources to update need.",
-      "site": "Site"
+      "site": "Site",
+      "teo_hosts": "Domains",
+      "teo_hosts_help": "The domains of the EdgeOne zone to serve this certificate, separated by commas.",
+      "zone": "Zone ID",
+      "zone_help": "The EdgeOne zone's ID, such as zone-2o1abcd, in the zone's overview."
     },
     "free": {
       "description": "Applies for free certificates at Tencent Cloud's SSL Certificates (TrustAsia DV, three months, one domain): Tencent Cloud makes the key and adds the validation record to the domain's DNSPod (Tencent Cloud DNS) of the same account; once issued, JEC takes the certificate in and deploys it, and applies for the next one when it is due. The domain must be in DNSPod of this account; free certificates come in a limited number.",
@@ -2940,8 +2965,10 @@
       "rsa": "RSA 2048"
     },
     "log": {
+      "bind_hosts": "Making it the certificate of {hosts} in EdgeOne zone {zone}",
       "delete_failed": "Could not delete {id}; the next deployment tries again.",
       "deleted": "Deleted {id}",
+      "deploy_domains": "Deploying to the CDN domains {domains}",
       "fetch_found": "Took in certificate {id}, valid until {date}",
       "fetch_look": "Looking in Tencent Cloud's SSL Certificates for the certificate of {domains}",
       "fetch_no_chain": "Certificate {id} came without its intermediate certificates: some clients do not trust a website that serves it alone",
@@ -2965,6 +2992,10 @@
     "ssl": {
       "description": "Uploads each new certificate to SSL Certificates, then has the resources of the one it follows take it, in one go.",
       "name": "Tencent Cloud (SSL Certificates)"
+    },
+    "teo": {
+      "description": "Uploads the certificate to Tencent Cloud SSL Certificates, then makes it the certificate of the domains given in an EdgeOne zone.",
+      "name": "Tencent Cloud EdgeOne"
     },
     "test": {
       "fetch_ok": "Connected to Tencent Cloud's SSL Certificates; {count, plural, one {# certificate} other {# certificates}} in sight.",

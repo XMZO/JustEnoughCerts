@@ -378,7 +378,7 @@ DNS 验证分成两种能力，实现方式不同：
 
 | 类别 | 平台 | 阶段 |
 |---|---|---|
-| CDN / 边缘 | **阿里云 ESA**（M1）；阿里云 CDN / DCDN、七牛云（已完成）、腾讯云 EdgeOne、腾讯云 CDN、华为云 CDN（已完成）、百度智能云 CDN（已完成）、火山引擎 CDN（已完成）、又拍云（实验，已完成）、AWS CloudFront（经 ACM，已完成）、Cloudflare（自定义证书需付费套餐，已完成） | M1 / M3 |
+| CDN / 边缘 | **阿里云 ESA**（M1）；阿里云 CDN / DCDN、七牛云（已完成）、腾讯云 EdgeOne、腾讯云 CDN（直接部署，已完成）、华为云 CDN（已完成）、百度智能云 CDN（已完成）、火山引擎 CDN（已完成）、又拍云（实验，已完成）、AWS CloudFront（导入 us-east-1 的 ACM 并设为分发的证书，`aws.cloudfront`，已完成）、Cloudflare（自定义证书需付费套餐，已完成） | M1 / M3 |
 | 负载均衡 / 证书库 | 阿里云 SLB / ALB、阿里云证书服务（CLB、ALB 和数字证书管理服务已完成）、腾讯云 CLB、腾讯云 SSL 证书（已完成，经它更新 CDN、EdgeOne、CLB 等）、AWS ACM（已完成） | M3 |
 | 对象存储 | 阿里云 OSS（已完成）、腾讯云 COS（经腾讯云 SSL 证书服务，已完成）的自定义域名 HTTPS | M3 |
 | 服务器 | 本地文件 + 执行命令（nginx、caddy、haproxy 等）；SSH / SFTP 上传 + 远程命令；Docker 容器（通过挂载的 Docker API 发信号或重启，不需要 docker 命令行）；Kubernetes Secret | M1（本地、SSH）/ M3（Docker、Kubernetes 已完成） |
