@@ -148,6 +148,7 @@ async function submit() {
           <ProviderFieldRow
             v-for="f in shown"
             :key="f.key"
+            class="animate-fade-in"
             :id-prefix="uid"
             :field="f"
             :choice="choice(f, kind.fields)"

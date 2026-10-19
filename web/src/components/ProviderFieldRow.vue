@@ -7,8 +7,7 @@ import JecTextarea from './JecTextarea.vue'
 // One setting of a provider's form. A field with a label is JEC's own; one
 // without is a third party's setting, shown by its key with the third
 // party's own description. A choice that other fields depend on, as the
-// ways of signing in, shows its few options side by side. A field comes in
-// gently as the form changes to show it.
+// ways of signing in, shows its few options side by side.
 const props = defineProps<{
   idPrefix: string
   field: ProviderField
@@ -27,7 +26,7 @@ const inputType = props.field.secret ? 'password' : (types[props.field.kind] ?? 
 </script>
 
 <template>
-  <div class="grid animate-fade-in gap-1">
+  <div class="grid gap-1">
     <label v-if="field.kind === 'switch'" class="flex items-center gap-2 text-small font-semibold">
       <input
         :id="id"

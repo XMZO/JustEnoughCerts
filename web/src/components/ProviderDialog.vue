@@ -220,7 +220,7 @@ async function submit(andTest = false) {
       <form
         :id="`${uid}-form`"
         ref="form"
-        :class="['flex min-w-0 flex-1 flex-col sm:-m-1 sm:min-h-0 sm:overflow-y-auto sm:p-1', !picked && !single && !current ? 'max-sm:hidden' : '']"
+        :class="['flex min-w-0 flex-1 flex-col sm:min-h-0 sm:overflow-y-auto sm:p-1', !picked && !single && !current ? 'max-sm:hidden' : '']"
         novalidate
         @submit.prevent="submit()"
       >

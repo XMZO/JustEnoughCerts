@@ -90,10 +90,12 @@ function set(key: string, value: string) {
         <option :value="credentialChoice.own">{{ t('kernel.providers.credential.own') }}</option>
       </select>
     </JecField>
+    <!-- A field comes in gently as the form changes to show it; not those
+         behind the disclosure, whose animations would wait while it is shut. -->
     <ProviderFieldRow
       v-for="f in main"
       :key="f.key"
-      :class="wide(f)"
+      :class="[wide(f), 'animate-fade-in']"
       :id-prefix="idPrefix"
       :field="f"
       :choice="choice(f, type.fields)"
