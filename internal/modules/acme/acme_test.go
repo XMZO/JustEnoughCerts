@@ -50,7 +50,7 @@ func newModule(t *testing.T) *Module {
 
 func TestAccountType(t *testing.T) {
 	typ := accountType()
-	if typ.ID != "acme.account" || typ.Kind != providers.Source || len(typ.Fields) != 5 {
+	if typ.ID != "acme.account" || typ.Kind != providers.Source || len(typ.Fields) != 6 {
 		t.Fatalf("type %+v", typ)
 	}
 	ca := typ.Fields[0]

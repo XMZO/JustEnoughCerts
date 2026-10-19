@@ -33,6 +33,7 @@ func userType() providers.Type {
 			{Key: "token", Label: i18n.PushoverFieldToken, Help: i18n.PushoverFieldTokenHelp, Kind: providers.Text, Secret: true, Required: true},
 			{Key: "user", Label: i18n.PushoverFieldUser, Help: i18n.PushoverFieldUserHelp, Kind: providers.Text, Secret: true, Required: true},
 			{Key: "device", Label: i18n.PushoverFieldDevice, Help: i18n.PushoverFieldDeviceHelp, Kind: providers.Text, Advanced: true},
+			httpx.ProxyField(),
 		}, contracts.NotifierFields()...),
 	}
 }
@@ -47,7 +48,7 @@ type user struct {
 var _ contracts.Notifier = (*user)(nil)
 
 func factory(_ context.Context, in providers.Instance) (any, error) {
-	client, err := httpx.Client(httpx.Options{PublicOnly: true})
+	client, err := httpx.ClientFor(httpx.Options{PublicOnly: true}, in.Config)
 	if err != nil {
 		return nil, retry.Permanent(err)
 	}

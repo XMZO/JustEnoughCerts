@@ -35,6 +35,7 @@ func customType() providers.Type {
 			{Key: "api_token", Label: i18n.CloudflareFieldApiToken, Help: i18n.CloudflareFieldApiTokenHelp, Kind: providers.Text, Secret: true, Required: true},
 			{Key: "zone", Label: i18n.CloudflareFieldZone, Help: i18n.CloudflareFieldZoneHelp, Kind: providers.Text, Required: true},
 			{Key: "certificate_id", Label: i18n.CloudflareFieldCertificateId, Help: i18n.CloudflareFieldCertificateIdHelp, Kind: providers.Text, Advanced: true},
+			httpx.ProxyField(),
 		},
 		Credential: credentials.Use(credentials.Cloudflare),
 	}
@@ -61,7 +62,7 @@ var (
 )
 
 func factory(_ context.Context, in providers.Instance) (any, error) {
-	client, err := httpx.Client(httpx.Options{PublicOnly: true})
+	client, err := httpx.ClientFor(httpx.Options{PublicOnly: true}, in.Config)
 	if err != nil {
 		return nil, retry.Permanent(err)
 	}

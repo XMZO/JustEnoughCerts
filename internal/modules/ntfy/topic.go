@@ -40,6 +40,7 @@ func topicType() providers.Type {
 			{Key: "topic", Label: i18n.NtfyFieldTopic, Help: i18n.NtfyFieldTopicHelp, Kind: providers.Text, Secret: true, Required: true},
 			{Key: "token", Label: i18n.NtfyFieldToken, Help: i18n.NtfyFieldTokenHelp, Kind: providers.Text, Secret: true},
 			{Key: "allow_private", Label: i18n.NtfyFieldAllowPrivate, Help: i18n.NtfyFieldAllowPrivateHelp, Kind: providers.Switch, Default: "false", Advanced: true},
+			httpx.ProxyField(),
 		}, contracts.NotifierFields()...),
 	}
 }
@@ -62,7 +63,7 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.RawQuery != "" || u.Fragment != "" {
 		return nil, retry.Permanent(&contracts.Problem{Key: i18n.NtfyErrorServer, Params: map[string]any{"server": raw}})
 	}
-	client, err := httpx.Client(httpx.Options{PublicOnly: in.Config["allow_private"] != "true"})
+	client, err := httpx.ClientFor(httpx.Options{PublicOnly: in.Config["allow_private"] != "true"}, in.Config)
 	if err != nil {
 		return nil, retry.Permanent(err)
 	}

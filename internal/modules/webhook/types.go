@@ -13,6 +13,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
 
 func notifyType() providers.Type {
@@ -21,7 +22,7 @@ func notifyType() providers.Type {
 		Tags: []string{"self_hosted"},
 		Fields: append([]providers.Field{
 			{Key: "url", Label: i18n.WebhookFieldUrl, Help: i18n.WebhookFieldUrlHelp, Kind: providers.URL, Required: true},
-			secretField, headerField, allowField, methodField, bodyField(i18n.WebhookFieldBodyHelp), typeField,
+			secretField, headerField, allowField, methodField, bodyField(i18n.WebhookFieldBodyHelp), typeField, httpx.ProxyField(),
 		}, contracts.NotifierFields()...),
 	}
 }
@@ -32,7 +33,7 @@ func deployType() providers.Type {
 		Tags: []string{"self_hosted"},
 		Fields: []providers.Field{
 			{Key: "url", Label: i18n.WebhookFieldUrl, Help: i18n.WebhookFieldDeployUrlHelp, Kind: providers.URL, Required: true},
-			secretField, headerField, allowField, methodField, bodyField(i18n.WebhookFieldDeployBodyHelp), typeField,
+			secretField, headerField, allowField, methodField, bodyField(i18n.WebhookFieldDeployBodyHelp), typeField, httpx.ProxyField(),
 		},
 	}
 }

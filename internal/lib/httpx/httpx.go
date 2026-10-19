@@ -17,7 +17,6 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
-	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -119,9 +118,9 @@ func Client(o Options) (*http.Client, error) {
 		if o.PublicOnly {
 			return nil, errors.New("httpx: PublicOnly does not go with a proxy")
 		}
-		u, err := url.Parse(o.Proxy)
-		if err != nil || u.Host == "" || !slices.Contains([]string{"http", "https", "socks5", "socks5h"}, u.Scheme) {
-			return nil, ErrProxy
+		u, err := ParseProxy(o.Proxy)
+		if err != nil {
+			return nil, err
 		}
 		t.Proxy = http.ProxyURL(u)
 	}

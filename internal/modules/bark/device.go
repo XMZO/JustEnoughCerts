@@ -28,6 +28,7 @@ func deviceType() providers.Type {
 			{Key: "key", Label: i18n.BarkFieldKey, Help: i18n.BarkFieldKeyHelp, Kind: providers.Text, Secret: true, Required: true},
 			{Key: "server", Label: i18n.BarkFieldServer, Help: i18n.BarkFieldServerHelp, Kind: providers.URL, Default: defaultServer, Advanced: true},
 			{Key: "allow_private", Label: i18n.BarkFieldAllowPrivate, Help: i18n.BarkFieldAllowPrivateHelp, Kind: providers.Switch, Default: "false", Advanced: true},
+			httpx.ProxyField(),
 		}, contracts.NotifierFields()...),
 	}
 }
@@ -49,7 +50,7 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.RawQuery != "" || u.Fragment != "" {
 		return nil, retry.Permanent(&contracts.Problem{Key: i18n.BarkErrorServer, Params: map[string]any{"server": raw}})
 	}
-	client, err := httpx.Client(httpx.Options{PublicOnly: in.Config["allow_private"] != "true"})
+	client, err := httpx.ClientFor(httpx.Options{PublicOnly: in.Config["allow_private"] != "true"}, in.Config)
 	if err != nil {
 		return nil, retry.Permanent(err)
 	}

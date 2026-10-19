@@ -885,8 +885,9 @@ services:
 - **证书格式**：PEM（证书 / 完整链 / 私钥分开或合并）、PFX/PKCS#12、JKS。写文件的部署目标能写 PEM（分开或合并）和 PKCS #12（见 5.3.3 的“写成什么文件”）；JKS 不做：Java 9 起 keystore 默认就是 PKCS #12，Tomcat 等直接读 PFX 文件。上传已支持 PEM 和 PFX/P12（带密码）：添加证书和上传新版本时选“PEM 文本”或“PFX / P12 文件”，接口里是 `pfx`（Base64）和 `pfxPassword`；密码不对、文件读不了、私钥和证书不配对时报在文件的字段上。
 - **文件部署**：路径、文件名模板、属主、权限、写入后执行的命令都可配置（已实现，5.3.3），因此兼容 nginx、caddy、haproxy 等任何读文件的程序。
 - **导入现有证书**：支持手动上传，也支持扫描 acme.sh、certbot 的目录导入（只读，避免冲突）。
-- **命名模板**：部署到 CDN 时的证书名可自定义，例如 `jec-{{.Domain}}-{{.NotAfter | date "20060102"}}`。
+- **命名模板**：部署到 CDN 时的证书名可自定义，例如 `jec-{{.Domain}}-{{.NotAfter | date "20060102"}}`。（不做：上传到云上的证书统一叫 `jec-<证书 ID>-<指纹前 12 位>`，各目标靠这个名字找回自己上次传的证书，中断后接着做、删掉旧的；名字能随便改的话，两个版本可能撞名而被当成“已经传过”，换了模板也找不回以前的。）
 - **网络**：每个 Provider 可以单独设置 HTTP 代理；验证 DNS 是否生效时可以指定公共解析服务器；支持 IPv6。
+  - 代理（已实现）：JEC 自己的 HTTP 客户端（`internal/lib/httpx`）不用环境变量里的代理，要连境外服务的类型在高级设置里有“代理”（`httpx.ProxyField`、`httpx.ClientFor`，http://、https://、socks5://）：通知的 Telegram、Discord、Slack、Pushover、ntfy、Gotify、Bark、Webhook，部署目标 Cloudflare、AWS ACM、Webhook，以及 ACME 账号（Google Trust Services 等在国内要代理）。经代理时不再检查要连的是不是公网地址（是代理在连）。国内云服务照常直连；ACME 没填代理时、lego 的 DNS 服务商用环境变量里的代理。
 - **反向代理**：支持挂在子路径下（`JEC_BASE_URL`），支持信任代理头（可配置）。
   - 信任代理头：`JEC_TRUSTED_PROXIES` 列出反向代理的地址或 CIDR 网段（逗号分隔，默认空，谁也不信）。直接连来的是这些代理时，从 `X-Forwarded-For` 的末尾往前找第一个不是它们的地址，当作客户端；没有这个头或格式不对时用连来的地址（`internal/kernel/clientip`）。登录失败的锁定按这个地址算：不设置时，代理后面所有人看起来都是代理的地址，一个人输错 5 次大家都被锁。
 - **平台**：Linux、macOS 各自的 x86_64 和 ARM64。

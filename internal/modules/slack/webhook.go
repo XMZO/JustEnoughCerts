@@ -31,6 +31,7 @@ func webhookType() providers.Type {
 		Fields: append([]providers.Field{
 			{Key: "url", Label: i18n.SlackFieldUrl, Help: i18n.SlackFieldUrlHelp, Kind: providers.URL, Secret: true, Required: true},
 			{Key: "allow_private", Label: i18n.SlackFieldAllowPrivate, Help: i18n.SlackFieldAllowPrivateHelp, Kind: providers.Switch, Default: "false", Advanced: true},
+			httpx.ProxyField(),
 		}, contracts.NotifierFields()...),
 	}
 }
@@ -54,7 +55,7 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 	if err != nil || u.Scheme != "https" || u.Host == "" || u.Fragment != "" {
 		return nil, retry.Permanent(&contracts.Problem{Key: i18n.SlackErrorUrl})
 	}
-	client, err := httpx.Client(httpx.Options{PublicOnly: in.Config["allow_private"] != "true"})
+	client, err := httpx.ClientFor(httpx.Options{PublicOnly: in.Config["allow_private"] != "true"}, in.Config)
 	if err != nil {
 		return nil, retry.Permanent(err)
 	}

@@ -111,7 +111,7 @@ func TestNotifyNetwork(t *testing.T) {
 func TestProxySetting(t *testing.T) {
 	_, err := factory(context.Background(), providers.Instance{Config: map[string]string{"chat": "1", "proxy": "127.0.0.1:7890"}})
 	var p *contracts.Problem
-	if !errors.As(err, &p) || p.Key != i18n.TelegramErrorProxy || !retry.IsPermanent(err) {
+	if !errors.As(err, &p) || p.Key != i18n.HttpxErrorProxy || !retry.IsPermanent(err) {
 		t.Errorf("a proxy without a scheme: %v", err)
 	}
 	if _, err := factory(context.Background(), providers.Instance{Config: map[string]string{"chat": "1", "proxy": "socks5://127.0.0.1:1080"}}); err != nil {

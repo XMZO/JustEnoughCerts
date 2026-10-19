@@ -1429,6 +1429,15 @@
       "name": "运行脚本"
     }
   },
+  "httpx": {
+    "error": {
+      "proxy": "代理地址不对：要以 http://、https:// 或 socks5:// 开头，后面跟主机和端口。"
+    },
+    "field": {
+      "proxy": "代理",
+      "proxy_help": "所在网络连不上这个服务时填写，比如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080。"
+    }
+  },
   "huaweicloud": {
     "cdn": {
       "description": "把每张新证书设置到华为云 CDN 的加速域名上并打开 HTTPS；域名原来的 HTTP/2、TLS 版本和 OCSP 设置保持不变。",
@@ -2599,7 +2608,6 @@
       "chat": "找不到这个聊天。请核对 Chat ID，并先给机器人发一条消息或把它拉进群。",
       "forbidden": "机器人没有权限发到这里：{description}",
       "network": "连不上 Telegram。如果所在网络访问不了 Telegram，请在高级设置里填代理。",
-      "proxy": "代理地址不对：要以 http://、https:// 或 socks5:// 开头，后面跟主机和端口。",
       "status": "Telegram 的回应看不懂（HTTP {status}）。请检查 Bot API 地址和代理。",
       "throttled": "Telegram 限制了发送频率，稍后再试。",
       "token": "Telegram 不认这个机器人 Token，请到 @BotFather 核对。"
@@ -2609,8 +2617,6 @@
       "api_help": "只有自建 Bot API 服务器或用反向代理时才需要改。",
       "chat": "发给谁（Chat ID）",
       "chat_help": "个人或群的数字 ID（群和频道以 -100 开头），公开频道也可以写 @频道名。先给机器人发一条消息，或把它拉进群、设为频道管理员。",
-      "proxy": "代理",
-      "proxy_help": "所在网络连不上 Telegram 时填写，比如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080。",
       "token": "机器人 Token",
       "token_help": "在 Telegram 里找 @BotFather，用 /newbot 创建机器人后得到，形如 123456:ABC-DEF…"
     },

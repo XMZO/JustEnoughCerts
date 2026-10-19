@@ -45,6 +45,7 @@ func webhookType() providers.Type {
 		ID: "discord.webhook", Kind: providers.Notifier, Name: i18n.DiscordWebhookName, Description: i18n.DiscordWebhookDescription,
 		Fields: append([]providers.Field{
 			{Key: "url", Label: i18n.DiscordFieldUrl, Help: i18n.DiscordFieldUrlHelp, Kind: providers.URL, Secret: true, Required: true},
+			httpx.ProxyField(),
 		}, contracts.NotifierFields()...),
 	}
 }
@@ -65,7 +66,7 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 	if err != nil || u.Scheme != "https" || !slices.Contains(hosts, u.Host) || !strings.HasPrefix(u.Path, "/api/webhooks/") {
 		return nil, retry.Permanent(&contracts.Problem{Key: i18n.DiscordErrorUrl})
 	}
-	client, err := httpx.Client(httpx.Options{PublicOnly: true})
+	client, err := httpx.ClientFor(httpx.Options{PublicOnly: true}, in.Config)
 	if err != nil {
 		return nil, retry.Permanent(err)
 	}

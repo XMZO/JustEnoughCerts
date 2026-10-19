@@ -104,7 +104,7 @@ func newEndpoint(in providers.Instance) (*endpoint, error) {
 			return nil, retry.Permanent(&contracts.Problem{Key: i18n.WebhookErrorTemplate, Params: map[string]any{"error": err.Error()}})
 		}
 	}
-	client, err := httpx.Client(httpx.Options{PublicOnly: in.Config["allow_private"] != "true"})
+	client, err := httpx.ClientFor(httpx.Options{PublicOnly: in.Config["allow_private"] != "true"}, in.Config)
 	if err != nil {
 		return nil, retry.Permanent(err)
 	}

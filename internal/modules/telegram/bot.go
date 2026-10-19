@@ -28,7 +28,7 @@ func botType() providers.Type {
 		Fields: append([]providers.Field{
 			{Key: "token", Label: i18n.TelegramFieldToken, Help: i18n.TelegramFieldTokenHelp, Kind: providers.Text, Secret: true, Required: true},
 			{Key: "chat", Label: i18n.TelegramFieldChat, Help: i18n.TelegramFieldChatHelp, Kind: providers.Text, Required: true},
-			{Key: "proxy", Label: i18n.TelegramFieldProxy, Help: i18n.TelegramFieldProxyHelp, Kind: providers.Text, Advanced: true},
+			httpx.ProxyField(),
 			{Key: "api", Label: i18n.TelegramFieldApi, Help: i18n.TelegramFieldApiHelp, Kind: providers.URL, Default: defaultAPI, Advanced: true},
 		}, contracts.NotifierFields()...),
 	}
@@ -45,9 +45,9 @@ type bot struct {
 var _ contracts.Notifier = (*bot)(nil)
 
 func factory(_ context.Context, in providers.Instance) (any, error) {
-	client, err := httpx.Client(httpx.Options{Proxy: strings.TrimSpace(in.Config["proxy"])})
+	client, err := httpx.ClientFor(httpx.Options{}, in.Config)
 	if err != nil {
-		return nil, retry.Permanent(&contracts.Problem{Key: i18n.TelegramErrorProxy, Err: err})
+		return nil, err
 	}
 	return &bot{
 		client: client,

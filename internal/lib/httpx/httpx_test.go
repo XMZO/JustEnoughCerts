@@ -9,6 +9,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/hex"
 	"errors"
+	"io"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +17,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/XMZO/JustEnoughCerts/i18n"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 )
 
 func TestPublic(t *testing.T) {
@@ -217,5 +222,50 @@ func TestPrivateOnly(t *testing.T) {
 	}
 	if _, err := Client(Options{PrivateOnly: true, PublicOnly: true}); err == nil {
 		t.Error("both PrivateOnly and PublicOnly")
+	}
+}
+
+func TestClientFor(t *testing.T) {
+	// A proxy that answers every request itself, and tells which it got.
+	var got string
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Method + " " + r.URL.String()
+		_, _ = io.WriteString(w, "through the proxy")
+	}))
+	t.Cleanup(proxy.Close)
+
+	// Through it, a client that would keep off private networks reaches
+	// the proxy, which dials for it.
+	c, err := ClientFor(Options{PublicOnly: true}, map[string]string{ProxyKey: proxy.URL})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.Get("http://service.example/hook")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if string(body) != "through the proxy" || got != "GET http://service.example/hook" {
+		t.Errorf("the proxy got %q and answered %q", got, body)
+	}
+
+	// Without one, the client is as asked.
+	c, err = ClientFor(Options{PublicOnly: true}, map[string]string{ProxyKey: " "})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err = c.Get(proxy.URL)
+	if err == nil {
+		_ = resp.Body.Close()
+	}
+	if !errors.Is(err, ErrNotPublic) {
+		t.Errorf("without a proxy, a private address: %v", err)
+	}
+
+	_, err = ClientFor(Options{}, map[string]string{ProxyKey: "127.0.0.1:7890"})
+	var p *contracts.Problem
+	if !errors.As(err, &p) || p.Key != i18n.HttpxErrorProxy || !retry.IsPermanent(err) {
+		t.Errorf("a proxy without a scheme: %v", err)
 	}
 }

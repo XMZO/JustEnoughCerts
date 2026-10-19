@@ -33,6 +33,7 @@ func appType() providers.Type {
 			{Key: "server", Label: i18n.GotifyFieldServer, Help: i18n.GotifyFieldServerHelp, Kind: providers.URL, Required: true},
 			{Key: "token", Label: i18n.GotifyFieldToken, Help: i18n.GotifyFieldTokenHelp, Kind: providers.Text, Secret: true, Required: true},
 			{Key: "allow_private", Label: i18n.GotifyFieldAllowPrivate, Help: i18n.GotifyFieldAllowPrivateHelp, Kind: providers.Switch, Default: "false", Advanced: true},
+			httpx.ProxyField(),
 		}, contracts.NotifierFields()...),
 	}
 }
@@ -54,7 +55,7 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.RawQuery != "" || u.Fragment != "" {
 		return nil, retry.Permanent(&contracts.Problem{Key: i18n.GotifyErrorServer, Params: map[string]any{"server": raw}})
 	}
-	client, err := httpx.Client(httpx.Options{PublicOnly: in.Config["allow_private"] != "true"})
+	client, err := httpx.ClientFor(httpx.Options{PublicOnly: in.Config["allow_private"] != "true"}, in.Config)
 	if err != nil {
 		return nil, retry.Permanent(err)
 	}

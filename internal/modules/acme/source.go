@@ -27,6 +27,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
 
 // source is an ACME account at work.
@@ -171,7 +172,9 @@ func (s *source) connect(ctx context.Context, log func(contracts.LogLine)) (*leg
 	cfg := lego.NewConfig(u)
 	cfg.CADirURL = directory
 	cfg.UserAgent = "JustEnoughCerts/" + buildinfo.Get().Version
-	cfg.HTTPClient = s.m.client()
+	if cfg.HTTPClient, err = s.m.client(s.in.Config[httpx.ProxyKey]); err != nil {
+		return nil, "", err
+	}
 	client, err := lego.NewClient(cfg)
 	if err != nil {
 		return nil, "", &contracts.Problem{Key: i18n.AcmeErrorDirectory, Params: map[string]any{"directory": directory}, Err: err}

@@ -44,6 +44,7 @@ func acmType() providers.Type {
 			{Key: "secret_access_key", Label: i18n.AwsFieldSecretAccessKey, Help: i18n.AwsFieldSecretAccessKeyHelp, Kind: providers.Text, Secret: true, Required: true},
 			{Key: "region", Label: i18n.AwsFieldRegion, Help: i18n.AwsFieldRegionHelp, Kind: providers.Text, Required: true, Default: defaultRegion},
 			{Key: "certificate_arn", Label: i18n.AwsFieldCertificateArn, Help: i18n.AwsFieldCertificateArnHelp, Kind: providers.Text},
+			httpx.ProxyField(),
 		},
 		Credential: credentials.Use(credentials.AWS),
 	}
@@ -69,7 +70,7 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 	if !region.MatchString(r) {
 		return nil, retry.Permanent(&contracts.Problem{Key: i18n.AwsErrorRegion, Params: map[string]any{"region": r}})
 	}
-	client, err := httpx.Client(httpx.Options{Timeout: time.Minute, PublicOnly: true})
+	client, err := httpx.ClientFor(httpx.Options{Timeout: time.Minute, PublicOnly: true}, in.Config)
 	if err != nil {
 		return nil, err
 	}

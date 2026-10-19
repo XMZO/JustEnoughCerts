@@ -16,6 +16,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	legolog "github.com/go-acme/lego/v5/log"
@@ -23,6 +24,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
 
 //go:embed migrations/*.sql
@@ -69,10 +71,18 @@ func (m *Module) Register(r *module.Registry) error {
 	return r.Providers.Add(accountType(), m.factory)
 }
 
-// client is the HTTP client lego talks to the CA with; lego wraps its
+// client is the HTTP client lego talks to the CA with, through the proxy
+// of the account, if any, or else that of the environment; lego wraps its
 // transport, so it gets one of its own.
-func (m *Module) client() *http.Client {
+func (m *Module) client(proxy string) (*http.Client, error) {
 	t := http.DefaultTransport.(*http.Transport).Clone()
 	t.TLSClientConfig = &tls.Config{RootCAs: m.roots, MinVersion: tls.VersionTLS12}
-	return &http.Client{Transport: t, Timeout: time.Minute}
+	if proxy = strings.TrimSpace(proxy); proxy != "" {
+		u, err := httpx.ParseProxy(proxy)
+		if err != nil {
+			return nil, httpx.ProxyProblem(err)
+		}
+		t.Proxy = http.ProxyURL(u)
+	}
+	return &http.Client{Transport: t, Timeout: time.Minute}, nil
 }
