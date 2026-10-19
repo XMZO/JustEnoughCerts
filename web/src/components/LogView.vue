@@ -70,6 +70,7 @@ function download() {
       role="log"
       aria-live="polite"
       :aria-label="t('certs.issuance.log')"
+      tabindex="0"
       class="max-h-[60dvh] min-h-24 overflow-y-auto rounded-md bg-surface-sunken p-3 text-small"
       @scroll="onScroll"
     >
