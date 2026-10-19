@@ -331,10 +331,15 @@ const rule = computed(() =>
 )
 const editing = ref(false)
 const days = ref('')
+// Keeping the private key across renewals, for a source whose keys JEC
+// makes.
+const reuseKey = ref(false)
+const keyKept = computed(() => issued.value && !ownKey.value)
 const update = useUpdateCertificate(() => props.id)
 const updateError = useApiError(update.error)
 function edit() {
   days.value = String(cert.value?.renewBeforeDays ?? 30)
+  reuseKey.value = !!cert.value?.reuseKey
   update.reset()
   editing.value = true
 }
@@ -383,7 +388,7 @@ async function saveDomains() {
 
 async function saveSettings() {
   try {
-    await update.mutateAsync({ renewBeforeDays: Number(days.value) })
+    await update.mutateAsync({ renewBeforeDays: Number(days.value), ...(keyKept.value ? { reuseKey: reuseKey.value } : {}) })
   } catch {
     return
   }
@@ -923,6 +928,13 @@ async function confirmDelete() {
           <span>{{ t('certs.settings.days_unit') }}</span>
         </span>
       </JecField>
+      <label v-if="keyKept" class="flex cursor-pointer items-start gap-2">
+        <input v-model="reuseKey" type="checkbox" class="mt-1 size-4 flex-none accent-brand" />
+        <span class="min-w-0">
+          <span class="block font-semibold">{{ t('certs.settings.reuse_key') }}</span>
+          <span class="block text-small text-ink-muted">{{ t('certs.settings.reuse_key_help') }}</span>
+        </span>
+      </label>
       <JecAlert v-if="updateError.alert.value" :code="updateError.alert.value.code" :params="updateError.alert.value.params" />
     </form>
     <template #footer>

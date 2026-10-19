@@ -198,6 +198,14 @@ certificates:
 	if data, err := f.configFile().Export(t.Context(), configfile.Export{}); err != nil || !strings.Contains(string(data), "note: the shop") {
 		t.Errorf("export %s: %v", data, err)
 	}
+	// So does keeping the key.
+	f.importConfig("version: 1\ncertificates:\n  - {domains: [example.com], source: LE, solver: DNS 2, reuse_key: true}\n", true)
+	if c, err := f.svc.load(t.Context(), f.db, body.ID); err != nil || !c.ReuseKey {
+		t.Errorf("kept %+v, %v", c, err)
+	}
+	if data, err := f.configFile().Export(t.Context(), configfile.Export{}); err != nil || !strings.Contains(string(data), "reuse_key: true") {
+		t.Errorf("export %s: %v", data, err)
+	}
 }
 
 func TestConfigImportProblems(t *testing.T) {

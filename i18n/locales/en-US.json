@@ -1025,6 +1025,7 @@
       "interrupted": "JEC stopped during the issuance; starting over",
       "key": "New private key: {kind, select, rsa {RSA {size}} ecdsa {ECDSA {size}} other {{kind}}}",
       "key_from_source": "The private key comes with the certificate: none to make",
+      "key_reused": "Keeping the private key of the certificate in use: {kind, select, rsa {RSA {size}} ecdsa {ECDSA {size}} other {{kind}}}",
       "retry": "Trying again in {minutes, plural, one {# minute} other {# minutes}}",
       "stored": "Certificate saved, valid for {days, plural, one {# day} other {# days}}",
       "take_over": "Picking up the order the last issuance left, with its private key"
@@ -1174,6 +1175,8 @@
       "notify_none": "No notification channels",
       "reminder_value": "{days, plural, one {# day} other {# days}} before expiry",
       "renewal_value": "{days, plural, one {# day} other {# days}} before it ends, looked at daily at {time}",
+      "reuse_key": "Keep the private key on renewal",
+      "reuse_key_help": "New certificates keep the private key in use, so the public key stays: as an app that pins it, or a TLSA record (DANE), needs. Otherwise a new key each time is safer; a revoked certificate gets a new one.",
       "title": "Renewal settings"
     },
     "source": {

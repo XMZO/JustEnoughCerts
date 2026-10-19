@@ -1025,6 +1025,7 @@
       "interrupted": "JEC 停止时签发被打断，重新开始",
       "key": "生成新私钥：{kind, select, rsa {RSA {size}} ecdsa {ECDSA {size}} other {{kind}}}",
       "key_from_source": "私钥随证书一起取来，不用生成",
+      "key_reused": "沿用当前证书的私钥：{kind, select, rsa {RSA {size}} ecdsa {ECDSA {size}} other {{kind}}}",
       "retry": "{minutes, plural, other {# 分钟}}后自动重试",
       "stored": "证书已保存，有效期还有 {days, plural, other {# 天}}",
       "take_over": "接着做上一次签发留下的订单，用它的私钥"
@@ -1174,6 +1175,8 @@
       "notify_none": "没有通知渠道",
       "reminder_value": "到期前 {days, plural, other {# 天}}",
       "renewal_value": "到期前 {days, plural, other {# 天}}，每天 {time} 检查",
+      "reuse_key": "续期时沿用私钥",
+      "reuse_key_help": "新证书继续用现在的私钥，公钥不变：App 固定了公钥、或发布了 TLSA 记录（DANE）时需要。其余情况每次换新私钥更安全；证书被吊销后会换新私钥。",
       "title": "续期设置"
     },
     "source": {

@@ -21,6 +21,15 @@ The certificate list and each certificate's page show the next renewal.
 The panel's time zone is chosen under Appearance on the Settings page, and
 follows the server's (the `TZ` environment variable) by default.
 
+## Private keys
+
+Each renewal makes a new private key by default. Where an app pins the
+public key, or a TLSA record (DANE) publishes it, turn on Keep the private
+key on renewal under Renewal settings on the certificate's page: new
+certificates keep the key in use, so the public key stays. A revoked
+certificate still gets a new key. Sources with keys of their own, such as
+a certificate directory on this machine, do not take the setting.
+
 ## Failures and retries
 
 - Failed issuances and deployments are retried with exponential backoff:

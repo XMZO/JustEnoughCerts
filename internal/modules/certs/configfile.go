@@ -45,6 +45,9 @@ type certificateEntry struct {
 	Targets         []string `yaml:"targets"`
 	// Note, left out, stays as it is.
 	Note *string `yaml:"note,omitempty"`
+	// ReuseKey keeps the private key for renewals; left out, it stays as
+	// it is.
+	ReuseKey *bool `yaml:"reuse_key,omitempty"`
 }
 
 // configSections are the module's sections: the renewal defaults first,
@@ -133,6 +136,9 @@ func (s *service) exportCertificates(ctx context.Context, _ configfile.Export) (
 		e := certificateEntry{Domains: c.Domains, RenewBeforeDays: c.RenewBeforeDays, Targets: []string{}}
 		if c.Note != "" {
 			e.Note = &c.Note
+		}
+		if c.ReuseKey {
+			e.ReuseKey = &c.ReuseKey
 		}
 		if c.Source == sourceProvider {
 			if e.Source, err = s.providerName(ctx, c.SourceProvider); err != nil {
@@ -282,6 +288,9 @@ func (s *service) addCertificate(ctx context.Context, ci *certImport, e certific
 	if e.Note != nil {
 		c.Note = strings.TrimSpace(*e.Note)
 	}
+	if e.ReuseKey != nil {
+		c.ReuseKey = *e.ReuseKey
+	}
 	source, pr := ci.in.Provider(providers.Source, e.Source)
 	if pr != nil {
 		pr.Field = "source"
@@ -419,6 +428,17 @@ func (s *service) changeCertificate(ctx context.Context, ci *certImport, e certi
 		changed = true
 		if _, err := ci.tx.ExecContext(ctx, "UPDATE certs_certificates SET note = ?, updated_at = ? WHERE id = ?",
 			strings.TrimSpace(*e.Note), s.now().UnixMilli(), c.ID); err != nil {
+			return it, err
+		}
+	}
+	if e.ReuseKey != nil && *e.ReuseKey != c.ReuseKey {
+		changed = true
+		reuse := 0
+		if *e.ReuseKey {
+			reuse = 1
+		}
+		if _, err := ci.tx.ExecContext(ctx, "UPDATE certs_certificates SET reuse_key = ?, updated_at = ? WHERE id = ?",
+			reuse, s.now().UnixMilli(), c.ID); err != nil {
 			return it, err
 		}
 	}

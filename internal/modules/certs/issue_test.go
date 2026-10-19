@@ -1211,3 +1211,44 @@ func TestSetDomains(t *testing.T) {
 	}
 	f.apiError(f.api.Put("/certificates/999/domains", map[string]any{"domains": []string{"x.example.com"}}), http.StatusNotFound)
 }
+
+func TestReuseKey(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+	f.run()
+	path := "/certificates/" + strconv.FormatInt(c.ID, 10)
+	spki := func() string {
+		t.Helper()
+		var d struct {
+			Details struct {
+				SPKISHA256 string `json:"spkiSha256"`
+			} `json:"details"`
+		}
+		f.call(f.api.Get(path), http.StatusOK, &d)
+		return d.Details.SPKISHA256
+	}
+	first := spki()
+	issueNow := func() {
+		t.Helper()
+		f.call(f.api.Post(path+"/issue"), http.StatusAccepted, nil)
+		f.run()
+	}
+
+	// Kept: the same key, said in the log.
+	var got CertificateBody
+	f.call(f.api.Patch(path, map[string]any{"reuseKey": true}), http.StatusOK, &got)
+	if !got.ReuseKey {
+		t.Fatalf("not kept: %+v", got)
+	}
+	issueNow()
+	if spki() != first {
+		t.Error("the key changed while kept")
+	}
+	// Not kept any more: a new one.
+	var off CertificateBody
+	f.call(f.api.Patch(path, map[string]any{"reuseKey": false}), http.StatusOK, &off)
+	issueNow()
+	if spki() == first || off.ReuseKey {
+		t.Error("the key stayed")
+	}
+}

@@ -541,14 +541,20 @@ func (s *service) kept(ctx context.Context, c *claimed, keyType string, log func
 		return key, state, err
 	}
 	kind, size, _ := strings.Cut(keyType, "-")
-	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepKey, Key: i18n.CertsLogKey, Params: map[string]any{"kind": kind, "size": keySize(size)}})
-	key, err := cryptox.GenerateKey(keyType)
-	if err != nil {
-		return nil, nil, retry.Permanent(err)
-	}
-	pemKey, err := cryptox.EncodeKey(key)
+	key, pemKey, err := s.reusedKey(ctx, c.certificateID, keyType)
 	if err != nil {
 		return nil, nil, err
+	}
+	if key != nil {
+		log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepKey, Key: i18n.CertsLogKeyReused, Params: map[string]any{"kind": kind, "size": keySize(size)}})
+	} else {
+		log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepKey, Key: i18n.CertsLogKey, Params: map[string]any{"kind": kind, "size": keySize(size)}})
+		if key, err = cryptox.GenerateKey(keyType); err != nil {
+			return nil, nil, retry.Permanent(err)
+		}
+		if pemKey, err = cryptox.EncodeKey(key); err != nil {
+			return nil, nil, err
+		}
 	}
 	res, err := s.db.ExecContext(ctx, "UPDATE certs_issuances SET sealed_key = ? WHERE id = ? AND state = 'running'",
 		s.secrets.Seal(pemKey, keyContext(c.certificateID)), c.id)
@@ -559,6 +565,35 @@ func (s *service) kept(ctx context.Context, c *claimed, keyType string, log func
 		return nil, nil, errNotFound // deleted meanwhile
 	}
 	return key, state, nil
+}
+
+// reusedKey returns the private key of the version in use of certificate
+// id, as PEM too, when the certificate keeps it for renewals and it is of
+// keyType; nil otherwise. A version its CA or JEC revoked gives its key up.
+func (s *service) reusedKey(ctx context.Context, id int64, keyType string) (crypto.Signer, []byte, error) {
+	var reuse int64
+	var sealed []byte
+	var fingerprint, versionType sql.NullString
+	var caRevoked, revoked sql.NullInt64
+	err := s.db.QueryRowContext(ctx,
+		`SELECT c.reuse_key, v.sealed_key, v.fingerprint, v.key_type, v.ca_revoked_at, v.revoked_at
+		 FROM certs_certificates c LEFT JOIN certs_versions v ON v.id = c.current_version_id WHERE c.id = ?`, id).
+		Scan(&reuse, &sealed, &fingerprint, &versionType, &caRevoked, &revoked)
+	if err != nil {
+		return nil, nil, err
+	}
+	if reuse != 1 || sealed == nil || versionType.String != keyType || caRevoked.Valid || revoked.Valid {
+		return nil, nil, nil
+	}
+	pemKey, err := s.secrets.Open(sealed, "key:"+fingerprint.String)
+	if err != nil {
+		return nil, nil, retry.Permanent(err)
+	}
+	key, err := cryptox.ParseKey(pemKey)
+	if err != nil {
+		return nil, nil, retry.Permanent(err)
+	}
+	return key, pemKey, nil
 }
 
 // wait records that the source of the issuance of c is not done: the

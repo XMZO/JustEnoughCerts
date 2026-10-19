@@ -25,6 +25,7 @@ type CertificateBody struct {
 	SolverProvider  int64            `json:"solverProvider,omitempty" doc:"The solver provider instance that proves control of the domains"`
 	KeyType         string           `json:"keyType" doc:"Type and size of the key, such as rsa-2048 or ecdsa-p256"`
 	Note            string           `json:"note,omitempty" doc:"What people wrote about it"`
+	ReuseKey        bool             `json:"reuseKey,omitempty" doc:"Renewals keep the private key of the version in use"`
 	RenewBeforeDays int              `json:"renewBeforeDays" doc:"How many days before the end the certificate is renewed, or a reminder sent"`
 	State           string           `json:"state" enum:"ok,expiring,expired,issuing,deploying,failed,deploy_failed,revoked" doc:"issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)"`
 	Current         *VersionBody     `json:"current,omitempty" doc:"The version in use"`
@@ -116,7 +117,7 @@ type CSRBody struct {
 func certificateBody(c *Certificate, now time.Time, sch schedule) CertificateBody {
 	b := CertificateBody{
 		ID: c.ID, Domains: c.Domains, Source: c.Source, SourceProvider: c.SourceProvider, SolverProvider: c.SolverProvider,
-		KeyType: c.KeyType, RenewBeforeDays: c.RenewBeforeDays, State: c.state(now), CreatedAt: c.CreatedAt, Note: c.Note,
+		KeyType: c.KeyType, RenewBeforeDays: c.RenewBeforeDays, State: c.state(now), CreatedAt: c.CreatedAt, Note: c.Note, ReuseKey: c.ReuseKey,
 	}
 	if c.Current != nil {
 		v := versionBody(c.Current)
@@ -253,6 +254,7 @@ type updateInput struct {
 		RenewBeforeDays int     `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Unchanged if left out"`
 		Targets         []int64 `json:"targets,omitempty" maxItems:"50" doc:"Replaces the targets when given; an empty list removes them all"`
 		Note            *string `json:"note,omitempty" maxLength:"500" doc:"Replaces the note when given; empty removes it"`
+		ReuseKey        *bool   `json:"reuseKey,omitempty" doc:"Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out"`
 	}
 }
 
@@ -373,7 +375,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			}
 			targets = append([]int64{}, targets...) // not nil: an empty list removes them all
 		}
-		if err := s.update(ctx, in.ID, in.Body.RenewBeforeDays, targets, in.Body.Note); err != nil {
+		if err := s.update(ctx, in.ID, in.Body.RenewBeforeDays, targets, in.Body.Note, in.Body.ReuseKey); err != nil {
 			return nil, serviceError(err)
 		}
 		return s.output(ctx, in.ID)

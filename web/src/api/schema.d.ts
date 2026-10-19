@@ -1424,6 +1424,8 @@ export interface components {
             renewBeforeDays: number;
             /** @description The window the CA suggests renewing the current version in (ACME Renewal Information), once it answered */
             renewalWindow?: components["schemas"]["RenewalBody"];
+            /** @description Renewals keep the private key of the version in use */
+            reuseKey?: boolean;
             /**
              * Format: int64
              * @description The solver provider instance that proves control of the domains
@@ -2571,6 +2573,8 @@ export interface components {
              * @description Unchanged if left out
              */
             renewBeforeDays?: number;
+            /** @description Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out */
+            reuseKey?: boolean;
             /** @description Replaces the targets when given; an empty list removes them all */
             targets?: number[];
         };

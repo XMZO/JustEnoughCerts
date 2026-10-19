@@ -359,6 +359,10 @@
             "$ref": "#/components/schemas/RenewalBody",
             "description": "The window the CA suggests renewing the current version in (ACME Renewal Information), once it answered"
           },
+          "reuseKey": {
+            "description": "Renewals keep the private key of the version in use",
+            "type": "boolean"
+          },
           "solverProvider": {
             "description": "The solver provider instance that proves control of the domains",
             "format": "int64",
@@ -3568,6 +3572,10 @@
             "maximum": 365,
             "minimum": 1,
             "type": "integer"
+          },
+          "reuseKey": {
+            "description": "Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out",
+            "type": "boolean"
           },
           "targets": {
             "description": "Replaces the targets when given; an empty list removes them all",
