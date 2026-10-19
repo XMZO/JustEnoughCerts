@@ -14,7 +14,7 @@ anything.
 | Category | Targets |
 |---|---|
 | Alibaba Cloud | ESA, CDN, DCDN, Certificate Management Service, OSS custom domains, CLB and ALB load balancers |
-| Other clouds | Tencent Cloud SSL Certificates (updating CDN, EdgeOne, CLB and other resources), Tencent Cloud CDN and EdgeOne directly, Huawei Cloud CDN, Qiniu Cloud CDN, Volcengine CDN, Baidu AI Cloud CDN, UPYUN CDN (experimental), Cloudflare custom certificates, AWS Certificate Manager, AWS CloudFront, Gcore CDN |
+| Other clouds | Tencent Cloud SSL Certificates (updating CDN, EdgeOne, CLB and other resources), Tencent Cloud CDN and EdgeOne directly, Huawei Cloud CDN and ELB, Qiniu Cloud CDN, Volcengine CDN, Baidu AI Cloud CDN, UPYUN CDN (experimental), Cloudflare custom certificates, AWS Certificate Manager, AWS CloudFront, Gcore CDN |
 | Panels and server software | BaoTa (aaPanel), 1Panel, Nginx Proxy Manager, Synology DSM, Proxmox VE, Caddy (through its admin API) |
 | Files and containers | Local directory, SSH server, Docker container, Kubernetes TLS Secret |
 | Custom | Webhook deployment, plugins |

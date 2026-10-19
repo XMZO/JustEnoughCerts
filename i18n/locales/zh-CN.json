@@ -1610,25 +1610,47 @@
       "description": "把每张新证书设置到华为云 CDN 的加速域名上并打开 HTTPS；域名原来的 HTTP/2、TLS 版本和 OCSP 设置保持不变。",
       "name": "华为云 CDN"
     },
+    "elb": {
+      "description": "在华为云弹性负载均衡里维护一张证书（第一次部署时创建，或用填写的那张），每个新版本原地更新它，用它的监听器立即生效。填写了监听器时，把它设为这些监听器的默认证书。",
+      "name": "华为云 ELB"
+    },
     "error": {
       "api": "华为云返回了错误 {code}：{message}",
       "auth": "华为云不认这对 AK 和 SK，或者它们缺少需要的权限（{code}）。",
       "domain": "这个账号没有加速域名 {domain}。",
+      "elb_not_found": "这个区域的华为云 ELB 里没有证书或监听器 {id}。",
+      "elb_type": "ELB 证书 {id} 不是服务器证书。",
       "network": "连不上华为云的接口。",
       "no_domains": "填上加速域名才能测试；不填时部署会用证书里的域名。",
+      "project": "没能查到 {region} 的项目：请填写项目 ID，或给用户查询项目的权限。",
+      "region": "{region} 不是华为云 ELB 的区域。",
       "throttled": "华为云暂时拒绝了：请求太多。JEC 稍后再试。"
     },
     "field": {
       "access_key_id": "访问密钥 ID（AK）",
+      "certificate_id": "证书 ID",
+      "certificate_id_help": "留空时，JEC 在第一次部署时创建一张自己的证书，之后一直更新它。也可以填 ELB 里一张证书的 ID（比如监听器正在用的那张），改为更新它。",
       "domain_id": "账号 ID",
       "domain_id_help": "留空时 JEC 用 AK 自动查询。用户没有查询权限时填写，可以在控制台的“我的凭证”里看到。",
       "domains": "加速域名",
       "domains_help": "多个用逗号分隔。留空时用证书里的域名（通配符除外）。",
+      "elb_key_help": "最好用只授予 ELB FullAccess（或只有读取、更新证书和监听器权限）的 IAM 用户。",
+      "listeners": "监听器",
+      "listeners_help": "HTTPS 监听器的 ID，用逗号分隔，把证书设为它们的默认证书。监听器已经在用这张证书，或想在控制台里设置时留空。",
+      "project_id": "项目 ID",
+      "project_id_help": "留空时 JEC 用 AK 查询该区域的项目。用户没有查询权限时填写，可以在控制台的“我的凭证”里看到。",
+      "region": "区域",
+      "region_help": "负载均衡所在的区域，比如 cn-north-4、cn-east-3、ap-southeast-1。",
       "secret_access_key": "秘密访问密钥（SK）",
       "secret_access_key_help": "最好用只授予 CDN DomainReadOnlyAccess 和 CDN DomainConfiguration 权限的 IAM 用户，这两个要一起授予。",
       "site": "站点"
     },
     "log": {
+      "elb_create": "创建 ELB 证书 {name}",
+      "elb_created": "创建了 ELB 证书 {id}",
+      "elb_update": "更新 ELB 证书 {id}",
+      "listener_current": "监听器 {id} 已经在用这张证书",
+      "listener_set": "把证书设为监听器 {id} 的默认证书",
       "set": "给 {domain} 设置证书"
     },
     "module": {
@@ -1641,6 +1663,8 @@
       "intl": "国际站（ap-southeast-1）"
     },
     "test": {
+      "elb": "密钥可用。JEC 会在第一次部署时创建证书。",
+      "listeners": "找到了监听器 {listeners}。",
       "ok": "找到了加速域名 {domains}。"
     }
   },

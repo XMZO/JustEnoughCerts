@@ -1,7 +1,8 @@
-// Package huaweicloud is the module of Huawei Cloud's CDN as a deploy
-// target: each new certificate is set on the accelerated domains, with
-// HTTPS on, and the domains keep their other HTTPS settings, such as
-// HTTP/2 and the TLS versions.
+// Package huaweicloud is the module of Huawei Cloud's CDN and ELB as deploy
+// targets. On the CDN each new certificate is set on the accelerated
+// domains, with HTTPS on, and the domains keep their other HTTPS settings,
+// such as HTTP/2 and the TLS versions. On ELB, JEC keeps a certificate
+// that it updates in place, and the listeners set serve it.
 package huaweicloud
 
 import (
@@ -33,7 +34,10 @@ func (*Module) Manifest() module.Manifest {
 // Migrations returns nil: the module keeps nothing of its own.
 func (*Module) Migrations() fs.FS { return nil }
 
-// Register adds the CDN type.
+// Register adds the CDN and ELB types.
 func (m *Module) Register(r *module.Registry) error {
-	return r.Providers.Add(cdnType(), m.factory)
+	if err := r.Providers.Add(cdnType(), m.factory); err != nil {
+		return err
+	}
+	return r.Providers.Add(elbType(), m.elbFactory)
 }

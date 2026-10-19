@@ -53,6 +53,7 @@
 | `aliyun.clb` | 阿里云传统型负载均衡（CLB） | 替身 |
 | `aliyun.alb` | 阿里云应用型负载均衡（ALB） | 替身 |
 | `huaweicloud.cdn` | 华为云 CDN | 替身 |
+| `huaweicloud.elb` | 华为云 ELB：原地更新证书，可设为监听器的默认证书 | 替身 |
 | `cloudflare.custom` | Cloudflare 自定义证书 | 替身 |
 | `tencentcloud.ssl` | 腾讯云 SSL 证书服务，更新 CDN、EdgeOne、CLB 等资源 | 替身 |
 | `tencentcloud.cdn` | 腾讯云 CDN，直接部署到加速域名 | 替身 |

@@ -379,7 +379,7 @@ DNS 验证分成两种能力，实现方式不同：
 | 类别 | 平台 | 阶段 |
 |---|---|---|
 | CDN / 边缘 | **阿里云 ESA**（M1）；阿里云 CDN / DCDN、七牛云（已完成）、腾讯云 EdgeOne、腾讯云 CDN（直接部署，已完成）、华为云 CDN（已完成）、百度智能云 CDN（已完成）、火山引擎 CDN（已完成）、又拍云（实验，已完成）、AWS CloudFront（导入 us-east-1 的 ACM 并设为分发的证书，`aws.cloudfront`，已完成）、Cloudflare（自定义证书需付费套餐，已完成）、Gcore CDN（`gcore.cdn`，已完成） | M1 / M3 |
-| 负载均衡 / 证书库 | 阿里云 SLB / ALB、阿里云证书服务（CLB、ALB 和数字证书管理服务已完成）、腾讯云 CLB、腾讯云 SSL 证书（已完成，经它更新 CDN、EdgeOne、CLB 等）、AWS ACM（已完成） | M3 |
+| 负载均衡 / 证书库 | 阿里云 SLB / ALB、阿里云证书服务（CLB、ALB 和数字证书管理服务已完成）、腾讯云 CLB、腾讯云 SSL 证书（已完成，经它更新 CDN、EdgeOne、CLB 等）、AWS ACM（已完成）、华为云 ELB（`huaweicloud.elb`，已完成） | M3 |
 | 对象存储 | 阿里云 OSS（已完成）、腾讯云 COS（经腾讯云 SSL 证书服务，已完成）的自定义域名 HTTPS | M3 |
 | 服务器 | 本地文件 + 执行命令（nginx、caddy、haproxy 等）；SSH / SFTP 上传 + 远程命令；Docker 容器（通过挂载的 Docker API 发信号或重启，不需要 docker 命令行）；Kubernetes Secret | M1（本地、SSH）/ M3（Docker、Kubernetes 已完成） |
 | 面板与应用 | 1Panel、宝塔、Proxmox VE、Nginx Proxy Manager、群晖 DSM、Caddy 管理 API（都已完成） | M3 |
@@ -424,6 +424,8 @@ DNS 验证分成两种能力，实现方式不同：
 - 这四种都只用替身 API 测过（按动作回答的替身，加上对着 HTTP 替身检查签名、查询串和表单的测试），还没有对真实账号验证。
 
 **华为云 CDN 的实现**（`internal/modules/huaweicloud`，M3）：部署目标类型 `huaweicloud.cdn`：AK、SK、站点（中国站 `cn-north-1`、国际站 `ap-southeast-1`、欧洲站 `eu-west-101`，前两个的 CDN 接口都是 `cdn.myhuaweicloud.com`）、加速域名（逗号分隔；留空时用证书里不是通配符的域名）、账号 ID（高级设置，可不填）。用华为云官方 SDK（lego 已经依赖它，只多用了 CDN 的两个接口，链接器去掉了其余部分，程序只大了约 0.1 MiB）：CDN 是全局服务，SDK 用 AK 向 IAM 查出账号 ID（填了账号 ID 就不查，子用户没有查询权限时要填）。每个新版本对每个加速域名先 `ShowDomainFullConfig` 读出现在的 HTTPS 设置，再用 `UpdateDomainFullConfig` 只改 `https` 这一项：开启 HTTPS、自有证书（`certificate_source=0`、`certificate_type=server`）、证书名 `jec-<证书 ID>-<指纹前 12 位>`、证书链和私钥（PKCS #1 / SEC 1），并把原来的 `http2_status`、`tls_version`、`ocsp_stapling_status` 原样带上：不带的话这些会被恢复成默认值。测试连接对每个加速域名读一次配置，不做改动。SDK 的调用不能取消，每次最多 30 秒，不自动重试。错误：429 稍后重试；401、403、`APIGW.0301` 是密钥不对或没有权限，域名不存在（404），都不重试；5xx 重试。最小权限是系统策略 CDN DomainReadOnlyAccess 加 CDN DomainConfiguration（两者要一起授予）。只用替身 API 测过（经 SDK 发到 HTTP 替身，检查签名头和账号 ID），还没有对真实账号验证。
+
+**华为云 ELB 的实现**（同在 `internal/modules/huaweicloud`，M3）：部署目标类型 `huaweicloud.elb`：AK、SK、区域（默认 `cn-north-4`，按 SDK 的 ELB 区域表核对）、证书 ID（留空时第一次部署创建一张名为 `jec-<证书 ID>` 的服务器证书）、监听器（逗号分隔，可不填）、项目 ID（高级设置；留空时 SDK 用 AK 向 IAM 查这个区域的项目）。用 ELB v3 的 SDK，同样只存方法值（程序大了约 0.12 MiB）。证书按“填写的证书 ID → 上次部署留下的 → 按名字找中断前创建的 → 新建”的顺序选，已有的用 `UpdateCertificate` 原地换证书链和私钥（PKCS #1 / SEC 1），用它的监听器立即生效，不用删旧证书；上次部署的那张被删了就重新创建。填了监听器时，`ShowListener` 后把 `default_tls_container_ref` 不是它的改成它。证书或监听器不存在（404）不重试，其他错误同 CDN。只用替身 API 测过。
 
 **Cloudflare 的实现**（`internal/modules/cloudflare`，M3）：部署目标类型 `cloudflare.custom`：API 令牌（权限“区域 → SSL 和证书 → 编辑”，用域名填站点时还要“区域 → 区域 → 读取”）、站点（区域 ID，或者站点的域名，按名字查出 ID）、自定义证书 ID（高级设置，可不填）。直接调 v4 REST 接口（`Authorization: Bearer`，只连公网、不跟随跳转）。第一次部署 `POST /zones/{id}/custom_certificates` 添加一张自定义证书（`type=sni_custom`、`bundle_method=ubiquitous`，证书链和 PKCS #1 / SEC 1 私钥），它的 ID 作为 ref 记下；以后的版本都用 `PATCH …/custom_certificates/{ref}` 原地替换，替换期间站点一直有证书可用。记下的那张被删了（404）就再添加一张；填了自定义证书 ID 就一直替换那张，它不在时报错。添加前先列出站点的自定义证书，按覆盖的主机和到期时间找上次中断前添加的那张，不重复添加。测试连接读出站点名和自定义证书数。错误：401、403、代码 10000 和 9109 是令牌不对或权限不够，不重试；429 按 `Retry-After` 等；5xx 重试；其他 4xx 不重试，显示 Cloudflare 自己的代码和说明（比如免费套餐不能上传自定义证书）。自定义证书只有 Business 和 Enterprise 套餐能用。只用替身 API 测过。
 

@@ -58,6 +58,7 @@ Reports of results with real accounts are welcome.
 | `aliyun.clb` | Alibaba Cloud CLB load balancers | Fake |
 | `aliyun.alb` | Alibaba Cloud ALB load balancers | Fake |
 | `huaweicloud.cdn` | Huawei Cloud CDN | Fake |
+| `huaweicloud.elb` | Huawei Cloud ELB certificates, updated in place, and their listeners | Fake |
 | `cloudflare.custom` | Cloudflare custom certificates | Fake |
 | `tencentcloud.ssl` | Tencent Cloud SSL Certificates, updating CDN, EdgeOne, CLB and other resources | Fake |
 | `tencentcloud.cdn` | Tencent Cloud CDN, deployed straight to its domains | Fake |
