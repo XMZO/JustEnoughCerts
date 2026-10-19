@@ -287,6 +287,14 @@ func TestMenu(t *testing.T) {
 		t.Errorf("certificate buttons %s", got)
 	}
 
+	// The button under a note shows the certificate in a message of its
+	// own, which leaves the note as it was.
+	a.push(update{Callback: &callback{ID: "q9", Data: "n:c:1", Message: &message{ID: 3, Chat: ours}}})
+	a.wait("answerCallbackQuery")
+	if fresh := a.wait("sendMessage"); !strings.Contains(text(t, fresh), "<b>example.com</b>") {
+		t.Errorf("from a note %q", text(t, fresh))
+	}
+
 	// Renewing: asked first, then done, by the bot's name.
 	a.push(update{Callback: &callback{ID: "q2", Data: "ar:1", Message: &message{ID: 7, Chat: ours}}})
 	a.wait("answerCallbackQuery")

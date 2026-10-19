@@ -36,6 +36,9 @@ const (
 	doRenew    = "xr"
 	doDeploy   = "xd"
 	doCheck    = "xc"
+	// viewNew shows the view after it in a message of its own, rather than
+	// in place: for the buttons under a note, which stays.
+	viewNew = "n" // n:c:<id>, and so on
 
 	pageSize   = 20   // certificates a page of the list holds
 	recentRuns = 15   // runs the recent activity shows

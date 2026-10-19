@@ -253,9 +253,16 @@ func (l *listener) handle(ctx context.Context, u update) {
 			l.answer(ctx, q.ID, l.text(i18n.TelegramChatNotAllowed, i18n.Args{"id": strconv.FormatInt(q.Message.Chat.ID, 10)}))
 			return
 		}
-		s := l.show(ctx, q.Data)
+		data, fresh := strings.CutPrefix(q.Data, viewNew+":")
+		s := l.show(ctx, data)
 		l.answer(ctx, q.ID, s.toast)
-		if err := l.edit(ctx, q.Message.Chat.ID, q.Message.ID, s); err != nil {
+		var err error
+		if fresh {
+			err = l.send(ctx, q.Message.Chat.ID, s)
+		} else {
+			err = l.edit(ctx, q.Message.Chat.ID, q.Message.ID, s)
+		}
+		if err != nil {
 			log.Warn("answer a button", "err", err)
 		}
 	}

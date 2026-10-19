@@ -81,6 +81,10 @@ and Check now; renewing and deploying ask for confirmation first.
   sends `/start` learns only its own ID, to set up the bot with.
 - The bot reads and acts as the panel's account, but cannot change the
   account; the audit log shows its actions "through <the bot's name>".
+- While the bot receives commands, its notes carry a button: a note about
+  a certificate opens its page, a reminder about sites or domains the
+  expiry watch, the weekly digest the menu. What the button shows comes as
+  a new message, and the note stays as it was.
 - One bot token answers commands in one place only. A bot with a webhook
   set cannot answer commands.
 - JEC answers only the commands sent once it listens; those sent while it

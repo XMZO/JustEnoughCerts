@@ -60,6 +60,48 @@ func TestNotify(t *testing.T) {
 	}
 }
 
+func TestNoteButtons(t *testing.T) {
+	var got []map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var m map[string]any
+		body, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(body, &m)
+		got = append(got, m)
+		_, _ = io.WriteString(w, `{"ok":true,"result":{"message_id":1}}`)
+	}))
+	defer srv.Close()
+	button := func(m map[string]any) string {
+		rm, _ := m["reply_markup"].(map[string]any)
+		rows, _ := rm["inline_keyboard"].([]any)
+		if len(rows) != 1 {
+			return ""
+		}
+		row := rows[0].([]any)
+		b := row[0].(map[string]any)
+		return b["text"].(string) + " " + b["callback_data"].(string)
+	}
+	with := open(t, srv.URL, map[string]string{"commands": "true", "locale": "en-US"})
+	for _, n := range []contracts.Note{
+		{Event: contracts.CertificateIssueFailed, Title: "t", Data: json.RawMessage(`{"certificateId":5,"domains":["example.com"]}`)},
+		{Event: contracts.DomainExpiring, Title: "t", Data: json.RawMessage(`{"domain":"shop.com"}`)},
+		{Event: contracts.CertificatesDigest, Title: "t", Data: json.RawMessage(`{}`)},
+		{Event: contracts.NoteTest, Title: "t"},
+	} {
+		if err := with.Notify(t.Context(), n); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := open(t, srv.URL, nil).Notify(t.Context(), contracts.Note{Event: contracts.CertificateIssueFailed, Title: "t", Data: json.RawMessage(`{"certificateId":5}`)}); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"\U0001f512 Certificate n:c:5", "\U0001f4e1 Expiry watch n:w", "\U0001f3e0 Menu n:m", "", ""}
+	for i, m := range got {
+		if b := button(m); b != want[i] {
+			t.Errorf("note %d: button %q, want %q", i, b, want[i])
+		}
+	}
+}
+
 func TestNotifyErrors(t *testing.T) {
 	for _, c := range []struct {
 		status    int

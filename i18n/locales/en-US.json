@@ -3025,6 +3025,7 @@
     "button": {
       "back": "Back to the list",
       "cancel": "Cancel",
+      "certificate": "Certificate",
       "certs": "All certificates ({count})",
       "check": "Check now",
       "confirm_deploy": "Deploy",

@@ -3025,6 +3025,7 @@
     "button": {
       "back": "返回列表",
       "cancel": "取消",
+      "certificate": "证书详情",
       "certs": "全部证书（{count}）",
       "check": "立即检查",
       "confirm_deploy": "确认部署",

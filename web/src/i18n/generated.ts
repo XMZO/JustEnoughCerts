@@ -2203,6 +2203,7 @@ export type MessageKey =
   | "telegram.bot.name"
   | "telegram.button.back"
   | "telegram.button.cancel"
+  | "telegram.button.certificate"
   | "telegram.button.certs"
   | "telegram.button.check"
   | "telegram.button.confirm_deploy"

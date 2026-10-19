@@ -2195,6 +2195,7 @@ const (
 	TelegramBotName                          Key = "telegram.bot.name"
 	TelegramButtonBack                       Key = "telegram.button.back"
 	TelegramButtonCancel                     Key = "telegram.button.cancel"
+	TelegramButtonCertificate                Key = "telegram.button.certificate"
 	TelegramButtonCerts                      Key = "telegram.button.certs"
 	TelegramButtonCheck                      Key = "telegram.button.check"
 	TelegramButtonConfirmDeploy              Key = "telegram.button.confirm_deploy"

@@ -8,8 +8,11 @@ import (
 	"html"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/text/language"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
@@ -54,6 +57,8 @@ type bot struct {
 	commands bool // answers commands with a menu
 	actions  bool // and lets the menu renew, deploy and check
 	config   map[string]string
+	// cat writes the buttons under notes, in the bot's language.
+	cat *i18n.Catalog
 }
 
 var _ contracts.Notifier = (*bot)(nil)
@@ -63,7 +68,12 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	cat, err := i18n.Default()
+	if err != nil {
+		return nil, err
+	}
 	return &bot{
+		cat:    cat,
 		client: client,
 		api:    strings.TrimRight(cmp.Or(in.Config["api"], defaultAPI), "/"),
 		token:  strings.TrimSpace(in.Value("token")),
@@ -90,16 +100,22 @@ type reply struct {
 	} `json:"parameters"`
 }
 
-// Notify sends n as a message: its title in bold, then its text.
+// Notify sends n as a message: its title in bold, then its text. When the
+// bot answers commands, a button under it opens what it is about in the
+// menu, in a message of its own.
 func (b *bot) Notify(ctx context.Context, n contracts.Note) error {
 	text := "<b>" + html.EscapeString(n.Title) + "</b>"
 	if n.Text != "" {
 		text += "\n\n" + html.EscapeString(n.Text)
 	}
-	body, err := json.Marshal(map[string]any{
+	params := map[string]any{
 		"chat_id": b.chat, "text": text, "parse_mode": "HTML",
 		"link_preview_options": map[string]bool{"is_disabled": true},
-	})
+	}
+	if btn, ok := b.noteButton(n); ok {
+		params["reply_markup"] = map[string]any{"inline_keyboard": [][]button{{btn}}}
+	}
+	body, err := json.Marshal(params)
 	if err != nil {
 		return retry.Permanent(err)
 	}
@@ -184,4 +200,32 @@ func explain(status int, r reply) error {
 		return p
 	}
 	return retry.Permanent(p)
+}
+
+// noteButton is the button under note n that opens what it is about in the
+// menu: a certificate, the watched sites and domains, or the menu itself.
+func (b *bot) noteButton(n contracts.Note) (button, bool) {
+	if !b.commands || b.cat == nil {
+		return button{}, false
+	}
+	tag := b.cat.Match(language.Make(b.locale))
+	label := func(icon string, key i18n.Key) string {
+		s, _ := b.cat.Format(tag, key, nil)
+		return icon + " " + s
+	}
+	switch n.Event {
+	case contracts.SiteExpiring, contracts.DomainExpiring:
+		return button{Text: label(iconSites, i18n.TelegramButtonSites), Data: viewNew + ":" + viewSites}, true
+	case contracts.CertificatesDigest:
+		return button{Text: label(iconHome, i18n.TelegramButtonMenu), Data: viewNew + ":" + viewMain}, true
+	case contracts.NoteTest:
+		return button{}, false
+	}
+	var d struct {
+		CertificateID int64 `json:"certificateId"`
+	}
+	if json.Unmarshal(n.Data, &d) != nil || d.CertificateID == 0 {
+		return button{}, false
+	}
+	return button{Text: label(iconLock, i18n.TelegramButtonCertificate), Data: viewNew + ":" + viewCert + ":" + strconv.FormatInt(d.CertificateID, 10)}, true
 }
