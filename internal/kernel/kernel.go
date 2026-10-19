@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -267,9 +268,12 @@ type wellKnownHandler struct {
 
 // serveWellKnown hands a request under /.well-known/ to the handlers of
 // the modules that are on, in order, until one answers with something
-// other than 404.
+// other than 404. The headers set before, such as the server's security
+// headers, go out with whichever answer it is; those of a handler that
+// missed do not.
 func serveWellKnown(set *module.Set, handlers []wellKnownHandler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		before := w.Header().Clone()
 		for _, wk := range handlers {
 			if !set.Enabled(wk.module) {
 				continue
@@ -280,6 +284,7 @@ func serveWellKnown(set *module.Set, handlers []wellKnownHandler) http.Handler {
 				return
 			}
 			clear(w.Header())
+			maps.Copy(w.Header(), before)
 		}
 		http.NotFound(w, r)
 	})

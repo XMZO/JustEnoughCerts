@@ -220,7 +220,11 @@ func TestWellKnown(t *testing.T) {
 	if err := app.Modules().SetEnabled(t.Context(), "second", true); err != nil {
 		t.Fatal(err)
 	}
-	srv := httptest.NewServer(app.Handler())
+	// As the server's security headers are, before the kernel's handler.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Before", "kept")
+		app.Handler().ServeHTTP(w, r)
+	}))
 	defer srv.Close()
 	get := func(path string) (int, string, string) {
 		t.Helper()
@@ -234,6 +238,9 @@ func TestWellKnown(t *testing.T) {
 		}
 		defer resp.Body.Close()
 		data, _ := io.ReadAll(resp.Body)
+		if resp.Header.Get("X-Before") != "kept" {
+			t.Errorf("%s lost the headers set before the kernel's handler", path)
+		}
 		return resp.StatusCode, string(data), resp.Header.Get("X-Answerer")
 	}
 
