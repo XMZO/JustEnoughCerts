@@ -1,3 +1,4 @@
+import { ref, watch } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 
 import { where } from './api/account'
@@ -122,11 +123,19 @@ router.beforeEach(async (to) => {
   return homeOf[state]
 })
 
+/**
+ * attention counts the certificates that need someone, which the tab's
+ * title leads with, as a pinned tab shows; the app's shell keeps it.
+ */
+export const attention = ref(0)
+
 /** updateTitle names the browser tab after the current page, in the current language. */
 export function updateTitle(): void {
   const { t } = i18n.global
   const page = router.currentRoute.value.meta.title
-  document.title = page ? `${t(page)} · ${t('kernel.app.name')}` : t('kernel.app.name')
+  const title = page ? `${t(page)} · ${t('kernel.app.name')}` : t('kernel.app.name')
+  document.title = attention.value > 0 ? `(${attention.value}) ${title}` : title
 }
 
 router.afterEach(updateTitle)
+watch(attention, updateTitle)

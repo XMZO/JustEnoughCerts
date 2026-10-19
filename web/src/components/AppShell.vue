@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { Bell, Blocks, Ellipsis, Globe, History, KeyRound, LayoutGrid, LogOut, Menu, Package, ScrollText, Server, Settings, ShieldCheck, X } from '@lucide/vue'
-import { computed, ref, watch, watchEffect } from 'vue'
+import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import { useSession, useSignOut } from '../api/account'
 import { useCertificates } from '../api/certs'
+import { needsAttention } from '../certs/life'
 import { useManifest } from '../api/manifest'
 import { useT, type MessageKey } from '../i18n'
+import { attention } from '../router'
 import { setZone } from '../zone'
 import JecMark from './JecMark.vue'
 import LanguageSwitch from './LanguageSwitch.vue'
@@ -23,6 +25,13 @@ const manifest = useManifest()
 // Times show in the panel's time zone once the manifest tells it.
 watchEffect(() => setZone(manifest.data.value?.timeZone))
 const certificates = useCertificates()
+// The tab's title leads with how many need someone.
+watchEffect(() => {
+  attention.value = (certificates.data.value ?? []).filter(needsAttention).length
+})
+onUnmounted(() => {
+  attention.value = 0
+})
 
 interface Link {
   to: string
