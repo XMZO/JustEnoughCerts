@@ -44,7 +44,8 @@ Minecraft mod JEI.
   Feishu, WeCom, Discord, Slack, Bark, ntfy, webhooks and scripts, each
   with its own events and language.
 - **Security**: encrypted secrets, two-factor authentication, OpenID
-  Connect single sign-on, API tokens and an audit log.
+  Connect single sign-on, API tokens, an audit log, and revocation of
+  issued certificates at their CA.
 - **Lightweight**: a single static binary or a small container image, with
   data in SQLite; every feature outside the kernel is a module, and
   plugins can be written in any language.

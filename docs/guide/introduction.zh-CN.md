@@ -27,7 +27,7 @@ Just Enough Certs（JEC）是一款自托管的 SSL/TLS 证书管理面板。它
 - [部署目标](../usage/targets.zh-CN.md)：26 种，覆盖阿里云、腾讯云、华为云、Cloudflare、AWS 等云服务，宝塔面板、1Panel 等面板，以及本地目录、SSH 服务器、Docker 容器与 Kubernetes。
 - [续期](../usage/renewal.zh-CN.md)：续期窗口与每日检查时间、ACME 续期信息（ARI）、失败自动重试与线上巡检。
 - [通知](../usage/notifications.zh-CN.md)：14 种通知渠道，每个渠道可单独选择语言与事件。
-- [账号与安全](../operations/security.zh-CN.md)：密钥加密存储、两步验证、单点登录、API 令牌与审计日志。
+- [账号与安全](../operations/security.zh-CN.md)：密钥加密存储、两步验证、单点登录、API 令牌与审计日志；已签发的证书可以[吊销](../usage/certificates.zh-CN.md#吊销证书)。
 - 模块与[插件](../development/plugins.zh-CN.md)：内核之外的功能均为模块，可启用、停用或在编译时排除；插件可用任意语言编写。
 - 轻量部署：单个静态二进制文件或小体积容器镜像，数据存储于 SQLite；界面支持中文与英文，可作为渐进式 Web 应用（PWA）添加到手机主屏幕。
 

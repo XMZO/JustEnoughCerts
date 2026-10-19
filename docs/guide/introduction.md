@@ -52,7 +52,8 @@ and servers, and renews them before they expire.
 - [Notifications](../usage/notifications.md): 14 notification channels,
   each with its own language and events.
 - [Accounts and security](../operations/security.md): encrypted secrets,
-  two-factor authentication, single sign-on, API tokens and an audit log.
+  two-factor authentication, single sign-on, API tokens and an audit log;
+  issued certificates can be [revoked](../usage/certificates.md#revoking).
 - Modules and [plugins](../development/plugins.md): everything outside the
   kernel is a module, which can be enabled, disabled or excluded at build
   time; plugins can be written in any language.
