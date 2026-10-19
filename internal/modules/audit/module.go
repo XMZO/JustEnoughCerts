@@ -127,7 +127,7 @@ func (m *Module) find(ctx context.Context, q query) ([]entry, tally, error) {
 		where += " AND (" + strings.Join(holds, " OR ") + ")"
 	}
 	var t tally
-	err := m.db.QueryRowContext(ctx, //nolint:gosec // G202: the conditions are fixed; the values are arguments
+	err := m.db.QueryRowContext(ctx,
 		"SELECT count(*), coalesce(sum(status < 400), 0), coalesce(sum(status >= 400), 0) FROM audit_log WHERE "+where, args...).
 		Scan(&t.all, &t.ok, &t.failed)
 	if err != nil {
@@ -139,7 +139,7 @@ func (m *Module) find(ctx context.Context, q query) ([]entry, tally, error) {
 	case "failed":
 		where += " AND status >= 400"
 	}
-	rows, err := m.db.QueryContext(ctx, //nolint:gosec // G202: as above
+	rows, err := m.db.QueryContext(ctx,
 		`SELECT id, at, operation, method, path, status, user, client, user_agent, token FROM audit_log
 		 WHERE `+where+` ORDER BY at DESC, id DESC LIMIT ? OFFSET ?`, append(args, q.limit, q.offset)...)
 	if err != nil {
