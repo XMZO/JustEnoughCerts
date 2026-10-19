@@ -674,6 +674,17 @@
       "revoked": "The CA revoked the certificate of {domain}",
       "title": "Needs attention"
     },
+    "bulk": {
+      "choose": "Choose {domain}",
+      "choose_all": "Choose every certificate shown",
+      "chosen": "{count, plural, one {# chosen} other {# chosen}}",
+      "clear": "Clear the choice",
+      "delete": "Delete ({count})",
+      "delete_title": "Delete {count, plural, one {# certificate} other {# certificates}}",
+      "label": "For the certificates chosen",
+      "redeploy": "Deploy again ({count})",
+      "renew": "Renew now ({count})"
+    },
     "ca_revoked": {
       "reason": {
         "affiliation_changed": "its details changed",
@@ -720,6 +731,8 @@
       "collect_schedule": "The current certificate expires on {expiry}; JEC checks on its own on {date}.",
       "collect_title": "Check {domain} now?",
       "redeploy": "JEC deploys the current certificate, which expires on {expiry}, to {targets} again, without getting a new one. The reloads or restarts set up for the targets run again too.",
+      "redeploy_all": "The current version of each is deployed again to all its targets; the certificates stay as they are.",
+      "redeploy_all_title": "Deploy {count, plural, one {# certificate} other {# certificates}} again",
       "redeploy_title": "Deploy {domain} again?",
       "redeploy_to_title": "Deploy again to {target}?",
       "renew": "JEC asks {source} for a new certificate now.",

@@ -674,6 +674,17 @@
       "revoked": "{domain} 的证书已被 CA 吊销",
       "title": "需要处理"
     },
+    "bulk": {
+      "choose": "选择 {domain}",
+      "choose_all": "选择显示的全部证书",
+      "chosen": "已选 {count, plural, other {# 张}}",
+      "clear": "取消选择",
+      "delete": "删除（{count}）",
+      "delete_title": "删除 {count, plural, other {# 张证书}}",
+      "label": "对选中的证书",
+      "redeploy": "重新部署（{count}）",
+      "renew": "立即续期（{count}）"
+    },
     "ca_revoked": {
       "reason": {
         "affiliation_changed": "证书中的信息有变",
@@ -720,6 +731,8 @@
       "collect_schedule": "现在这张证书 {expiry} 到期，JEC 会在 {date} 自动检查。",
       "collect_title": "立即检查 {domain}？",
       "redeploy": "JEC 会把现在这张证书（{expiry} 到期）重新部署到 {targets}，不申请新证书。部署目标设置的重载或重启也会再执行一次。",
+      "redeploy_all": "每张证书的当前版本会重新部署到它的全部部署目标，证书本身不变。",
+      "redeploy_all_title": "重新部署 {count, plural, other {# 张证书}}",
       "redeploy_title": "重新部署 {domain}？",
       "redeploy_to_title": "重新部署到 {target}？",
       "renew": "JEC 会马上向 {source} 申请一张新证书。",

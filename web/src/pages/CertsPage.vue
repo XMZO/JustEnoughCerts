@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { Activity, CircleCheck, CircleX, Download, Eye, FileDown, LoaderCircle, OctagonX, Plus, RefreshCw, Send, ShieldX, Trash2, TriangleAlert, Upload } from '@lucide/vue'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
-import { saveFile, useCertificates, useDeleteCertificate, type Certificate } from '../api/certs'
+import { saveFile, useCertificates, useDeleteCertificate, useDeleteOf, type Certificate } from '../api/certs'
 import { useApiError } from '../api/errors'
 import { useMonitorStates } from '../api/monitor'
 import { useProviders } from '../api/providers'
@@ -188,7 +188,7 @@ const rows = computed<Row[]>(() =>
 // The menu of each row of the table: the details, the main thing to do,
 // deploying again, a new version of an upload, and deletion. Renewing a
 // certificate that works, deploying it again and deleting it ask first.
-const { primary, ask, askDeploy } = useCertActions()
+const { primary, ask, askDeploy, issue, deploy } = useCertActions()
 const asking = ref<CertAsk>()
 // What went wrong with the last action, above the table.
 const failure = ref<unknown>()
@@ -231,6 +231,55 @@ const deleteOpen = computed({
 })
 const remove = useDeleteCertificate(() => deleting.value?.id ?? 0)
 const removeError = useApiError(remove.error)
+
+// Several chosen in the table at once: renewed, deployed again or deleted
+// together, one after the other, each asked first. What is chosen stays
+// among the rows shown.
+const chosen = ref<number[]>([])
+watch(rows, (now) => {
+  const shownIds = new Set(now.map((r) => r.cert.id))
+  chosen.value = chosen.value.filter((id) => shownIds.has(id))
+})
+const chosenCerts = computed(() => rows.value.map((r) => r.cert).filter((c) => chosen.value.includes(c.id)))
+const allChosen = computed(() => rows.value.length > 0 && chosen.value.length === rows.value.length)
+const toggleAll = () => (chosen.value = allChosen.value ? [] : rows.value.map((r) => r.cert.id))
+const toggle = (id: number) => (chosen.value = chosen.value.includes(id) ? chosen.value.filter((x) => x !== id) : [...chosen.value, id])
+const renewable = computed(() => chosenCerts.value.filter((c) => c.source === 'provider'))
+const deployable = computed(() => chosenCerts.value.filter((c) => c.current && c.targets.length))
+async function each(certs: Certificate[], run: (id: number) => Promise<unknown>) {
+  for (const c of certs) await run(c.id)
+}
+function renewChosen() {
+  const certs = renewable.value
+  asking.value = { kind: 'issue', certs, run: () => each(certs, (id) => issue.mutateAsync(id)) }
+}
+function deployChosen() {
+  const certs = deployable.value
+  asking.value = { kind: 'deploy', certs, run: () => each(certs, (id) => deploy.mutateAsync(id)) }
+}
+const deletingMany = ref<Certificate[]>()
+const deleteManyOpen = computed({
+  get: () => !!deletingMany.value,
+  set: (open) => {
+    if (!open) deletingMany.value = undefined
+  },
+})
+const removeOne = useDeleteOf()
+const removeManyError = useApiError(removeOne.error)
+const removingMany = ref(false)
+async function confirmDeleteMany() {
+  if (!deletingMany.value || removingMany.value) return
+  removingMany.value = true
+  try {
+    await each(deletingMany.value, (id) => removeOne.mutateAsync(id))
+  } catch {
+    return // shown in the dialog; those deleted before are gone
+  } finally {
+    removingMany.value = false
+  }
+  deletingMany.value = undefined
+  chosen.value = []
+}
 async function confirmDelete() {
   try {
     await remove.mutateAsync(undefined)
@@ -329,11 +378,34 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
         {{ t('certs.list.no_match', { query }) }}
       </p>
 
-      <!-- From 640px: the table. -->
+      <!-- From 640px: what to do with those chosen, then the table. -->
+      <div v-if="chosen.length" role="toolbar" :aria-label="t('certs.bulk.label')" class="hidden flex-wrap items-center gap-2 sm:flex">
+        <span class="mr-1 font-semibold">{{ t('certs.bulk.chosen', { count: chosen.length }) }}</span>
+        <JecButton size="sm" :disabled="!renewable.length" @click="renewChosen">
+          <RefreshCw class="size-4" aria-hidden="true" />{{ t('certs.bulk.renew', { count: renewable.length }) }}
+        </JecButton>
+        <JecButton size="sm" :disabled="!deployable.length" @click="deployChosen">
+          <Send class="size-4" aria-hidden="true" />{{ t('certs.bulk.redeploy', { count: deployable.length }) }}
+        </JecButton>
+        <JecButton size="sm" variant="danger" @click="deletingMany = chosenCerts">
+          <Trash2 class="size-4" aria-hidden="true" />{{ t('certs.bulk.delete', { count: chosen.length }) }}
+        </JecButton>
+        <JecButton size="sm" variant="ghost" @click="chosen = []">{{ t('certs.bulk.clear') }}</JecButton>
+      </div>
       <div v-if="rows.length" class="hidden overflow-x-auto sm:block">
         <table class="w-full border-separate border-spacing-0 overflow-hidden rounded-lg border border-line bg-surface-raised">
           <thead>
             <tr>
+              <th scope="col" class="w-10 border-b border-line bg-surface-sunken py-2 pr-0 pl-3">
+                <input
+                  type="checkbox"
+                  :checked="allChosen"
+                  :indeterminate="chosen.length > 0 && !allChosen"
+                  :aria-label="t('certs.bulk.choose_all')"
+                  class="block size-4 cursor-pointer accent-brand"
+                  @change="toggleAll"
+                />
+              </th>
               <th
                 v-for="col in ['certs.column.domain', 'certs.column.state', 'certs.column.left', 'certs.column.source', 'certs.column.targets', 'certs.column.next'] as const"
                 :key="col"
@@ -349,6 +421,15 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
           </thead>
           <tbody>
             <tr v-for="r in rows" :key="r.cert.id" class="hover:bg-surface-sunken [&:last-child>td]:border-b-0">
+              <td class="border-b border-line py-1.5 pr-0 pl-3">
+                <input
+                  type="checkbox"
+                  :checked="chosen.includes(r.cert.id)"
+                  :aria-label="t('certs.bulk.choose', { domain: r.domain })"
+                  class="block size-4 cursor-pointer accent-brand"
+                  @change="toggle(r.cert.id)"
+                />
+              </td>
               <td class="border-b border-line px-3 py-1.5 whitespace-nowrap">
                 <RouterLink :to="`/certificates/${r.cert.id}`" class="font-semibold text-ink no-underline hover:text-ink" translate="no">
                   {{ r.domain }}<small v-if="r.extra" class="ml-1 text-small font-normal text-ink-muted">{{ r.extra }}</small>
@@ -453,6 +534,22 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
   </div>
 
   <CertActionDialog v-model:ask="asking" />
+
+  <JecDialog v-model:open="deleteManyOpen" :title="t('certs.bulk.delete_title', { count: deletingMany?.length ?? 0 })" small>
+    <div class="flex flex-col gap-3">
+      <p class="m-0">{{ t('certs.delete.body') }}</p>
+      <ul class="m-0 flex max-h-60 flex-col gap-1 overflow-y-auto pl-5">
+        <li v-for="c in deletingMany" :key="c.id" translate="no">{{ c.domains[0] }}</li>
+      </ul>
+      <JecAlert v-if="removeManyError.error.value" :code="removeManyError.error.value.code" :params="removeManyError.error.value.params" />
+    </div>
+    <template #footer>
+      <JecButton @click="deletingMany = undefined">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton variant="danger" :busy="removingMany" @click="confirmDeleteMany">
+        <Trash2 class="size-4" aria-hidden="true" />{{ t('certs.action.delete') }}
+      </JecButton>
+    </template>
+  </JecDialog>
 
   <JecDialog v-model:open="deleteOpen" :title="t('certs.delete.title', { domain: deleting?.domains[0] ?? '' })" small>
     <div class="flex flex-col gap-3">

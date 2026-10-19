@@ -70,6 +70,7 @@ const title = computed(() => {
   const a = shown.value
   if (!a) return ''
   if (a.kind === 'deploy') {
+    if (a.certs.length > 1) return t('certs.confirm.redeploy_all_title', { count: a.certs.length })
     return a.target !== undefined
       ? t('certs.confirm.redeploy_to_title', { target: targetNames.value[0] ?? '' })
       : t('certs.confirm.redeploy_title', { domain: domain.value })
@@ -82,6 +83,7 @@ const lines = computed(() => {
   const a = shown.value
   if (!a) return []
   const targetsText = intl.list(targetNames.value)
+  if (a.kind === 'deploy' && a.certs.length > 1) return [t('certs.confirm.redeploy_all')]
   if (a.kind === 'deploy') return [t('certs.confirm.redeploy', { expiry: expiry.value, targets: targetsText })]
   if (a.certs.length > 1) return [t('certs.confirm.renew_all', { time: scheduled.value || intl.dateTime(Date.now()) })]
   const out = [t(a.collects ? 'certs.confirm.collect' : 'certs.confirm.renew', { source: sourceName.value })]

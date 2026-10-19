@@ -249,6 +249,11 @@ export function useDeleteCertificate(id: MaybeRefOrGetter<number>) {
   return useCertsMutation(() => unwrap(api.DELETE('/certs/certificates/{id}', { params: { path: { id: toValue(id) } } })))
 }
 
+/** Deletes the certificate it is given, as several chosen at once are. */
+export function useDeleteOf() {
+  return useCertsMutation((id: number) => unwrap(api.DELETE('/certs/certificates/{id}', { params: { path: { id } } })))
+}
+
 /** The reasons a version can be revoked for. */
 export type RevokeReason = 'unspecified' | 'key_compromise' | 'superseded' | 'cessation_of_operation'
 

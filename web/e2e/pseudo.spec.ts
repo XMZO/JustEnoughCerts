@@ -715,6 +715,25 @@ test('every page is translated and fits', async ({ page }, info) => {
 
   await page.goto('./certificates')
   expect.soft(await problems(page), 'certificates with a failed one').toEqual([])
+  // From the table: all chosen, then what to do with them, asked first.
+  if (info.project.name === 'desktop') {
+    await page.getByRole('checkbox', { name: label('certs.bulk.choose_all') }).check()
+    const bulk = page.getByRole('toolbar', { name: label('certs.bulk.label') })
+    await expect(bulk).toBeVisible()
+    expect.soft(await problems(page), 'certificates chosen').toEqual([])
+    if (await bulk.getByRole('button').nth(1).isEnabled()) {
+      await bulk.getByRole('button').nth(1).click()
+      await expect(page.locator('dialog[open]')).toBeVisible()
+      expect.soft(await problems(page), 'deploy several again').toEqual([])
+      await page.keyboard.press('Escape')
+    }
+    await bulk.getByRole('button').nth(2).click()
+    await expect(page.locator('dialog[open]')).toBeVisible()
+    expect.soft(await problems(page), 'delete several').toEqual([])
+    await page.keyboard.press('Escape')
+    await bulk.getByRole('button').last().click()
+    await expect(bulk).toHaveCount(0)
+  }
   await page.goto('./')
   expect.soft(await problems(page), 'overview with a failed issuance').toEqual([])
 
