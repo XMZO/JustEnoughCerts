@@ -1,0 +1,38 @@
+/* The brand and surface colors of docs/design/system/tokens.css, light
+   and dark, in VitePress's variables. */
+:root {
+  --vp-c-brand-1: #2b7a33;
+  --vp-c-brand-2: #226a2a;
+  --vp-c-brand-3: #2b7a33;
+  --vp-c-brand-soft: #e1efdd;
+  --vp-c-bg: #ffffff;
+  --vp-c-bg-alt: #f4f6f2;
+  --vp-c-bg-soft: #e8ece5;
+  --vp-c-divider: #d5dbd1;
+  --vp-c-text-1: #1a2019;
+  --vp-c-text-2: #535d50;
+  --vp-button-brand-bg: #2b7a33;
+  --vp-button-brand-hover-bg: #226a2a;
+  --vp-button-brand-text: #ffffff;
+}
+
+.dark {
+  --vp-c-brand-1: #6dbd66;
+  --vp-c-brand-2: #82cb7b;
+  --vp-c-brand-3: #6dbd66;
+  --vp-c-brand-soft: #1e331f;
+  --vp-c-bg: #1b221c;
+  --vp-c-bg-alt: #131813;
+  --vp-c-bg-soft: #0e120e;
+  --vp-c-divider: #2b342c;
+  --vp-c-text-1: #e5eae2;
+  --vp-c-text-2: #a1ab9c;
+  --vp-button-brand-bg: #6dbd66;
+  --vp-button-brand-hover-bg: #82cb7b;
+  --vp-button-brand-text: #0b160b;
+}
+
+/* The pixel lock stays sharp. */
+.VPNavBarTitle .logo {
+  image-rendering: pixelated;
+}

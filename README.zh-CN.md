@@ -4,6 +4,8 @@
 
 [English](README.md)
 
+这份文档也可以在网上看：<https://xmzo.github.io/JustEnoughCerts/zh-CN/>
+
 Just Enough Certs（JEC）是自托管的 SSL/TLS 证书管理面板：从你购买或签发证书的地方获取证书，自动完成域名验证，部署到 CDN 和服务器，到期前自动续期。名字和视觉致敬 Minecraft 的 JEI 模组。
 
 > [!WARNING]
@@ -182,6 +184,8 @@ make new-module id=acme category=source  # 生成一个新模块
 - 模块之间只通过内核通信：模块不能 import 其他模块，内核也不能 import 模块。
 
 [PLAN.md](PLAN.md) 里是架构、模块接口和路线图，[docs/design](docs/design) 里是设计系统和页面设计稿。想把 JEC 翻译成别的语言，见 [docs/translating.zh-CN.md](docs/translating.zh-CN.md)。
+
+文档站就是这份 README 和 `docs/` 里的几篇指南，中英两种语言，由 `docs/site/pages.mjs` 拼成页面，用 VitePress 构建：`pnpm -C docs/site install` 之后运行 `pnpm -C docs/site dev`，在 `http://localhost:5173/JustEnoughCerts/` 查看。docs 工作流从 main 发布它。
 
 ## 许可证
 

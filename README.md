@@ -4,6 +4,8 @@
 
 [简体中文](README.zh-CN.md)
 
+The documentation is also on the web: <https://xmzo.github.io/JustEnoughCerts/>
+
 Just Enough Certs (JEC) is a self-hosted SSL/TLS certificate manager. It
 gets certificates from wherever you buy or issue them, proves that you
 control the domains, deploys the certificates to your CDNs and servers, and
@@ -303,6 +305,12 @@ Some rules the checks enforce:
 roadmap, and [docs/design](docs/design) the design system and the page
 designs. To translate JEC into another language, see
 [docs/translating.md](docs/translating.md).
+
+The documentation site is this README and the guides in `docs/`, in
+English and Chinese, put together by `docs/site/pages.mjs` and built with
+VitePress: `pnpm -C docs/site install`, then `pnpm -C docs/site dev` to
+see it at `http://localhost:5173/JustEnoughCerts/`. The docs workflow
+publishes it from main.
 
 ## License
 

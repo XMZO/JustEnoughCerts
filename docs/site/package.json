@@ -1,0 +1,15 @@
+{
+  "name": "jec-docs",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.30.3",
+  "scripts": {
+    "pages": "node pages.mjs",
+    "dev": "node pages.mjs && vitepress dev .",
+    "build": "node pages.mjs && vitepress build .",
+    "preview": "vitepress preview ."
+  },
+  "devDependencies": {
+    "vitepress": "1.6.4"
+  }
+}

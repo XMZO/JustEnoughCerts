@@ -1,0 +1,4 @@
+# esbuild's install script only checks for its binary, which comes with the
+# package of the platform anyway; the build works without it.
+ignoredBuiltDependencies:
+  - esbuild

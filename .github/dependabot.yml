@@ -42,3 +42,11 @@ updates:
     groups:
       web:
         patterns: ["*"]
+  - package-ecosystem: npm
+    # The documentation site.
+    directory: /docs/site
+    schedule:
+      interval: weekly
+    groups:
+      docs:
+        patterns: ["*"]

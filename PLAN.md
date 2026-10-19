@@ -833,6 +833,7 @@ services:
 ### 9.3 其他
 
 - Dependabot 每周更新依赖，Actions 的版本包括 `.github/actions/` 下组合动作里的。
+- 文档站（`docs.yml`）：https://xmzo.github.io/JustEnoughCerts/ ，内容就是 README 和 `docs/` 里给用户看的几篇指南（试用、服务商、插件、翻译），英文在根路径、中文在 `/zh-CN/`。`docs/site/pages.mjs` 把它们拼进 `docs/site/src/`：页面之间的链接改成站内链接（链接文字是文件名的换成页面标题），指向仓库里其他文件的改成 GitHub 链接，去掉开头切换语言的那一行，GitHub 的提示块换成带本语言标题的 VitePress 提示框；再用 VitePress（1.6，本地搜索，品牌色取自设计 token）构建，站内链接失效时构建失败。改了 README 或 `docs/` 就在 PR 里构建检查，推到 main 时发布到 GitHub Pages（来源设为 GitHub Actions）。设计稿、`PLAN.md` 不上站。
 - 版本号遵循 SemVer；`jec version` 显示版本号、提交哈希和构建时间。
 
 ## 10. 安全
@@ -952,7 +953,7 @@ JustEnoughCerts/
 | **M1 最小可用** | 证书模块、状态机、调度器；手动上传和导入；ACME（任意 CA + EAB）+ lego 的 221 家 DNS；阿里云 ESA、本地文件、SSH、Webhook 部署；Telegram、邮件、Webhook 通知；总览和证书页 | 用免费证书完整跑通“签发 → 部署到 ESA → 删除旧证书 → 到期自动续” |
 | **M2 厂商来源与付费证书** | 厂商来源的通用框架（提交后等 CA 审核，跨多次检查才取回证书，等待期间加密保存私钥）；第一个实现是 Namecheap SSL Manager（实验性，JEC 扮演它的客户端，见 5.6）；HTTP 文件验证（写到源站的网站目录、经 SSH 写到远程服务器，或由 JEC 自己应答）；导入已有的付费证书；逐家验证商业 CA 的 ACME + EAB（含 Namecheap ACME 上线后） | 第 1 节的验收场景全自动跑通一个周期 |
 | **M3 扩展** | 国内云平台证书来源（取回签发的证书、向阿里云申请证书、腾讯云免费证书都已完成）；DNS 记录管理层（任意记录增删，5.3.2 ②）和手动验证（都已完成）；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子、YAML 导入导出（都已完成）；线上巡检（已完成） | 不改核心代码，写一个外部插件接入新平台（e2e 里的 shell 脚本插件）；停用任意模块后其余功能正常（`cmd/jec` 的 `TestEverySwitchOff` 在运行中逐个停用全部可停用的模块，检查清单、各类服务商类型、证书列表和系统信息照常，再打开回来） |
-| **M4 打磨** | 两步验证、审计日志、PWA、翻译指南（`docs/translating.md`）、OIDC（都已完成）、文档站、服务商兼容表（已有 `docs/providers.md`：每个服务商测到了哪一步） | 发布 `v1.0.0` |
+| **M4 打磨** | 两步验证、审计日志、PWA、翻译指南（`docs/translating.md`）、OIDC、文档站（都已完成）、服务商兼容表（已有 `docs/providers.md`：每个服务商测到了哪一步） | 发布 `v1.0.0` |
 | **以后** | Namecheap 官方 API、Spaceship 的 SSL Manager、其他厂商证书 API、更多语言（社区贡献）、多用户和角色、PostgreSQL、私有 CA | 按需求排期 |
 
 先做 M0，是为了尽早把“打标签 → 自动发布”这条链路跑通，同时让模块化和 i18n 门禁从第一天就生效，之后每个功能都能随时发版试用。

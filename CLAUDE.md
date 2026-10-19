@@ -88,6 +88,8 @@
 - 代理：`httpx` 的客户端不用环境变量的代理；连境外服务的类型加 `httpx.ProxyField()`，客户端用 `httpx.ClientFor(opts, in.Config)`（经代理时去掉 PublicOnly），新加这类类型照办。解析服务器 `JEC_DNS_RESOLVERS`（`dnscheck.UseResolvers`，`jec serve` 启动时设，子进程经环境变量继承）。
 - 写文件的部署目标（本地目录、SSH、Docker）共用 `internal/lib/certfiles`：文件名可改（`{domain}`）、可选合并文件和 PKCS #12（`cryptox.EncodePFX`）、权限；属主各自处理。
 - 续期默认值多了“失败后重试”（`certs_settings` 的 `retries`，默认 7，0 到 20，签发和部署都按它；配置文件 `renewal.retries`）。
+- 测试版 `v0.1.0-alpha.5`（凭据、时区、失败后重试、证书列表菜单、部署文件可配置、代理、解析服务器等）于 2026-10-19 发布。
+- 文档站 https://xmzo.github.io/JustEnoughCerts/ （`docs/site`，VitePress；`docs.yml` 从 main 发布到 GitHub Pages，Pages 的来源是 GitHub Actions）：README 和 `docs/` 的几篇指南经 `docs/site/pages.mjs` 拼成中英两套页面。改 README 或这几篇指南时注意站内链接要能对上（VitePress 遇到失效链接会构建失败）；新增给用户看的指南要加进 `pages.mjs` 的列表和 `config.mts` 的侧栏。
 - 时区（设置页“外观”，`internal/kernel/zone`，存在 `kernel_meta`）：整个面板共用，默认跟随服务器；`PUT /api/v1/system/time-zone`，清单接口带 `timeZone`；模块用 `r.Zone`（每次现取），续期的每天检查时间和通知里的时间按它；前端 `web/src/zone.ts`（`useIntl` 的日期、按天分组用 `dayKey`、导出 CSV 用 `stamp`，不要再用 `toDateString` 或 `getHours` 之类按浏览器时区的写法）；配置文件里是 `time_zone`。
 - M4 开始：PWA（`web/public/manifest.webmanifest`，图标由 `go run ./tools/icons` 从 favicon 画出，`make gen` 也会跑，测试核对图标是最新的）。
 - M4 还完成了：OIDC 单点登录（模块 `oidc`，授权码 + PKCE，go-jose 校验 ID token，名单里的人以唯一的账号登录；对着真实的 Dex v2.44.0 验证过，`live_test.go` 靠 `JEC_TEST_OIDC` 等环境变量运行）；内核给模块开了 `module.Registry.StartSession`（为账号建会话），GET 操作在 `Metadata` 里标 `api.Audited` 也会进审计日志。

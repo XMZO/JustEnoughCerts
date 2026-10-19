@@ -1,0 +1,5 @@
+# Put together by pages.mjs from the README and docs/.
+/src/
+/.vitepress/dist/
+/.vitepress/cache/
+/node_modules/
