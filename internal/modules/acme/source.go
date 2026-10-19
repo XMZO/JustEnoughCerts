@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"slices"
 	"strings"
@@ -80,7 +81,7 @@ func (s *source) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509
 		return nil, err
 	}
 	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.AcmeLogOrder, Params: map[string]any{"domains": strings.Join(req.Domains, ", ")}})
-	order := certificate.ObtainRequest{Domains: req.Domains, PrivateKey: req.Key, Bundle: true}
+	order := certificate.ObtainRequest{Domains: req.Domains, PrivateKey: req.Key, Bundle: true, Profile: strings.TrimSpace(s.in.Config["profile"])}
 	if req.Replaces != nil {
 		// The order renews the current version (RFC 9773), which lego says
 		// to a CA with ARI only.
@@ -174,9 +175,18 @@ func (s *source) Revoke(ctx context.Context, leaf *x509.Certificate, reason cont
 // Test reaches the CA and registers the account if it is new, as the
 // first issuance would.
 func (s *source) Test(ctx context.Context) (contracts.Message, error) {
-	_, directory, err := s.connect(ctx, func(contracts.LogLine) {})
+	client, directory, err := s.connect(ctx, func(contracts.LogLine) {})
 	if err != nil {
 		return contracts.Message{}, err
+	}
+	// The profiles the CA offers, for the field that picks one, which has
+	// to be among them.
+	offered := slices.Sorted(maps.Keys(client.GetServerMetadata().Profiles))
+	if p := strings.TrimSpace(s.in.Config["profile"]); p != "" && !slices.Contains(offered, p) {
+		return contracts.Message{}, &contracts.Problem{Key: i18n.AcmeErrorProfile, Params: map[string]any{"profile": p, "profiles": strings.Join(offered, ", ")}}
+	}
+	if len(offered) > 0 {
+		return contracts.Message{Key: i18n.AcmeTestProfiles, Params: map[string]any{"directory": directory, "profiles": strings.Join(offered, ", ")}}, nil
 	}
 	return contracts.Message{Key: i18n.AcmeTestOk, Params: map[string]any{"directory": directory}}, nil
 }

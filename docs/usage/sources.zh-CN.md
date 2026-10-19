@@ -13,6 +13,7 @@
 | 证书颁发机构 | 内置 Let's Encrypt、ZeroSSL、Google Trust Services、SSL.com、Sectigo、DigiCert、GlobalSign、Actalis、FreeSSL、LiteSSL、PeeringHub 等，部分提供测试环境；选择“自定义”时填写目录地址 |
 | 联系邮箱 | 可选，用于接收证书颁发机构的通知 |
 | EAB Key ID / EAB HMAC Key | 证书颁发机构要求 External Account Binding 时填写，例如 ZeroSSL、Google Trust Services |
+| 证书配置（高级设置） | 证书颁发机构提供的 ACME profile，例如 Let's Encrypt 的 `shortlived`（6 天短期证书）、`tlsserver`；留空使用默认配置。测试连接会列出可用的配置 |
 | 代理 | 可选，所在网络无法直接访问证书颁发机构时填写 |
 
 - 账号在首次签发或测试连接时注册，账号私钥加密保存在 JEC 中。

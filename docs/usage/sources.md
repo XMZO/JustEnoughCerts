@@ -18,6 +18,7 @@ ACME protocol (RFC 8555).
 | Certificate authority | Built in: Let's Encrypt, ZeroSSL, Google Trust Services, SSL.com, Sectigo, DigiCert, GlobalSign, Actalis, FreeSSL, LiteSSL, PeeringHub and more, some with a staging environment; choose Custom to enter a directory URL |
 | Contact email | Optional, for notices from the certificate authority |
 | EAB Key ID / EAB HMAC key | Required by certificate authorities that use External Account Binding, such as ZeroSSL and Google Trust Services |
+| Profile (advanced) | An ACME profile the certificate authority offers, such as Let's Encrypt's `shortlived` (six-day certificates) or `tlsserver`; empty for the default. A test lists those offered |
 | Proxy | Optional, for networks that cannot reach the certificate authority directly |
 
 - The account is registered at the first issuance or test, and its private

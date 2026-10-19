@@ -59,6 +59,7 @@ func accountType() providers.Type {
 			{Key: "email", Label: i18n.AcmeFieldEmail, Help: i18n.AcmeFieldEmailHelp, Kind: providers.Email},
 			{Key: "eab_kid", Label: i18n.AcmeFieldEabKid, Help: i18n.AcmeFieldEabKidHelp, Kind: providers.Text},
 			{Key: "eab_hmac", Label: i18n.AcmeFieldEabHmac, Help: i18n.AcmeFieldEabHmacHelp, Kind: providers.Text, Secret: true},
+			{Key: "profile", Label: i18n.AcmeFieldProfile, Help: i18n.AcmeFieldProfileHelp, Kind: providers.Text, Advanced: true},
 			httpx.ProxyField(),
 		},
 		NeedsSolver: true, Challenges: []string{providers.ChallengeDNS, providers.ChallengeHTTP}, Testable: true, Revocable: true,

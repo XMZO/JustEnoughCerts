@@ -36,6 +36,7 @@
       "directory_required": "Fill in the directory URL of the custom certificate authority.",
       "eab_required": "This certificate authority needs External Account Binding. Fill in the EAB Key ID and HMAC key of the account.",
       "present": "Could not add the record for {domain}. Check the DNS provider's credentials and permissions.",
+      "profile": "The CA offers no profile “{profile}”. It offers: {profiles}.",
       "propagation": "The records for {domains} never showed in DNS. Check that the DNS provider is the one that serves them.",
       "put_file": "Could not put the validation file for {domain} in place. Check the settings of the validation method.",
       "rate_limited": "The certificate authority refused for now: too many requests. JEC tries again when it allows.",
@@ -56,7 +57,9 @@
       "eab_kid": "EAB Key ID (optional)",
       "eab_kid_help": "ZeroSSL, Google Trust Services and most paid CAs need it; their account page gives it.",
       "email": "Contact email (optional)",
-      "email_help": "The CA sends notices about the account here. Using the account means accepting the CA's terms of service."
+      "email_help": "The CA sends notices about the account here. Using the account means accepting the CA's terms of service.",
+      "profile": "Profile",
+      "profile_help": "A certificate profile the CA offers (ACME profiles), such as Let's Encrypt's shortlived (six-day certificates) or tlsserver. Empty for the default; a test lists those offered."
     },
     "log": {
       "caa_unknown": "Could not read the CAA records of {domain}; the CA checks them itself",
@@ -80,7 +83,8 @@
       "name": "ACME"
     },
     "test": {
-      "ok": "Reached {directory}; the account works."
+      "ok": "Reached {directory}; the account works.",
+      "profiles": "Reached {directory}; the account works. Profiles offered: {profiles}."
     }
   },
   "aliyun": {

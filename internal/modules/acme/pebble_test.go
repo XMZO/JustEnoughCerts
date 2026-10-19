@@ -2,8 +2,11 @@ package acme
 
 import (
 	"crypto/x509"
+	"errors"
+	"fmt"
 	"os"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -38,10 +41,13 @@ func TestPebble(t *testing.T) {
 	m.skipPropagation = true
 	src := &source{m: m, in: providers.Instance{ID: 1, Config: map[string]string{"ca": custom, "directory": directory, "email": "admin@example.com"}}}
 
-	// A test registers the account, as the first issuance would.
-	if msg, err := src.Test(t.Context()); err != nil || msg.Key != i18n.AcmeTestOk {
+	// A test registers the account, as the first issuance would, and tells
+	// the profiles Pebble offers.
+	msg, err := src.Test(t.Context())
+	if err != nil || msg.Key != i18n.AcmeTestOk && msg.Key != i18n.AcmeTestProfiles {
 		t.Fatalf("test: %+v, %v", msg, err)
 	}
+	t.Logf("test: %+v", msg)
 
 	// The second order renews the first certificate, which Pebble takes;
 	// the third says it renews one Pebble never issued, which must not keep
@@ -91,6 +97,22 @@ func TestPebble(t *testing.T) {
 		if slices.Contains(steps, i18n.AcmeLogRegister) || steps[len(steps)-1] != i18n.AcmeLogIssued {
 			t.Errorf("round %d: steps %v", round, steps)
 		}
+	}
+
+	// A profile the CA does not offer fails the test; one it offers, as
+	// Pebble's shortlived, orders with it.
+	odd := &source{m: m, in: providers.Instance{ID: 1, Config: map[string]string{"ca": custom, "directory": directory, "profile": "no-such-profile"}}}
+	var p *contracts.Problem
+	if _, err := odd.Test(t.Context()); !errors.As(err, &p) || p.Key != i18n.AcmeErrorProfile {
+		t.Errorf("an unknown profile: %v", err)
+	}
+	if msg.Key == i18n.AcmeTestProfiles && strings.Contains(fmt.Sprint(msg.Params["profiles"]), "shortlived") {
+		short := &source{m: m, in: providers.Instance{ID: 1, Config: map[string]string{"ca": custom, "directory": directory, "profile": "shortlived"}}}
+		chain, err := short.Issue(t.Context(), contracts.IssueRequest{Domains: []string{"short.jec.example.com"}, Key: cryptoxtest.NewKey(t), Solver: &fakeSolver{}, Log: func(contracts.LogLine) {}})
+		if err != nil || chain[0].NotAfter.Sub(chain[0].NotBefore) >= first.NotAfter.Sub(first.NotBefore) {
+			t.Errorf("shortlived: %v", err)
+		}
+		t.Logf("validity: shortlived %v, default %v", chain[0].NotAfter.Sub(chain[0].NotBefore), first.NotAfter.Sub(first.NotBefore))
 	}
 
 	// The first certificate, replaced, is revoked; asking again is no
