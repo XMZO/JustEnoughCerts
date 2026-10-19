@@ -1,6 +1,7 @@
 package acme
 
 import (
+	"context"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -109,10 +110,16 @@ func TestPebble(t *testing.T) {
 	if msg.Key == i18n.AcmeTestProfiles && strings.Contains(fmt.Sprint(msg.Params["profiles"]), "shortlived") {
 		short := &source{m: m, in: providers.Instance{ID: 1, Config: map[string]string{"ca": custom, "directory": directory, "profile": "shortlived"}}}
 		chain, err := short.Issue(t.Context(), contracts.IssueRequest{Domains: []string{"short.jec.example.com"}, Key: cryptoxtest.NewKey(t), Solver: &fakeSolver{}, Log: func(contracts.LogLine) {}})
-		if err != nil || chain[0].NotAfter.Sub(chain[0].NotBefore) >= first.NotAfter.Sub(first.NotBefore) {
+		// Pebble's shortlived certificates are valid for six days.
+		if err != nil || chain[0].NotAfter.Sub(chain[0].NotBefore) > 7*24*time.Hour {
 			t.Errorf("shortlived: %v", err)
 		}
-		t.Logf("validity: shortlived %v, default %v", chain[0].NotAfter.Sub(chain[0].NotBefore), first.NotAfter.Sub(first.NotBefore))
+		// An address, proved by a file on the web server.
+		files := &fakeFiles{}
+		chain, err = short.Issue(t.Context(), contracts.IssueRequest{Domains: []string{"192.0.2.10"}, Key: cryptoxtest.NewKey(t), Files: files, Log: func(contracts.LogLine) {}})
+		if err != nil || len(chain[0].IPAddresses) != 1 || chain[0].IPAddresses[0].String() != "192.0.2.10" || len(files.put) == 0 {
+			t.Errorf("an address: %v, files %v", err, files.put)
+		}
 	}
 
 	// The first certificate, replaced, is revoked; asking again is no
@@ -123,3 +130,13 @@ func TestPebble(t *testing.T) {
 		}
 	}
 }
+
+// fakeFiles keeps the paths it is asked to put.
+type fakeFiles struct{ put []string }
+
+func (f *fakeFiles) PutFile(_ context.Context, file contracts.File) error {
+	f.put = append(f.put, file.Domain+file.Path)
+	return nil
+}
+func (*fakeFiles) RemoveFile(context.Context, contracts.File) error { return nil }
+func (*fakeFiles) Close() error                                     { return nil }
