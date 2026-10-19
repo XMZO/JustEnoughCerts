@@ -223,7 +223,7 @@ stateDiagram-v2
 - **上传**：`POST /api/v1/certs/certificates` 接收 PEM 证书（顺序随意，可以带私钥）和私钥；`cryptox.ParseBundle` 找出和私钥匹配的证书，按签发关系排好中间证书，去掉自签名的根证书。常见错误（没有私钥、私钥加密了、私钥和证书不匹配等）返回各自的错误码，并指出是哪个输入框。上传新版本时，新证书必须包含原来的主域名，而且到期时间要比当前版本晚。
 - **事件**（类型和数据结构在 `internal/kernel/contracts`）：新版本成为当前版本时发 `certificate.issued`；删除时发 `certificate.deleted`；每小时的 `certs.check_expiry` 任务在当前版本进入续期窗口、只剩 7 天、已过期时各发一次 `certificate.expiring`（重启或停机跳过的级别不补发）。
 - **事件里的指纹**：`certificate.issued`、`certificate.deployed` 带版本叶子证书的 SHA-256 指纹（`Fingerprint`）。别的模块发 `certificates.announce` 时，证书模块给每张有版本的证书发一条 `certificate.current`（数据同 `issued`），供后来启用、或者错过了事件的模块补齐。
-- **吊销**（`revoke.go`）：`POST /api/v1/certs/certificates/{id}/versions/{version}/revoke`（要再输一次密码，原因是 `unspecified`、`key_compromise`、`superseded`、`cessation_of_operation` 之一）请签发这个版本的来源吊销它：来源实现 `contracts.Revoker`，类型标 `Revocable`（目前是 ACME 账号，用账号密钥签名，CA 回答“已经吊销”也算成功；CI 的 Pebble 测试覆盖）。只吊销不是当前版本、没过期、还没吊销的版本：吊销正在用的版本前要先签发并部署新版本，免得网站用着已吊销的证书（界面在历史版本下面写明）。吊销时间和原因存在 `certs_versions` 的 `revoked_at`、`revoke_reason`；详情接口的每个版本带 `revocable`、`revokedAt`、`revokeReason`。审计日志按 `certs-revoke` 记下。
+- **吊销**（`revoke.go`）：`POST /api/v1/certs/certificates/{id}/versions/{version}/revoke`（要再输一次密码，原因是 `unspecified`、`key_compromise`、`superseded`、`cessation_of_operation` 之一）请签发这个版本的来源吊销它：来源实现 `contracts.Revoker`，类型标 `Revocable`：ACME 账号（用账号密钥签名，CA 回答“已经吊销”也算成功；CI 的 Pebble 测试覆盖），以及在 `describe` 里标 `revocable` 的插件来源（JEC 发 `revoke`，带叶子证书、序列号、指纹和原因，见 `docs/development/plugins.md`）。只吊销不是当前版本、没过期、还没吊销的版本：吊销正在用的版本前要先签发并部署新版本，免得网站用着已吊销的证书（界面在历史版本下面写明）。吊销时间和原因存在 `certs_versions` 的 `revoked_at`、`revoke_reason`；详情接口的每个版本带 `revocable`、`revokedAt`、`revokeReason`。审计日志按 `certs-revoke` 记下。
 
 ### 4.7 线上巡检
 
@@ -714,7 +714,7 @@ M0 落地时的做法（`web/`）：
      - 可见文字和 `title`、`placeholder`、`aria-label` 都必须带标记。不算界面文字、不检查标记的：`<code>`；页面里另外带 `lang` 的元素（语言名称；`<html>` 上的 `lang` 是页面语言，不算）；带 `translate="no"` 的元素，用于域名、序列号这类数据；`<time>` 和 `<data>`，用于 `Intl` 单独格式化出来的日期和数字。所以单独显示的日期写成 `<time>`、数字写成 `<data>`，域名加 `translate="no"`；放进句子的日期和数字作为消息参数，跟着消息一起带标记；一条消息可以把别的消息当参数，标记会嵌套，从里往外去掉完整的标记后不能剩下文字；
      - 文字超出容器就失败；被截断的文字只有带完整内容的 `title` 才算合格；页面出现横向滚动也失败。只给屏幕阅读器的文字（`sr-only`）本来就看不见，不查是否放得下，但照样要带标记。
      - 重叠暂时不查。
-     - 无障碍：每一步同时用 axe（`@axe-core/playwright`，默认规则：WCAG 2.x A/AA 和最佳实践）检查整页，有违规就失败，报出规则、影响级别和前几个元素。第一次跑时查出的三类问题已改掉：总览的格子列表里直接放了“添加”链接，证书列表和签发记录的行是带 `role="listitem"` 的链接（改成列表项里放链接），服务商页正文里的“模块”链接只靠颜色区分（加了下划线；正文里的链接都要这样）。
+     - 无障碍：每一步同时用 axe（`@axe-core/playwright`，默认规则：WCAG 2.x A/AA 和最佳实践）检查整页，有违规就失败，报出规则、影响级别和前几个元素。第一次跑时查出的三类问题已改掉：总览的格子列表里直接放了“添加”链接，证书列表和签发记录的行是带 `role="listitem"` 的链接（改成列表项里放链接），服务商页正文里的“模块”链接只靠颜色区分（加了下划线；正文里的链接都要这样）。走查之后另有一条用例在深色主题下用 axe 的颜色规则（`color-contrast`、`link-in-text-block`）把主要页面再查一遍。
    - **自检**：用例本身也验证检查器能抓到这些问题（axe 另有一条：没有标签的输入框），自检页面和真实页面一样在 `<html>` 上带 `lang`（之前没带，导致真实页面的标记检查一直被 `lang` 豁免掉，2026-10-17 修正）。
 6. **格式**：key 命名符合“模块.页面.含义”规范，文件按 key 排序、没有重复。`make i18n-fix` 可以自动排序和格式化。
 

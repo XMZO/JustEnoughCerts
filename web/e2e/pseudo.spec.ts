@@ -844,3 +844,26 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page.getByText(label('audit.page.no_match'))).toBeVisible()
   expect.soft(await problems(page), 'audit log with no match').toEqual([])
 })
+
+// The dark theme: the main pages again, through axe's checks of color,
+// after the walk above has filled the server. The tokens were checked by
+// hand for both themes; this keeps the pages to them.
+test('the dark theme keeps its contrast', async ({ page }) => {
+  test.setTimeout(120_000)
+  await page.emulateMedia({ colorScheme: 'dark' })
+  const signIn = await page.request.post('api/v1/session', { data: { username: 'admin', password: 'correct horse' } })
+  expect(signIn.ok()).toBe(true)
+  const pages = ['./', './certificates', './certificates/1', './history', './sources', './dns', './targets', './notify']
+  for (const path of [...pages, './credentials', './modules', './settings', './audit']) {
+    await page.goto(path)
+    await page.waitForLoadState('networkidle')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+    const { violations } = await new AxeBuilder({ page }).withRules(['color-contrast', 'link-in-text-block']).analyze()
+    expect
+      .soft(
+        violations.map((v) => `axe ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(', ')}`),
+        `${path} in the dark`,
+      )
+      .toEqual([])
+  }
+})
