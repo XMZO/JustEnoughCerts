@@ -794,6 +794,7 @@ services:
 
 - M0 时定为程序 20 MiB、压缩包和镜像 8 MiB。
 - 2026-10 加入 lego 的全部 DNS 服务商后实测：linux/amd64 程序 67.4 MiB、压缩包 22.6 MiB，arm64 是 62.3 MiB 和 20.6 MiB，最大的 darwin/amd64 是 69.6 MiB 和 23.3 MiB。各家云平台的 SDK 是大头（lego 本身 4 MiB，sacloud、exoscale、linode、Google 的 protobuf 和 gRPC 各 1–3 MiB）。和上面“20MB 出头”的预期一致，预算提高到程序 80 MiB、压缩包和镜像 27 MiB。
+- 2026-10 支持 PostgreSQL（8.5）后：pgx 让程序大了约 3.6 MiB、压缩后约 1 MiB，最大的 darwin/amd64 到了 81.4 MiB 和 27.4 MiB，超出预算。PostgreSQL 是用户要的功能，pgx 是 Go 里维护得最好的驱动，没有更小的替代；预算提高到程序 88 MiB、压缩包和镜像 30 MiB，给 M3、M4 余下的部署目标留出约 6 MiB（压缩后约 2.6 MiB）。
 
 **手段**：
 
@@ -1002,7 +1003,7 @@ JustEnoughCerts/
 - [x] 前端框架：Vue 3。
 - [x] SQLite 驱动：`ncruces/go-sqlite3`（实测数据见 8.3）。
 - [x] ICU 消息格式的前后端实现：后端自己实现子集，前端用 FormatJS（见 7.2）。
-- [x] 镜像和程序的体积预算：带上 lego 的全部服务商后，程序 80 MiB，压缩包和镜像 27 MiB（实测见 8.3）。
+- [x] 镜像和程序的体积预算：带上 lego 的全部服务商后，程序 80 MiB，压缩包和镜像 27 MiB；加上 PostgreSQL 的驱动后提高到 88 MiB 和 30 MiB（实测见 8.3）。
 - [x] 续期什么时候执行：按设计稿的设置页，进入续期窗口后在“每天检查时间”开始（默认 02:00，可改，按面板的时区，默认跟随服务器），只剩一周或更少时立即开始（4.3 的“续期”）。
 - [x] PostgreSQL：已支持（8.5），测试对着 PostgreSQL 18。
 - [x] 文档语言：中英双语（文档站 `docs/`，每页一份英文、一份中文；界面语言跟随浏览器，可手动切换）。
