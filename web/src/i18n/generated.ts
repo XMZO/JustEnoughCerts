@@ -481,7 +481,6 @@ export type MessageKey =
   | "certs.cert.label"
   | "certs.cert.label_note"
   | "certs.chain.expires"
-  | "certs.chain.issued_by"
   | "certs.chain.title"
   | "certs.column.actions"
   | "certs.column.domain"

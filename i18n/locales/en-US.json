@@ -625,7 +625,6 @@
     },
     "chain": {
       "expires": "Expires {date}",
-      "issued_by": "Issued by {issuer}",
       "title": "Certificate chain"
     },
     "column": {

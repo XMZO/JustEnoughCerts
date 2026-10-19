@@ -625,7 +625,6 @@
     },
     "chain": {
       "expires": "{date} 到期",
-      "issued_by": "由 {issuer} 签发",
       "title": "证书链"
     },
     "column": {

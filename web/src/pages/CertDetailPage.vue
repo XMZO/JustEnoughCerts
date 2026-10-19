@@ -55,10 +55,12 @@ import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import { summary, typeName } from '../providers/fields'
 
-// A certificate (docs/design/boards/CertDetail and CertDetailMobile): its
-// validity, details, renewal settings, versions and chain, with the upload
-// of a new version and deletion. One with a source also shows its latest
-// issuances and can be issued again at once.
+// A certificate (docs/design/boards/CertDetail and CertDetailMobile, made
+// denser at the user's request so that it fits a screen): its validity,
+// then its deployments, online checks and issuances beside its details,
+// chain, renewal settings and versions, with the upload of a new version
+// and deletion. One with a source also shows its last run and can be
+// issued again at once.
 const props = defineProps<{ id: number }>()
 
 const { t } = useT()
@@ -106,6 +108,8 @@ const latestLink = computed(() => (latest.value ? `/certificates/${props.id}/iss
 // The last run (docs/design/boards/CertDetail): the latest issuance, its
 // steps and the deployments of what it brought, and how it went.
 const lastRun = useIssuance(() => latest.value?.id ?? 0, () => !!latest.value)
+// The issuances before it, which the list shows under it.
+const earlier = computed(() => (issuances.data.value ?? []).filter((is) => is.id !== lastRun.data.value?.issuance.id))
 const durationText = useDurationText()
 const runSummary = computed(() => {
   const d = lastRun.data.value
@@ -186,6 +190,12 @@ async function deployTo(target?: number) {
   }
 }
 const deployAll = () => deployTo()
+/** startDeployAll deploys to every target, asking first when each went well. */
+function startDeployAll() {
+  const c = cert.value
+  if (c && deployRows.value.every((r) => r.d?.state === 'done')) asking.value = { kind: 'deploy', certs: [c], run: () => deployNow.mutateAsync(undefined) }
+  else void deployAll()
+}
 /** redeployTo deploys to target again, asking first where the last deployment there went well. */
 function redeployTo(target: number, last?: string) {
   if (last === 'done' && cert.value) asking.value = { kind: 'deploy', certs: [cert.value], target, run: () => deployNow.mutateAsync(target) }
@@ -432,11 +442,11 @@ async function confirmDelete() {
       <section
         v-if="current"
         :aria-label="t('certs.detail.validity')"
-        class="flex flex-wrap items-end gap-x-8 gap-y-4 rounded-lg border border-line bg-surface-raised p-4"
+        class="flex flex-wrap items-end gap-x-6 gap-y-3 rounded-lg border border-line bg-surface-raised p-3 sm:p-4"
       >
         <CertSlot v-if="current" :cert="cert" decorative class="hidden sm:grid" />
-        <LifeBar v-if="life" :life="life" large class="min-w-0 flex-[2_1_240px]" />
-        <dl v-if="current" class="m-0 grid min-w-0 flex-[3_1_420px] grid-cols-2 gap-4 sm:grid-cols-4">
+        <LifeBar v-if="life" :life="life" large class="min-w-0 flex-[2_1_200px]" />
+        <dl v-if="current" class="m-0 grid min-w-0 flex-[3_1_360px] grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4 sm:gap-3">
           <div>
             <dt class="text-caption text-ink-muted">{{ t('certs.field.not_before') }}</dt>
             <dd class="m-0 mt-0.5 font-semibold tabular-nums"><time :datetime="current.notBefore">{{ intl.date(current.notBefore) }}</time></dd>
@@ -465,13 +475,19 @@ async function confirmDelete() {
         </dl>
       </section>
 
-      <div class="flex flex-wrap items-start gap-3 sm:gap-4">
-        <div class="flex min-w-0 flex-[999_1_480px] flex-col gap-3 sm:gap-4">
-          <section aria-labelledby="deploys" class="flex flex-col gap-2 rounded-lg border border-line bg-surface-raised p-4">
+      <!-- Where it is now (deployments, online checks), its history
+           (issuances, versions) and what it is (details, renewal settings):
+           from 768px the first two on the left, from 1280px each in a
+           column of its own, so that the page fits a screen. -->
+      <div
+        class="grid items-start gap-3 sm:gap-4 md:grid-cols-[minmax(0,1fr)_17rem] md:grid-rows-[auto_1fr] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_18rem] xl:grid-rows-1"
+      >
+        <div class="flex min-w-0 flex-col gap-3 sm:gap-4 md:col-start-1 md:row-start-1">
+          <section aria-labelledby="deploys" class="flex flex-col gap-1.5 rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
             <div class="flex flex-wrap items-center justify-between gap-2">
-              <h2 id="deploys" class="m-0 text-section-title font-semibold">{{ t('certs.detail.deploys') }}</h2>
+              <h2 id="deploys" class="m-0 text-heading sm:text-section-title font-semibold">{{ t('certs.detail.deploys') }}</h2>
               <div class="flex flex-wrap gap-2">
-                <JecButton v-if="cert.targets.length && current" size="sm" :busy="deploying === 0" @click="deployAll">
+                <JecButton v-if="cert.targets.length && current" size="sm" :busy="deploying === 0" @click="startDeployAll">
                   <Send class="size-4" aria-hidden="true" />{{ t('certs.action.deploy_now') }}
                 </JecButton>
                 <JecButton size="sm" variant="ghost" @click="chooseTargets">
@@ -481,14 +497,16 @@ async function confirmDelete() {
             </div>
             <JecAlert v-if="deployError.error.value" :code="deployError.error.value.code" :params="deployError.error.value.params" />
             <p v-if="!cert.targets.length" class="m-0 text-small text-ink-muted">{{ t('certs.detail.no_targets') }}</p>
-            <ol v-else class="m-0 list-none p-0 text-small">
-              <li v-for="r in deployRows" :key="r.target" class="flex flex-wrap items-center gap-x-2 border-b border-line last:border-b-0">
-                <RouterLink
-                  v-if="r.d"
-                  :to="`/certificates/${id}/deployments/${r.d.id}`"
-                  class="flex min-h-11 min-w-[12rem] flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 py-2 text-ink no-underline hover:text-ink"
+            <!-- Where the card is narrow, a row's state goes under its
+                 target, and its button keeps only the icon. -->
+            <ol v-else class="@container m-0 list-none p-0 text-small">
+              <li v-for="r in deployRows" :key="r.target" class="flex items-center gap-2 border-b border-line last:border-b-0">
+                <component
+                  :is="r.d ? RouterLink : 'div'"
+                  :to="r.d ? `/certificates/${id}/deployments/${r.d.id}` : undefined"
+                  class="flex min-h-11 min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5 text-ink no-underline hover:text-ink"
                 >
-                  <span class="min-w-[8rem] flex-1 [overflow-wrap:anywhere]">
+                  <span class="min-w-0 flex-[1_1_100%] [overflow-wrap:anywhere] @md:flex-[1_1_0]">
                     <span class="font-semibold" translate="no">{{ r.label.name }}</span>
                     <span class="ml-1.5 text-ink-muted" :translate="r.label.brand ? 'no' : undefined">{{ r.label.type }}</span>
                     <span v-if="r.shown.length" class="block text-caption text-ink-muted">
@@ -499,62 +517,53 @@ async function confirmDelete() {
                       </span>
                     </span>
                   </span>
-                  <time v-if="r.d.finishedAt" :datetime="r.d.finishedAt" class="flex-none text-ink-muted tabular-nums">{{ intl.dateTime(r.d.finishedAt) }}</time>
-                  <span :class="['flex-none font-semibold', deployInk[r.d.state]]">{{ t(deploymentState(r.d)) }}</span>
-                </RouterLink>
-                <div v-else class="flex min-h-11 min-w-[12rem] flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 py-2">
-                  <span class="min-w-[8rem] flex-1 [overflow-wrap:anywhere]">
-                    <span class="font-semibold" translate="no">{{ r.label.name }}</span>
-                    <span class="ml-1.5 text-ink-muted" :translate="r.label.brand ? 'no' : undefined">{{ r.label.type }}</span>
-                    <span v-if="r.shown.length" class="block text-caption text-ink-muted">
-                      <span v-for="s in r.shown" :key="s.key" class="not-first:before:mx-1.5 not-first:before:content-['·']">
-                        <span v-if="s.label" class="mr-1">{{ t(s.label) }}</span>
-                        <template v-if="s.option">{{ t(s.option) }}</template>
-                        <span v-else translate="no">{{ s.value }}</span>
-                      </span>
-                    </span>
+                  <span class="flex flex-none items-baseline gap-x-2 @md:flex-col @md:items-end">
+                    <span v-if="r.d" :class="['font-semibold', deployInk[r.d.state]]">{{ t(deploymentState(r.d)) }}</span>
+                    <span v-else class="text-ink-muted">{{ t('certs.deployment.state.none') }}</span>
+                    <time v-if="r.d?.finishedAt" :datetime="r.d.finishedAt" class="text-caption text-ink-muted tabular-nums">{{ intl.dateTime(r.d.finishedAt) }}</time>
                   </span>
-                  <span class="flex-none text-ink-muted">{{ t('certs.deployment.state.none') }}</span>
-                </div>
+                </component>
                 <JecButton
                   v-if="current && r.d?.state !== 'running' && r.d?.state !== 'pending'"
                   size="sm"
                   variant="ghost"
-                  class="mb-2 ml-auto flex-none sm:mb-0"
+                  class="flex-none"
                   :busy="deploying === r.target"
                   :aria-label="t(r.d ? 'certs.action.redeploy_to' : 'certs.action.deploy_to', { target: r.label.name })"
+                  :title="t(r.d ? 'certs.action.redeploy_to' : 'certs.action.deploy_to', { target: r.label.name })"
                   @click="redeployTo(r.target, r.d?.state)"
                 >
-                  <RotateCw class="size-4" aria-hidden="true" />{{ t(r.d ? 'certs.action.redeploy' : 'certs.action.deploy_now') }}
+                  <RotateCw class="size-4" aria-hidden="true" /><span class="sr-only @md:not-sr-only">{{ t(r.d ? 'certs.action.redeploy' : 'certs.action.deploy_now') }}</span>
                 </JecButton>
               </li>
             </ol>
           </section>
 
-          <section v-if="lastRun.data.value" aria-labelledby="last-run" class="flex flex-col gap-1 rounded-lg border border-line bg-surface-raised p-4">
-            <div class="flex flex-wrap items-baseline justify-between gap-x-3">
-              <h2 id="last-run" class="m-0 text-section-title font-semibold">
-                {{ t(lastRun.data.value.issuance.reason === 'renewal' ? 'certs.detail.last_renewal' : 'certs.detail.last_issuance') }}
-              </h2>
-              <RouterLink :to="`/certificates/${id}/issuances/${lastRun.data.value.issuance.id}`" class="text-small">{{ t('certs.detail.full_log') }}</RouterLink>
-            </div>
-            <p v-if="runSummary" class="m-0 text-small text-ink-muted [overflow-wrap:anywhere]">{{ runSummary }}</p>
-            <IssuanceSteps :detail="lastRun.data.value" class="text-small" />
-          </section>
-
           <MonitorSection v-if="current" :id="cert.id" />
+        </div>
 
-          <section v-if="issued" aria-labelledby="issuances" class="rounded-lg border border-line bg-surface-raised p-4">
-            <h2 id="issuances" class="m-0 mb-1 text-section-title font-semibold">{{ t('certs.detail.issuances') }}</h2>
+        <div class="flex min-w-0 flex-col gap-3 sm:gap-4 md:col-start-1 md:row-start-2 xl:col-start-2 xl:row-start-1">
+          <section v-if="issued" aria-labelledby="issuances" class="flex flex-col gap-2 rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
+            <h2 id="issuances" class="m-0 text-heading sm:text-section-title font-semibold">{{ t('certs.detail.issuances') }}</h2>
+            <div v-if="lastRun.data.value" class="flex flex-col gap-1.5 rounded-md bg-surface-sunken px-3 py-2.5">
+              <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+                <h3 class="m-0 text-body font-semibold">
+                  {{ t(lastRun.data.value.issuance.reason === 'renewal' ? 'certs.detail.last_renewal' : 'certs.detail.last_issuance') }}
+                </h3>
+                <RouterLink :to="`/certificates/${id}/issuances/${lastRun.data.value.issuance.id}`" class="text-small">{{ t('certs.detail.full_log') }}</RouterLink>
+              </div>
+              <p v-if="runSummary" class="m-0 text-small text-ink-muted [overflow-wrap:anywhere]">{{ runSummary }}</p>
+              <IssuanceSteps :detail="lastRun.data.value" compact class="text-small" />
+            </div>
             <p v-if="issuances.isSuccess.value && !issuances.data.value?.length" class="m-0 text-small text-ink-muted">{{ t('certs.detail.no_issuances') }}</p>
-            <ol class="m-0 list-none p-0 text-small">
-              <li v-for="is in issuances.data.value ?? []" :key="is.id" class="border-b border-line last:border-b-0">
+            <ol v-if="earlier.length" class="m-0 max-h-48 list-none overflow-y-auto p-0 text-small">
+              <li v-for="is in earlier" :key="is.id" class="border-b border-line last:border-b-0">
                 <RouterLink
                   :to="`/certificates/${id}/issuances/${is.id}`"
-                  class="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-0.5 py-2 text-ink no-underline hover:text-ink"
+                  class="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5 text-ink no-underline hover:text-ink"
                 >
                   <time :datetime="is.createdAt" class="flex-none text-ink-muted tabular-nums">{{ intl.dateTime(is.createdAt) }}</time>
-                  <span class="min-w-[8rem] flex-1 [overflow-wrap:anywhere]">{{ t(reasonText[is.reason]) }}</span>
+                  <span class="min-w-[6rem] flex-1 [overflow-wrap:anywhere]">{{ t(reasonText[is.reason]) }}</span>
                   <span :class="['flex-none font-semibold', is.state === 'done' ? 'text-ok-ink' : is.state === 'running' || is.state === 'waiting' || (is.state === 'pending' && !is.error) ? 'text-info-ink' : 'text-danger-ink']">
                     {{ t(issuanceState(is)) }}
                   </span>
@@ -562,14 +571,13 @@ async function confirmDelete() {
               </li>
             </ol>
           </section>
-
-          <section v-if="versions.length" aria-labelledby="versions" class="rounded-lg border border-line bg-surface-raised p-4">
-            <h2 id="versions" class="m-0 mb-1 text-section-title font-semibold">{{ t('certs.history.title') }}</h2>
-            <ol class="m-0 list-none p-0 text-small">
-              <li v-for="h in history" :key="h.version.id" class="flex items-center gap-2 border-b border-line py-2 last:border-b-0">
+          <section v-if="versions.length" aria-labelledby="versions" class="rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
+            <h2 id="versions" class="m-0 mb-1 text-heading sm:text-section-title font-semibold">{{ t('certs.history.title') }}</h2>
+            <ol class="m-0 max-h-60 list-none overflow-y-auto p-0 text-small">
+              <li v-for="h in history" :key="h.version.id" class="flex items-center gap-1 border-b border-line py-1.5 last:border-b-0">
                 <div class="min-w-0 flex-1">
                   <div class="tabular-nums">{{ h.range }}</div>
-                  <div class="text-ink-muted">{{ h.note }}</div>
+                  <div class="text-caption text-ink-muted">{{ h.note }}</div>
                   <div v-if="h.version.revokedAt" class="flex items-start gap-1 font-semibold text-danger-ink">
                     <ShieldX class="mt-0.5 size-4 flex-none" aria-hidden="true" />
                     {{ t('certs.history.revoked', { date: intl.date(h.version.revokedAt), reason: t(reasonLabel(h.version.revokeReason)) }) }}
@@ -596,30 +604,31 @@ async function confirmDelete() {
                 </button>
               </li>
             </ol>
-            <p v-if="sourceType?.revocable" class="m-0 mt-2 text-small text-ink-muted">{{ t('certs.history.revoke_hint') }}</p>
+            <p v-if="sourceType?.revocable && !history.some((h) => h.version.revocable)" class="m-0 mt-1.5 text-caption text-ink-muted">{{ t('certs.history.revoke_hint') }}</p>
           </section>
 
-          <section v-if="chain.length" aria-labelledby="chain" class="rounded-lg border border-line bg-surface-raised p-4">
-            <h2 id="chain" class="m-0 mb-1 text-section-title font-semibold">{{ t('certs.chain.title') }}</h2>
-            <ol class="m-0 list-none p-0 text-small">
-              <li v-for="(c, i) in chain" :key="i" class="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-b border-line py-2 last:border-b-0">
-                <span class="min-w-0 flex-[1_1_200px] font-semibold [overflow-wrap:anywhere]" translate="no">{{ c.subject }}</span>
-                <span class="min-w-0 flex-[1_1_200px] text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.chain.issued_by', { issuer: c.issuer }) }}</span>
-                <span class="flex-none text-ink-muted tabular-nums">{{ t('certs.chain.expires', { date: intl.date(c.notAfter) }) }}</span>
-              </li>
-            </ol>
-          </section>
         </div>
 
-        <div class="flex min-w-0 flex-[1_1_320px] flex-col gap-3 sm:gap-4">
-          <section aria-labelledby="info" class="rounded-lg border border-line bg-surface-raised p-4">
-            <h2 id="info" class="m-0 mb-1 text-section-title font-semibold">{{ t('certs.info.title') }}</h2>
-            <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-small">
+        <div class="flex min-w-0 flex-col gap-3 sm:gap-4 md:col-start-2 md:row-span-2 md:row-start-1 xl:col-start-3 xl:row-span-1">
+          <section aria-labelledby="info" class="rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
+            <h2 id="info" class="m-0 mb-1 text-heading sm:text-section-title font-semibold">{{ t('certs.info.title') }}</h2>
+            <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-small">
               <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.domains') }}</dt>
-              <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ intl.list(cert.domains) }}</dd>
+              <dd class="m-0 [overflow-wrap:anywhere]" translate="no">
+                <span v-for="d in cert.domains" :key="d" class="block">{{ d }}</span>
+              </dd>
               <template v-if="current">
                 <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.issuer') }}</dt>
                 <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ current.issuer }}</dd>
+              </template>
+              <template v-if="chain.length > 1">
+                <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.chain.title') }}</dt>
+                <dd class="m-0 flex min-w-0 flex-col gap-1">
+                  <span v-for="(c, i) in chain.slice(1)" :key="i" class="[overflow-wrap:anywhere]">
+                    <span class="block" translate="no">{{ c.subject }}</span>
+                    <span class="block text-caption text-ink-muted">{{ t('certs.chain.expires', { date: intl.date(c.notAfter) }) }}</span>
+                  </span>
+                </dd>
               </template>
               <dt class="whitespace-nowrap text-ink-muted">{{ t('certs.field.source') }}</dt>
               <dd v-if="issued" class="m-0 [overflow-wrap:anywhere]" translate="no">{{ sourceName ?? '' }}</dd>
@@ -650,14 +659,14 @@ async function confirmDelete() {
             </dl>
           </section>
 
-          <section aria-labelledby="settings" class="rounded-lg border border-line bg-surface-raised p-4">
+          <section aria-labelledby="settings" class="rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
             <div class="mb-1 flex items-center justify-between gap-3">
-              <h2 id="settings" class="m-0 text-section-title font-semibold">{{ t('certs.settings.title') }}</h2>
+              <h2 id="settings" class="m-0 text-heading sm:text-section-title font-semibold">{{ t('certs.settings.title') }}</h2>
               <JecButton v-if="!editing" variant="ghost" size="sm" @click="edit">
                 <Pencil class="size-4" aria-hidden="true" />{{ t('kernel.action.edit') }}
               </JecButton>
             </div>
-            <dl v-if="!editing" class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-small">
+            <dl v-if="!editing" class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-small">
               <dt class="whitespace-nowrap text-ink-muted">{{ t(issued ? 'certs.field.renewal' : 'certs.field.reminder') }}</dt>
               <dd v-if="issued && certSettings.data.value" class="m-0">
                 {{ t('certs.settings.renewal_value', { days: cert.renewBeforeDays, time: certSettings.data.value.checkTime }) }}
@@ -693,14 +702,14 @@ async function confirmDelete() {
             </form>
           </section>
 
-          <div class="flex flex-col gap-2 sm:hidden">
-            <JecButton v-if="issued" variant="primary" :busy="issueNow.isPending.value" @click="startIssue">
+          <div class="flex flex-wrap gap-2 sm:hidden">
+            <JecButton v-if="issued" variant="primary" :busy="issueNow.isPending.value" class="flex-[1_1_auto]" @click="startIssue">
               <ShieldCheck class="size-4" aria-hidden="true" />{{ t(issueLabel) }}
             </JecButton>
-            <JecButton v-if="current" @click="startDownload(current.id)">
+            <JecButton v-if="current" class="flex-[1_1_auto]" @click="startDownload(current.id)">
               <Download class="size-4" aria-hidden="true" />{{ t('certs.action.download') }}
             </JecButton>
-            <JecButton @click="deleting = true"><Trash2 class="size-4" aria-hidden="true" />{{ t('certs.action.delete') }}</JecButton>
+            <JecButton class="flex-[1_1_auto]" @click="deleting = true"><Trash2 class="size-4" aria-hidden="true" />{{ t('certs.action.delete') }}</JecButton>
           </div>
         </div>
       </div>

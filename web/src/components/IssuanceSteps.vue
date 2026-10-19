@@ -11,8 +11,9 @@ import { useIntl } from '../i18n/intl'
 
 // The steps of an issuance's last attempt, then the deployments of the
 // version it brings, one for each target, each with its icon, its name and
-// when it ended: on the issuance's page, and as a certificate's last run.
-const props = defineProps<{ detail: IssuanceDetail }>()
+// when it ended: on the issuance's page, and as a certificate's last run,
+// where they are compact: one after another, without the times.
+const props = defineProps<{ detail: IssuanceDetail; compact?: boolean }>()
 
 const { t } = useT()
 const intl = useIntl()
@@ -26,7 +27,23 @@ const deploys = computed(() =>
 </script>
 
 <template>
-  <ol class="m-0 flex list-none flex-col gap-1 p-0" :aria-label="t('certs.issuance.steps')">
+  <ol v-if="compact" class="m-0 flex list-none flex-wrap gap-x-3 gap-y-1 p-0" :aria-label="t('certs.issuance.steps')">
+    <li v-for="s in detail.steps" :key="s.step" class="inline-flex min-w-0 items-center gap-1">
+      <component :is="icons[s.state]" :class="['size-4 flex-none', inks[s.state], s.state === 'running' ? 'animate-spin' : '']" aria-hidden="true" />
+      <span :class="[s.state === 'pending' ? 'text-ink-muted' : '', s.state === 'running' ? 'font-semibold' : '']">
+        {{ t(stepText[s.step]) }}<span class="sr-only">{{ t(stepStateText[s.state]) }}</span>
+      </span>
+    </li>
+    <li v-for="d in deploys" :key="`deploy-${d.target}`" class="inline-flex min-w-0 items-center gap-1">
+      <component :is="icons[d.state]" :class="['size-4 flex-none', inks[d.state], d.state === 'running' ? 'animate-spin' : '']" aria-hidden="true" />
+      <span :class="['min-w-0 [overflow-wrap:anywhere]', d.state === 'pending' ? 'text-ink-muted' : '', d.state === 'running' ? 'font-semibold' : '']">
+        <RouterLink v-if="d.link" :to="d.link" class="text-inherit">{{ t('certs.issuance.deploy_step', { target: d.name }) }}</RouterLink>
+        <template v-else>{{ t('certs.issuance.deploy_step', { target: d.name }) }}</template>
+        <span class="sr-only">{{ t(stepStateText[d.state]) }}</span>
+      </span>
+    </li>
+  </ol>
+  <ol v-else class="m-0 flex list-none flex-col gap-1 p-0" :aria-label="t('certs.issuance.steps')">
     <li v-for="s in detail.steps" :key="s.step" class="grid grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-2 py-1">
       <component :is="icons[s.state]" :class="['size-5', inks[s.state], s.state === 'running' ? 'animate-spin' : '']" aria-hidden="true" />
       <span :class="['min-w-0', s.state === 'pending' ? 'text-ink-muted' : '', s.state === 'running' ? 'font-semibold' : '']">

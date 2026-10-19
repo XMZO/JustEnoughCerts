@@ -473,7 +473,6 @@ const (
 	CertsCertLabel                        Key = "certs.cert.label"
 	CertsCertLabelNote                    Key = "certs.cert.label_note"
 	CertsChainExpires                     Key = "certs.chain.expires"
-	CertsChainIssuedBy                    Key = "certs.chain.issued_by"
 	CertsChainTitle                       Key = "certs.chain.title"
 	CertsColumnActions                    Key = "certs.column.actions"
 	CertsColumnDomain                     Key = "certs.column.domain"
