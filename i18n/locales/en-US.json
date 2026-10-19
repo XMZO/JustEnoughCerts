@@ -1011,6 +1011,7 @@
     "list": {
       "empty": "No certificates yet. Add the first one, and JEC warns you before it expires.",
       "intro": "JEC keeps track of each certificate and warns you before it expires.",
+      "more_actions": "More actions",
       "no_match": "No certificate matches “{query}”.",
       "summary": "Showing {shown, plural, one {# certificate} other {# certificates}} of {total}. Sorted by days left.",
       "title": "Certificates"

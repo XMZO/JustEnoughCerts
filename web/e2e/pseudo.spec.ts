@@ -285,17 +285,21 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'overview').toEqual([])
   await page.goto('./certificates')
   expect.soft(await problems(page), 'certificates').toEqual([])
-  // Every certificate with its key, from the header of wider screens: the
-  // password first, here a wrong one.
-  if (info.project.name === 'desktop') {
+  // Every certificate with its key, from the header, or its menu on
+  // phones: the password first, here a wrong one.
+  if (info.project.name === 'phone') {
+    await page.getByRole('button', { name: label('certs.list.more_actions') }).click()
+    expect.soft(await problems(page), 'more actions on the certificates').toEqual([])
+    await page.getByRole('menuitem', { name: label('certs.export_all.action') }).click()
+  } else {
     await page.getByRole('button', { name: label('certs.export_all.action') }).click()
-    await page.locator('#export-password').fill('wrong password')
-    await page.locator('button[form=export-all-form]').click()
-    await expect(page.locator('#export-password')).toHaveAttribute('aria-invalid', 'true')
-    expect.soft(await problems(page), 'download every certificate, refused').toEqual([])
-    await page.keyboard.press('Escape')
-    await expect(page.locator('dialog[open]')).toHaveCount(0)
   }
+  await page.locator('#export-password').fill('wrong password')
+  await page.locator('button[form=export-all-form]').click()
+  await expect(page.locator('#export-password')).toHaveAttribute('aria-invalid', 'true')
+  expect.soft(await problems(page), 'download every certificate, refused').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
   if (info.project.name === 'desktop') {
     // The menu of a row, which phones go without; then deletion from it,
     // left unconfirmed.

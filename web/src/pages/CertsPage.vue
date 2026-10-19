@@ -234,6 +234,12 @@ const deleteOpen = computed({
 const remove = useDeleteCertificate(() => deleting.value?.id ?? 0)
 const removeError = useApiError(remove.error)
 
+// What the header of wider screens holds beside adding, on phones in a menu.
+const phoneMore = computed<MenuItem[]>(() => [
+  { key: 'csv', label: t('certs.csv.export'), icon: Download, run: exportCsv },
+  ...(all.value.some((c) => c.current) ? [{ key: 'all', label: t('certs.export_all.action'), icon: Archive, run: startExportAll }] : []),
+])
+
 // Every certificate with its key, as one ZIP, after the password once more.
 const exportingAll = ref(false)
 const exportPassword = ref('')
@@ -330,6 +336,7 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
 <template>
   <PageHeader :title="t('certs.list.title')" :subtitle="t('certs.list.intro')">
     <template #phone>
+      <RowMenu v-if="all.length" :label="t('certs.list.more_actions')" :items="phoneMore" />
       <RouterLink
         :to="{ path: '/certificates/new', query: { source: 'upload' } }"
         :aria-label="t('certs.action.import')"

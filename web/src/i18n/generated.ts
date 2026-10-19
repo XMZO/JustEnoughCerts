@@ -795,6 +795,7 @@ export type MessageKey =
   | "certs.life.today"
   | "certs.list.empty"
   | "certs.list.intro"
+  | "certs.list.more_actions"
   | "certs.list.no_match"
   | "certs.list.summary"
   | "certs.list.title"

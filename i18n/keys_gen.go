@@ -787,6 +787,7 @@ const (
 	CertsLifeToday                           Key = "certs.life.today"
 	CertsListEmpty                           Key = "certs.list.empty"
 	CertsListIntro                           Key = "certs.list.intro"
+	CertsListMoreActions                     Key = "certs.list.more_actions"
 	CertsListNoMatch                         Key = "certs.list.no_match"
 	CertsListSummary                         Key = "certs.list.summary"
 	CertsListTitle                           Key = "certs.list.title"

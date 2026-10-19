@@ -1011,6 +1011,7 @@
     "list": {
       "empty": "还没有证书。添加第一张证书，JEC 会在到期前提醒你。",
       "intro": "JEC 记录每张证书，到期前提醒你。",
+      "more_actions": "更多操作",
       "no_match": "没有匹配“{query}”的证书。",
       "summary": "显示 {shown, plural, other {# 张}}，共 {total} 张。按剩余天数排列。",
       "title": "证书"
