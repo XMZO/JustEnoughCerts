@@ -97,6 +97,7 @@
 - 32 位 ARM（`PLAN.md` 9.1、9.2）：发布多了 `linux_armv7` 的程序和 `linux/arm/v7` 镜像（`stage-image-context.sh`、`release-sizes.sh` 按 Docker 的平台名带上 `/v7`）；CI 的 `test (linux/arm/v7, emulated)` 在 QEMU 里跑全部测试。本机没有注册 binfmt_misc，只能 `go test -exec qemu-arm`（在装了 qemu-user 的临时容器里），这时会自己启动子进程的 lego、插件测试报 exec format error，属正常。
 - 无障碍检查（`PLAN.md` 7.4）：伪语言测试每一步都用 axe（`@axe-core/playwright`）查整页，有违规就失败；列表项里放链接（链接本身不能是 `listitem`），正文里的链接加下划线。
 - 吊销证书（`PLAN.md` 4.6）：证书详情的历史版本里可以吊销较早的版本（`certs/revoke.go`，来源实现 `contracts.Revoker`、类型标 `Revocable`，目前是 ACME）；当前版本不能直接吊销，要先签发新版本。e2e 里没有能签发的 CA，吊销界面靠 `page.route` 改写详情接口显示编出来的版本。
+- 升级测试：`cmd/jec/upgrade_test.go` 在 0.1.0-alpha.5 的数据（`cmd/jec/testdata/alpha5`：该版本镜像经 API 建好再导出的备份和它的主密钥，密钥都是编的）上启动，检查迁移后各类数据照常、密钥能解开。改了迁移或数据格式要让它继续通过；以后发版可以照此加一份新的。
 - 测试里不要访问界面（`/`）：本机的 `web/dist` 是构建过的，CI 里只有 `.gitkeep`，本机过了 CI 也会失败。
 - 凭据（`PLAN.md` 6.1，设计稿 `Credentials`）：前后端都已完成（界面：`/credentials`、`CredentialDialog.vue`，服务商表单里的“凭据”选择在 `ProviderForm.vue`，`providers/fields.ts` 的 `credentialChoice`）。凭据是一种“凭据种类”（`providers.CredentialKind`）的一组值，多个实例共用，存在 `kernel_credentials`；类型用 `Type.Credential` 说明哪些字段可以由凭据填，打开实例时由注册表填好。几个模块共用的种类放在 `internal/lib/credentials`（各家云的访问密钥、SSH 私钥），新加的云服务类型要声明它用的种类（`credentials.Use`），lego 的映射在 `lego/catalog.go` 的 `credentialOf`。接口在 `/api/v1/credentials`，添加和修改实例可以带 `credentialId` 或 `newCredential`；配置文件有 `credentials` 一节。
 - DNS 服务商的测试连接：`dnsrecord` 的四家（腾讯云 DNSPod、阿里云 DNS、Cloudflare、华为云 DNS）列出账号下的域名（`API.Domains`），lego 模块里这四家的类型标 `testable`。
