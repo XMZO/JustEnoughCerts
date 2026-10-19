@@ -39,8 +39,12 @@ func newModule(t *testing.T) (*Module, humatest.TestAPI) {
 	m.now = func() time.Time { return time.Date(2026, 10, 20, 8, 0, 0, 0, time.UTC) }
 	long := strings.Repeat("sub.", 15) + "example.com"
 	m.call = func(_ context.Context, via, method, path string, _, out any) error {
-		if via != "calendar" || method != http.MethodGet || path != "/certs/certificates" {
+		if via != "calendar" || method != http.MethodGet {
 			t.Errorf("asked %s %s as %s", method, path, via)
+		}
+		if path == "/watch/sites" {
+			return json.Unmarshal([]byte(`{"sites": [{"id": 7, "host": "partner.example.com", "port": 8443, "name": "Partner",
+				"notAfter": "2027-02-01T00:00:00Z"}, {"id": 8, "host": "down.example.com", "port": 443}]}`), out)
 		}
 		return json.Unmarshal([]byte(`{"certificates": [
 			{"id": 3, "domains": ["example.com", "*.example.com", "`+long+`"], "renewAt": "2026-12-01T18:00:00Z",
@@ -102,6 +106,7 @@ func TestFeed(t *testing.T) {
 		"TRIGGER:-P7D\r\n", "DTSTART:20261201T180000Z\r\n",
 		"URL:https://certs.example.com/certificates/3\r\n",
 		"UID:jec-3-end-1798747200\r\n",
+		"UID:jec-site-7-end-1801440000\r\n", "DTSTART;VALUE=DATE:20270201\r\n",
 	} {
 		if !strings.Contains(ics, want) {
 			t.Errorf("no %q in:\n%s", want, ics)

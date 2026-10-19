@@ -507,7 +507,8 @@
     "event": {
       "domains": "Domains: {domains}",
       "ends": "Certificate of {domain} ends",
-      "renews": "Renewal of {domain} starts"
+      "renews": "Renewal of {domain} starts",
+      "site_ends": "Certificate of {site} ends"
     },
     "feed": {
       "name": "JEC certificates"
@@ -3264,6 +3265,11 @@
     "module": {
       "description": "Watches the certificates of sites JEC does not manage, and tells before they end.",
       "name": "Site watch"
+    },
+    "overview": {
+      "more": "{names} and {count} more",
+      "open": "Site watch",
+      "title": "{count, plural, one {# watched site to look at} other {# watched sites to look at}}"
     },
     "page": {
       "add": "Watch a site",

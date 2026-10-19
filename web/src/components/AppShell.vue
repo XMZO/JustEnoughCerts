@@ -5,6 +5,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import { useSession, useSignOut } from '../api/account'
 import { useCertificates } from '../api/certs'
+import { needsLook, useSites } from '../api/watch'
 import { needsAttention } from '../certs/life'
 import { useManifest } from '../api/manifest'
 import { useT, type MessageKey } from '../i18n'
@@ -25,10 +26,7 @@ const manifest = useManifest()
 // Times show in the panel's time zone once the manifest tells it.
 watchEffect(() => setZone(manifest.data.value?.timeZone))
 const certificates = useCertificates()
-// The tab's title leads with how many need someone.
-watchEffect(() => {
-  attention.value = (certificates.data.value ?? []).filter(needsAttention).length
-})
+
 onUnmounted(() => {
   attention.value = 0
 })
@@ -50,6 +48,13 @@ const tabs = computed<Link[]>(() => [...links.value, { to: '/more', label: 'kern
 // phones, the More tab.
 const watching = computed(() => manifest.data.value?.modules.some((m) => m.id === 'watch' && m.enabled) ?? false)
 const main = computed<Link[]>(() => [...links.value, ...(watching.value ? [{ to: '/sites', label: 'watch.page.title', icon: Radar } satisfies Link] : [])])
+const sites = useSites(watching)
+// The tab's title leads with how many need someone: certificates, and the
+// watched sites to look at.
+watchEffect(() => {
+  const certs = (certificates.data.value ?? []).filter(needsAttention).length
+  attention.value = certs + (watching.value ? (sites.data.value ?? []).filter(needsLook).length : 0)
+})
 // Where providers are configured, with the credentials they share; on
 // phones, the More tab lists them.
 const config: Link[] = [

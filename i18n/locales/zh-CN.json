@@ -507,7 +507,8 @@
     "event": {
       "domains": "域名：{domains}",
       "ends": "{domain} 的证书到期",
-      "renews": "{domain} 开始续期"
+      "renews": "{domain} 开始续期",
+      "site_ends": "{site} 的证书到期"
     },
     "feed": {
       "name": "JEC 证书"
@@ -3264,6 +3265,11 @@
     "module": {
       "description": "监控不由 JEC 管理的网站证书，到期前提醒。",
       "name": "站点监控"
+    },
+    "overview": {
+      "more": "{names} 等 {count} 个",
+      "open": "站点监控",
+      "title": "{count, plural, other {# 个监控的站点需要留意}}"
     },
     "page": {
       "add": "添加站点",

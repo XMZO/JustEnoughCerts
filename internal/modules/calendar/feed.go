@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"net"
 	"net/http"
 	"slices"
 	"strconv"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
 )
 
 // via names the module in what it asks the API.
@@ -232,6 +234,51 @@ func (m *Module) render(ctx context.Context, lang string) ([]byte, error) {
 			w.line("TRANSP:TRANSPARENT")
 			w.line("END:VEVENT")
 		}
+	}
+	// The ends of the sites watched, unless their module is off.
+	var watched struct {
+		Sites []struct {
+			ID       int64      `json:"id"`
+			Host     string     `json:"host"`
+			Port     int        `json:"port"`
+			Name     string     `json:"name"`
+			NotAfter *time.Time `json:"notAfter"`
+		} `json:"sites"`
+	}
+	err := m.call(ctx, via, http.MethodGet, "/watch/sites", nil, &watched)
+	var ce *module.CallError
+	if err != nil && (!errors.As(err, &ce) || ce.Status != http.StatusNotFound) {
+		return nil, err
+	}
+	for _, s := range watched.Sites {
+		if s.NotAfter == nil {
+			continue
+		}
+		site := s.Host
+		if s.Port != 443 {
+			site = net.JoinHostPort(s.Host, strconv.Itoa(s.Port))
+		}
+		if s.Name != "" {
+			site = s.Name + " (" + site + ")"
+		}
+		end := s.NotAfter.In(zone)
+		summary := text(i18n.CalendarEventSiteEnds, i18n.Args{"site": site})
+		w.line("BEGIN:VEVENT")
+		w.prop("UID", "jec-site-"+strconv.FormatInt(s.ID, 10)+"-end-"+strconv.FormatInt(s.NotAfter.Unix(), 10))
+		w.line("DTSTAMP:" + stamp)
+		w.line("DTSTART;VALUE=DATE:" + end.Format("20060102"))
+		w.line("DTEND;VALUE=DATE:" + end.AddDate(0, 0, 1).Format("20060102"))
+		w.prop("SUMMARY", summary)
+		if m.baseURL != "" {
+			w.prop("URL", strings.TrimRight(m.baseURL, "/")+"/sites")
+		}
+		w.line("TRANSP:TRANSPARENT")
+		w.line("BEGIN:VALARM")
+		w.line("ACTION:DISPLAY")
+		w.line("TRIGGER:" + remindBefore)
+		w.prop("DESCRIPTION", summary)
+		w.line("END:VALARM")
+		w.line("END:VEVENT")
 	}
 	w.line("END:VCALENDAR")
 	return []byte(w.String()), nil

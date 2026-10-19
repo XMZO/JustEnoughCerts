@@ -28,6 +28,7 @@ there.
 The channels with the event "A watched site's certificate ends soon or
 ended", on by default, are told three weeks before an end, a week before,
 and when it has ended; a new certificate on the site starts over. The
-watched sites are also in the [Prometheus metrics](../operations/monitoring.md).
+watched sites are also in the [Prometheus metrics](../operations/monitoring.md)
+and the calendar feed, and those to look at in the overview.
 The module "Site watch" provides the page and can be switched off on the
 Modules page.
