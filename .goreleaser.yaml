@@ -33,6 +33,14 @@ archives:
   - id: jec
     formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}"
+    # The licenses of the fonts the web UI carries go along, as theirs asks.
+    files:
+      - LICENSE
+      - README.md
+      - README.zh-CN.md
+      - src: web/src/assets/fonts/*-OFL.txt
+        dst: licenses/fonts
+        strip_parent: true
 
 checksum:
   name_template: checksums.txt

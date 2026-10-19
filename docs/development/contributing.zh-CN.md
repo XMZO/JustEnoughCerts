@@ -15,7 +15,7 @@ make dev         # 前端热更新开发服务器（:5173），/api 转发至 ma
 make test        # Go 测试（含竞态检测）与前端测试
 make lint        # golangci-lint、类型检查与 ESLint
 make i18n-check  # i18n 检查
-make gen         # 修改界面文字或 API 后，重新生成 key 常量与类型
+make gen         # 修改界面文字或 API 后，重新生成 key 常量、类型与字体
 make new-module id=acme category=source  # 生成新模块
 ```
 

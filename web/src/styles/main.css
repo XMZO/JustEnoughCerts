@@ -57,6 +57,36 @@
   --shadow-slot: var(--shadow-slot);
 }
 
+/* The UI's own fonts (scripts/fonts.mjs), under the SIL Open Font License:
+   Inter for Latin text, JetBrains Mono for data such as fingerprints, and
+   Noto Sans SC cut down to the Chinese of the messages, named apart from a
+   full Noto Sans SC the system may have for other characters. */
+@font-face {
+  font-family: "Inter";
+  src: url("../assets/fonts/Inter.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../assets/fonts/JetBrainsMono.woff2") format("woff2");
+  font-weight: 100 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Noto Sans SC Subset";
+  src: url("../assets/fonts/NotoSansSC.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+2014, U+2018-2019, U+201C-201D, U+2026, U+3000-303F, U+4E00-9FFF, U+FF00-FFEF;
+}
+
+/* Chinese pages take the Chinese font first, for full-width punctuation
+   such as quotes; Latin letters and digits, outside its range, stay Inter's. */
+:root:lang(zh) {
+  --font-sans: "Noto Sans SC Subset", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
 @layer base {
   html {
     background: var(--surface);
@@ -77,6 +107,11 @@
   :focus-visible {
     outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
+  }
+  /* Data shows as it is: no ligatures of JetBrains Mono, such as for -> or ::. */
+  code,
+  .font-mono {
+    font-variant-ligatures: none;
   }
   code {
     font-family: var(--font-mono);

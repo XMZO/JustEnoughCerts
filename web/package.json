@@ -14,7 +14,8 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "size": "node scripts/size.mjs",
-    "gen:api": "openapi-typescript openapi.json -o src/api/schema.d.ts"
+    "gen:api": "openapi-typescript openapi.json -o src/api/schema.d.ts",
+    "fonts": "node scripts/fonts.mjs"
   },
   "dependencies": {
     "@lucide/vue": "1.58.0",
@@ -41,6 +42,7 @@
     "happy-dom": "21.0.3",
     "jsonc-eslint-parser": "3.3.0",
     "openapi-typescript": "7.13.0",
+    "subset-font": "2.9.0",
     "tailwindcss": "4.3.3",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.2",

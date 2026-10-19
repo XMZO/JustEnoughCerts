@@ -28,7 +28,8 @@ Just Enough Certs（JEC）是一个自托管的证书管理面板：获取证书
 
 ## 文字
 
-- 只用系统字体，不打包网页字体：`sans` 用于全部界面文字，`mono` 只用于指纹、序列号、DNS 记录、Key ID 和日志。域名本身用 `sans`。
+- 字体随界面打包，都是 SIL OFL 开源字体：英文 Inter，中文思源黑体（Noto Sans SC，只含界面文字用到的字，命名为 `Noto Sans SC Subset`），等宽 JetBrains Mono。其他字符回退到系统字体（思源黑体、苹方、微软雅黑等）。中文页面中文字体在前，引号、句号等标点用全角样式，字母和数字仍用 Inter。
+- `sans` 用于全部界面文字，`mono` 只用于指纹、序列号、DNS 记录、Key ID 和日志，不启用连字。域名本身用 `sans`。
 - 样式：页面标题 `page-title`（每页一次），面板标题 `section-title`，卡片和表格主域名 `heading`，正文 `body`，次要信息 `small`，状态标签和角标 `caption`，总览数字 `numeral`。
 - 剩余天数、日期、数量一律用等宽数字（`font-variant-numeric: tabular-nums`），对齐后方便扫读。
 - 不用全大写标签，不在标题上方加小字眉标。

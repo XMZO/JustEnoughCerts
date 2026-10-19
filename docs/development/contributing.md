@@ -15,7 +15,7 @@ make dev         # the web UI with hot reload on :5173, proxying /api to make ru
 make test        # Go tests with the race detector, then the web UI's tests
 make lint        # golangci-lint, the type check and ESLint
 make i18n-check  # the i18n checks
-make gen         # after changing messages or the API: regenerate keys and types
+make gen         # after changing messages or the API: regenerate keys, types and fonts
 make new-module id=acme category=source  # scaffold a module
 ```
 

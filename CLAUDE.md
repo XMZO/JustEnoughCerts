@@ -18,7 +18,7 @@
 ## 技术栈（已定）
 
 - 后端：Go，chi + huma（OpenAPI），SQLite（驱动用 `ncruces/go-sqlite3`，选型数据见 `PLAN.md` 8.3），goose 迁移，go-acme/lego v5，log/slog，mvdan.cc/sh 跑钩子脚本。
-- 前端：Vue 3 + TypeScript + Vite + Tailwind CSS + shadcn-vue，Vue Router，Pinia，TanStack Query，vue-i18n，图标 Lucide（按需引入），不打包网页字体。
+- 前端：Vue 3 + TypeScript + Vite + Tailwind CSS + shadcn-vue，Vue Router，Pinia，TanStack Query，vue-i18n，图标 Lucide（按需引入）。字体随界面打包三款 SIL OFL 开源字体（Inter、JetBrains Mono、思源黑体只含界面用字的子集），由 `pnpm -C web fonts` 从 Google Fonts 的固定版本生成到 `web/src/assets/fonts`；中文消息用了新字时，`web/src/fonts.test.ts` 会失败，重新生成即可。
 - 发布：GoReleaser + Docker Buildx，cosign 签名，syft 生成 SBOM。
 
 ## 界面设计要点
