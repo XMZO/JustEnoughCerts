@@ -37,6 +37,30 @@ directory still holds the old certificate, JEC checks again six hours
 later. In a container, the directory must be mounted; see
 [Installation and upgrades](../guide/installation.md#optional-mounts).
 
+## Private CA
+
+Signs certificates with a certificate authority of your own, for internal
+names such as `nas.home.arpa` and for IPv4 addresses, without validation.
+Only devices that trust the CA trust its certificates, so its certificate
+must be installed on them.
+
+| Setting | Description |
+|---|---|
+| CA certificate | In PEM form; for an intermediate CA, add the certificates above it, which go into the chain, the root excepted |
+| CA private key | In PEM form, not encrypted; stored encrypted in JEC |
+| Validity (days) | Of each certificate, 90 by default and 825 at most; never past the CA's own end |
+
+A CA can be made with OpenSSL, for example:
+
+```sh
+openssl req -x509 -new -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes \
+  -keyout ca.key -out ca.crt -days 3650 -subj "/CN=Home CA" \
+  -addext "basicConstraints=critical,CA:TRUE" \
+  -addext "keyUsage=critical,keyCertSign,cRLSign"
+```
+
+Keep `ca.key` private; install `ca.crt` as a trusted root on the devices.
+
 ## Cloud certificate services
 
 | Type | Description |

@@ -2519,6 +2519,38 @@
       "ok": "{plugin}: {message}"
     }
   },
+  "privateca": {
+    "ca": {
+      "description": "Signs certificates with the certificate and key of a CA of your own, for internal names and IPv4 addresses, without validation. Only the devices that trust the CA trust its certificates: install its certificate on them.",
+      "name": "Private CA"
+    },
+    "error": {
+      "certificate": "The CA certificate cannot be read: paste it in PEM form.",
+      "days": "The validity is 1 to {max} days.",
+      "expired": "The CA certificate is valid from {start} to {end} only.",
+      "key": "The CA private key cannot be read: paste it in PEM form, not encrypted.",
+      "mismatch": "The private key belongs to none of the certificates.",
+      "not_ca": "{subject} is no CA certificate: it may not sign certificates."
+    },
+    "field": {
+      "certificate": "CA certificate",
+      "certificate_help": "In PEM form. For an intermediate CA, add the certificates above it, which go into the chain, but for the root.",
+      "days": "Validity (days)",
+      "days_help": "Of each certificate, up to 825; never past the CA's own end. JEC renews them as any other certificate.",
+      "key": "CA private key",
+      "key_help": "In PEM form, not encrypted. JEC keeps it encrypted."
+    },
+    "log": {
+      "signed": "Signed with the CA {subject}, valid until {end}"
+    },
+    "module": {
+      "description": "Signs certificates for internal names with a CA of your own.",
+      "name": "Private CA"
+    },
+    "test": {
+      "ok": "The CA {subject} can sign, until {end}."
+    }
+  },
   "proxmox": {
     "error": {
       "api": "Proxmox VE refused: {reason} (HTTP {status})",

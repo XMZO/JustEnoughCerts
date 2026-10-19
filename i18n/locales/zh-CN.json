@@ -2519,6 +2519,38 @@
       "ok": "{plugin}：{message}"
     }
   },
+  "privateca": {
+    "ca": {
+      "description": "用你自己的 CA 的证书和私钥签发证书，用于内网域名和 IPv4 地址，不需要验证。只有信任这个 CA 的设备才信任它签的证书：要把 CA 证书装到这些设备上。",
+      "name": "私有 CA"
+    },
+    "error": {
+      "certificate": "读不出 CA 证书：请粘贴 PEM 格式的证书。",
+      "days": "有效期是 1 到 {max} 天。",
+      "expired": "CA 证书的有效期只在 {start} 到 {end} 之间。",
+      "key": "读不出 CA 私钥：请粘贴 PEM 格式、没有加密的私钥。",
+      "mismatch": "私钥和哪张证书都对不上。",
+      "not_ca": "{subject} 不是 CA 证书，不能签发证书。"
+    },
+    "field": {
+      "certificate": "CA 证书",
+      "certificate_help": "PEM 格式。中间 CA 要连同它上面的证书一起填，这些会放进证书链（根证书除外）。",
+      "days": "有效期（天）",
+      "days_help": "每张证书的有效期，最多 825 天，不会超过 CA 自己的到期时间。JEC 会像其他证书一样自动续期。",
+      "key": "CA 私钥",
+      "key_help": "PEM 格式，不能加密。JEC 会加密保存。"
+    },
+    "log": {
+      "signed": "用 CA {subject} 签好了，有效期到 {end}"
+    },
+    "module": {
+      "description": "用你自己的 CA 给内网名称签发证书。",
+      "name": "私有 CA"
+    },
+    "test": {
+      "ok": "CA {subject} 可以签发证书，到 {end} 为止。"
+    }
+  },
   "proxmox": {
     "error": {
       "api": "Proxmox VE 拒绝了：{reason}（HTTP {status}）",

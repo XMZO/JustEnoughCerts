@@ -21,6 +21,7 @@
 |---|---|---|
 | `acme.account` | 任意 ACME CA，支持 External Account Binding；续期信息（ARI）与吊销 | 模拟器：Pebble（CI） |
 | `namecheap.ssl_manager` | Namecheap SSL Manager（实验性） | 真实服务；替身，依据其官方客户端编写 |
+| `privateca.ca` | 私有 CA：用自己的 CA 签发的证书 | 无外部服务；用 Go 的证书校验核对证书链 |
 | `files.watch` | 本机其他客户端续期的证书 | 文件系统 |
 | `aliyun.fetch` | 阿里云数字证书管理服务签发的证书 | 替身 |
 | `aliyun.apply` | 向阿里云申请的证书（默认为个人测试证书） | 替身 |

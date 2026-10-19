@@ -51,7 +51,7 @@ CA/Browser Forum 的 SC-081 提案把证书最长有效期逐年缩短：2026-03
 
 **非目标（至少 1.0 之前不做）**
 
-- 不做 CA。私有 CA、内网证书留到以后再考虑。
+- 不做公共 CA。内网证书可以用来源类型 `privateca.ca`：用用户自己的 CA 证书和私钥签发（见 5.3.1）。
 - 不做多租户 SaaS，定位是单个用户或小团队自己部署。
 - 不替代 DNS 托管面板，只增删验证需要的记录。
 
@@ -327,7 +327,10 @@ type Target interface {
 | 厂商专有 API（可选模块） | 阿里云数字证书管理服务、腾讯云 SSL 证书 | 云 API：取回控制台签发的证书、向阿里云申请证书、申请腾讯云免费证书（都已实现，见下） | M3 |
 | 厂商专有 API（可选模块） | ZeroSSL REST API、GoGetSSL、TheSSLStore、DigiCert CertCentral 等 | 各自的 API，按需求排期 | 以后 |
 | 厂商专有 API（可选模块） | Namecheap 官方 API（`ssl.reissue` / `ssl.getInfo` / `ssl.activate`，CNAME 验证） | 开通门槛高（账号里有 20 个域名，或余额 / 近两年消费满 $50），还要设 IPv4 白名单；SSL Manager 已能自动取得证书 | 暂无计划 |
+| 私有 CA | 用户自己的 CA（根 CA 或中间 CA） | 来源类型 `privateca.ca`：JEC 用填写的 CA 证书和私钥直接签发，不需要验证（已实现，见下） | M3 |
 | 实验性 | Spaceship 卖的证书：后端域名同属 Spaceship，可能能用同一套接口（未核实） | 同 Namecheap SSL Manager | 以后 |
+
+**私有 CA（M3，已实现）**：模块 `privateca`，来源类型 `privateca.ca`（不需要验证，`NeedsSolver` 为假）：CA 证书（PEM；中间 CA 连同上级证书一起填，链里去掉自签名的根）、CA 私钥（PEM，不加密，存为加密字段）、有效期（天，默认 90，最多 825：苹果设备对用户自己安装的根签发的证书的上限，也不超过 CA 自己的到期时间）。打开时核对私钥和 CA 证书配对、证书是 CA（`BasicConstraints` 的 CA 为真，有 `KeyUsage` 时要含 `keyCertSign`）。签发：128 位随机序列号，`NotBefore` 提前一小时，CN 是主域名（64 字符以内），IPv4 地址写进 `IPAddresses`、其余写进 `DNSNames`，`ExtKeyUsage` 是 serverAuth 和 clientAuth，RSA 密钥加 `keyEncipherment`。CA 过期或还没生效时不重试。测试连接报出 CA 的主题和到期日。不做吊销（没有 CRL、OCSP）。文档里给了用 OpenSSL 生成 CA 的命令。
 
 **阿里云、腾讯云签发的证书（M3，已实现）**：来源类型 `aliyun.fetch`、`tencentcloud.fetch`（分别在 `aliyun`、`tencentcloud` 模块里）是自带私钥的来源（`contracts.KeySource`，和本机证书目录一样）：取回在云平台控制台申请、购买或续费的证书，私钥要由云平台生成（申请时上传自己 CSR 的拿不到私钥，报错提示重新签发）。上传到云平台的证书不算，JEC 自己部署上去的也在那里。按主域名搜索，取覆盖证书全部域名、还有效、结束得最晚的一张；和正在用的是同一张或更旧时，6 小时后再看；同一天结束但不是同一张（重新签发的）时取进来。证书没带中间证书时日志里警告。
 
@@ -979,7 +982,7 @@ JustEnoughCerts/
 | **M2 厂商来源与付费证书** | 厂商来源的通用框架（提交后等 CA 审核，跨多次检查才取回证书，等待期间加密保存私钥）；第一个实现是 Namecheap SSL Manager（实验性，JEC 扮演它的客户端，见 5.6）；HTTP 文件验证（写到源站的网站目录、经 SSH 写到远程服务器，或由 JEC 自己应答）；导入已有的付费证书；逐家验证商业 CA 的 ACME + EAB（含 Namecheap ACME 上线后） | 第 1 节的验收场景全自动跑通一个周期 |
 | **M3 扩展** | 国内云平台证书来源（取回签发的证书、向阿里云申请证书、腾讯云免费证书都已完成）；DNS 记录管理层（任意记录增删，5.3.2 ②）和手动验证（都已完成）；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子、YAML 导入导出（都已完成）；线上巡检（已完成） | 不改核心代码，写一个外部插件接入新平台（e2e 里的 shell 脚本插件）；停用任意模块后其余功能正常（`cmd/jec` 的 `TestEverySwitchOff` 在运行中逐个停用全部可停用的模块，检查清单、各类服务商类型、证书列表和系统信息照常，再打开回来） |
 | **M4 打磨** | 两步验证、审计日志、PWA、翻译指南（`docs/development/translating.md`）、OIDC、文档站（都已完成）、服务商兼容表（已有 `docs/reference/providers.md`：每个服务商测到了哪一步） | 发布 `v1.0.0` |
-| **以后** | Spaceship 的 SSL Manager、其他厂商证书 API、更多语言（社区贡献）、多用户和角色、PostgreSQL、私有 CA | 按需求排期 |
+| **以后** | Spaceship 的 SSL Manager、其他厂商证书 API、更多语言（社区贡献）、多用户和角色、PostgreSQL | 按需求排期 |
 
 先做 M0，是为了尽早把“打标签 → 自动发布”这条链路跑通，同时让模块化和 i18n 门禁从第一天就生效，之后每个功能都能随时发版试用。
 

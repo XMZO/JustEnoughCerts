@@ -23,6 +23,27 @@
 
 读取同一台机器上由 certbot 或 acme.sh 续期的证书与私钥，只读，不改动其文件。目录填写 certbot 的 `/etc/letsencrypt`，或 acme.sh 的主目录（如 `/root/.acme.sh`），JEC 按域名查找证书。目录中仍为旧证书时，6 小时后再次检查。在容器中使用时须挂载该目录，参见[安装与升级](../guide/installation.zh-CN.md#可选挂载)。
 
+## 私有 CA
+
+用自己的证书颁发机构签发证书，适用于 `nas.home.arpa` 这类内网名称和 IPv4 地址，无需验证。只有信任该 CA 的设备才信任它签发的证书，因此须在这些设备上安装 CA 证书。
+
+| 设置 | 说明 |
+|---|---|
+| CA 证书 | PEM 格式；中间 CA 须连同其上级证书一并填写，这些证书（根证书除外）放入证书链 |
+| CA 私钥 | PEM 格式，不得加密；在 JEC 中加密保存 |
+| 有效期（天） | 每张证书的有效期，默认 90 天，最多 825 天，且不超过 CA 本身的到期时间 |
+
+可用 OpenSSL 创建 CA，例如：
+
+```sh
+openssl req -x509 -new -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes \
+  -keyout ca.key -out ca.crt -days 3650 -subj "/CN=Home CA" \
+  -addext "basicConstraints=critical,CA:TRUE" \
+  -addext "keyUsage=critical,keyCertSign,cRLSign"
+```
+
+`ca.key` 须妥善保管；`ca.crt` 作为受信任的根证书安装到各设备上。
+
 ## 云平台证书服务
 
 | 类型 | 说明 |
