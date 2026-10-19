@@ -13,7 +13,7 @@ mkdir -p data && sudo chown 65532:65532 data
 docker compose up -d
 ```
 
-- **镜像**：`ghcr.io/xmzo/justenoughcerts`，支持 linux/amd64、linux/arm64，以及自 0.1.0-alpha.5 之后的版本起支持 linux/arm/v7（32 位 ARM，如运行 32 位系统的树莓派）。标签 `latest` 为最新正式版，`beta` 为最新测试版，也可指定版本号（如 `0.1.0-alpha.6`）。正式版发布前，`docker-compose.yml` 使用 `beta`。
+- **镜像**：`ghcr.io/xmzo/justenoughcerts`，支持 linux/amd64、linux/arm64，以及自 0.1.0-alpha.6 起支持 linux/arm/v7（32 位 ARM，如运行 32 位系统的树莓派）。标签 `latest` 为最新正式版，`beta` 为最新测试版，也可指定版本号（如 `0.1.0-alpha.6`）。正式版发布前，`docker-compose.yml` 使用 `beta`。
 - **运行用户**：容器默认以 65532:65532 运行，`./data` 须对该用户可写。如需以现有目录的属主运行，请在 `docker-compose.yml` 中设置 `user:`；启动时若目录不可写，JEC 会给出明确的错误提示。
 - **端口**：默认监听 8080，可通过 `JEC_LISTEN` 修改，参见[配置参考](../operations/configuration.zh-CN.md)。
 - **时区**：`docker-compose.yml` 默认设置 `TZ: Asia/Shanghai`；面板的时区也可在设置页单独选择。
@@ -29,7 +29,7 @@ docker compose up -d
 
 ## 二进制文件
 
-每个版本在[发布页](https://github.com/XMZO/JustEnoughCerts/releases)提供 Linux 与 macOS 的静态二进制文件（amd64 与 arm64），以及 Linux 32 位 ARM 版本（`linux_armv7`，自 0.1.0-alpha.5 之后的版本起）。不提供 Windows 版本，Windows 用户请使用 Docker 或 WSL。
+每个版本在[发布页](https://github.com/XMZO/JustEnoughCerts/releases)提供 Linux 与 macOS 的静态二进制文件（amd64 与 arm64），以及 Linux 32 位 ARM 版本（`linux_armv7`，自 0.1.0-alpha.6 起）。不提供 Windows 版本，Windows 用户请使用 Docker 或 WSL。
 
 ```sh
 tar -xzf jec_<版本>_linux_amd64.tar.gz
