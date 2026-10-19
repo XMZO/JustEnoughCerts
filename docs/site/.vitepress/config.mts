@@ -127,7 +127,7 @@ export default defineConfig({
       label: '简体中文',
       lang: 'zh-CN',
       link: '/zh-CN/',
-      description: '刚好够用的证书，让网站一直是绿锁：自托管的 SSL/TLS 证书管理面板。',
+      description: '自托管的 SSL/TLS 证书管理面板：自动签发、部署与续期，告别证书过期。',
       themeConfig: {
         nav: nav('zh-CN', { guide: '指南', reference: '参考', development: '开发', releases: '发布' }),
         sidebar: sidebar('zh-CN'),

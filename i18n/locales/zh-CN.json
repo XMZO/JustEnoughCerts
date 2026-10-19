@@ -1519,7 +1519,7 @@
     "app": {
       "language": "语言",
       "name": "Just Enough Certs",
-      "tagline": "刚好够用的证书，让网站一直是绿锁。"
+      "tagline": "刚好够用的证书管理，到期前自动续期。"
     },
     "config": {
       "action": {

@@ -251,7 +251,7 @@ async function fly(flights: Flight[]) {
           <CreeperFace class="icon" />
           <div>
             <p class="title">{{ zh ? '进度已达成！' : 'Advancement Made!' }}</p>
-            <p class="text">{{ zh ? '嘶嘶嘶……证书依然是绿的' : 'Sssss… your certs are still green' }}</p>
+            <p class="text">{{ zh ? '嘶嘶嘶……证书毫发无损' : 'Sssss… your certs are still green' }}</p>
           </div>
         </div>
       </Transition>
