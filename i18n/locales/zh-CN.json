@@ -712,6 +712,16 @@
       "show": "查看 CSR",
       "title": "{domain} 的 CSR"
     },
+    "csv": {
+      "domains": "域名",
+      "ends": "到期时间",
+      "export": "导出 CSV",
+      "issuer": "颁发者",
+      "renews": "续期时间",
+      "source": "来源",
+      "state": "状态",
+      "targets": "部署到"
+    },
     "defaults": {
       "check_time": "每天检查时间",
       "check_time_help": "进入续期窗口的证书在这个时间开始续期，按面板的时区（{zone}）；只剩一周或更少时立即续期。",

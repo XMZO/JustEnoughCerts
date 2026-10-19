@@ -712,6 +712,16 @@
       "show": "Show the CSR",
       "title": "The CSR of {domain}"
     },
+    "csv": {
+      "domains": "Domains",
+      "ends": "Ends",
+      "export": "Export CSV",
+      "issuer": "Issuer",
+      "renews": "Renews",
+      "source": "Source",
+      "state": "State",
+      "targets": "Deployed to"
+    },
     "defaults": {
       "check_time": "Daily check time",
       "check_time_help": "Certificates in their renewal window start renewing at this time, in the panel's time zone ({zone}); with a week or less left, at once.",

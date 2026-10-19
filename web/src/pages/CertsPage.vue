@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Activity, CircleCheck, CircleX, Eye, FileDown, LoaderCircle, OctagonX, Plus, RefreshCw, Send, Trash2, TriangleAlert, Upload } from '@lucide/vue'
+import { Activity, CircleCheck, CircleX, Download, Eye, FileDown, LoaderCircle, OctagonX, Plus, RefreshCw, Send, Trash2, TriangleAlert, Upload } from '@lucide/vue'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
-import { useCertificates, useDeleteCertificate, type Certificate } from '../api/certs'
+import { saveFile, useCertificates, useDeleteCertificate, type Certificate } from '../api/certs'
 import { useApiError } from '../api/errors'
 import { useMonitorStates } from '../api/monitor'
 import { useProviders } from '../api/providers'
@@ -22,6 +22,7 @@ import SearchBox from '../components/SearchBox.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
+import { dayKey, stamp } from '../zone'
 
 // The certificate list (docs/design/boards/Certs and CertsMobile): a
 // compact table from 640px; on phones the certificates that need attention
@@ -72,6 +73,38 @@ const filters = computed<{ id: Filter; label: MessageKey; count: number }[]>(() 
   { id: 'attention', label: 'certs.attention.title', count: searched.value.filter(attention).length },
   { id: 'ok', label: 'certs.state.ok', count: searched.value.filter((c) => !attention(c)).length },
 ])
+
+// The certificates shown, as CSV, for a report: their domains, state,
+// source, issuer, end, next renewal and targets, times in the panel's zone,
+// with a byte order mark so that spreadsheets read the text as UTF-8.
+const cell = (v: string) => (/[",\r\n]/.test(v) ? `"${v.replaceAll('"', '""')}"` : v)
+function exportCsv() {
+  const columns = [
+    'certs.csv.domains',
+    'certs.csv.state',
+    'certs.csv.source',
+    'certs.csv.issuer',
+    'certs.csv.ends',
+    'certs.csv.renews',
+    'certs.csv.targets',
+  ] as const satisfies readonly MessageKey[]
+  const lines = [columns.map((c) => t(c))]
+  for (const c of shown.value) {
+    const source = c.source === 'upload' ? t('certs.source.upload') : (sources.data.value?.find((p) => p.id === c.sourceProvider)?.name ?? '')
+    const names = c.targets.map((id) => targets.data.value?.find((p) => p.id === id)?.name ?? String(id))
+    lines.push([
+      c.domains.join(' '),
+      t(stateText[c.state]),
+      source,
+      c.current?.issuer ?? '',
+      c.current ? stamp(c.current.notAfter) : '',
+      c.renewAt ? stamp(c.renewAt) : '',
+      names.join(' / '),
+    ])
+  }
+  const csv = String.fromCharCode(0xfeff) + lines.map((l) => l.map(cell).join(',')).join('\r\n') + '\r\n'
+  saveFile(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `jec-certificates-${dayKey(Date.now()).replaceAll('-', '')}.csv`)
+}
 
 interface Row {
   cert: Certificate
@@ -230,6 +263,7 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
       </RouterLink>
     </template>
     <template #actions>
+      <JecButton :disabled="!shown.length" @click="exportCsv"><Download class="size-4" aria-hidden="true" />{{ t('certs.csv.export') }}</JecButton>
       <JecButton :to="{ path: '/certificates/new', query: { source: 'upload' } }"><FileDown class="size-4" aria-hidden="true" />{{ t('certs.action.import') }}</JecButton>
       <JecButton variant="primary" to="/certificates/new"><Plus class="size-4" aria-hidden="true" />{{ t('certs.action.add') }}</JecButton>
     </template>
