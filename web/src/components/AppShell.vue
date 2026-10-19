@@ -159,10 +159,11 @@ async function leave() {
       </nav>
       <div class="mt-auto flex flex-col gap-2 border-t border-line px-2.5 pt-3 text-caption text-ink-muted">
         <span v-if="signedIn" class="truncate" :title="signedIn">{{ signedIn }}</span>
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <LanguageSwitch />
-          <span v-if="manifest.data.value">{{ t('kernel.shell.version', { version: manifest.data.value.version }) }}</span>
-        </div>
+        <!-- A line each, so that the names of languages, of other lengths, move nothing. -->
+        <LanguageSwitch class="self-start" />
+        <span v-if="manifest.data.value" class="truncate" :title="t('kernel.shell.version', { version: manifest.data.value.version })">
+          {{ t('kernel.shell.version', { version: manifest.data.value.version }) }}
+        </span>
         <button
           type="button"
           class="flex h-9 cursor-pointer items-center gap-2 rounded-md border-0 bg-transparent px-0 text-small text-ink-muted hover:text-ink"

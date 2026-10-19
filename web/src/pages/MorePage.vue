@@ -98,9 +98,11 @@ async function leave() {
       <p v-if="signedIn" class="m-0 text-ink-muted">{{ signedIn }}</p>
       <JecButton :busy="signOut.isPending.value" @click="leave"><LogOut class="size-4" aria-hidden="true" />{{ t('kernel.shell.sign_out') }}</JecButton>
     </section>
-    <div class="flex flex-wrap items-center justify-between gap-2 px-1 text-small text-ink-muted">
-      <LanguageSwitch />
-      <span v-if="manifest.data.value">{{ t('kernel.shell.version', { version: manifest.data.value.version }) }}</span>
+    <div class="flex items-center justify-between gap-2 px-1 text-small text-ink-muted">
+      <LanguageSwitch class="flex-none" />
+      <span v-if="manifest.data.value" class="min-w-0 truncate" :title="t('kernel.shell.version', { version: manifest.data.value.version })">
+        {{ t('kernel.shell.version', { version: manifest.data.value.version }) }}
+      </span>
     </div>
   </div>
 </template>
