@@ -95,6 +95,48 @@
         },
         "type": "object"
       },
+      "AutoBackupBody": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "description": "The backups made there that are kept",
+            "format": "int64",
+            "type": "integer"
+          },
+          "keep": {
+            "description": "How many daily backups to keep in the data directory; 0 makes none",
+            "format": "int64",
+            "maximum": 30,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "last": {
+            "description": "When the latest one was made",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "keep",
+          "count"
+        ],
+        "type": "object"
+      },
+      "AutoBackupInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "keep": {
+            "format": "int64",
+            "maximum": 30,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "keep"
+        ],
+        "type": "object"
+      },
       "BackupInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -2316,6 +2358,10 @@
       "RuntimeBody": {
         "additionalProperties": false,
         "properties": {
+          "autoBackup": {
+            "$ref": "#/components/schemas/AutoBackupBody",
+            "description": "The backups JEC makes by itself, one a day"
+          },
           "baseURL": {
             "description": "The URL people open, from JEC_BASE_URL; links in notifications need it",
             "type": "string"
@@ -2367,7 +2413,8 @@
           "secretKey",
           "database",
           "hsts",
-          "serverTimeZone"
+          "serverTimeZone",
+          "autoBackup"
         ],
         "type": "object"
       },
@@ -5982,6 +6029,47 @@
           }
         },
         "summary": "Tell where JEC keeps its data and how it is reached",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/system/auto-backup": {
+      "put": {
+        "operationId": "set-auto-backup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutoBackupInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Choose how many daily backups JEC makes and keeps in its data directory; 0 for none",
         "tags": [
           "system"
         ]

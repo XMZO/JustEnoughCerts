@@ -175,6 +175,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		VerifyKey: box.Verify, Versions: versions, Restart: func() { restartOnce.Do(func() { close(restart) }) },
 		Database: string(st.Dialect()), Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log,
 		Backup: func(ctx context.Context, path string) error { return st.Snapshot(ctx, path, migrateAll) },
+		DB:     st.DB(), Jobs: sched.Scope(owner),
 		// The releases are asked for through the proxy of the environment, if any.
 		Version: build.Version, Client: &http.Client{Timeout: 30 * time.Second},
 		Zone: tz,

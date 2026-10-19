@@ -25,6 +25,15 @@ export function useSetTimeZone() {
   })
 }
 
+/** Chooses how many daily backups JEC makes and keeps in its data directory, 0 for none. */
+export function useSetAutoBackup() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (keep: number) => unwrap(api.PUT('/system/auto-backup', { body: { keep } })),
+    onSuccess: (info) => client.setQueryData(['system'], info),
+  })
+}
+
 export type ReleaseInfo = components['schemas']['ReleaseBody']
 
 /** Asks whether a newer release of JEC is out: only when someone asks, as JEC never calls home on its own. */

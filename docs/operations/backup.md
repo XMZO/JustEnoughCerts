@@ -32,6 +32,17 @@ Either of the following:
 To keep the configuration in Git or move it to another instance, use the
 YAML configuration file; see [Configuration file](config-file.md).
 
+## Daily backups
+
+Under Settings, Data and backups, choose how many daily backups JEC keeps:
+off (the default), 3, 7, 14 or 30. JEC then makes one a day in `backups/`
+of the data directory, named after the time it was made in UTC, such as
+`jec-20261020-020000.db`, and removes the oldest beyond the number chosen.
+They are like a downloaded backup: without the master key, and restored
+the same way. Turned off, JEC leaves the backups it made. Copy them off
+the machine too: a backup in the data directory does not survive the loss
+of the disk.
+
 ## Restoring
 
 **In the interface**: on the Settings page, choose Restore, upload the

@@ -923,6 +923,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/auto-backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Choose how many daily backups JEC makes and keeps in its data directory; 0 for none */
+        put: operations["set-auto-backup"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/backup": {
         parameters: {
             query?: never;
@@ -1045,6 +1062,27 @@ export interface components {
             renewBeforeDays?: number;
             /** @description The target provider instances to deploy each version to, in order */
             targets?: number[];
+        };
+        AutoBackupBody: {
+            /**
+             * Format: int64
+             * @description The backups made there that are kept
+             */
+            count: number;
+            /**
+             * Format: int64
+             * @description How many daily backups to keep in the data directory; 0 makes none
+             */
+            keep: number;
+            /**
+             * Format: date-time
+             * @description When the latest one was made
+             */
+            last?: string;
+        };
+        AutoBackupInputBody: {
+            /** Format: int64 */
+            keep: number;
         };
         BackupInputBody: {
             /** @description The password of the signed-in account */
@@ -1851,6 +1889,8 @@ export interface components {
             total: number;
         };
         RuntimeBody: {
+            /** @description The backups JEC makes by itself, one a day */
+            autoBackup: components["schemas"]["AutoBackupBody"];
             /** @description The URL people open, from JEC_BASE_URL; links in notifications need it */
             baseURL?: string;
             /** @description Where the database and the key file are */
@@ -4204,6 +4244,39 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "set-auto-backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutoBackupInputBody"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

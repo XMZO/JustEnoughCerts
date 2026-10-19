@@ -35,7 +35,7 @@ import { saveFile, useCertSettings, useSaveCertSettings, type CertSettingsInput,
 import { useExportConfig, useImportConfig, type ConfigItem, type ConfigReport } from '../api/config'
 import { useApiError } from '../api/errors'
 import { useManifest } from '../api/manifest'
-import { useBackup, useReleaseCheck, useRestore, useSetTimeZone, useSystem, waitForRestart } from '../api/system'
+import { useBackup, useReleaseCheck, useRestore, useSetAutoBackup, useSetTimeZone, useSystem, waitForRestart } from '../api/system'
 import { keyText } from '../certs/life'
 import CopyButton from '../components/CopyButton.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -256,6 +256,14 @@ const system = useSystem()
 
 // The time zone of the whole panel, saved as soon as it changes: the one
 // chosen, or the server's.
+// The daily backups JEC makes by itself, how many it keeps.
+const keeps = [0, 3, 7, 14, 30] as const
+const setAutoBackup = useSetAutoBackup()
+const autoBackupError = useApiError(computed(() => setAutoBackup.error.value))
+function pickKeep(e: Event) {
+  setAutoBackup.mutate(Number((e.target as HTMLSelectElement).value))
+}
+
 const setTimeZone = useSetTimeZone()
 const zoneError = useApiError(computed(() => setTimeZone.error.value))
 const zoneChoices = computed(() => zones(system.data.value?.timeZone ?? ''))
@@ -648,6 +656,30 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
             <RotateCcw class="size-4" aria-hidden="true" />{{ t('kernel.settings.restore') }}
           </JecButton>
         </div>
+      </div>
+      <div :class="row">
+        <div class="min-w-0 flex-1">
+          <label for="autoBackup" class="block font-semibold">{{ t('kernel.settings.auto_backup') }}</label>
+          <span id="auto-backup-help" class="block text-caption leading-[18px] text-ink-muted">
+            <template v-if="system.data.value.autoBackup.last">
+              {{ t('kernel.settings.auto_backup_last', { count: system.data.value.autoBackup.count }) }}
+              <time :datetime="system.data.value.autoBackup.last">{{ intl.dateTime(system.data.value.autoBackup.last) }}</time>
+            </template>
+            <template v-else>{{ t('kernel.settings.auto_backup_help') }}</template>
+          </span>
+          <JecAlert v-if="autoBackupError.alert.value" class="mt-2" :code="autoBackupError.alert.value.code" :params="autoBackupError.alert.value.params" />
+        </div>
+        <select
+          id="autoBackup"
+          :value="system.data.value.autoBackup.keep"
+          aria-describedby="auto-backup-help"
+          :class="[control, 'flex-none']"
+          @change="pickKeep"
+        >
+          <option v-for="k in keeps" :key="k" :value="k">
+            {{ k ? t('kernel.settings.auto_backup_keep', { count: k }) : t('kernel.settings.auto_backup_off') }}
+          </option>
+        </select>
       </div>
       <div :class="[row, 'flex-wrap']">
         <!-- Three buttons leave the words too little room beside them: they go below. -->

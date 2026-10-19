@@ -4,6 +4,7 @@ package system
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +19,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/zone"
 )
@@ -43,6 +45,9 @@ type Options struct {
 	// postgres; Backup writes a copy of it to a new SQLite file at path.
 	Database string
 	Backup   func(ctx context.Context, path string) error
+	// DB keeps the choice of daily backups, which Jobs makes.
+	DB   *sql.DB
+	Jobs *jobs.Scope
 	// Confirm checks the password of the signed-in account, as
 	// auth.Service.ConfirmPassword does.
 	Confirm func(ctx context.Context, password string) error
@@ -64,10 +69,11 @@ type RuntimeBody struct {
 	SecretKey string `json:"secretKey" enum:"env,file" doc:"Where the master key comes from: JEC_SECRET_KEY, or the key file in dataDir"`
 	Database  string `json:"database" enum:"sqlite,postgres" doc:"Where the data is: SQLite in dataDir, or the PostgreSQL that JEC_DATABASE_URL names"`
 	// The proxies are addresses and ranges, data to show as they are.
-	TrustedProxies string `json:"trustedProxies,omitempty" doc:"The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES"`
-	HSTS           bool   `json:"hsts" doc:"Answers send Strict-Transport-Security, as JEC_HSTS asks"`
-	TimeZone       string `json:"timeZone,omitempty" doc:"The time zone chosen for JEC, an IANA name: the panel shows times in it, messages tell times in it, and renewals start at the check time in it; empty while it is the server's"`
-	ServerTimeZone string `json:"serverTimeZone" doc:"The server's time zone, which TZ sets: an IANA name, or Local when the server tells none"`
+	TrustedProxies string         `json:"trustedProxies,omitempty" doc:"The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES"`
+	HSTS           bool           `json:"hsts" doc:"Answers send Strict-Transport-Security, as JEC_HSTS asks"`
+	TimeZone       string         `json:"timeZone,omitempty" doc:"The time zone chosen for JEC, an IANA name: the panel shows times in it, messages tell times in it, and renewals start at the check time in it; empty while it is the server's"`
+	ServerTimeZone string         `json:"serverTimeZone" doc:"The server's time zone, which TZ sets: an IANA name, or Local when the server tells none"`
+	AutoBackup     AutoBackupBody `json:"autoBackup" doc:"The backups JEC makes by itself, one a day"`
 }
 
 type timeZoneInput struct {
@@ -89,8 +95,9 @@ type backupOutput struct {
 	Body               []byte
 }
 
-// Register adds GET /system, PUT /system/time-zone, POST /system/backup,
-// POST /system/restore and GET /system/release to a.
+// Register adds GET /system, PUT /system/time-zone, PUT
+// /system/auto-backup, POST /system/backup, POST /system/restore and GET
+// /system/release to a, and the job of daily backups to o.Jobs.
 func Register(a huma.API, o Options) {
 	tags := []string{"system"}
 	client := o.Client
@@ -101,8 +108,8 @@ func Register(a huma.API, o Options) {
 	huma.Register(a, huma.Operation{
 		OperationID: "get-system", Method: http.MethodGet, Path: "/system", Tags: tags,
 		Summary: "Tell where JEC keeps its data and how it is reached",
-	}, func(context.Context, *struct{}) (*struct{ Body RuntimeBody }, error) {
-		return &struct{ Body RuntimeBody }{Body: o.runtime()}, nil
+	}, func(ctx context.Context, _ *struct{}) (*struct{ Body RuntimeBody }, error) {
+		return &struct{ Body RuntimeBody }{Body: o.runtime(ctx)}, nil
 	})
 	huma.Register(a, huma.Operation{
 		OperationID: "set-time-zone", Method: http.MethodPut, Path: "/system/time-zone", Tags: tags,
@@ -116,9 +123,10 @@ func Register(a huma.API, o Options) {
 		if err != nil {
 			return nil, err
 		}
-		return &struct{ Body RuntimeBody }{Body: o.runtime()}, nil
+		return &struct{ Body RuntimeBody }{Body: o.runtime(ctx)}, nil
 	})
 
+	registerAutoBackup(a, o, tags)
 	registerRestore(a, o, tags)
 	huma.Register(a, huma.Operation{
 		OperationID: "backup", Method: http.MethodPost, Path: "/system/backup", Tags: tags,
@@ -149,11 +157,12 @@ func Register(a huma.API, o Options) {
 }
 
 // runtime is what GET /system tells.
-func (o Options) runtime() RuntimeBody {
+func (o Options) runtime(ctx context.Context) RuntimeBody {
 	info := RuntimeBody{
 		DataDir: o.DataDir, Listen: o.Listen, BaseURL: o.BaseURL, SecretKey: "file", TrustedProxies: o.TrustedProxies, HSTS: o.HSTS,
 		Database:       o.Database,
 		ServerTimeZone: o.Zone.Server().String(),
+		AutoBackup:     o.autoBackupState(ctx),
 	}
 	if o.KeyFromEnv {
 		info.SecretKey = "env"
