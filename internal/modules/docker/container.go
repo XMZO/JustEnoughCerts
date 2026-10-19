@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io/fs"
 	"net/http"
 	"path"
@@ -18,7 +17,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
-	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/certfiles"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
 
@@ -43,25 +42,25 @@ var (
 )
 
 func containerType() providers.Type {
+	fields := []providers.Field{
+		{Key: "container", Label: i18n.DockerFieldContainer, Help: i18n.DockerFieldContainerHelp, Kind: providers.Text, Required: true},
+		{Key: "directory", Label: i18n.DockerFieldDirectory, Help: i18n.DockerFieldDirectoryHelp, Kind: providers.Text},
+		{Key: "layout", Label: i18n.DockerFieldLayout, Kind: providers.Select, Required: true, Default: byDomain, Options: []providers.Option{
+			{Value: byDomain, Label: i18n.DockerLayoutByDomain},
+			{Value: flat, Label: i18n.DockerLayoutFlat},
+		}},
+		{Key: "action", Label: i18n.DockerFieldAction, Kind: providers.Select, Required: true, Default: actionSignal, Options: []providers.Option{
+			{Value: actionSignal, Label: i18n.DockerActionSignal},
+			{Value: actionRestart, Label: i18n.DockerActionRestart},
+			{Value: actionNone, Label: i18n.DockerActionNone},
+		}},
+		{Key: "signal", Label: i18n.DockerFieldSignal, Help: i18n.DockerFieldSignalHelp, Kind: providers.Text, Default: "HUP", When: &providers.When{Key: "action", Value: actionSignal}},
+		{Key: "owner", Label: i18n.DockerFieldOwner, Help: i18n.DockerFieldOwnerHelp, Kind: providers.Text, Advanced: true},
+		{Key: "endpoint", Label: i18n.DockerFieldEndpoint, Help: i18n.DockerFieldEndpointHelp, Kind: providers.Text, Default: defaultEndpoint, Advanced: true},
+	}
 	return providers.Type{
 		ID: "docker.container", Kind: providers.Target, Name: i18n.DockerContainerName, Description: i18n.DockerContainerDescription,
-		Tags: []string{"self_hosted"}, Testable: true,
-		Fields: []providers.Field{
-			{Key: "container", Label: i18n.DockerFieldContainer, Help: i18n.DockerFieldContainerHelp, Kind: providers.Text, Required: true},
-			{Key: "directory", Label: i18n.DockerFieldDirectory, Help: i18n.DockerFieldDirectoryHelp, Kind: providers.Text},
-			{Key: "layout", Label: i18n.DockerFieldLayout, Kind: providers.Select, Required: true, Default: byDomain, Options: []providers.Option{
-				{Value: byDomain, Label: i18n.DockerLayoutByDomain},
-				{Value: flat, Label: i18n.DockerLayoutFlat},
-			}},
-			{Key: "action", Label: i18n.DockerFieldAction, Kind: providers.Select, Required: true, Default: actionSignal, Options: []providers.Option{
-				{Value: actionSignal, Label: i18n.DockerActionSignal},
-				{Value: actionRestart, Label: i18n.DockerActionRestart},
-				{Value: actionNone, Label: i18n.DockerActionNone},
-			}},
-			{Key: "signal", Label: i18n.DockerFieldSignal, Help: i18n.DockerFieldSignalHelp, Kind: providers.Text, Default: "HUP", When: &providers.When{Key: "action", Value: actionSignal}},
-			{Key: "owner", Label: i18n.DockerFieldOwner, Help: i18n.DockerFieldOwnerHelp, Kind: providers.Text, Advanced: true},
-			{Key: "endpoint", Label: i18n.DockerFieldEndpoint, Help: i18n.DockerFieldEndpointHelp, Kind: providers.Text, Default: defaultEndpoint, Advanced: true},
-		},
+		Tags: []string{"self_hosted"}, Testable: true, Fields: append(fields, certfiles.Fields()...),
 	}
 }
 
@@ -75,6 +74,7 @@ type container struct {
 	action   string
 	signal   string
 	uid, gid int
+	files    certfiles.Files
 }
 
 var (
@@ -91,8 +91,12 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 	if err != nil {
 		return nil, retry.Permanent(&contracts.Problem{Key: i18n.DockerErrorEndpoint, Params: map[string]any{"endpoint": endpoint}})
 	}
+	files, err := certfiles.Parse(in.Config, in.Secrets)
+	if err != nil {
+		return nil, err
+	}
 	c := &container{
-		engine: e, endpoint: endpoint,
+		engine: e, endpoint: endpoint, files: files,
 		name:   strings.TrimSpace(in.Config["container"]),
 		dir:    strings.TrimSpace(in.Config["directory"]),
 		layout: in.Config["layout"], action: in.Config["action"],
@@ -217,7 +221,7 @@ func (c *container) archive(req contracts.DeployRequest) ([]byte, string, error)
 	if len(req.Chain) == 0 {
 		return nil, "", errors.New("docker: no certificate to deploy")
 	}
-	key, err := cryptox.EncodeKey(req.Key)
+	files, err := c.files.Make(req.Domains, req.Chain, req.Key)
 	if err != nil {
 		return nil, "", err
 	}
@@ -229,16 +233,6 @@ func (c *container) archive(req contracts.DeployRequest) ([]byte, string, error)
 		}
 		prefix = name + "/"
 	}
-	files := []struct {
-		name string
-		data []byte
-		mode int64
-	}{
-		{"cert.pem", cryptox.EncodeCertificates(req.Chain[0]), 0o644},
-		{"chain.pem", cryptox.EncodeCertificates(req.Chain[1:]...), 0o644},
-		{"fullchain.pem", cryptox.EncodeCertificates(req.Chain...), 0o644},
-		{"privkey.pem", key, 0o600},
-	}
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
 	now := time.Now()
@@ -248,11 +242,11 @@ func (c *container) archive(req contracts.DeployRequest) ([]byte, string, error)
 		}
 	}
 	for _, f := range files {
-		h := &tar.Header{Typeflag: tar.TypeReg, Name: prefix + f.name, Mode: f.mode, Size: int64(len(f.data)), Uid: c.uid, Gid: c.gid, ModTime: now}
+		h := &tar.Header{Typeflag: tar.TypeReg, Name: prefix + f.Name, Mode: int64(f.Mode), Size: int64(len(f.Data)), Uid: c.uid, Gid: c.gid, ModTime: now}
 		if err := tw.WriteHeader(h); err != nil {
 			return nil, "", err
 		}
-		if _, err := tw.Write(f.data); err != nil {
+		if _, err := tw.Write(f.Data); err != nil {
 			return nil, "", err
 		}
 	}
@@ -293,19 +287,4 @@ func (c *container) explain(err error) error {
 
 // dirName names the subdirectory of a certificate after its primary
 // domain, as a file name: *.example.com becomes star.example.com.
-func dirName(domains []string) (string, error) {
-	if len(domains) == 0 {
-		return "", errors.New("docker: a certificate without domains")
-	}
-	name := strings.Map(func(r rune) rune {
-		switch {
-		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '.', r == '-':
-			return r
-		}
-		return '_'
-	}, strings.Replace(strings.ToLower(domains[0]), "*", "star", 1))
-	if strings.Trim(name, ".") == "" {
-		return "", fmt.Errorf("docker: %q makes no directory name", domains[0])
-	}
-	return name, nil
-}
+var dirName = certfiles.DomainName

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
 	"time"
 
@@ -144,5 +145,80 @@ func TestTest(t *testing.T) {
 	}
 	if _, err := open(t, map[string]string{"directory": blocked}).Test(t.Context()); !errors.As(err, &p) || p.Key != i18n.FilesErrorWrite {
 		t.Errorf("a file in the way: %v", err)
+	}
+}
+
+func TestDeployNamedFiles(t *testing.T) {
+	root := t.TempDir()
+	req := request(t, "*.example.com")
+	d := open(t, map[string]string{
+		"directory": root, "layout": flat, "cert_file": "{domain}.crt", "key_file": "{domain}.key",
+		"combined_file": "{domain}.pem", "pfx_file": "{domain}.pfx", "cert_mode": "640", "key_mode": "640",
+		"command": `echo "$JEC_CERT_FILE|$JEC_KEY_FILE|$JEC_COMBINED_FILE|$JEC_PFX_FILE" > env.txt`,
+	})
+	if _, err := d.Deploy(t.Context(), req); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"star.example.com.crt", "chain.pem", "fullchain.pem", "star.example.com.key", "star.example.com.pem", "star.example.com.pfx"} {
+		info, err := os.Stat(filepath.Join(root, name))
+		if err != nil {
+			t.Errorf("%s: %v", name, err)
+			continue
+		}
+		if runtime.GOOS != "windows" && info.Mode().Perm() != 0o640 {
+			t.Errorf("%s: mode %v", name, info.Mode())
+		}
+	}
+	if b, err := cryptox.ParseBundle(read(t, root, "star.example.com.pem"), nil); err != nil || !b.Leaf.Equal(req.Chain[0]) {
+		t.Errorf("the one file: %v", err)
+	}
+	if b, err := cryptox.ParsePFX(read(t, root, "star.example.com.pfx"), ""); err != nil || !b.Leaf.Equal(req.Chain[0]) {
+		t.Errorf("the PFX file: %v", err)
+	}
+	at := func(name string) string { return filepath.Join(root, name) }
+	want := at("star.example.com.crt") + "|" + at("star.example.com.key") + "|" + at("star.example.com.pem") + "|" + at("star.example.com.pfx") + "\n"
+	if got := string(read(t, root, "env.txt")); got != want {
+		t.Errorf("the command found %q", got)
+	}
+}
+
+func TestDeploySettingsRefused(t *testing.T) {
+	for _, c := range []struct {
+		name   string
+		config map[string]string
+		key    i18n.Key
+	}{
+		{"a name with a path", map[string]string{"cert_file": "../cert.pem"}, i18n.CertfilesErrorName},
+		{"a key everyone reads", map[string]string{"key_mode": "644"}, i18n.CertfilesErrorKeyMode},
+		{"an owner that is none", map[string]string{"owner": "root:wheel:x"}, i18n.FilesErrorOwner},
+		{"an unknown user", map[string]string{"owner": "no-such-user-of-jec"}, i18n.FilesErrorOwnerUnknown},
+	} {
+		c.config["directory"] = t.TempDir()
+		_, err := factory(t.Context(), providers.Instance{Config: c.config})
+		var p *contracts.Problem
+		if !errors.As(err, &p) || p.Key != c.key || !retry.IsPermanent(err) {
+			t.Errorf("%s: %v", c.name, err)
+		}
+	}
+}
+
+func TestDeployOwner(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("no owners to set")
+	}
+	root := t.TempDir()
+	req := request(t, "example.com")
+	// The owner JEC runs as, which it may always set.
+	me := strconv.Itoa(os.Getuid()) + ":" + strconv.Itoa(os.Getgid())
+	if _, err := open(t, map[string]string{"directory": root, "owner": me}).Deploy(t.Context(), req); err != nil {
+		t.Fatalf("owner %s: %v", me, err)
+	}
+	if os.Getuid() == 0 {
+		return // root may give the files to anyone
+	}
+	_, err := open(t, map[string]string{"directory": root, "owner": "0:0"}).Deploy(t.Context(), req)
+	var p *contracts.Problem
+	if !errors.As(err, &p) || p.Key != i18n.FilesErrorChown || !retry.IsPermanent(err) {
+		t.Errorf("another owner: %v", err)
 	}
 }

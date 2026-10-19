@@ -13,6 +13,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/certfiles"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/shellx"
 )
 
@@ -30,10 +31,10 @@ func parseCommand(script string) (*syntax.File, error) {
 }
 
 // runCommand runs script with the shell built into JEC, in dir, where the
-// files of req are: what a command finds there and in its environment is
-// what certbot gives its deploy hooks, and more. What it writes goes to
-// the log.
-func runCommand(ctx context.Context, script, dir string, req contracts.DeployRequest, log func(contracts.LogLine)) error {
+// files of req are, under names by kind: what a command finds there and in
+// its environment is what certbot gives its deploy hooks, and more. What
+// it writes goes to the log.
+func runCommand(ctx context.Context, script, dir string, names map[string]string, req contracts.DeployRequest, log func(contracts.LogLine)) error {
 	file, err := parseCommand(script)
 	if err != nil {
 		return err
@@ -41,7 +42,7 @@ func runCommand(ctx context.Context, script, dir string, req contracts.DeployReq
 	log(contracts.LogLine{Level: contracts.Info, Key: i18n.FilesLogCommand, Detail: script})
 	run, cancel := context.WithTimeout(ctx, commandTimeout)
 	defer cancel()
-	out, err := shellx.Run(run, shellx.Script{File: file, Dir: dir, Env: commandEnv(dir, req)})
+	out, err := shellx.Run(run, shellx.Script{File: file, Dir: dir, Env: commandEnv(dir, names, req)})
 	if len(out) > 0 {
 		log(contracts.LogLine{Level: contracts.Info, Key: i18n.FilesLogOutput, Detail: string(out)})
 	}
@@ -61,20 +62,25 @@ func runCommand(ctx context.Context, script, dir string, req contracts.DeployReq
 }
 
 // commandEnv is what a command learns of the deployment: the paths of the
-// files and the domains, under JEC's names and those of certbot's deploy
-// hooks, so that those work as they are.
-func commandEnv(dir string, req contracts.DeployRequest) []string {
-	env := []string{
-		"JEC_CERT_DIR=" + dir,
-		"JEC_CERT_FILE=" + filepath.Join(dir, "cert.pem"),
-		"JEC_CHAIN_FILE=" + filepath.Join(dir, "chain.pem"),
-		"JEC_FULLCHAIN_FILE=" + filepath.Join(dir, "fullchain.pem"),
-		"JEC_KEY_FILE=" + filepath.Join(dir, "privkey.pem"),
-		"JEC_DOMAINS=" + strings.Join(req.Domains, " "),
-		"JEC_CERTIFICATE_ID=" + strconv.FormatInt(req.CertificateID, 10),
-		"RENEWED_LINEAGE=" + dir,
-		"RENEWED_DOMAINS=" + strings.Join(req.Domains, " "),
+// files, by kind as names has them, and the domains, under JEC's names
+// and those of certbot's deploy hooks, so that those work as they are
+// while the files keep certbot's names.
+func commandEnv(dir string, names map[string]string, req contracts.DeployRequest) []string {
+	env := []string{"JEC_CERT_DIR=" + dir}
+	for _, v := range []struct{ name, kind string }{
+		{"JEC_CERT_FILE", certfiles.KindCert}, {"JEC_CHAIN_FILE", certfiles.KindChain}, {"JEC_FULLCHAIN_FILE", certfiles.KindFullChain},
+		{"JEC_KEY_FILE", certfiles.KindKey}, {"JEC_COMBINED_FILE", certfiles.KindCombined}, {"JEC_PFX_FILE", certfiles.KindPFX},
+	} {
+		if n, ok := names[v.kind]; ok {
+			env = append(env, v.name+"="+filepath.Join(dir, n))
+		}
 	}
+	env = append(env,
+		"JEC_DOMAINS="+strings.Join(req.Domains, " "),
+		"JEC_CERTIFICATE_ID="+strconv.FormatInt(req.CertificateID, 10),
+		"RENEWED_LINEAGE="+dir,
+		"RENEWED_DOMAINS="+strings.Join(req.Domains, " "),
+	)
 	if len(req.Domains) > 0 {
 		env = append(env, "JEC_DOMAIN="+req.Domains[0])
 	}

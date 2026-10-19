@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -401,5 +402,44 @@ func TestTest(t *testing.T) {
 	_, err = open(t, settings(srv, map[string]string{"host_key": ""}), map[string]string{"private_key": key}).Test(t.Context())
 	if !errors.As(err, &p) || p.Key != i18n.SshErrorHostKeyUnknown || p.Params["fingerprint"] != gossh.FingerprintSHA256(srv.host) {
 		t.Errorf("no host key set: %v", err)
+	}
+}
+
+func TestDeployNamedFiles(t *testing.T) {
+	needShell(t)
+	key, pub := clientKey(t, "")
+	srv := newServer(t, pub)
+	root := t.TempDir()
+	var log []contracts.LogLine
+	req := request(t, &log)
+	// The owner the test server runs commands as, which it may always set.
+	me := strconv.Itoa(os.Getuid()) + ":" + strconv.Itoa(os.Getgid())
+	s := open(t, settings(srv, map[string]string{
+		"directory": root, "layout": flat, "cert_file": "{domain}.crt", "key_file": "{domain}.key", "pfx_file": "{domain}.pfx",
+		"key_mode": "640", "owner": me,
+	}), map[string]string{"private_key": key, "pfx_password": "correct horse"})
+	if _, err := s.Deploy(t.Context(), req); err != nil {
+		t.Fatal(err)
+	}
+	for name, mode := range map[string]os.FileMode{
+		"star.example.com.crt": 0o644, "chain.pem": 0o644, "fullchain.pem": 0o644, "star.example.com.key": 0o640, "star.example.com.pfx": 0o640,
+	} {
+		if info, err := os.Stat(filepath.Join(root, name)); err != nil || info.Mode().Perm() != mode {
+			t.Errorf("%s: %v %v", name, info, err)
+		}
+	}
+	data, _ := os.ReadFile(filepath.Join(root, "star.example.com.pfx"))
+	if b, err := cryptox.ParsePFX(data, "correct horse"); err != nil || !b.Leaf.Equal(req.Chain[0]) {
+		t.Errorf("the PFX file: %v", err)
+	}
+	if entries, _ := os.ReadDir(root); len(entries) != 5 {
+		t.Errorf("%d files: temporary ones left?", len(entries))
+	}
+
+	for _, bad := range []string{"root:wheel:x", "a b", "root;rm"} {
+		_, err := factory(t.Context(), providers.Instance{Config: settings(srv, map[string]string{"owner": bad}), Secrets: map[string]string{"private_key": key}})
+		if problemKey(err) != i18n.SshErrorOwner || !retry.IsPermanent(err) {
+			t.Errorf("owner %q: %v", bad, err)
+		}
 	}
 }

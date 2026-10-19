@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"path"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -18,8 +19,8 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/certfiles"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
-	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
 
 // Layouts of the remote directory, as the files module has them.
@@ -45,20 +46,25 @@ func connFields() []providers.Field {
 }
 
 func serverType() providers.Type {
+	fields := append(connFields(),
+		providers.Field{Key: "directory", Label: i18n.SshFieldDirectory, Help: i18n.SshFieldDirectoryHelp, Kind: providers.Text, Required: true},
+		providers.Field{Key: "layout", Label: i18n.SshFieldLayout, Kind: providers.Select, Required: true, Default: byDomain, Options: []providers.Option{
+			{Value: byDomain, Label: i18n.SshLayoutByDomain},
+			{Value: flat, Label: i18n.SshLayoutFlat},
+		}},
+		providers.Field{Key: "command", Label: i18n.SshFieldCommand, Help: i18n.SshFieldCommandHelp, Kind: providers.Text},
+	)
+	fields = append(fields, certfiles.Fields()...)
+	fields = append(fields, providers.Field{Key: "owner", Label: i18n.SshFieldOwner, Help: i18n.SshFieldOwnerHelp, Kind: providers.Text, Advanced: true})
 	return providers.Type{
 		ID: "ssh.server", Kind: providers.Target, Name: i18n.SshServerName, Description: i18n.SshServerDescription,
-		Tags: []string{"self_hosted"}, Testable: true,
-		Fields: append(connFields(),
-			providers.Field{Key: "directory", Label: i18n.SshFieldDirectory, Help: i18n.SshFieldDirectoryHelp, Kind: providers.Text, Required: true},
-			providers.Field{Key: "layout", Label: i18n.SshFieldLayout, Kind: providers.Select, Required: true, Default: byDomain, Options: []providers.Option{
-				{Value: byDomain, Label: i18n.SshLayoutByDomain},
-				{Value: flat, Label: i18n.SshLayoutFlat},
-			}},
-			providers.Field{Key: "command", Label: i18n.SshFieldCommand, Help: i18n.SshFieldCommandHelp, Kind: providers.Text},
-		),
+		Tags: []string{"self_hosted"}, Testable: true, Fields: fields,
 		Credential: credentials.Use(credentials.SSHKey),
 	}
 }
+
+// ownerPattern is how chown takes an owner: user, user:group or :group.
+var ownerPattern = regexp.MustCompile(`^(?:[A-Za-z0-9._-]+(?::[A-Za-z0-9._-]+)?|:[A-Za-z0-9._-]+)$`)
 
 // conn is how to reach a machine over SSH, for the server target and the
 // web root solver alike.
@@ -68,11 +74,13 @@ type conn struct {
 }
 
 // server is a machine reached over SSH, where certificates are written as
-// certbot lays them out.
+// certbot lays them out, unless the files are set otherwise.
 type server struct {
 	conn
 	directory, layout string
 	command           string
+	files             certfiles.Files
+	owner             string // as chown takes it; "" leaves the files to the user signed in
 }
 
 var (
@@ -85,10 +93,18 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	files, err := certfiles.Parse(in.Config, in.Secrets)
+	if err != nil {
+		return nil, err
+	}
+	owner := strings.TrimSpace(in.Config["owner"])
+	if owner != "" && !ownerPattern.MatchString(owner) {
+		return nil, retry.Permanent(&contracts.Problem{Key: i18n.SshErrorOwner, Params: map[string]any{"owner": owner}})
+	}
 	return &server{
 		conn:      c,
 		directory: strings.TrimSpace(in.Config["directory"]), layout: in.Config["layout"],
-		command: strings.TrimSpace(in.Config["command"]),
+		command: strings.TrimSpace(in.Config["command"]), files: files, owner: owner,
 	}, nil
 }
 
@@ -174,7 +190,7 @@ func (s *server) Deploy(ctx context.Context, req contracts.DeployRequest) (contr
 		}
 		dir = path.Join(dir, name)
 	}
-	key, err := cryptox.EncodeKey(req.Key)
+	files, err := s.files.Make(req.Domains, req.Chain, req.Key)
 	if err != nil {
 		return none, retry.Permanent(err)
 	}
@@ -189,26 +205,21 @@ func (s *server) Deploy(ctx context.Context, req contracts.DeployRequest) (contr
 	defer stop()
 
 	log(contracts.LogLine{Level: contracts.Info, Key: i18n.SshLogUpload, Params: map[string]any{"directory": dir}})
-	files := []struct {
-		name  string
-		data  []byte
-		umask string
-	}{
-		{"cert.pem", cryptox.EncodeCertificates(req.Chain[0]), "022"},
-		{"chain.pem", cryptox.EncodeCertificates(req.Chain[1:]...), "022"},
-		{"fullchain.pem", cryptox.EncodeCertificates(req.Chain...), "022"},
-		{"privkey.pem", key, "077"},
-	}
 	if out, err := run(client, "mkdir -p "+quote(dir), nil); err != nil {
 		return none, s.writeFailed(ctx, dir, out, err)
 	}
 	var moves []string
 	for _, f := range files {
-		tmp := path.Join(dir, "."+f.name+".jec")
-		if out, err := run(client, "umask "+f.umask+" && cat > "+quote(tmp), f.data); err != nil {
+		// Readable by the owner only until it has its mode and owner.
+		tmp := path.Join(dir, "."+f.Name+".jec")
+		script := "umask 077 && cat > " + quote(tmp) + " && chmod " + fmt.Sprintf("%04o", f.Mode) + " " + quote(tmp)
+		if s.owner != "" {
+			script += " && chown " + quote(s.owner) + " " + quote(tmp)
+		}
+		if out, err := run(client, script, f.Data); err != nil {
 			return none, s.writeFailed(ctx, dir, out, err)
 		}
-		moves = append(moves, "mv -f "+quote(tmp)+" "+quote(path.Join(dir, f.name)))
+		moves = append(moves, "mv -f "+quote(tmp)+" "+quote(path.Join(dir, f.Name)))
 	}
 	if out, err := run(client, strings.Join(moves, " && "), nil); err != nil {
 		return none, s.writeFailed(ctx, dir, out, err)
@@ -359,19 +370,4 @@ func tail(out []byte) []byte {
 
 // dirName names the subdirectory of a certificate after its primary
 // domain: *.example.com becomes star.example.com.
-func dirName(domains []string) (string, error) {
-	if len(domains) == 0 {
-		return "", errors.New("ssh: a certificate without domains")
-	}
-	name := strings.Map(func(r rune) rune {
-		switch {
-		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '.', r == '-':
-			return r
-		}
-		return '_'
-	}, strings.Replace(strings.ToLower(domains[0]), "*", "star", 1))
-	if strings.Trim(name, ".") == "" {
-		return "", fmt.Errorf("ssh: %q makes no directory name", domains[0])
-	}
-	return name, nil
-}
+var dirName = certfiles.DomainName

@@ -346,6 +346,10 @@ test('every page is translated and fits', async ({ page }, info) => {
   await dialog.getByLabel(label('kernel.providers.field.name')).fill('e2e files')
   await dialog.getByLabel(label('files.field.directory')).fill(`${process.env.JEC_E2E_FILES}/${info.project.name}`)
   expect.soft(await problems(page), 'add a deploy target: a directory').toEqual([])
+  // Its advanced settings: the names of the files, a PFX file among them.
+  await dialog.locator('details > summary').click()
+  await dialog.getByLabel(label('certfiles.field.pfx'), { exact: true }).fill('{domain}.pfx')
+  expect.soft(await problems(page), 'add a deploy target: a directory, with its files').toEqual([])
   await dialog.locator('button[type=submit]').click()
   await expect(page.locator('dialog[open]')).toHaveCount(0)
   expect.soft(await problems(page), 'deploy targets with one').toEqual([])

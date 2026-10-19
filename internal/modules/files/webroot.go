@@ -76,7 +76,7 @@ func (w *webroot) PutFile(_ context.Context, f contracts.File) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // G301: a web server has to reach the files
 		return fail(dir, err)
 	}
-	if err := writeFile(file, f.Content, 0o644); err != nil {
+	if err := writeFile(file, f.Content, 0o644, nil); err != nil {
 		return fail(dir, err)
 	}
 	return nil

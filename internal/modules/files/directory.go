@@ -13,7 +13,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
-	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/certfiles"
 )
 
 // Layouts of a directory.
@@ -23,17 +23,19 @@ const (
 )
 
 func directoryType() providers.Type {
+	fields := []providers.Field{
+		{Key: "directory", Label: i18n.FilesFieldDirectory, Help: i18n.FilesFieldDirectoryHelp, Kind: providers.Text, Required: true},
+		{Key: "layout", Label: i18n.FilesFieldLayout, Kind: providers.Select, Required: true, Default: byDomain, Options: []providers.Option{
+			{Value: byDomain, Label: i18n.FilesLayoutByDomain},
+			{Value: flat, Label: i18n.FilesLayoutFlat},
+		}},
+		{Key: "command", Label: i18n.FilesFieldCommand, Help: i18n.FilesFieldCommandHelp, Kind: providers.Multiline},
+	}
+	fields = append(fields, certfiles.Fields()...)
+	fields = append(fields, providers.Field{Key: "owner", Label: i18n.FilesFieldOwner, Help: i18n.FilesFieldOwnerHelp, Kind: providers.Text, Advanced: true})
 	return providers.Type{
 		ID: "files.directory", Kind: providers.Target, Name: i18n.FilesDirectoryName, Description: i18n.FilesDirectoryDescription,
-		Tags: []string{"self_hosted"}, Testable: true,
-		Fields: []providers.Field{
-			{Key: "directory", Label: i18n.FilesFieldDirectory, Help: i18n.FilesFieldDirectoryHelp, Kind: providers.Text, Required: true},
-			{Key: "layout", Label: i18n.FilesFieldLayout, Kind: providers.Select, Required: true, Default: byDomain, Options: []providers.Option{
-				{Value: byDomain, Label: i18n.FilesLayoutByDomain},
-				{Value: flat, Label: i18n.FilesLayoutFlat},
-			}},
-			{Key: "command", Label: i18n.FilesFieldCommand, Help: i18n.FilesFieldCommandHelp, Kind: providers.Multiline},
-		},
+		Tags: []string{"self_hosted"}, Testable: true, Fields: fields,
 	}
 }
 
@@ -42,6 +44,8 @@ type directory struct {
 	path    string
 	layout  string
 	command string
+	files   certfiles.Files
+	owner   *owner // nil leaves the files to whoever runs JEC
 }
 
 var (
@@ -50,7 +54,18 @@ var (
 )
 
 func factory(_ context.Context, in providers.Instance) (any, error) {
-	return &directory{path: strings.TrimSpace(in.Config["directory"]), layout: in.Config["layout"], command: strings.TrimSpace(in.Config["command"])}, nil
+	files, err := certfiles.Parse(in.Config, in.Secrets)
+	if err != nil {
+		return nil, err
+	}
+	o, err := parseOwner(strings.TrimSpace(in.Config["owner"]))
+	if err != nil {
+		return nil, err
+	}
+	return &directory{
+		path: strings.TrimSpace(in.Config["directory"]), layout: in.Config["layout"], command: strings.TrimSpace(in.Config["command"]),
+		files: files, owner: o,
+	}, nil
 }
 
 // Close has nothing to release.
@@ -83,8 +98,9 @@ func (d *directory) Test(context.Context) (contracts.Message, error) {
 
 // Deploy writes the files, each through a temporary file renamed over the
 // old one, so that a reader never sees half a file, and then runs the
-// command. The private key is readable by its owner only. Files are
-// overwritten, so there is nothing to remove afterwards.
+// command. The files take the modes and the owner set; those with the
+// private key are readable by their owner only, unless set otherwise.
+// Files are overwritten, so there is nothing to remove afterwards.
 func (d *directory) Deploy(ctx context.Context, req contracts.DeployRequest) (contracts.DeployResult, error) {
 	var none contracts.DeployResult
 	log := req.Log
@@ -105,31 +121,26 @@ func (d *directory) Deploy(ctx context.Context, req contracts.DeployRequest) (co
 		}
 		dir = filepath.Join(d.path, name)
 	}
-	key, err := cryptox.EncodeKey(req.Key)
+	files, err := d.files.Make(req.Domains, req.Chain, req.Key)
 	if err != nil {
 		return none, retry.Permanent(err)
-	}
-	files := []struct {
-		name string
-		data []byte
-		mode fs.FileMode
-	}{
-		{"cert.pem", cryptox.EncodeCertificates(req.Chain[0]), 0o644},
-		{"chain.pem", cryptox.EncodeCertificates(req.Chain[1:]...), 0o644},
-		{"fullchain.pem", cryptox.EncodeCertificates(req.Chain...), 0o644},
-		{"privkey.pem", key, 0o600},
 	}
 	log(contracts.LogLine{Level: contracts.Info, Key: i18n.FilesLogWrite, Params: map[string]any{"directory": dir}})
 	if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // G301: a web server has to reach the files
 		return none, fail(dir, err)
 	}
+	names := map[string]string{}
 	for _, f := range files {
-		if err := writeFile(filepath.Join(dir, f.name), f.data, f.mode); err != nil {
+		if err := writeFile(filepath.Join(dir, f.Name), f.Data, f.Mode, d.owner); err != nil {
+			if errors.Is(err, errChown) {
+				return none, retry.Permanent(&contracts.Problem{Key: i18n.FilesErrorChown, Params: map[string]any{"owner": d.owner.name, "directory": dir}, Err: err})
+			}
 			return none, fail(dir, err)
 		}
+		names[f.Kind] = f.Name
 	}
 	if d.command != "" {
-		if err := runCommand(ctx, d.command, dir, req, log); err != nil {
+		if err := runCommand(ctx, d.command, dir, names, req, log); err != nil {
 			return none, err
 		}
 	}
@@ -138,26 +149,14 @@ func (d *directory) Deploy(ctx context.Context, req contracts.DeployRequest) (co
 
 // dirName names the subdirectory of a certificate after its primary
 // domain, as a file name: *.example.com becomes star.example.com.
-func dirName(domains []string) (string, error) {
-	if len(domains) == 0 {
-		return "", errors.New("files: a certificate without domains")
-	}
-	name := strings.Map(func(r rune) rune {
-		switch {
-		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '.', r == '-':
-			return r
-		}
-		return '_'
-	}, strings.Replace(strings.ToLower(domains[0]), "*", "star", 1))
-	if name == "." || name == ".." || strings.Trim(name, ".") == "" {
-		return "", fmt.Errorf("files: %q makes no directory name", domains[0])
-	}
-	return name, nil
-}
+var dirName = certfiles.DomainName
+
+// errChown is the error of a file whose owner could not be changed.
+var errChown = errors.New("files: the owner could not be set")
 
 // writeFile replaces path with data, through a temporary file in the same
-// directory.
-func writeFile(path string, data []byte, mode fs.FileMode) error {
+// directory, of mode and owner o, unless nil.
+func writeFile(path string, data []byte, mode fs.FileMode, o *owner) error {
 	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
 	if err != nil {
 		return err
@@ -166,6 +165,12 @@ func writeFile(path string, data []byte, mode fs.FileMode) error {
 	if err := tmp.Chmod(mode); err != nil {
 		_ = tmp.Close()
 		return err
+	}
+	if o != nil {
+		if err := tmp.Chown(o.uid, o.gid); err != nil {
+			_ = tmp.Close()
+			return fmt.Errorf("%w: %w", errChown, err)
+		}
 	}
 	if _, err := tmp.Write(data); err != nil {
 		_ = tmp.Close()

@@ -484,6 +484,36 @@
       "ok": "Connected to Caddy's admin API at {url}."
     }
   },
+  "certfiles": {
+    "cipher": {
+      "legacy": "3DES (Windows Server 2016, Java 8)",
+      "modern": "AES-256 (current systems)"
+    },
+    "error": {
+      "key_mode": "The permissions {mode} let every user read the private key; give at most a group, as 640 does.",
+      "mode": "{mode} is not a permission in octal, such as 644.",
+      "name": "{name} is not a file name: it may not hold a path.",
+      "same": "Two files are named {name}."
+    },
+    "field": {
+      "cert": "Certificate file",
+      "cert_mode": "Permissions of the certificates",
+      "chain": "Chain file",
+      "combined": "Key and full chain in one file",
+      "combined_help": "Written only when named, for programs such as HAProxy that read one file, as in '{domain}'.pem.",
+      "fullchain": "Full chain file",
+      "key": "Private key file",
+      "key_mode": "Permissions of the private key",
+      "key_mode_help": "In octal, such as 640 for a group to read it too; the files with the key in them, the one file and the PFX file, take it as well. Others may not read it.",
+      "mode_help": "In octal, as chmod takes it, such as 644.",
+      "name_help": "'{domain}' stands for the primary domain, as in '{domain}'.crt; *.example.com is written star.example.com.",
+      "pfx": "PKCS #12 (PFX) file",
+      "pfx_cipher": "PFX encryption",
+      "pfx_help": "Written only when named, for IIS, Windows and Java programs, as in '{domain}'.pfx.",
+      "pfx_password": "PFX password",
+      "pfx_password_help": "Without one, the file is not encrypted; some programs require one."
+    }
+  },
   "certs": {
     "action": {
       "add": "Add certificate",
@@ -1285,14 +1315,17 @@
   },
   "files": {
     "directory": {
-      "description": "Writes cert.pem, chain.pem, fullchain.pem and privkey.pem as certbot does; a new version replaces the files.",
+      "description": "Writes cert.pem, chain.pem, fullchain.pem and privkey.pem as certbot does, under other names if you like, also as one file or a PFX file; a new version replaces the files.",
       "name": "Local directory"
     },
     "error": {
+      "chown": "The files in {directory} could not be given to {owner}: JEC may not change owners unless it runs as root.",
       "command": "The command failed with status {status}; the log has its output.",
       "command_syntax": "The command is not valid shell: {error}",
       "command_timeout": "The command was still running after {minutes, plural, one {# minute} other {# minutes}}, and was stopped.",
       "file_path": "The source asked for a file outside /.well-known/, which JEC does not write: {path}",
+      "owner": "{owner} is no owner: write a user, user:group or :group.",
+      "owner_unknown": "There is no user or group {name} on this machine; in a container, give numbers.",
       "relative": "The directory must be an absolute path: {directory}",
       "watch_denied": "JEC cannot read {path}: permission denied. The keys of certbot and acme.sh are usually their owner's alone. Run JEC as that user, such as root (user 0:0 in docker-compose.yml), or have certbot's --deploy-hook copy them where JEC can read them.",
       "watch_empty": "{directory} holds no certificate with its key.",
@@ -1307,6 +1340,8 @@
       "directory": "Directory",
       "directory_help": "An absolute path JEC can write to. In a container, a mounted directory, such as /data/certs.",
       "layout": "Where the files go",
+      "owner": "Owner of the files",
+      "owner_help": "A user, user:group or :group, by name or number, such as root:ssl-cert; empty leaves them to whoever runs JEC. Another owner takes JEC running as root.",
       "watch_directory": "Directory",
       "watch_directory_help": "/etc/letsencrypt for certbot, its home for acme.sh (such as /root/.acme.sh). JEC looks there for the certificate and key of the domains.",
       "webroot": "Website directory",
@@ -2438,6 +2473,7 @@
       "key": "The private key is not in OpenSSH or PEM form.",
       "key_or_passphrase": "The private key or its passphrase is wrong.",
       "no_auth": "Set a private key or a password.",
+      "owner": "{owner} is no owner: write a user, user:group or :group.",
       "passphrase": "The private key has a passphrase: set it in the advanced settings.",
       "relative": "The directory must be an absolute path: {directory}",
       "write": "Could not write to {directory}: {output}"
@@ -2451,6 +2487,8 @@
       "host_key": "Host key",
       "host_key_help": "Proves the server is yours: its SHA256: fingerprint (ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub on the server shows it), or its line in known_hosts. Left empty, the first deployment fails and shows the server's fingerprint, for you to check and paste here.",
       "layout": "Where the files go",
+      "owner": "Owner of the files",
+      "owner_help": "A user, user:group or :group on the server, as chown takes it; empty leaves them to the user signed in, who needs the right to give them away.",
       "passphrase": "Key passphrase",
       "password": "Password",
       "password_help": "To sign in without a key. A key is safer.",
@@ -2477,7 +2515,7 @@
       "name": "SSH"
     },
     "server": {
-      "description": "Writes the files to a directory on the server as certbot names them, then runs your command. The server needs a POSIX shell, as Linux and BSD have.",
+      "description": "Writes the files to a directory on the server as certbot names them, or as you name them, then runs your command. The server needs a POSIX shell, as Linux and BSD have.",
       "name": "SSH server"
     },
     "test": {

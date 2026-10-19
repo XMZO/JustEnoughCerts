@@ -21,6 +21,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/certfiles"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox/cryptoxtest"
 )
@@ -359,7 +360,11 @@ func TestNetwork(t *testing.T) {
 
 // The archive holds what certbot writes, and nothing else.
 func TestArchive(t *testing.T) {
-	c := &container{layout: flat, dir: "/certs"}
+	files, err := certfiles.Parse(nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := &container{layout: flat, dir: "/certs", files: files}
 	archive, target, err := c.archive(request(t, "example.com"))
 	if err != nil || target != "/certs" {
 		t.Fatal(target, err)
@@ -375,5 +380,36 @@ func TestArchive(t *testing.T) {
 	}
 	if strings.Join(names, " ") != "cert.pem chain.pem fullchain.pem privkey.pem" {
 		t.Errorf("archive %v", names)
+	}
+}
+
+// Files of other names and modes go in under those.
+func TestArchiveNamedFiles(t *testing.T) {
+	files, err := certfiles.Parse(map[string]string{"key_file": "{domain}.key", "pfx_file": "{domain}.pfx", "key_mode": "640"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := &container{layout: flat, dir: "/certs", files: files}
+	archive, _, err := c.archive(request(t, "example.com"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	modes := map[string]int64{}
+	tr := tar.NewReader(bytes.NewReader(archive))
+	for {
+		h, err := tr.Next()
+		if err != nil {
+			break
+		}
+		modes[h.Name] = h.Mode
+	}
+	want := map[string]int64{"cert.pem": 0o644, "chain.pem": 0o644, "fullchain.pem": 0o644, "example.com.key": 0o640, "example.com.pfx": 0o640}
+	if len(modes) != len(want) {
+		t.Errorf("archive %v", modes)
+	}
+	for name, mode := range want {
+		if modes[name] != mode {
+			t.Errorf("%s: mode %o in %v", name, modes[name], modes)
+		}
 	}
 }

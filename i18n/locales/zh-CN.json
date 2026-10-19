@@ -484,6 +484,36 @@
       "ok": "已连上 Caddy 的管理接口 {url}。"
     }
   },
+  "certfiles": {
+    "cipher": {
+      "legacy": "3DES（Windows Server 2016、Java 8）",
+      "modern": "AES-256（现在的系统）"
+    },
+    "error": {
+      "key_mode": "权限 {mode} 让所有用户都能读私钥；最多给到同组，例如 640。",
+      "mode": "{mode} 不是八进制的文件权限，应该像 644 这样。",
+      "name": "{name} 不是文件名：里面不能有路径。",
+      "same": "有两个文件都叫 {name}。"
+    },
+    "field": {
+      "cert": "证书文件名",
+      "cert_mode": "证书文件的权限",
+      "chain": "中间证书文件名",
+      "combined": "私钥加完整链的文件名",
+      "combined_help": "填了文件名才写，给 HAProxy 这类只读一个文件的程序用，例如 '{domain}'.pem。",
+      "fullchain": "完整证书链文件名",
+      "key": "私钥文件名",
+      "key_mode": "私钥文件的权限",
+      "key_mode_help": "八进制，例如 640 让同组的程序也能读；含私钥的合并文件和 PFX 文件也用它。不能让其他用户读。",
+      "mode_help": "八进制，和 chmod 的写法一样，例如 644。",
+      "name_help": "可以用 '{domain}' 代表主域名，例如 '{domain}'.crt；*.example.com 写成 star.example.com。",
+      "pfx": "PKCS #12（PFX）文件名",
+      "pfx_cipher": "PFX 加密方式",
+      "pfx_help": "填了文件名才写，给 IIS、Windows 和 Java 程序用，例如 '{domain}'.pfx。",
+      "pfx_password": "PFX 密码",
+      "pfx_password_help": "不填就不加密；有些程序要求有密码。"
+    }
+  },
   "certs": {
     "action": {
       "add": "添加证书",
@@ -1285,14 +1315,17 @@
   },
   "files": {
     "directory": {
-      "description": "按 certbot 的方式写入 cert.pem、chain.pem、fullchain.pem 和 privkey.pem，新版本覆盖旧文件。",
+      "description": "按 certbot 的方式写入 cert.pem、chain.pem、fullchain.pem 和 privkey.pem，文件名可以改，还能多写一个合并文件或 PFX 文件；新版本覆盖旧文件。",
       "name": "本地目录"
     },
     "error": {
+      "chown": "{directory} 里的文件改不成属于 {owner}：JEC 不以 root 运行时没有权限改属主。",
       "command": "命令执行失败，退出码 {status}，输出见日志。",
       "command_syntax": "命令的 shell 语法不对：{error}",
       "command_timeout": "命令执行了 {minutes, plural, other {# 分钟}}还没结束，已停止。",
       "file_path": "来源要放的文件不在 /.well-known/ 下，JEC 不会写：{path}",
+      "owner": "{owner} 不是属主的写法：应该是 用户、用户:组 或 :组。",
+      "owner_unknown": "这台机器上没有叫 {name} 的用户或组；在容器里请写数字。",
       "relative": "目录必须是绝对路径：{directory}",
       "watch_denied": "JEC 读不了 {path}：没有权限。certbot 和 acme.sh 的私钥通常只有它们的属主能读：可以让 JEC 以这个用户运行，比如 root（在 docker-compose.yml 里把 user 设为 0:0），或者用 certbot 的 --deploy-hook 复制一份到 JEC 能读的地方。",
       "watch_empty": "在 {directory} 里没找到带私钥的证书。",
@@ -1307,6 +1340,8 @@
       "directory": "目录",
       "directory_help": "JEC 能写入的绝对路径。在容器里运行时，填挂载进来的目录，比如 /data/certs。",
       "layout": "文件放在哪里",
+      "owner": "文件属主",
+      "owner_help": "用户、用户:组或 :组，名字或数字都行，例如 root:ssl-cert；不填就属于运行 JEC 的用户。要改成别人，JEC 一般得以 root 运行。",
       "watch_directory": "目录",
       "watch_directory_help": "certbot 用 /etc/letsencrypt，acme.sh 用它的主目录（如 /root/.acme.sh）。JEC 按域名在里面找证书和私钥。",
       "webroot": "网站目录",
@@ -2438,6 +2473,7 @@
       "key": "私钥格式不对，要 OpenSSH 或 PEM 格式。",
       "key_or_passphrase": "私钥或它的口令不对。",
       "no_auth": "要填私钥或密码。",
+      "owner": "{owner} 不是属主的写法：应该是 用户、用户:组 或 :组。",
       "passphrase": "私钥有口令保护，请在高级设置里填写口令。",
       "relative": "远程目录必须是绝对路径：{directory}",
       "write": "没能写入 {directory}：{output}"
@@ -2451,6 +2487,8 @@
       "host_key": "主机公钥",
       "host_key_help": "用来确认连上的是你的服务器：填 SHA256: 开头的指纹（在服务器上运行 ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub 得到），或 known_hosts 里的那一行。留空时第一次部署会失败并显示服务器的指纹，核对无误后填进来。",
       "layout": "文件放在哪里",
+      "owner": "文件属主",
+      "owner_help": "服务器上的用户、用户:组或 :组，和 chown 的写法一样；不填就属于登录的用户。要改成别人，登录的用户得有这个权限。",
       "passphrase": "私钥口令",
       "password": "密码",
       "password_help": "没有私钥时用密码登录。私钥更安全。",
@@ -2477,7 +2515,7 @@
       "name": "SSH"
     },
     "server": {
-      "description": "按 certbot 的文件名写到服务器上的一个目录，再执行你设置的命令。服务器要有 POSIX shell（Linux、BSD 都有）。",
+      "description": "按 certbot 的文件名（也可以自己改）写到服务器上的一个目录，再执行你设置的命令。服务器要有 POSIX shell（Linux、BSD 都有）。",
       "name": "SSH 服务器"
     },
     "test": {

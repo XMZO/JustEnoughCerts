@@ -33,3 +33,21 @@ func ParsePFX(data []byte, password string) (*Bundle, error) {
 	}
 	return NewBundle(append([]*x509.Certificate{leaf}, chain...), signer)
 }
+
+// EncodePFX writes a PKCS #12 file of chain, its leaf first, and key, as
+// Windows, IIS and Java read it. A password encrypts it with AES-256, or
+// with 3DES for legacy, which Windows Server 2016 and Java 8 still need;
+// without one it is not encrypted at all, as some programs want it.
+func EncodePFX(chain []*x509.Certificate, key crypto.Signer, password string, legacy bool) ([]byte, error) {
+	if len(chain) == 0 {
+		return nil, errors.New("cryptox: a PKCS #12 file without a certificate")
+	}
+	enc := pkcs12.Modern
+	switch {
+	case password == "":
+		enc = pkcs12.Passwordless
+	case legacy:
+		enc = pkcs12.LegacyDES
+	}
+	return enc.Encode(key, chain[0], chain[1:], password)
+}

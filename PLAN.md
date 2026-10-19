@@ -381,14 +381,16 @@ DNS 验证分成两种能力，实现方式不同：
 | 面板与应用 | 1Panel、宝塔、Proxmox VE、Nginx Proxy Manager、群晖 DSM、Caddy 管理 API（都已完成） | M3 |
 | 通用 | Webhook、外部插件 | M1 |
 
-**本地文件的实现**（`internal/modules/files`，M1）：部署目标类型 `files.directory`：目录（绝对路径）和放法（每张证书一个以主域名命名的子目录，`*` 写成 `star`；或者直接放在这个目录里）。按 certbot 的文件名写 `cert.pem`、`chain.pem`、`fullchain.pem`、`privkey.pem`（私钥只有所有者可读），每个文件先写到临时文件再改名，读的程序不会读到写了一半的文件；新版本直接覆盖，没有旧版本要删。目录是相对路径、没有写入权限时不自动重试。写好后可以执行一段命令（比如 `systemctl reload nginx`）：用内嵌的 shell 解释器（`mvdan.cc/sh`，POSIX sh 和 Bash 的写法都认）在证书目录里执行，最多 5 分钟；环境变量是 JEC 自己的环境去掉 `JEC_` 开头的设置（比如主密钥），加上 `JEC_CERT_DIR`、`JEC_CERT_FILE`、`JEC_CHAIN_FILE`、`JEC_FULLCHAIN_FILE`、`JEC_KEY_FILE`、`JEC_DOMAIN`、`JEC_DOMAINS`、`JEC_CERTIFICATE_ID`、`JEC_NOT_AFTER`，以及 certbot 部署钩子用的 `RENEWED_LINEAGE`、`RENEWED_DOMAINS`，现成的 certbot 钩子脚本可以直接用。输出的最后 4000 字节记进部署日志；退出码不是 0、语法不对、超时都不自动重试。测试连接只检查命令的语法，不执行。容器镜像里除了 JEC 没有别的程序，所以这主要给原生二进制部署用。
+**本地文件的实现**（`internal/modules/files`，M1）：部署目标类型 `files.directory`：目录（绝对路径）和放法（每张证书一个以主域名命名的子目录，`*` 写成 `star`；或者直接放在这个目录里）。按 certbot 的文件名写 `cert.pem`、`chain.pem`、`fullchain.pem`、`privkey.pem`（私钥只有所有者可读），每个文件先写到临时文件再改名，读的程序不会读到写了一半的文件；新版本直接覆盖，没有旧版本要删。目录是相对路径、没有写入权限时不自动重试。写好后可以执行一段命令（比如 `systemctl reload nginx`）：用内嵌的 shell 解释器（`mvdan.cc/sh`，POSIX sh 和 Bash 的写法都认）在证书目录里执行，最多 5 分钟；环境变量是 JEC 自己的环境去掉 `JEC_` 开头的设置（比如主密钥），加上 `JEC_CERT_DIR`、`JEC_CERT_FILE`、`JEC_CHAIN_FILE`、`JEC_FULLCHAIN_FILE`、`JEC_KEY_FILE`（写了合并文件、PFX 文件时还有 `JEC_COMBINED_FILE`、`JEC_PFX_FILE`）、`JEC_DOMAIN`、`JEC_DOMAINS`、`JEC_CERTIFICATE_ID`、`JEC_NOT_AFTER`，以及 certbot 部署钩子用的 `RENEWED_LINEAGE`、`RENEWED_DOMAINS`，文件名没改时现成的 certbot 钩子脚本可以直接用。
+
+**写成什么文件**（`internal/lib/certfiles`，本地目录、SSH、Docker 三个目标共用，都在高级设置里）：四个文件的名字可以改，`{domain}` 代表主域名（`*` 写成 `star`），例如 `{domain}.crt`；填了名字才多写的两个：私钥加完整链的合并文件（HAProxy 这类只读一个文件的程序用）和 PKCS #12 文件（IIS、Windows、Java 用；可以设密码，不设就不加密；加密方式默认 AES-256，旧系统选 3DES）；证书和私钥各自的权限（八进制，默认 644 和 600，含私钥的文件用后者，不能让其他用户读）。名字里不能有路径、不能重名。属主各目标自己处理：本地目录是“用户、用户:组或 :组”，名字或数字（容器里只能写数字，要改成别人一般得以 root 运行，改不了时不重试）；SSH 在服务器上 `chown`；Docker 是原来的 `uid:gid`。设置不对时打开实例就失败，部署日志和测试连接都会说明。输出的最后 4000 字节记进部署日志；退出码不是 0、语法不对、超时都不自动重试。测试连接只检查命令的语法，不执行。容器镜像里除了 JEC 没有别的程序，所以这主要给原生二进制部署用。
 
 **本机证书目录**（来源类型 `files.watch`，在 `files` 模块里）：取进另一个 ACME 客户端在本机续期的证书和私钥，比如 certbot 的 `/etc/letsencrypt`（`live/<名字>/fullchain.pem`、`privkey.pem`，以及 `archive/` 里的历次版本）、acme.sh 的主目录（`<域名>/fullchain.cer`、`<域名>.key`，ECC 证书在 `<域名>_ecc/`）。JEC 只读：在设置的目录里往下找 4 层，读 `.pem`、`.crt`、`.cer`、`.key` 文件（最多 5000 个、每个不超过 1 MiB），同一个目录里每把私钥配上那里的证书，按证书指纹去重；签发时取覆盖证书全部域名、到期最晚的那张。读文件经过 `os.Root`，不跟随指到这个目录外面的链接：certbot 的 `live/` 里是指向同级 `archive/` 的链接，所以要填 `/etc/letsencrypt`，填 `live` 目录时会提示改填上一级。
 - 来源接口多了一种 `contracts.KeySource`（类型标 `ownKey`）：证书自带私钥，证书模块不生成私钥（日志的“私钥”一步写明随证书取来），添加证书时也不选密钥类型。
 - 到续期时间后，文件里还是现在这张（指纹相同或到期不更晚）就返回 `Wait`，签发进入等待，6 小时后再看，直到原工具续期；新证书取进来后照常部署。所以续期窗口要不早于原工具的（certbot 默认到期前 30 天，和 JEC 一样）。
 - 读不了私钥时（certbot、acme.sh 的私钥通常只有属主能读）报出是哪个文件，提示让 JEC 以那个用户运行（`docker-compose.yml` 里 `user: "0:0"`）或者用 `--deploy-hook` 复制一份；目录不存在时提示挂载。测试连接列出找到了哪些证书。用 Docker 时把目录只读挂载进容器，`docker-compose.yml` 里有注释掉的示例。
 
-**SSH 的实现**（`internal/modules/ssh`，M1）：部署目标类型 `ssh.server`：主机、端口、用户名、私钥（OpenSSH 或 PEM，可以带口令）或密码、主机公钥、远程目录（绝对路径）和放法（同本地文件），以及写入后执行的命令。用已有依赖里的 `golang.org/x/crypto/ssh`，不用 SFTP：每个文件用一条 `cat > 临时文件` 命令写入（私钥在 `umask 077` 下写），四个都写好后用一条命令一起改名，再执行设置的命令（比如 `systemctl reload nginx`），它的输出记进部署日志。所以服务器要有 POSIX shell，Linux 和 BSD 都有。主机公钥一定核对：可以填 `SHA256:` 开头的指纹，或 known_hosts 里的那一行；留空时第一次部署会失败，错误信息给出服务器出示的指纹，让人核对后填进去。登录被拒、主机公钥不对、写不进去、命令退出码不是 0 都不自动重试，网络问题照常重试。
+**SSH 的实现**（`internal/modules/ssh`，M1）：部署目标类型 `ssh.server`：主机、端口、用户名、私钥（OpenSSH 或 PEM，可以带口令）或密码、主机公钥、远程目录（绝对路径）和放法（同本地文件），以及写入后执行的命令。用已有依赖里的 `golang.org/x/crypto/ssh`，不用 SFTP：每个文件用一条 `cat > 临时文件` 命令写入（都在 `umask 077` 下写，再 `chmod` 成设置的权限，设了属主时 `chown`），全部写好后用一条命令一起改名，再执行设置的命令（比如 `systemctl reload nginx`），它的输出记进部署日志。所以服务器要有 POSIX shell，Linux 和 BSD 都有。主机公钥一定核对：可以填 `SHA256:` 开头的指纹，或 known_hosts 里的那一行；留空时第一次部署会失败，错误信息给出服务器出示的指纹，让人核对后填进去。登录被拒、主机公钥不对、写不进去、命令退出码不是 0 都不自动重试，网络问题照常重试。
 
 **面板的实现**（模块 `baota`、`onepanel`，M3，接口用法参考 certimate 里验证过的实现）：
 
@@ -880,8 +882,8 @@ services:
   - 整个导入在一个事务里：先完整执行一遍，列出每一项的结果（新增、修改、不变、跳过）和问题，再回滚；确认后再执行一遍并提交。所以后面的部分能引用前面刚建的服务商，而预览不留下任何东西。任何一项有错误都不执行，提示（如来源不能换）不影响。文件里有不认识的键（大小写写错也算）、格式版本比程序新时整个文件被拒；模块停用时它那部分跳过并报错。模块的导入只能经给它的事务写数据库，提交后再唤醒签发和部署。
   - 界面：预览对话框按部分列出，有改动和有问题的每项一个框（动作标签带图标），不变的同一部分合成一行列出名称，手机上不会太长；有错误时“导入”按钮不可用。导入后设置页上的续期默认值随之刷新。
 - **密钥类型**：RSA 2048/3072/4096，ECDSA P-256/P-384；可以每张证书单独设置。
-- **证书格式**：PEM（证书 / 完整链 / 私钥分开或合并）、PFX/PKCS#12、JKS。上传已支持 PEM 和 PFX/P12（带密码）：添加证书和上传新版本时选“PEM 文本”或“PFX / P12 文件”，接口里是 `pfx`（Base64）和 `pfxPassword`；密码不对、文件读不了、私钥和证书不配对时报在文件的字段上。
-- **文件部署**：路径、文件名模板、属主、权限、写入后执行的命令都可配置，因此兼容 nginx、caddy、haproxy 等任何读文件的程序。
+- **证书格式**：PEM（证书 / 完整链 / 私钥分开或合并）、PFX/PKCS#12、JKS。写文件的部署目标能写 PEM（分开或合并）和 PKCS #12（见 5.3.3 的“写成什么文件”）；JKS 不做：Java 9 起 keystore 默认就是 PKCS #12，Tomcat 等直接读 PFX 文件。上传已支持 PEM 和 PFX/P12（带密码）：添加证书和上传新版本时选“PEM 文本”或“PFX / P12 文件”，接口里是 `pfx`（Base64）和 `pfxPassword`；密码不对、文件读不了、私钥和证书不配对时报在文件的字段上。
+- **文件部署**：路径、文件名模板、属主、权限、写入后执行的命令都可配置（已实现，5.3.3），因此兼容 nginx、caddy、haproxy 等任何读文件的程序。
 - **导入现有证书**：支持手动上传，也支持扫描 acme.sh、certbot 的目录导入（只读，避免冲突）。
 - **命名模板**：部署到 CDN 时的证书名可自定义，例如 `jec-{{.Domain}}-{{.NotAfter | date "20060102"}}`。
 - **网络**：每个 Provider 可以单独设置 HTTP 代理；验证 DNS 是否生效时可以指定公共解析服务器；支持 IPv6。
