@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Copies the linux binaries of a GoReleaser build into the layout that the
-# Dockerfile "release" target expects: <context>/<os>/<arch>/jec.
+# Dockerfile "release" target expects: <context>/<os>/<arch>[/<variant>]/jec,
+# as Docker's TARGETPLATFORM names them (linux/arm/v7 for 32-bit ARM).
 #
 #   scripts/stage-image-context.sh [dist-dir] [context-dir]
 set -euo pipefail
@@ -9,7 +10,7 @@ dist=${1:-dist}
 context=${2:-build/image}
 
 binaries=$(jq -r '.[] | select(.type == "Binary" and .goos == "linux")
-  | [.goos, .goarch, .path] | @tsv' "$dist/artifacts.json")
+  | [.goos, .goarch + (if (.goarm // "") != "" then "/v" + .goarm else "" end), .path] | @tsv' "$dist/artifacts.json")
 if [ -z "$binaries" ]; then
   echo "no linux binaries in $dist/artifacts.json" >&2
   exit 1

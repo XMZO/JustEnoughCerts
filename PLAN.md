@@ -814,6 +814,7 @@ services:
 - **模块依赖检查**：`internal/modules` 的架构测试禁止模块之间互相 import、禁止内核 import 模块；`scripts/check-modules.sh` 逐个去掉每个模块后编译，并检查脚手架生成的新模块能编译、测试通过。
 - **体积检查**：发布演练输出各平台的程序和压缩包体积、最大的包，前端任务输出首屏 JS 大小，超过预算就失败（预算见 8.3 和 6.4）。和 main 分支对比并评论到 PR 以后再做：fork 来的 PR 没有写权限，要另配 `workflow_run`。
 - 用 `ubuntu-24.04-arm` 原生 ARM 运行器（公开仓库免费）再跑一遍测试，确保 ARM 上行为一致。
+- 32 位 ARM（armv7，发布里有它的程序和镜像）没有 GitHub 运行器：`test (linux/arm/v7, emulated)` 在 x86 运行器上用 QEMU（`docker/setup-qemu-action` 注册 binfmt_misc）跑 `GOARCH=arm GOARM=7 go test ./...`。会把测试程序自己当子进程启动的测试（lego 的子进程、插件）要靠 binfmt_misc，只用 `go test -exec qemu-arm` 时会报 exec format error。程序约 75 MiB、压缩包约 23 MiB，都在预算内。
 - **编译缓存**：Go 由 `.github/actions/setup-go` 安装，每个任务有自己的编译缓存（键是任务名、Go 版本和 `go.sum`，换了 `go.sum` 从这个任务上一次的缓存接着用）。不用 setup-go 自带的缓存：它每个 `go.sum` 只有一份、所有任务共用，最先跑完的任务（往往编译得最少）存进去，其他任务每次都从头编译 lego 那一大堆依赖。只有 main 上的运行写缓存，PR 和标签只读，免得把 main 的缓存挤出仓库 10 GB 的上限。发布演练和正式发布共用一份。
 
 ### 9.2 `release.yml`：推送 `v*.*.*` 标签时
@@ -823,12 +824,12 @@ services:
 
    | 系统 | x86_64 | ARM64 | 其他 |
    |---|---|---|---|
-   | Linux | ✅ | ✅ | armv7（树莓派等，可选） |
+   | Linux | ✅ | ✅ | armv7（树莓派等 32 位系统，✅） |
    | macOS | ✅ | ✅ | 顺手附带 |
 
    打包格式：`.tar.gz`，另附 `checksums.txt`、SBOM（syft 生成），并用 cosign 无密钥签名。
 3. **ghcr.io 多架构镜像**：`FROM scratch`，直接复制上一步编译好的对应架构程序，不在 QEMU 模拟环境里编译，所以快且稳定。
-   - 平台：`linux/amd64`、`linux/arm64`（armv7 可选）。
+   - 平台：`linux/amd64`、`linux/arm64`、`linux/arm/v7`。
    - 标签：`1.2.3`、`1.2`、`1`、`latest`。预发布版本（如 `v1.3.0-beta.1`）只打 `beta` 和完整版本号，不动 `latest`。
    - 镜像层用 gzip 最高级别压缩；附带构建来源证明（provenance attestation）。
 4. 根据 Conventional Commits 自动生成更新日志，创建 GitHub Release，并在说明里写上本次的镜像和程序体积。

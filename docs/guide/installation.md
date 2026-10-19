@@ -14,8 +14,9 @@ mkdir -p data && sudo chown 65532:65532 data
 docker compose up -d
 ```
 
-- **Image**: `ghcr.io/xmzo/justenoughcerts`, for linux/amd64 and
-  linux/arm64. The tag `latest` is the newest stable release and `beta`
+- **Image**: `ghcr.io/xmzo/justenoughcerts`, for linux/amd64,
+  linux/arm64 and, from the release after 0.1.0-alpha.5, linux/arm/v7
+  (32-bit ARM, as on a Raspberry Pi with a 32-bit system). The tag `latest` is the newest stable release and `beta`
   the newest test release; a version, such as `0.1.0-alpha.5`, can be
   given as well.
 - **User**: the container runs as 65532:65532 by default, so `./data` must
@@ -40,7 +41,9 @@ them as needed:
 ## Binaries
 
 Each version provides static binaries for Linux and macOS, on amd64 and
-arm64, on the [releases page](https://github.com/XMZO/JustEnoughCerts/releases).
+arm64, and for Linux on 32-bit ARM (`linux_armv7`, from the release after
+0.1.0-alpha.5), on the
+[releases page](https://github.com/XMZO/JustEnoughCerts/releases).
 There are no Windows builds; on Windows, use Docker or WSL.
 
 ```sh

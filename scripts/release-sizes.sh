@@ -42,8 +42,9 @@ check() { # what size budget
 
 # Collect everything first: a failing command inside "< <(...)" would go
 # unnoticed, while a failing "$(...)" assignment stops the script.
+# Platforms are named as Docker names them: linux/arm/v7 for 32-bit ARM.
 artifacts=$(jq -r '.[] | select(.type == "Binary" or .type == "Archive")
-  | [.type, .goos + "/" + .goarch, .path] | @tsv' "$dist/artifacts.json")
+  | [.type, .goos + "/" + .goarch + (if (.goarm // "") != "" then "/v" + .goarm else "" end), .path] | @tsv' "$dist/artifacts.json")
 if [ -z "$artifacts" ]; then
   echo "no binaries in $dist/artifacts.json" >&2
   exit 1
@@ -62,7 +63,7 @@ if [ -n "$image" ]; then
   repo=${image%@*}
   index=$(docker buildx imagetools inspect --raw "$image")
   platforms=$(jq -r '.manifests[] | select(.platform.os != "unknown")
-    | [.platform.os + "/" + .platform.architecture, .digest] | @tsv' <<<"$index")
+    | [.platform.os + "/" + .platform.architecture + (if .platform.architecture == "arm" then "/" + .platform.variant else "" end), .digest] | @tsv' <<<"$index")
   while IFS=$'\t' read -r platform digest; do
     manifest=$(docker buildx imagetools inspect --raw "$repo@$digest")
     pulled[$platform]=$(jq '[.layers[].size] | add' <<<"$manifest")
