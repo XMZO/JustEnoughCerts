@@ -2,7 +2,7 @@ import { createHmac } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import { pseudoize } from '../src/i18n/pseudo'
 import { selfSigned } from './certs'
@@ -16,6 +16,13 @@ const english = JSON.parse(readFileSync(new URL('../../i18n/locales/en-US.json',
 /** label is how a plain message reads in the pseudo-locale, to find a button by its name. */
 function label(key: string): string {
   return message(key, {})
+}
+
+// pick chooses a type in a provider dialog and waits for its form: until
+// then the last type's form stays, inert, and what is typed into it is lost.
+async function pick(dialog: Locator, name: string): Promise<void> {
+  await dialog.getByRole('option', { name }).click()
+  await expect(dialog.locator('form [inert]')).toHaveCount(0)
 }
 
 /** message is how a message with simple parameters, not plurals, reads in the pseudo-locale. */
@@ -327,7 +334,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   const dialog = page.locator('dialog[open]')
   await expect(dialog).toBeVisible()
   expect.soft(await problems(page), 'add a source').toEqual([])
-  await dialog.getByRole('option', { name: label('acme.account.name') }).click()
+  await pick(dialog, label('acme.account.name'))
   await dialog.getByLabel(label('acme.field.ca')).selectOption('custom')
   await dialog.locator('button[type=submit]').click()
   await expect(dialog.getByText(label('kernel.error.field_required'))).toBeVisible()
@@ -344,7 +351,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(dialog).toBeVisible()
   expect.soft(await problems(page), 'add a DNS provider').toEqual([])
   await dialog.getByRole('searchbox').fill('http')
-  await dialog.getByRole('option', { name: 'HTTP request' }).click()
+  await pick(dialog, 'HTTP request')
   await expect(dialog.getByLabel('HTTPREQ_ENDPOINT')).toBeVisible()
   expect.soft(await problems(page), 'add a DNS provider: its form').toEqual([])
   await dialog.getByLabel('HTTPREQ_ENDPOINT').fill('http://127.0.0.1:9')
@@ -353,14 +360,14 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'domain validation with one').toEqual([])
   await page.getByRole('button', { name: label('kernel.providers.solver.add') }).filter({ visible: true }).first().click()
   await dialog.getByRole('searchbox').fill('wellknown')
-  await dialog.getByRole('option', { name: label('wellknown.answer.name') }).click()
+  await pick(dialog, label('wellknown.answer.name'))
   await expect(dialog.getByLabel(label('wellknown.field.domain'))).toBeVisible()
   expect.soft(await problems(page), 'add a validation answered by JEC').toEqual([])
   await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
   await expect(page.locator('dialog[open]')).toHaveCount(0)
   await page.getByRole('button', { name: label('kernel.providers.solver.add') }).filter({ visible: true }).first().click()
   await dialog.getByRole('searchbox').fill('esa.edge')
-  await dialog.getByRole('option', { name: label('esa.edge.name') }).click()
+  await pick(dialog, label('esa.edge.name'))
   await expect(dialog.getByLabel(label('esa.field.domain'))).toBeVisible()
   expect.soft(await problems(page), "add a validation answered at ESA's edge").toEqual([])
   await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
@@ -373,7 +380,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.getByRole('button', { name: label('kernel.providers.target.add') }).filter({ visible: true }).first().click()
   await expect(dialog).toBeVisible()
   expect.soft(await problems(page), 'add a deploy target').toEqual([])
-  await dialog.getByRole('option', { name: label('esa.site.name') }).click()
+  await pick(dialog, label('esa.site.name'))
   await expect(dialog.getByLabel(label('esa.field.site'))).toBeVisible()
   expect.soft(await problems(page), 'add a deploy target: ESA').toEqual([])
   for (const [type, field] of [
@@ -381,20 +388,20 @@ test('every page is translated and fits', async ({ page }, info) => {
     ['webhook.deploy.name', 'webhook.field.secret'],
   ] as const) {
     if (info.project.name === 'phone') await dialog.getByRole('button', { name: label('kernel.providers.choose_other') }).click()
-    await dialog.getByRole('option', { name: label(type) }).click()
+    await pick(dialog, label(type))
     await expect(dialog.getByLabel(label(field))).toBeVisible()
     expect.soft(await problems(page), `add a deploy target: ${type}`).toEqual([])
   }
   // A plugin's type, with the texts it brings, where shell scripts run.
   if (process.platform !== 'win32') {
     if (info.project.name === 'phone') await dialog.getByRole('button', { name: label('kernel.providers.choose_other') }).click()
-    await dialog.getByRole('option', { name: pseudoize('E2E plugin target') }).click()
+    await pick(dialog, pseudoize('E2E plugin target'))
     await expect(dialog.getByLabel(pseudoize('Endpoint'))).toBeVisible()
     await expect(dialog.getByText(pseudoize('Where it {would} deploy'))).toBeVisible()
     expect.soft(await problems(page), 'add a deploy target: a plugin').toEqual([])
   }
   if (info.project.name === 'phone') await dialog.getByRole('button', { name: label('kernel.providers.choose_other') }).click()
-  await dialog.getByRole('option', { name: label('files.directory.name') }).click()
+  await pick(dialog, label('files.directory.name'))
   await dialog.getByLabel(label('kernel.providers.field.name')).fill('e2e files')
   await dialog.getByLabel(label('files.field.directory')).fill(`${process.env.JEC_E2E_FILES}/${info.project.name}`)
   expect.soft(await problems(page), 'add a deploy target: a directory').toEqual([])
@@ -439,7 +446,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.getByRole('button', { name: label('kernel.providers.source.add') }).filter({ visible: true }).first().click()
   await expect(dialog).toBeVisible()
   await dialog.getByRole('searchbox').fill('files.watch')
-  await dialog.getByRole('option', { name: label('files.watch.name') }).click()
+  await pick(dialog, label('files.watch.name'))
   await dialog.getByLabel(label('kernel.providers.field.name')).fill('e2e watch')
   await dialog.getByLabel(label('files.field.watch_directory')).fill(`${process.env.JEC_E2E_FILES}/${info.project.name}`)
   expect.soft(await problems(page), 'add a source: a directory to watch').toEqual([])
@@ -455,7 +462,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.goto('./targets')
   await page.getByRole('button', { name: label('kernel.providers.target.add') }).filter({ visible: true }).first().click()
   await expect(dialog).toBeVisible()
-  await dialog.getByRole('option', { name: label('files.directory.name') }).click()
+  await pick(dialog, label('files.directory.name'))
   await dialog.getByLabel(label('kernel.providers.field.name')).fill('e2e relative')
   await dialog.getByLabel(label('files.field.directory')).fill('relative/certs')
   // Saved and tested at once: the dialog stays, with what the test said.
@@ -496,11 +503,11 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.getByRole('button', { name: label('kernel.providers.notifier.add') }).filter({ visible: true }).first().click()
   await expect(dialog).toBeVisible()
   expect.soft(await problems(page), 'add a channel').toEqual([])
-  await dialog.getByRole('option', { name: label('telegram.bot.name') }).click()
+  await pick(dialog, label('telegram.bot.name'))
   await expect(dialog.getByLabel(label('telegram.field.chat'))).toBeVisible()
   expect.soft(await problems(page), 'add a channel: Telegram').toEqual([])
   if (info.project.name === 'phone') await dialog.getByRole('button', { name: label('kernel.providers.choose_other') }).click()
-  await dialog.getByRole('option', { name: label('webhook.notify.name') }).click()
+  await pick(dialog, label('webhook.notify.name'))
   await dialog.getByLabel(label('kernel.providers.field.name')).fill('e2e hook')
   await dialog.getByLabel(label('webhook.field.url')).fill('http://127.0.0.1:9/hook')
   await dialog.locator('details > summary').click()
@@ -516,7 +523,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   // A script, whose test fails with what it wrote.
   await page.getByRole('button', { name: label('kernel.providers.notifier.add') }).filter({ visible: true }).first().click()
   await expect(dialog).toBeVisible()
-  await dialog.getByRole('option', { name: label('hooks.script.name') }).click()
+  await pick(dialog, label('hooks.script.name'))
   await dialog.getByLabel(label('kernel.providers.field.name')).fill('e2e script')
   await dialog.getByLabel(label('hooks.field.script')).fill('echo "no route from $JEC_EVENT" >&2; exit 1')
   expect.soft(await problems(page), 'add a channel: a script').toEqual([])
@@ -534,7 +541,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.getByRole('button', { name: label('kernel.credentials.add') }).filter({ visible: true }).first().click()
   await expect(dialog).toBeVisible()
   expect.soft(await problems(page), 'add a credential').toEqual([])
-  await dialog.getByRole('option', { name: label('credentials.ssh_key.name') }).click()
+  await pick(dialog, label('credentials.ssh_key.name'))
   await dialog.getByLabel(label('kernel.providers.field.name')).fill('e2e key')
   await dialog.getByLabel(label('credentials.ssh_key.private_key')).fill('e2e private key')
   expect.soft(await problems(page), 'add a credential: an SSH key').toEqual([])
@@ -544,7 +551,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'credentials with one').toEqual([])
   await page.goto('./targets')
   await page.getByRole('button', { name: label('kernel.providers.target.add') }).filter({ visible: true }).first().click()
-  await dialog.getByRole('option', { name: label('ssh.server.name') }).click()
+  await pick(dialog, label('ssh.server.name'))
   await expect(dialog.getByLabel(label('ssh.field.private_key'))).toBeVisible()
   await dialog.getByLabel(label('kernel.providers.credential.label')).selectOption({ label: 'e2e key' })
   await expect(dialog.getByLabel(label('ssh.field.private_key'))).toBeHidden()
@@ -662,7 +669,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.goto('./sources')
   await page.getByRole('button', { name: label('kernel.providers.source.add') }).filter({ visible: true }).first().click()
   await expect(dialog).toBeVisible()
-  await dialog.getByRole('option', { name: label('namecheap.ssl_manager.name') }).click()
+  await pick(dialog, label('namecheap.ssl_manager.name'))
   await expect(dialog.getByLabel(label('namecheap.field.token'))).toBeVisible()
   expect.soft(await problems(page), 'add a source: Namecheap').toEqual([])
   await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()

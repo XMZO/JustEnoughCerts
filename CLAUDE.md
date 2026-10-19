@@ -113,7 +113,7 @@
 - 又加了一批部署目标（都只用替身测过）：AWS CloudFront `aws.cloudfront`（导入 us-east-1 的 ACM，第一次部署时 `UpdateDistribution` 设为分发的证书，之后原地重新导入）、腾讯云直接部署 `tencentcloud.cdn`（SSL 证书服务的 `DeployCertificateInstance`）和 `tencentcloud.teo`（EdgeOne 的 `ModifyHostsCertificate`）、Gcore CDN `gcore.cdn`（凭据种类 `gcore`，lego 的 Gcore DNS 共用）、华为云 ELB `huaweicloud.elb`（ELB v3 SDK，只存方法值，原地 `UpdateCertificate`，可设为监听器的默认证书）。部署目标共 31 种（含实验的又拍云），README 和介绍页的数字随之改。
 - 私有 CA（来源类型 `privateca.ca`，模块 `privateca`）：用用户填的 CA 证书和私钥签发，不要验证，IPv4 地址进 `IPAddresses`，有效期默认 90、最多 825 天且不超过 CA，链里去掉自签名的根。
 - 主题色和方块风（`web/src/theme.ts`）：设置页“外观”可选绿、蓝、青、紫、粉（`tokens.json` 的 `color.accents`，每种都核对过对比度；`data-accent` 也能放在单个元素上，设置里的色块就这样取自己的颜色）和“方块风”（`styles`：全部直角、像素阴影、`JecButton` 的 `jec-bevel` 斜面），都存在浏览器里。
-- 服务商对话框的表单每次打开、每种类型只初始化一次（`ProviderDialog.vue` 的 `formFor`），类型详情晚到或重新获取不会再覆盖已经填的内容，加载时填的名字也保留（CI 上伪语言测试曾因此偶发失败）。
+- 服务商对话框的表单每次打开、每种类型只初始化一次（`ProviderDialog.vue` 的 `formFor`），重新获取类型不会覆盖已经填的内容。换类型时旧表单是 `inert` 的，Playwright 往里 `fill` 会静默丢掉：伪语言测试选类型一律用 `pick(dialog, name)`，等新表单可用再填（CI 上曾因此偶发失败）。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定
