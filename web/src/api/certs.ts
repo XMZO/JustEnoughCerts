@@ -89,6 +89,12 @@ export function useRuns(days: MaybeRefOrGetter<number>, enabled: MaybeRefOrGette
 }
 
 /** An issuance with its steps and log, polled while it is under way. */
+/** untilNext is how long to wait to look again at what tries again at nextAt: just after it, between two and 30 seconds. */
+export function untilNext(nextAt?: string | null): number {
+  const due = nextAt ? Date.parse(nextAt) - Date.now() + 1500 : Number.NaN
+  return Number.isNaN(due) ? 30_000 : Math.min(30_000, Math.max(2000, due))
+}
+
 export function useIssuance(id: MaybeRefOrGetter<number>, enabled: MaybeRefOrGetter<boolean> = true) {
   const client = useQueryClient()
   return useQuery({
@@ -104,7 +110,8 @@ export function useIssuance(id: MaybeRefOrGetter<number>, enabled: MaybeRefOrGet
       return detail
     },
     // Quick while an attempt runs or is about to, or the version it issued
-    // is being deployed; slow while a retry or the source waits.
+    // is being deployed; while a retry or the source waits, again just after
+    // the next try. Back on the tab, at once.
     refetchInterval: (query) => {
       const is = query.state.data?.issuance
       if (is?.state === 'running' || (is?.state === 'pending' && !is.error)) return 2000
@@ -112,8 +119,9 @@ export function useIssuance(id: MaybeRefOrGetter<number>, enabled: MaybeRefOrGet
         (d) => d.versionId === is?.versionId && (d.state === 'running' || (d.state === 'pending' && !d.error)),
       )
       if (is?.state === 'done' && deploying) return 2000
-      return is?.state === 'pending' || is?.state === 'waiting' ? 30_000 : false
+      return is?.state === 'pending' || is?.state === 'waiting' ? untilNext(is.nextAt) : false
     },
+    refetchOnWindowFocus: 'always',
   })
 }
 
@@ -144,8 +152,9 @@ export function useDeployment(id: MaybeRefOrGetter<number>) {
     refetchInterval: (query) => {
       const d = query.state.data?.deployment
       if (d?.state === 'running' || (d?.state === 'pending' && !d.error)) return 2000
-      return d?.state === 'pending' ? 30_000 : false
+      return d?.state === 'pending' ? untilNext(d.nextAt) : false
     },
+    refetchOnWindowFocus: 'always',
   })
 }
 
