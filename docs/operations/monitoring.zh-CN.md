@@ -48,15 +48,40 @@ scrape_configs:
 | `jec_data_free_bytes` | 数据目录所在文件系统的可用空间（字节） |
 | `jec_data_size_bytes` | 数据目录所在文件系统的总大小（字节） |
 
-证书在 14 天内到期时告警的示例：
+告警规则示例（可直接放入 Prometheus 的规则文件）：
 
 ```yaml
-- alert: CertificateEndsSoon
-  expr: jec_certificate_expiry_timestamp_seconds - time() < 14 * 86400
-  labels:
-    severity: warning
-  annotations:
-    summary: "{{ $labels.domain }} 将在 14 天内到期"
+groups:
+  - name: jec
+    rules:
+      - alert: CertificateEndsSoon
+        expr: jec_certificate_expiry_timestamp_seconds - time() < 14 * 86400
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.domain }} 将在 14 天内到期"
+      - alert: CertificateServedOld
+        expr: jec_certificate_served_old > 0
+        for: 1h
+        annotations:
+          summary: "{{ $labels.domain }} 线上仍是旧证书"
+      - alert: CertificateChainIncomplete
+        expr: jec_certificate_chain_incomplete > 0
+        annotations:
+          summary: "{{ $labels.domain }} 缺少中间证书"
+      - alert: ProviderFailing
+        expr: jec_provider_test_ok == 0
+        annotations:
+          summary: "服务商 {{ $labels.name }} 测试失败"
+      - alert: DomainEndsSoon
+        expr: jec_domain_expiry_timestamp_seconds - time() < 30 * 86400
+        annotations:
+          summary: "域名 {{ $labels.domain }} 的注册将在 30 天内到期"
+      - alert: JecJobFailing
+        expr: jec_job_failed > 0
+        for: 6h
+        annotations:
+          summary: "JEC 的后台任务 {{ $labels.job }} 持续失败"
 ```
 
 ## 心跳监控

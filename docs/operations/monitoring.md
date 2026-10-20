@@ -53,15 +53,40 @@ domain.
 | `jec_data_free_bytes` | The bytes free on the file system of the data directory |
 | `jec_data_size_bytes` | The size of that file system, in bytes |
 
-An alert for certificates that end within 14 days:
+Alerting rules, ready for a rules file of Prometheus:
 
 ```yaml
-- alert: CertificateEndsSoon
-  expr: jec_certificate_expiry_timestamp_seconds - time() < 14 * 86400
-  labels:
-    severity: warning
-  annotations:
-    summary: "{{ $labels.domain }} ends in under 14 days"
+groups:
+  - name: jec
+    rules:
+      - alert: CertificateEndsSoon
+        expr: jec_certificate_expiry_timestamp_seconds - time() < 14 * 86400
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.domain }} ends in under 14 days"
+      - alert: CertificateServedOld
+        expr: jec_certificate_served_old > 0
+        for: 1h
+        annotations:
+          summary: "{{ $labels.domain }} still serves an older certificate"
+      - alert: CertificateChainIncomplete
+        expr: jec_certificate_chain_incomplete > 0
+        annotations:
+          summary: "{{ $labels.domain }} serves no intermediates"
+      - alert: ProviderFailing
+        expr: jec_provider_test_ok == 0
+        annotations:
+          summary: "Provider {{ $labels.name }} fails its test"
+      - alert: DomainEndsSoon
+        expr: jec_domain_expiry_timestamp_seconds - time() < 30 * 86400
+        annotations:
+          summary: "The registration of {{ $labels.domain }} ends in under 30 days"
+      - alert: JecJobFailing
+        expr: jec_job_failed > 0
+        for: 6h
+        annotations:
+          summary: "The JEC job {{ $labels.job }} keeps failing"
 ```
 
 ## Heartbeat
