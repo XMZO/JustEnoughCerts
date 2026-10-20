@@ -2588,6 +2588,10 @@
       "other": "线上是另一张证书（不是 JEC 部署的）：{issuer} 签发，{date} 到期",
       "unreachable": "443 端口没有 TLS 回应"
     },
+    "tls": {
+      "legacy": "仍接受已淘汰的 TLS 1.0/1.1，浏览器早已不用，建议在服务器或 CDN 的设置里关掉。",
+      "version": "TLS {version}"
+    },
     "view": {
       "cn": "中国大陆",
       "global": "海外"

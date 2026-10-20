@@ -2195,6 +2195,8 @@ export interface components {
             incomplete?: boolean;
             /** @description Who issued the certificate served */
             issuer?: string;
+            /** @description Where the version in use was served, TLS 1.0 or 1.1 is still taken, which browsers dropped */
+            legacyTls?: boolean;
             /**
              * Format: date-time
              * @description When the certificate served ends
@@ -2205,6 +2207,8 @@ export interface components {
              * @enum {string}
              */
             state: "ok" | "old" | "other" | "unreachable";
+            /** @description The TLS version spoken, as 1.3, where the version in use was served */
+            tlsVersion?: string;
             /**
              * @description cn: as visitors from mainland China reach the domain; global: as those from elsewhere do; absent when its DNS sends them the same way
              * @enum {string}

@@ -2588,6 +2588,10 @@
       "other": "Serves another certificate, not one JEC deployed: from {issuer}, ending on {date}",
       "unreachable": "Nothing answered over TLS on port 443"
     },
+    "tls": {
+      "legacy": "Still takes TLS 1.0 or 1.1, which browsers dropped long ago: turn them off in the server's or CDN's settings.",
+      "version": "TLS {version}"
+    },
     "view": {
       "cn": "Mainland China",
       "global": "Elsewhere"

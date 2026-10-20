@@ -1947,6 +1947,8 @@ const (
 	MonitorStateOld                          Key = "monitor.state.old"
 	MonitorStateOther                        Key = "monitor.state.other"
 	MonitorStateUnreachable                  Key = "monitor.state.unreachable"
+	MonitorTlsLegacy                         Key = "monitor.tls.legacy"
+	MonitorTlsVersion                        Key = "monitor.tls.version"
 	MonitorViewCn                            Key = "monitor.view.cn"
 	MonitorViewGlobal                        Key = "monitor.view.global"
 	NamecheapErrorAddRecord                  Key = "namecheap.error.add_record"

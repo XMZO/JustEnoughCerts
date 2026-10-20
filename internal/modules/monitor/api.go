@@ -26,6 +26,8 @@ type DomainCheckBody struct {
 	Issuer      string     `json:"issuer,omitempty" doc:"Who issued the certificate served"`
 	Error       string     `json:"error,omitempty" doc:"Why the connection failed, as Go put it"`
 	Incomplete  bool       `json:"incomplete,omitempty" doc:"The version in use was served without the intermediates clients need: browsers on computers fetch them, many apps, Android and curl fail"`
+	TLSVersion  string     `json:"tlsVersion,omitempty" doc:"The TLS version spoken, as 1.3, where the version in use was served"`
+	LegacyTLS   bool       `json:"legacyTls,omitempty" doc:"Where the version in use was served, TLS 1.0 or 1.1 is still taken, which browsers dropped"`
 	CheckedAt   time.Time  `json:"checkedAt"`
 }
 
@@ -157,7 +159,7 @@ func (m *Module) output(ctx context.Context, id int64) (*certificateOutput, erro
 	checkAt := t.checkAt.UTC()
 	out.Body.CheckAt = &checkAt
 	rows, err := m.db.QueryContext(ctx,
-		"SELECT domain, view, state, fingerprint, not_after, issuer, error, checked_at, incomplete FROM monitor_results WHERE certificate_id = ? ORDER BY view", id)
+		"SELECT domain, view, state, fingerprint, not_after, issuer, error, checked_at, incomplete, tls_version, legacy_tls FROM monitor_results WHERE certificate_id = ? ORDER BY view", id)
 	if err != nil {
 		return nil, err
 	}
@@ -165,11 +167,12 @@ func (m *Module) output(ctx context.Context, id int64) (*certificateOutput, erro
 	byDomain := map[string][]DomainCheckBody{}
 	for rows.Next() {
 		var r DomainCheckBody
-		var notAfter, checked, incomplete int64
-		if err := rows.Scan(&r.Domain, &r.View, &r.State, &r.Fingerprint, &notAfter, &r.Issuer, &r.Error, &checked, &incomplete); err != nil {
+		var notAfter, checked, incomplete, legacy int64
+		if err := rows.Scan(&r.Domain, &r.View, &r.State, &r.Fingerprint, &notAfter, &r.Issuer, &r.Error, &checked, &incomplete, &r.TLSVersion, &legacy); err != nil {
 			return nil, err
 		}
 		r.Incomplete = incomplete == 1 && r.State == stateOK
+		r.LegacyTLS = legacy == 1 && r.State == stateOK
 		if notAfter != 0 {
 			na := time.UnixMilli(notAfter).UTC()
 			r.NotAfter = &na

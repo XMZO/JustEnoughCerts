@@ -829,7 +829,7 @@ test('every page is translated and fits', async ({ page }, info) => {
       json: {
         tracked: true, checkAt: at(0.25), skipped: ['*.issued.example.com'], ports: [443, 993],
         results: [
-          { domain: 'issued.example.com', state: 'ok', fingerprint: 'a'.repeat(64), notAfter: at(80), issuer: 'Fake CA', incomplete: true, checkedAt: at(0) },
+          { domain: 'issued.example.com', state: 'ok', fingerprint: 'a'.repeat(64), notAfter: at(80), issuer: 'Fake CA', incomplete: true, tlsVersion: '1.3', legacyTls: true, checkedAt: at(0) },
           { domain: 'issued.example.com:993', state: 'unreachable', error: 'dial tcp: connection refused', checkedAt: at(0) },
           { domain: 'www.issued.example.com', state: 'old', fingerprint: 'b'.repeat(64), notAfter: at(20), issuer: 'Fake CA', checkedAt: at(0) },
         ],
@@ -838,6 +838,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   )
   await page.reload()
   await expect(page.getByText(label('monitor.state.incomplete'))).toBeVisible()
+  await expect(page.getByText(label('monitor.tls.legacy'))).toBeVisible()
   const versionRows = page.locator('section[aria-labelledby=versions] li')
   await expect(versionRows).toHaveCount(3)
   await expect(page.getByText(label('certs.detail.revoked_renewing'))).toBeVisible()

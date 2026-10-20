@@ -71,7 +71,7 @@ const views: Record<NonNullable<MonitorResult['view']>, MessageKey> = {
 const rows = computed(() => {
   const out: { key: string; domains: string[]; result: MonitorResult; at: string }[] = []
   for (const r of body.value?.results ?? []) {
-    const key = [r.view, r.state, r.fingerprint, r.issuer, r.notAfter, r.error, r.incomplete].map((x) => x ?? '').join('|')
+    const key = [r.view, r.state, r.fingerprint, r.issuer, r.notAfter, r.error, r.incomplete, r.tlsVersion, r.legacyTls].map((x) => x ?? '').join('|')
     const row = out.find((x) => x.key === key)
     if (!row) out.push({ key, domains: [r.domain], result: r, at: r.checkedAt })
     else {
@@ -130,10 +130,14 @@ function line(r: MonitorResult): string {
               <span v-if="row.result.view" class="rounded-sm bg-surface-sunken px-1.5 text-caption text-ink-muted">{{ t(views[row.result.view]) }}</span>
             </span>
             <span class="flex flex-wrap items-baseline justify-between gap-x-3 text-small">
-              <span>{{ line(row.result) }}</span>
+              <span>
+                {{ line(row.result) }}
+                <span v-if="row.result.tlsVersion" class="text-caption text-ink-muted">{{ t('monitor.tls.version', { version: row.result.tlsVersion }) }}</span>
+              </span>
               <time class="text-caption text-ink-muted tabular-nums" :datetime="row.at">{{ intl.dateTime(row.at) }}</time>
             </span>
             <span v-if="row.result.incomplete" class="block text-small font-semibold text-warn-ink">{{ t('monitor.state.incomplete') }}</span>
+            <span v-if="row.result.legacyTls" class="block text-small text-warn-ink">{{ t('monitor.tls.legacy') }}</span>
             <span v-if="row.result.error" class="block font-mono text-caption text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ row.result.error }}</span>
           </div>
         </li>

@@ -1955,6 +1955,8 @@ export type MessageKey =
   | "monitor.state.old"
   | "monitor.state.other"
   | "monitor.state.unreachable"
+  | "monitor.tls.legacy"
+  | "monitor.tls.version"
   | "monitor.view.cn"
   | "monitor.view.global"
   | "namecheap.error.add_record"

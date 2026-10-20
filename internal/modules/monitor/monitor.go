@@ -223,6 +223,32 @@ type result struct {
 	// incomplete tells that the version in use was served without the
 	// intermediates clients need.
 	incomplete bool
+	// version is the TLS version spoken, as "1.3", and legacy tells that
+	// the server still takes TLS 1.0 or 1.1: for the version in use.
+	version string
+	legacy  bool
+}
+
+// peer is what a server served: its certificates, leaf first, and the
+// TLS version spoken.
+type peer struct {
+	certs   []*x509.Certificate
+	version uint16
+}
+
+// versionName names a TLS version as "1.3".
+func versionName(v uint16) string {
+	switch v {
+	case tls.VersionTLS13:
+		return "1.3"
+	case tls.VersionTLS12:
+		return "1.2"
+	case tls.VersionTLS11:
+		return "1.1"
+	case tls.VersionTLS10:
+		return "1.0"
+	}
+	return ""
 }
 
 // view is how visitors reach a domain: through address, or through the
@@ -349,17 +375,23 @@ func (m *Module) check(ctx context.Context, id int64) ([]result, error) {
 		if !r.notAfter.IsZero() {
 			notAfter = r.notAfter.UnixMilli()
 		}
-		incomplete := 0
+		incomplete, legacy := 0, 0
 		if r.incomplete {
 			incomplete = 1
 		}
+		if r.legacy {
+			legacy = 1
+		}
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO monitor_results (certificate_id, domain, view, state, fingerprint, not_after, issuer, error, checked_at, alerted, incomplete, chain_alerted)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`INSERT INTO monitor_results (certificate_id, domain, view, state, fingerprint, not_after, issuer, error, checked_at, alerted, incomplete, chain_alerted,
+			   tls_version, legacy_tls)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			 ON CONFLICT (certificate_id, domain, view) DO UPDATE SET state = excluded.state, fingerprint = excluded.fingerprint,
 			   not_after = excluded.not_after, issuer = excluded.issuer, error = excluded.error, checked_at = excluded.checked_at,
-			   alerted = excluded.alerted, incomplete = excluded.incomplete, chain_alerted = excluded.chain_alerted`,
-			id, r.domain, r.view, r.state, r.fingerprint, notAfter, r.issuer, r.err, now.UnixMilli(), alerted, incomplete, chainAlerted); err != nil {
+			   alerted = excluded.alerted, incomplete = excluded.incomplete, chain_alerted = excluded.chain_alerted,
+			   tls_version = excluded.tls_version, legacy_tls = excluded.legacy_tls`,
+			id, r.domain, r.view, r.state, r.fingerprint, notAfter, r.issuer, r.err, now.UnixMilli(), alerted, incomplete, chainAlerted,
+			r.version, legacy); err != nil {
 			return nil, err
 		}
 	}
@@ -418,7 +450,7 @@ func merged(results []result) []result {
 		r := results[i]
 		if r.view == viewChina && i+1 < len(results) {
 			if g := results[i+1]; g.domain == r.domain && g.port == r.port && g.view == viewGlobal && g.fingerprint == r.fingerprint && (g.err == "") == (r.err == "") &&
-				g.incomplete == r.incomplete {
+				g.incomplete == r.incomplete && g.version == r.version && g.legacy == r.legacy {
 				r.view = viewAll
 				i++
 			}
@@ -433,16 +465,18 @@ func merged(results []result) []result {
 // served is complete.
 func (m *Module) probe(ctx context.Context, domain string, port int, v view, fingerprint string) result {
 	r := result{domain: domain, port: port, view: v.name}
-	certs, err := m.serve(ctx, domain, v.address, port)
+	p, err := m.serve(ctx, domain, v.address, port)
 	if err != nil {
 		r.state, r.err = stateUnreachable, truncate(err.Error(), 500)
 		return r
 	}
-	leaf := certs[0]
+	leaf := p.certs[0]
 	r.fingerprint, r.notAfter, r.issuer = cryptox.Fingerprint(leaf), leaf.NotAfter, issuerName(leaf)
 	r.ca, r.valid = caOf(leaf), leaf.VerifyHostname(domain) == nil
 	if r.fingerprint == fingerprint {
-		r.incomplete = m.incomplete(ctx, domain, certs)
+		r.incomplete = m.incomplete(ctx, domain, p.certs)
+		r.version = versionName(p.version)
+		r.legacy = m.legacy != nil && m.legacy(ctx, domain, v.address, port)
 	}
 	return r
 }
@@ -502,7 +536,7 @@ func caOf(c *x509.Certificate) string {
 // served connects to address, or to domain when "", on port as a client
 // does for domain, and returns what it serves, leaf first. On 25 and 587,
 // TLS comes through SMTP's STARTTLS.
-func served(ctx context.Context, domain, address string, port int) ([]*x509.Certificate, error) {
+func served(ctx context.Context, domain, address string, port int) (peer, error) {
 	if address == "" {
 		address = domain
 	}
@@ -513,15 +547,37 @@ func served(ctx context.Context, domain, address string, port int) ([]*x509.Cert
 	return servedAt(ctx, domain, at)
 }
 
+// takesLegacy tells whether the server at address, or at domain when "",
+// completes a handshake on port with TLS 1.0 or 1.1 at most, which
+// browsers dropped. Ports behind STARTTLS are not asked.
+func takesLegacy(ctx context.Context, domain, address string, port int) bool {
+	if port == 25 || port == 587 {
+		return false
+	}
+	if address == "" {
+		address = domain
+	}
+	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
+	defer cancel()
+	d := tls.Dialer{Config: &tls.Config{ServerName: domain, InsecureSkipVerify: true, //nolint:gosec // it asks what the server takes, not whom it is
+		MinVersion: tls.VersionTLS10, MaxVersion: tls.VersionTLS11}}
+	conn, err := d.DialContext(ctx, "tcp", net.JoinHostPort(address, strconv.Itoa(port)))
+	if err != nil {
+		return false
+	}
+	_ = conn.Close()
+	return true
+}
+
 // servedSMTP connects to the mail server at address, asks for TLS with
 // STARTTLS, and returns what it serves for domain, leaf first.
-func servedSMTP(ctx context.Context, domain, address string) ([]*x509.Certificate, error) {
+func servedSMTP(ctx context.Context, domain, address string) (peer, error) {
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
 	var d net.Dialer
 	conn, err := d.DialContext(ctx, "tcp", address)
 	if err != nil {
-		return nil, err
+		return peer{}, err
 	}
 	defer conn.Close()
 	if deadline, ok := ctx.Deadline(); ok {
@@ -529,38 +585,38 @@ func servedSMTP(ctx context.Context, domain, address string) ([]*x509.Certificat
 	}
 	c, err := smtp.NewClient(conn, domain)
 	if err != nil {
-		return nil, err
+		return peer{}, err
 	}
 	if ok, _ := c.Extension("STARTTLS"); !ok {
-		return nil, errors.New("the mail server offers no STARTTLS")
+		return peer{}, errors.New("the mail server offers no STARTTLS")
 	}
 	if err := c.StartTLS(&tls.Config{ServerName: domain, InsecureSkipVerify: true}); err != nil { //nolint:gosec // it looks at the certificate served, valid or not
-		return nil, err
+		return peer{}, err
 	}
 	state, _ := c.TLSConnectionState()
 	if len(state.PeerCertificates) == 0 {
-		return nil, errors.New("the server sent no certificate")
+		return peer{}, errors.New("the server sent no certificate")
 	}
-	return state.PeerCertificates, nil
+	return peer{certs: state.PeerCertificates, version: state.Version}, nil
 }
 
 // servedAt connects to address for domain and returns what it serves, leaf
 // first. It does not verify it: what matters is which certificate it is,
 // valid or not.
-func servedAt(ctx context.Context, domain, address string) ([]*x509.Certificate, error) {
+func servedAt(ctx context.Context, domain, address string) (peer, error) {
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
 	d := tls.Dialer{Config: &tls.Config{ServerName: domain, InsecureSkipVerify: true}} //nolint:gosec // it looks at the certificate served, valid or not
 	conn, err := d.DialContext(ctx, "tcp", address)
 	if err != nil {
-		return nil, err
+		return peer{}, err
 	}
 	defer conn.Close()
-	certs := conn.(*tls.Conn).ConnectionState().PeerCertificates
-	if len(certs) == 0 {
-		return nil, errors.New("the server sent no certificate")
+	state := conn.(*tls.Conn).ConnectionState()
+	if len(state.PeerCertificates) == 0 {
+		return peer{}, errors.New("the server sent no certificate")
 	}
-	return certs, nil
+	return peer{certs: state.PeerCertificates, version: state.Version}, nil
 }
 
 // issuerName is what the UI shows of the issuer of a certificate.

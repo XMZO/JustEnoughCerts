@@ -41,7 +41,10 @@ type Module struct {
 	// serve connects to an address, or to a domain when "", for the domain
 	// and returns the certificates it serves, leaf first; target says where
 	// the DNS of a name sends the visitors of a subnet. Tests replace them.
-	serve  func(ctx context.Context, domain, address string, port int) ([]*x509.Certificate, error)
+	serve func(ctx context.Context, domain, address string, port int) (peer, error)
+	// legacy tells whether the server at address, or at domain when "",
+	// still takes TLS 1.0 or 1.1 on port; tests replace it.
+	legacy func(ctx context.Context, domain, address string, port int) bool
 	target func(ctx context.Context, name string, subnet netip.Prefix) (string, error)
 	// roots are those a chain served has to reach, nil for the system's;
 	// issuers fetches the issuers a chain lacks, as its certificates name
@@ -55,7 +58,9 @@ type Module struct {
 }
 
 // New returns the module.
-func New() *Module { return &Module{now: time.Now, serve: served, target: dnscheck.Target} }
+func New() *Module {
+	return &Module{now: time.Now, serve: served, legacy: takesLegacy, target: dnscheck.Target}
+}
 
 // Manifest describes the module.
 func (*Module) Manifest() module.Manifest {

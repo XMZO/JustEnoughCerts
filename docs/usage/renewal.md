@@ -86,7 +86,9 @@ actually served:
   verifies once the issuers its certificates name (AIA) are fetched, so a
   private CA's certificate raises nothing;
 - the Online check section of the certificate's page shows the result for
-  each domain, and can run a check at once.
+  each domain, with the TLS version spoken, and can run a check at once;
+  it also tells, without a notification, of a server that still takes TLS
+  1.0 or 1.1, which browsers dropped.
 
 A certificate deployed to a mail server or another service than a website
 can be checked on its ports instead: Ports checked, at the bottom of the

@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"math/big"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -44,6 +46,7 @@ type fixture struct {
 	served  map[string][]*x509.Certificate // by domain, or by the address of a view, leaf first; none is unreachable
 	targets map[string][2]string           // where the DNS of a domain sends mainland China and elsewhere
 	fetched int                            // the chains completed
+	legacy  map[string]bool                // domains that still take TLS 1.0 or 1.1
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -62,9 +65,9 @@ func newFixture(t *testing.T) *fixture {
 	bus := events.New(st.DB(), slog.New(slog.DiscardHandler), func(string) bool { return true })
 	bus.Seal()
 	// The CA is valid from before the test's clock, whatever the real time.
-	f := &fixture{t: t, ca: cryptoxtest.NewCAFrom(t, start.AddDate(0, -1, 0)), now: start, served: map[string][]*x509.Certificate{}, targets: map[string][2]string{}}
+	f := &fixture{t: t, ca: cryptoxtest.NewCAFrom(t, start.AddDate(0, -1, 0)), now: start, served: map[string][]*x509.Certificate{}, targets: map[string][2]string{}, legacy: map[string]bool{}}
 	f.m = &Module{now: func() time.Time { return f.now }, db: st.DB(), events: bus.Scope("monitor"), log: slog.New(slog.DiscardHandler)}
-	f.m.serve = func(_ context.Context, domain, address string, port int) ([]*x509.Certificate, error) {
+	f.m.serve = func(_ context.Context, domain, address string, port int) (peer, error) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
 		if address == "" {
@@ -74,9 +77,14 @@ func newFixture(t *testing.T) *fixture {
 			address = target(address, port)
 		}
 		if c := f.served[address]; c != nil {
-			return c, nil
+			return peer{certs: c, version: tls.VersionTLS13}, nil
 		}
-		return nil, errors.New("dial tcp: connection refused")
+		return peer{}, errors.New("dial tcp: connection refused")
+	}
+	f.m.legacy = func(_ context.Context, domain, _ string, _ int) bool {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		return f.legacy[domain]
 	}
 	// The test CA's root is trusted; its intermediate can be fetched.
 	f.m.roots = x509.NewCertPool()
@@ -390,9 +398,13 @@ func TestStates(t *testing.T) {
 func TestServedAt(t *testing.T) {
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	defer srv.Close()
-	certs, err := servedAt(t.Context(), "example.com", srv.Listener.Addr().String())
-	if err != nil || len(certs) != 1 || !certs[0].Equal(srv.Certificate()) {
-		t.Errorf("served %v, %v", certs, err)
+	p, err := servedAt(t.Context(), "example.com", srv.Listener.Addr().String())
+	if err != nil || len(p.certs) != 1 || !p.certs[0].Equal(srv.Certificate()) || versionName(p.version) != "1.3" {
+		t.Errorf("served %v, %v", p, err)
+	}
+	// httptest's server takes TLS 1.2 and up only.
+	if takesLegacy(t.Context(), "example.com", "127.0.0.1", srv.Listener.Addr().(*net.TCPAddr).Port) {
+		t.Error("TLS 1.1 taken")
 	}
 	if _, err := servedAt(t.Context(), "example.com", "127.0.0.1:1"); err == nil {
 		t.Error("nothing listening, and no error")
@@ -514,5 +526,30 @@ func TestPorts(t *testing.T) {
 	}
 	if got := parsePorts(""); !slices.Equal(got, []int{443}) {
 		t.Errorf("no ports read as %v", got)
+	}
+}
+
+// The TLS version spoken and old versions still taken, for the version in
+// use only.
+func TestTLSVersions(t *testing.T) {
+	f := newFixture(t)
+	v1 := f.leaf(90, "example.com", "www.example.com")
+	f.tell(contracts.CertificateIssued, 1, v1)
+	f.serve("example.com", v1)
+	f.serve("www.example.com", f.leaf(90, "other.example"))
+	f.legacy["example.com"], f.legacy["www.example.com"] = true, true
+	resp := f.api.Post("/certificates/1/check")
+	var b CertificateChecksBody
+	if resp.Code != http.StatusOK || json.Unmarshal(resp.Body.Bytes(), &b) != nil || len(b.Results) != 2 {
+		t.Fatalf("check = %d %s", resp.Code, resp.Body.String())
+	}
+	if r := b.Results[0]; r.TLSVersion != "1.3" || !r.LegacyTLS {
+		t.Errorf("the version in use: %+v", r)
+	}
+	if r := b.Results[1]; r.TLSVersion != "" || r.LegacyTLS {
+		t.Errorf("another certificate: %+v", r)
+	}
+	if versionName(tls.VersionTLS10) != "1.0" || versionName(0) != "" {
+		t.Error("versionName")
 	}
 }

@@ -22,12 +22,12 @@ func TestLiveChain(t *testing.T) {
 	}
 	m := &Module{now: time.Now, issuers: func(ctx context.Context, b *cryptox.Bundle) error { return cryptox.CompleteChain(ctx, client, b) }}
 	for domain, want := range map[string]bool{"incomplete-chain.badssl.com": true, "badssl.com": false, "getjec.dev": false} {
-		certs, err := served(t.Context(), domain, "", defaultPort)
+		p, err := served(t.Context(), domain, "", defaultPort)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := m.incomplete(t.Context(), domain, certs); got != want {
-			t.Errorf("%s: incomplete %v, want %v (%d sent)", domain, got, want, len(certs))
+		if got := m.incomplete(t.Context(), domain, p.certs); got != want {
+			t.Errorf("%s: incomplete %v, want %v (%d sent)", domain, got, want, len(p.certs))
 		}
 	}
 }
@@ -43,12 +43,19 @@ func TestLivePorts(t *testing.T) {
 		host string
 		port int
 	}{{"imap.gmail.com", 993}, {"smtp.gmail.com", 587}} {
-		certs, err := served(t.Context(), c.host, "", c.port)
+		p, err := served(t.Context(), c.host, "", c.port)
 		if err != nil {
 			t.Fatalf("%s:%d: %v", c.host, c.port, err)
 		}
-		if err := certs[0].VerifyHostname(c.host); err != nil {
-			t.Errorf("%s:%d served %v: %v", c.host, c.port, certs[0].Subject, err)
+		if err := p.certs[0].VerifyHostname(c.host); err != nil || versionName(p.version) == "" {
+			t.Errorf("%s:%d served %v over %x: %v", c.host, c.port, p.certs[0].Subject, p.version, err)
 		}
+	}
+	// A server of TLS 1.0, and one that took it off.
+	if !takesLegacy(t.Context(), "tls-v1-0.badssl.com", "", 1010) {
+		t.Error("tls-v1-0.badssl.com:1010 takes TLS 1.0, and was not seen to")
+	}
+	if takesLegacy(t.Context(), "github.com", "", 443) {
+		t.Error("github.com takes no TLS 1.1, and was seen to")
 	}
 }
