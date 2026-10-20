@@ -64,8 +64,10 @@ Minecraft mod JEI.
 - **Security**: encrypted secrets, two-factor authentication with
   recovery codes, OpenID Connect single sign-on, signed-in devices and
   sign-in notes, API tokens that can expire,
-  an audit log, daily backups with copies to S3 compatible storage, and
-  revocation of issued certificates at their CA.
+  an audit log, a list of the addresses let in, daily backups with copies
+  to S3 compatible storage or WebDAV, and revocation of issued
+  certificates at their CA; HTTPS of its own without a reverse proxy, on a
+  certificate JEC renews.
 - **Lightweight**: a single static binary or a small container image, with
   data in SQLite, or PostgreSQL; every feature outside the kernel is a
   module, and plugins can be written in any language.
