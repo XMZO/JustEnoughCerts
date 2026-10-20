@@ -2713,6 +2713,8 @@ export interface components {
             host: string;
             /** Format: int64 */
             id: number;
+            /** @description The site sends its certificate without the intermediates clients need: browsers on computers fetch them, many apps, Android and curl fail */
+            incomplete?: boolean;
             issuer?: string;
             name?: string;
             names: string[];

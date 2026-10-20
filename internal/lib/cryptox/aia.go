@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 )
 
 // maxIssuers bounds the certificates CompleteChain fetches, and maxIssuer
@@ -42,6 +43,24 @@ func CompleteChain(ctx context.Context, client *http.Client, b *Bundle) error {
 		cur = issuer
 	}
 	return nil
+}
+
+// ChainOf puts the intermediates a server sent in order from leaf up, as
+// far as they go: the issuers they lack are fetched from the last one.
+func ChainOf(leaf *x509.Certificate, sent []*x509.Certificate) []*x509.Certificate {
+	var chain []*x509.Certificate
+	cur := leaf
+	for range sent {
+		i := slices.IndexFunc(sent, func(c *x509.Certificate) bool {
+			return bytes.Equal(cur.RawIssuer, c.RawSubject) && cur.CheckSignatureFrom(c) == nil
+		})
+		if i < 0 || slices.Contains(chain, sent[i]) {
+			break
+		}
+		chain = append(chain, sent[i])
+		cur = sent[i]
+	}
+	return chain
 }
 
 // fetchIssuer fetches the issuer of c from the address c names, in DER,

@@ -21,6 +21,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
 
@@ -44,6 +45,9 @@ type Module struct {
 	rdap *rdap
 	// spotter searches certificate transparency logs.
 	spotter *spotter
+	// issuers fetches the issuers a chain served lacks, as its
+	// certificates name them (AIA); tests replace it.
+	issuers func(ctx context.Context, b *cryptox.Bundle) error
 	call    func(ctx context.Context, via, method, path string, body, out any) error
 	// trigger makes a job due now.
 	trigger func(name string)
@@ -83,6 +87,13 @@ func (m *Module) Register(r *module.Registry) error {
 			return err
 		}
 		m.rdap.client = client
+	}
+	if m.issuers == nil {
+		client, err := httpx.Client(httpx.Options{PublicOnly: true, Timeout: 15 * time.Second})
+		if err != nil {
+			return err
+		}
+		m.issuers = func(ctx context.Context, b *cryptox.Bundle) error { return cryptox.CompleteChain(ctx, client, b) }
 	}
 	if m.spotter.client == nil {
 		client, err := httpx.Client(httpx.Options{PublicOnly: true, Timeout: time.Minute})

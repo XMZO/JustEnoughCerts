@@ -2644,6 +2644,7 @@ const (
 	WatchPageSites                           Key = "watch.page.sites"
 	WatchPageTitle                           Key = "watch.page.title"
 	WatchPageUnknown                         Key = "watch.page.unknown"
+	WatchSiteIncomplete                      Key = "watch.site.incomplete"
 	WatchStateExpired                        Key = "watch.state.expired"
 	WatchStateExpiring                       Key = "watch.state.expiring"
 	WatchStateInvalid                        Key = "watch.state.invalid"

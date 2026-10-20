@@ -34,6 +34,7 @@ type SiteBody struct {
 	Names       []string   `json:"names"`
 	Fingerprint string     `json:"fingerprint,omitempty"`
 	Error       string     `json:"error,omitempty" doc:"What went wrong, as the TLS library said it, for invalid and unreachable"`
+	Incomplete  bool       `json:"incomplete,omitempty" doc:"The site sends its certificate without the intermediates clients need: browsers on computers fetch them, many apps, Android and curl fail"`
 	CheckedAt   *time.Time `json:"checkedAt,omitempty"`
 	CheckAt     time.Time  `json:"checkAt" doc:"When the next check comes"`
 	CreatedAt   time.Time  `json:"createdAt"`
@@ -148,7 +149,7 @@ func (m *Module) one(ctx context.Context, id int64) (*siteOutput, error) {
 // list returns the sites, by name and host, or only site id when not 0.
 func (m *Module) list(ctx context.Context, id int64) ([]SiteBody, error) {
 	rows, err := m.db.QueryContext(ctx,
-		`SELECT id, host, port, name, state, not_after, issuer, names, fingerprint, error, checked_at, check_at, created_at
+		`SELECT id, host, port, name, state, not_after, issuer, names, fingerprint, error, checked_at, check_at, created_at, incomplete
 		 FROM watch_sites WHERE ? = 0 OR id = ? ORDER BY CASE WHEN name = '' THEN host ELSE name END, host, port`, id, id)
 	if err != nil {
 		return nil, err
@@ -159,11 +160,12 @@ func (m *Module) list(ctx context.Context, id int64) ([]SiteBody, error) {
 		var s SiteBody
 		var notAfter, checked sql.NullInt64
 		var names string
-		var checkAt, created int64
+		var checkAt, created, incomplete int64
 		if err := rows.Scan(&s.ID, &s.Host, &s.Port, &s.Name, &s.State, &notAfter, &s.Issuer, &names, &s.Fingerprint, &s.Error,
-			&checked, &checkAt, &created); err != nil {
+			&checked, &checkAt, &created, &incomplete); err != nil {
 			return nil, err
 		}
+		s.Incomplete = incomplete == 1 && s.State != stateUnreachable
 		if err := json.Unmarshal([]byte(names), &s.Names); err != nil || s.Names == nil {
 			s.Names = []string{}
 		}

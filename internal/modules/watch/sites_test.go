@@ -18,6 +18,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox/cryptoxtest"
 )
 
@@ -198,5 +199,35 @@ func TestSites(t *testing.T) {
 	var list listOutput
 	if err := json.Unmarshal(f.api.Get("/sites").Body.Bytes(), &list.Body); err != nil || len(list.Body.Sites) != 1 {
 		t.Errorf("list %+v: %v", list.Body, err)
+	}
+}
+
+func TestSiteWithoutIntermediates(t *testing.T) {
+	f := newFixture(t)
+	f.serve("example.com:443", 90, "example.com")
+	f.served["example.com:443"] = f.served["example.com:443"][:1] // the leaf alone
+	fetched := false
+	f.m.issuers = func(_ context.Context, b *cryptox.Bundle) error {
+		if !fetched {
+			return errors.New("the CA's address did not answer")
+		}
+		b.Chain = append(b.Chain, f.ca.Intermediate)
+		return nil
+	}
+	resp := f.api.Post("/sites", map[string]any{"host": "example.com"})
+	var s SiteBody
+	if resp.Code != http.StatusCreated || json.Unmarshal(resp.Body.Bytes(), &s) != nil {
+		t.Fatalf("add = %d %s", resp.Code, resp.Body)
+	}
+	if s.State != stateInvalid || s.Incomplete {
+		t.Fatalf("not completed: %+v", s)
+	}
+	// Completed as the leaf names its issuer: trusted, but told.
+	fetched = true
+	if resp := f.api.Post("/sites/" + strconv.FormatInt(s.ID, 10) + "/check"); resp.Code != http.StatusOK {
+		t.Fatalf("check = %d %s", resp.Code, resp.Body)
+	}
+	if s := f.site(s.ID); s.State != stateOK || !s.Incomplete || s.Error != "" {
+		t.Fatalf("completed: %+v", s)
 	}
 }

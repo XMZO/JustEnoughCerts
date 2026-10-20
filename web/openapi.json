@@ -3295,6 +3295,10 @@
             "format": "int64",
             "type": "integer"
           },
+          "incomplete": {
+            "description": "The site sends its certificate without the intermediates clients need: browsers on computers fetch them, many apps, Android and curl fail",
+            "type": "boolean"
+          },
           "issuer": {
             "type": "string"
           },

@@ -70,6 +70,8 @@ type result struct {
 	names       []string
 	fingerprint string
 	err         string
+	// incomplete tells that the site sent no intermediates clients need.
+	incomplete bool
 }
 
 // inspect checks what a site at host served, at now.
@@ -88,7 +90,22 @@ func (m *Module) inspect(ctx context.Context, host string, port int) result {
 		pool.AddCert(c)
 	}
 	now := m.now()
-	_, verr := leaf.Verify(x509.VerifyOptions{DNSName: host, Intermediates: pool, Roots: m.roots, CurrentTime: now})
+	opts := x509.VerifyOptions{DNSName: host, Intermediates: pool, Roots: m.roots, CurrentTime: now}
+	_, verr := leaf.Verify(opts)
+	// Without its intermediates: browsers on computers fetch them as the
+	// certificates name them (AIA), many apps and curl do not.
+	var unknown x509.UnknownAuthorityError
+	if errors.As(verr, &unknown) && m.issuers != nil {
+		b := &cryptox.Bundle{Leaf: leaf, Chain: cryptox.ChainOf(leaf, certs[1:])}
+		if m.issuers(ctx, b) == nil {
+			for _, c := range b.Chain {
+				pool.AddCert(c)
+			}
+			if _, err := leaf.Verify(opts); err == nil {
+				verr, r.incomplete = nil, true
+			}
+		}
+	}
 	switch left := leaf.NotAfter.Sub(now); {
 	case left <= 0:
 		r.state = stateExpired
@@ -98,6 +115,14 @@ func (m *Module) inspect(ctx context.Context, host string, port int) result {
 		r.state = stateExpiring
 	}
 	return r
+}
+
+// incomplete is the column's value of whether a chain is incomplete.
+func incomplete(b bool) int64 {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 func issuerName(c *x509.Certificate) string {
@@ -221,8 +246,9 @@ func (m *Module) check(ctx context.Context, id int64) error {
 	names, _ := json.Marshal(r.names)
 	_, err = tx.ExecContext(ctx,
 		`UPDATE watch_sites SET state = ?, not_after = ?, issuer = ?, names = ?, fingerprint = ?, error = ?, notified = ?,
-		 checked_at = ?, check_at = ? WHERE id = ?`,
-		r.state, r.notAfter.UnixMilli(), r.issuer, string(names), r.fingerprint, r.err, notified, now.UnixMilli(), next.UnixMilli(), id)
+		 checked_at = ?, check_at = ?, incomplete = ? WHERE id = ?`,
+		r.state, r.notAfter.UnixMilli(), r.issuer, string(names), r.fingerprint, r.err, notified, now.UnixMilli(), next.UnixMilli(),
+		incomplete(r.incomplete), id)
 	if err != nil {
 		return err
 	}

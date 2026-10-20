@@ -620,9 +620,25 @@ test('every page is translated and fits', async ({ page }, info) => {
           },
         }),
   )
+  // And a site that sends no intermediates.
+  await page.route('**/api/v1/watch/sites', (route) =>
+    route.request().method() !== 'GET'
+      ? route.continue()
+      : route.fulfill({
+          json: {
+            sites: [
+              {
+                id: 99, host: 'partner.e2e-shop.com', port: 443, state: 'ok', notAfter: later(60), issuer: 'R12', names: ['partner.e2e-shop.com'],
+                fingerprint: 'c'.repeat(64), incomplete: true, checkedAt: later(0), checkAt: later(0.25), createdAt: later(-3),
+              },
+            ],
+          },
+        }),
+  )
   await page.reload()
   await expect(page.getByText('e2e-shop.de').filter({ visible: true })).toBeVisible()
-  expect.soft(await problems(page), 'domain registrations').toEqual([])
+  await expect(page.getByText(label('watch.site.incomplete')).filter({ visible: true })).toBeVisible()
+  expect.soft(await problems(page), 'domain registrations; a site without intermediates').toEqual([])
   await page.getByRole('button', { name: message('watch.domain.delete', { domain: 'e2e-shop.com' }) }).filter({ visible: true }).first().click()
   await expect(dialog).toBeVisible()
   expect.soft(await problems(page), 'stop watching a domain').toEqual([])
@@ -635,6 +651,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'a domain with no registration').toEqual([])
   await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
   await page.unroute('**/api/v1/watch/domains')
+  await page.unroute('**/api/v1/watch/sites')
 
   // Certificate transparency: off here, as it would ask Cert Spotter; the
   // key dialog, then a made-up search with each kind of row.

@@ -220,6 +220,7 @@ async function confirmDrop() {
               <span :class="['inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-semibold whitespace-nowrap', looks[s.state].badge]">
                 <component :is="looks[s.state].icon" class="size-3.5" aria-hidden="true" />{{ t(looks[s.state].label) }}
               </span>
+              <span v-if="s.incomplete" class="mt-1 block max-w-64 text-caption font-semibold text-warn-ink">{{ t('watch.site.incomplete') }}</span>
               <span v-if="s.error" class="mt-1 block max-w-64 truncate text-caption text-ink-muted" :title="s.error" translate="no">{{ s.error }}</span>
             </td>
             <td class="border-b border-line px-3 py-2 whitespace-nowrap">
@@ -273,6 +274,7 @@ async function confirmDrop() {
               <span class="text-ink-muted">{{ left(s) }}</span>
             </template>
           </span>
+          <span v-if="s.incomplete" class="text-caption font-semibold text-warn-ink">{{ t('watch.site.incomplete') }}</span>
           <span v-if="s.error" class="truncate text-caption text-ink-muted" :title="s.error" translate="no">{{ s.error }}</span>
         </span>
         <span class="flex flex-none">

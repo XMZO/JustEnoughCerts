@@ -3609,6 +3609,9 @@
       "title": "Expiry watch",
       "unknown": "Unknown"
     },
+    "site": {
+      "incomplete": "Without the intermediates: some apps, Android devices and curl fail"
+    },
     "state": {
       "expired": "Expired",
       "expiring": "Ending soon",

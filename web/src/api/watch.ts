@@ -25,8 +25,9 @@ export function useSites(enabled: MaybeRefOrGetter<boolean> = true) {
   })
 }
 
-/** needsLook tells a site whose certificate someone should look at: ending, ended, not trusted or not seen. */
-export const needsLook = (s: Site) => s.state === 'expiring' || s.state === 'expired' || s.state === 'invalid' || s.state === 'unreachable'
+/** needsLook tells a site whose certificate someone should look at: ending, ended, not trusted, not seen, or sent without its intermediates. */
+export const needsLook = (s: Site) =>
+  s.state === 'expiring' || s.state === 'expired' || s.state === 'invalid' || s.state === 'unreachable' || !!s.incomplete
 
 /** Watches a site, which the server checks before it answers. */
 export function useAddSite() {

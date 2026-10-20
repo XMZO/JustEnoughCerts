@@ -1,7 +1,6 @@
 package monitor
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -9,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -423,7 +421,7 @@ func (m *Module) incomplete(ctx context.Context, domain string, certs []*x509.Ce
 	if err == nil || !errors.As(err, &unknown) || m.issuers == nil {
 		return false
 	}
-	b := &cryptox.Bundle{Leaf: leaf, Chain: chainOf(leaf, certs[1:])}
+	b := &cryptox.Bundle{Leaf: leaf, Chain: cryptox.ChainOf(leaf, certs[1:])}
 	if err := m.issuers(ctx, b); err != nil {
 		return false
 	}
@@ -432,24 +430,6 @@ func (m *Module) incomplete(ctx context.Context, domain string, certs []*x509.Ce
 	}
 	_, err = leaf.Verify(opts)
 	return err == nil
-}
-
-// chainOf puts the intermediates sent in order from leaf up, as far as
-// they go, for the missing ones to be fetched from the last.
-func chainOf(leaf *x509.Certificate, sent []*x509.Certificate) []*x509.Certificate {
-	var chain []*x509.Certificate
-	cur := leaf
-	for range sent {
-		i := slices.IndexFunc(sent, func(c *x509.Certificate) bool {
-			return bytes.Equal(cur.RawIssuer, c.RawSubject) && cur.CheckSignatureFrom(c) == nil
-		})
-		if i < 0 || slices.Contains(chain, sent[i]) {
-			break
-		}
-		chain = append(chain, sent[i])
-		cur = sent[i]
-	}
-	return chain
 }
 
 // classify says what r served compared with the version t uses, whose CA is

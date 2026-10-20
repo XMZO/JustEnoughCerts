@@ -33,6 +33,12 @@ JEC did not ask for:
 | Not trusted | Not signed by a trusted CA, or not for the host; the reason shows below |
 | No answer | No TLS on the port; the certificate seen last is kept |
 
+When a site sends its certificate without the intermediates, but the
+chain verifies once they are fetched as the certificates name them (AIA),
+the state follows the end date and the site is marked as sent without the
+intermediates: browsers on computers fetch them themselves; many apps,
+Android devices and curl fail.
+
 ## Domain registrations
 
 The registered domains of your certificates and watched sites (`shop.co.uk`

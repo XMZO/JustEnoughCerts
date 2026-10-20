@@ -3609,6 +3609,9 @@
       "title": "到期监控",
       "unknown": "未知"
     },
+    "site": {
+      "incomplete": "缺少中间证书：部分 App、安卓设备和 curl 会验证失败"
+    },
     "state": {
       "expired": "已过期",
       "expiring": "即将到期",
