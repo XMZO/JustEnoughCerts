@@ -1043,6 +1043,20 @@ test('every page is translated and fits', async ({ page }, info) => {
   await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
   await expect(dialog).toBeHidden()
 
+  // Offsite backups: a bucket that is not there, which the server refuses.
+  await page.getByRole('button', { name: label('offsite.settings.edit') }).click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'offsite backups').toEqual([])
+  await dialog.locator('#offsite-endpoint').fill('http://127.0.0.1:9')
+  await dialog.locator('#offsite-bucket').fill('jec')
+  await dialog.locator('#offsite-access').fill('AKID')
+  await dialog.locator('#offsite-secret').fill('secret')
+  await dialog.locator('button[type=submit]').click()
+  await expect(dialog.getByRole('alert')).toBeVisible()
+  expect.soft(await problems(page), 'offsite backups refused').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
+  await expect(dialog).toBeHidden()
+
   await page.goto('./more')
   expect.soft(await problems(page), 'more').toEqual([])
   await page.getByRole('button', { name: label('kernel.shell.sign_out') }).filter({ visible: true }).first().click()

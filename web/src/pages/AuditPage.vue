@@ -80,6 +80,7 @@ const operations: Partial<Record<string, MessageKey>> = {
   'tokens-delete': 'audit.op.tokens_delete',
   'oidc-save': 'audit.op.oidc_save',
   'oidc-callback': 'audit.op.oidc_callback',
+  'offsite-save': 'audit.op.offsite_save',
 }
 // The operations that hand out secrets: private keys, backups and the
 // configuration with its secrets.

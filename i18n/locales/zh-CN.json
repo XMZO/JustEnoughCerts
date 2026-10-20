@@ -284,6 +284,7 @@
       "credentials_update": "修改凭据",
       "monitor_check": "立即线上检查",
       "notify_test": "发送测试通知",
+      "offsite_save": "保存异地备份设置",
       "oidc_callback": "单点登录",
       "oidc_save": "保存单点登录设置",
       "providers_create": "添加服务商",
@@ -2596,6 +2597,41 @@
     "topic": {
       "description": "订阅了这个主题的手机和浏览器都能收到通知。",
       "name": "ntfy"
+    }
+  },
+  "offsite": {
+    "error": {
+      "endpoint": "请填写 https:// 或 http:// 开头的接口地址。",
+      "write": "无法写入这个存储桶：{message}"
+    },
+    "module": {
+      "description": "把每天的自动备份复制到 S3 兼容的对象存储（AWS S3、Cloudflare R2、MinIO，阿里云 OSS 与腾讯云 COS 的 S3 接口等），服务器坏了也不丢数据。",
+      "name": "异地备份"
+    },
+    "settings": {
+      "access_key": "Access Key",
+      "backups_off": "每日自动备份没有开启，没有可复制的备份。",
+      "bucket": "存储桶",
+      "copied": "已复制 {count, plural, other {# 份}}，最近一次：",
+      "edit": "设置存储桶",
+      "enabled": "开启异地备份",
+      "endpoint": "接口地址",
+      "endpoint_hint": "如 https://s3.us-east-1.amazonaws.com、https://<账户>.r2.cloudflarestorage.com、https://oss-cn-hangzhou.aliyuncs.com。",
+      "failed": "上次复制失败：",
+      "hint": "把每天的自动备份复制到 S3 兼容的对象存储。",
+      "intro": "每天的自动备份做好后，JEC 把它复制到这个存储桶（AWS S3、Cloudflare R2、MinIO，阿里云 OSS 与腾讯云 COS 的 S3 接口等）。备份里的密钥是加密的，不含主密钥。保存时 JEC 先写入一个小文件试一下。旧备份的清理请用存储桶的生命周期规则。",
+      "path_style": "路径形式的地址",
+      "path_style_hint": "存储桶写在地址的路径里而不是域名里，MinIO 和自建服务通常需要。",
+      "prefix": "路径前缀",
+      "prefix_hint": "可选，如 jec/。",
+      "region": "区域",
+      "region_hint": "留空为 us-east-1；Cloudflare R2 填 auto。",
+      "secret_kept": "已保存；留空则保持不变。",
+      "secret_key": "Secret Key",
+      "state_failed": "复制失败",
+      "state_off": "未开启",
+      "state_on": "已开启",
+      "title": "异地备份"
     }
   },
   "oidc": {

@@ -284,6 +284,7 @@
       "credentials_update": "Change a credential",
       "monitor_check": "Check a certificate online",
       "notify_test": "Send a test notification",
+      "offsite_save": "Saved the offsite backup settings",
       "oidc_callback": "Signed in through single sign-on",
       "oidc_save": "Saved the single sign-on settings",
       "providers_create": "Add a provider",
@@ -2596,6 +2597,41 @@
     "topic": {
       "description": "Every phone and browser subscribed to the topic gets the notes.",
       "name": "ntfy"
+    }
+  },
+  "offsite": {
+    "error": {
+      "endpoint": "Enter the address of the S3 interface, starting with https:// or http://.",
+      "write": "The bucket does not take a file: {message}"
+    },
+    "module": {
+      "description": "Copies the daily backups to S3 compatible object storage (AWS S3, Cloudflare R2, MinIO, the S3 interfaces of Alibaba Cloud OSS and Tencent Cloud COS and others), so that they outlive the server.",
+      "name": "Offsite backups"
+    },
+    "settings": {
+      "access_key": "Access key",
+      "backups_off": "Daily backups are off: there is nothing to copy.",
+      "bucket": "Bucket",
+      "copied": "{count, plural, one {# copied, the latest:} other {# copied, the latest:}}",
+      "edit": "Set up a bucket",
+      "enabled": "Copy the backups",
+      "endpoint": "Endpoint",
+      "endpoint_hint": "Such as https://s3.us-east-1.amazonaws.com, https://<account>.r2.cloudflarestorage.com or https://oss-cn-hangzhou.aliyuncs.com.",
+      "failed": "The last copy failed:",
+      "hint": "Copies the daily backups to S3 compatible object storage.",
+      "intro": "Once a daily backup is made, JEC copies it to this bucket (AWS S3, Cloudflare R2, MinIO, the S3 interfaces of Alibaba Cloud OSS and Tencent Cloud COS and others). The secrets in a backup are sealed, without the master key. On saving, JEC writes a small file there first. To prune old backups, use the bucket's lifecycle rules.",
+      "path_style": "Path-style addresses",
+      "path_style_hint": "The bucket in the path of the address rather than in its host name, as MinIO and other self-hosted services usually need.",
+      "prefix": "Path prefix",
+      "prefix_hint": "Optional, as jec/.",
+      "region": "Region",
+      "region_hint": "us-east-1 when empty; auto for Cloudflare R2.",
+      "secret_kept": "Saved; left empty, it stays as it is.",
+      "secret_key": "Secret key",
+      "state_failed": "Copy failed",
+      "state_off": "Off",
+      "state_on": "On",
+      "title": "Offsite backups"
     }
   },
   "oidc": {

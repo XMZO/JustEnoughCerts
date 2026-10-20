@@ -45,6 +45,7 @@ import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
 import JecField from '../components/JecField.vue'
 import JecInput from '../components/JecInput.vue'
+import OffsiteSettings from '../components/OffsiteSettings.vue'
 import OidcSettings from '../components/OidcSettings.vue'
 import PageHeader from '../components/PageHeader.vue'
 import { locales, setLocale, useT, type Locale, type MessageKey, type Params } from '../i18n'
@@ -82,6 +83,7 @@ const releaseError = useApiError(computed(() => release.error.value))
 const versioned = computed(() => /^\d/.test(release.data.value?.current ?? ''))
 // Single sign-on, while its module is on.
 const oidcOn = computed(() => manifest.data.value?.modules.some((m) => m.id === 'oidc' && m.enabled) ?? false)
+const offsiteOn = computed(() => manifest.data.value?.modules.some((m) => m.id === 'offsite' && m.enabled) ?? false)
 
 // The defaults of new certificates and the time renewals start, of the
 // certs module.
@@ -711,6 +713,7 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           </option>
         </select>
       </div>
+      <OffsiteSettings v-if="offsiteOn" :row-class="row" />
       <div :class="[row, 'flex-wrap']">
         <div class="min-w-0 flex-[1_1_12rem]">
           <label for="heartbeat" class="block font-semibold">{{ t('kernel.settings.heartbeat') }}</label>

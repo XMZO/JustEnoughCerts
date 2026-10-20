@@ -798,6 +798,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/offsite/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get where the daily backups are copied to, and how the last copy went */
+        get: operations["offsite-settings"];
+        /**
+         * Save where the daily backups are copied to
+         * @description Switched on, the bucket is tried first: a small file is written there and deleted again.
+         */
+        put: operations["offsite-save"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/oidc/callback": {
         parameters: {
             query?: never;
@@ -2161,6 +2182,35 @@ export interface components {
             /** @description The provider's name, for the sign-in button */
             label: string;
         };
+        OffsiteSettingsBody: {
+            accessKey: string;
+            /** @description No daily backups are made to copy: they are switched on in the settings of the data */
+            backupsOff: boolean;
+            bucket: string;
+            /**
+             * Format: int64
+             * @description The backups copied so far
+             */
+            copied: number;
+            enabled: boolean;
+            /** @description The address of the S3 interface, as https://s3.us-east-1.amazonaws.com or https://<account>.r2.cloudflarestorage.com */
+            endpoint: string;
+            /** @description A secret key is set; it is never shown */
+            hasSecret: boolean;
+            /**
+             * Format: date-time
+             * @description When a backup was last copied, or tried to be
+             */
+            lastCopy?: string;
+            /** @description Why the last copy failed, as the bucket said */
+            lastError?: string;
+            /** @description The bucket in the path of the address rather than in its host, as MinIO has it */
+            pathStyle: boolean;
+            /** @description Put before the name of each backup, as jec/ */
+            prefix: string;
+            /** @description The region of the bucket; auto for Cloudflare R2 */
+            region: string;
+        };
         OidcSettingsInputBody: {
             allowed: string[];
             clientId: string;
@@ -2381,6 +2431,17 @@ export interface components {
         SendsOutputBody: {
             /** @description One for each notifier that sent something */
             sends: components["schemas"]["SendBody"][];
+        };
+        SettingsInputBody: {
+            accessKey: string;
+            bucket: string;
+            enabled: boolean;
+            endpoint: string;
+            pathStyle: boolean;
+            prefix: string;
+            region: string;
+            /** @description Replaces the secret key when given */
+            secretKey?: string;
         };
         SetupInputBody: {
             /** @description BCP 47 tag of the language the account starts with */
@@ -4359,6 +4420,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SendsOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "offsite-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OffsiteSettingsBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "offsite-save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SettingsInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OffsiteSettingsBody"];
                 };
             };
             /** @description Error */

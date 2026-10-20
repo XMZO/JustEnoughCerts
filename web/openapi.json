@@ -2380,6 +2380,76 @@
         ],
         "type": "object"
       },
+      "OffsiteSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "accessKey": {
+            "maxLength": 255,
+            "type": "string"
+          },
+          "backupsOff": {
+            "description": "No daily backups are made to copy: they are switched on in the settings of the data",
+            "type": "boolean"
+          },
+          "bucket": {
+            "maxLength": 255,
+            "type": "string"
+          },
+          "copied": {
+            "description": "The backups copied so far",
+            "format": "int64",
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "endpoint": {
+            "description": "The address of the S3 interface, as https://s3.us-east-1.amazonaws.com or https://\u003caccount\u003e.r2.cloudflarestorage.com",
+            "maxLength": 512,
+            "type": "string"
+          },
+          "hasSecret": {
+            "description": "A secret key is set; it is never shown",
+            "type": "boolean"
+          },
+          "lastCopy": {
+            "description": "When a backup was last copied, or tried to be",
+            "format": "date-time",
+            "type": "string"
+          },
+          "lastError": {
+            "description": "Why the last copy failed, as the bucket said",
+            "type": "string"
+          },
+          "pathStyle": {
+            "description": "The bucket in the path of the address rather than in its host, as MinIO has it",
+            "type": "boolean"
+          },
+          "prefix": {
+            "description": "Put before the name of each backup, as jec/",
+            "maxLength": 255,
+            "type": "string"
+          },
+          "region": {
+            "description": "The region of the bucket; auto for Cloudflare R2",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "endpoint",
+          "region",
+          "bucket",
+          "prefix",
+          "pathStyle",
+          "accessKey",
+          "hasSecret",
+          "copied",
+          "backupsOff"
+        ],
+        "type": "object"
+      },
       "OidcSettingsInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -2961,6 +3031,52 @@
         },
         "required": [
           "sends"
+        ],
+        "type": "object"
+      },
+      "SettingsInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "accessKey": {
+            "maxLength": 255,
+            "type": "string"
+          },
+          "bucket": {
+            "maxLength": 255,
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "endpoint": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "pathStyle": {
+            "type": "boolean"
+          },
+          "prefix": {
+            "maxLength": 255,
+            "type": "string"
+          },
+          "region": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "secretKey": {
+            "description": "Replaces the secret key when given",
+            "maxLength": 1024,
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "endpoint",
+          "region",
+          "bucket",
+          "prefix",
+          "pathStyle",
+          "accessKey"
         ],
         "type": "object"
       },
@@ -6177,6 +6293,79 @@
         "summary": "The last note sent through each notifier",
         "tags": [
           "notify"
+        ]
+      }
+    },
+    "/offsite/settings": {
+      "get": {
+        "operationId": "offsite-settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffsiteSettingsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Get where the daily backups are copied to, and how the last copy went",
+        "tags": [
+          "offsite",
+          "offsite"
+        ]
+      },
+      "put": {
+        "description": "Switched on, the bucket is tried first: a small file is written there and deleted again.",
+        "operationId": "offsite-save",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OffsiteSettingsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Save where the daily backups are copied to",
+        "tags": [
+          "offsite",
+          "offsite"
         ]
       }
     },
