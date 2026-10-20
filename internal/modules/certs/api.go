@@ -583,17 +583,9 @@ func (s *service) body(ctx context.Context, c *Certificate) (CertificateBody, er
 	return certificateBody(c, s.now(), sch), nil
 }
 
-// parseUpload reads the certificate and key of an upload: a PKCS #12 file
-// when there is one, or else the PEM texts.
-func parseUpload(f UploadFields) (*cryptox.Bundle, error) {
-	b, err := readUpload(f)
-	if err != nil {
-		return nil, bundleError(err, len(f.PFX) > 0)
-	}
-	return b, nil
-}
-
-// readUpload is parseUpload with cryptox's errors.
+// readUpload reads the certificate and key of an upload: a PKCS #12 file
+// when there is one, or else the PEM texts. Its errors are cryptox's,
+// which bundleError turns into a response.
 func readUpload(f UploadFields) (*cryptox.Bundle, error) {
 	if len(f.PFX) == 0 {
 		return cryptox.ParseBundle([]byte(f.Certificate), []byte(f.PrivateKey))
