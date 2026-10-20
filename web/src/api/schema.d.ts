@@ -2191,6 +2191,8 @@ export interface components {
              * @description The status of the answer
              */
             status: number;
+            /** @description What it acted on, as a certificate's main domain or a provider's name */
+            subject?: string;
             /** @description The name of the API token it came with; none for a session */
             token?: string;
             /** @description The account signed in; none for a sign-in */
@@ -3688,7 +3690,7 @@ export interface operations {
                 days?: number;
                 /** @description Only the entries that succeeded, or only those that failed (status 400 and up) */
                 result?: "ok" | "failed";
-                /** @description Only those holding this, letter case aside, in the path, the account, the address, the token or the operation's ID */
+                /** @description Only those holding this, letter case aside, in the path, the subject, the account, the address, the token or the operation's ID */
                 q?: string;
                 /** @description Operations, by ID and comma separated, that also match the text: those whose names, as the interface words them, hold it */
                 ops?: string;

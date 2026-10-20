@@ -65,6 +65,9 @@ func registerAPI(a huma.API, s *service) {
 		Summary:     "Send a test note through a notifier",
 		Description: "Sends at once, in the notifier's language. A notifier that fails answers 502 with its own message.",
 	}, func(ctx context.Context, in *notifierInput) (*struct{}, error) {
+		if p, err := s.prov.Get(ctx, in.ID); err == nil {
+			api.Subject(ctx, p.Name)
+		}
 		return nil, s.test(ctx, in.ID)
 	})
 }

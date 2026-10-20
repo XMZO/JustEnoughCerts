@@ -71,6 +71,7 @@ func registerDomainsAPI(a huma.API, m *Module) {
 		if !ok || name == "" {
 			return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil).WithField("body.name", i18n.WatchErrorDomain)
 		}
+		api.Subject(ctx, name)
 		var n int
 		if err := m.db.QueryRowContext(ctx, "SELECT count(*) FROM watch_domains WHERE manual = 1").Scan(&n); err != nil {
 			return nil, err
@@ -91,6 +92,7 @@ func registerDomainsAPI(a huma.API, m *Module) {
 		Summary:     "Stop watching a domain added by hand",
 		Description: "A domain that a certificate or a site is under stays watched.",
 	}, func(ctx context.Context, in *nameInput) (*struct{}, error) {
+		api.Subject(ctx, in.Name)
 		res, err := m.db.ExecContext(ctx, "UPDATE watch_domains SET manual = 0 WHERE name = ? AND manual = 1", in.Name)
 		if err != nil {
 			return nil, err
@@ -105,6 +107,7 @@ func registerDomainsAPI(a huma.API, m *Module) {
 		OperationID: "watch-check-domain", Method: http.MethodPost, Path: "/domains/{name}/check", Tags: tags,
 		Summary: "Look up the registration of a domain now",
 	}, func(ctx context.Context, in *nameInput) (*domainOutput, error) {
+		api.Subject(ctx, in.Name)
 		if err := m.checkDomain(ctx, in.Name); errors.Is(err, errNotFound) {
 			return nil, api.NewError(http.StatusNotFound, i18n.KernelErrorNotFound, nil)
 		} else if err != nil {

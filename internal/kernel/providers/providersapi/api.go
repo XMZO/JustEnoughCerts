@@ -238,6 +238,7 @@ func Register(a huma.API, r *providers.Registry) {
 		Summary:     "Test a configured provider",
 		Description: "Checks its settings without changing anything, for types marked testable. A provider that fails answers 502 with its own message.",
 	}, func(ctx context.Context, in *idInput) (*testOutput, error) {
+		named(ctx, r, in.ID)
 		return test(ctx, r, in.ID)
 	})
 
@@ -253,6 +254,7 @@ func Register(a huma.API, r *providers.Registry) {
 		OperationID: "providers-delete", Method: http.MethodDelete, Path: "/providers/{id}", DefaultStatus: http.StatusNoContent,
 		Summary: "Delete a configured provider, unless a certificate uses it",
 	}, func(ctx context.Context, in *idInput) (*struct{}, error) {
+		named(ctx, r, in.ID)
 		return nil, apiError(r.Delete(ctx, in.ID))
 	})
 
@@ -379,7 +381,16 @@ func output(ctx context.Context, r *providers.Registry, id int64) (*instanceOutp
 	if err != nil {
 		return nil, apiError(err)
 	}
+	api.Subject(ctx, s.Name)
 	return &instanceOutput{Body: instanceBody(s)}, nil
+}
+
+// named gives the audit log the name of provider id, as an operation on it
+// does that answers with no provider.
+func named(ctx context.Context, r *providers.Registry, id int64) {
+	if s, err := r.Get(ctx, id); err == nil {
+		api.Subject(ctx, s.Name)
+	}
 }
 
 // apiError turns the registry's errors into responses.

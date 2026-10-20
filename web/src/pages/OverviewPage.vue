@@ -403,11 +403,13 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
           <p v-if="!todo.length && !renewing.length && !siteTodo.length && !domainTodo.length && !spottedTodo.length && !failingList.length" class="m-0 py-2.5 text-small text-ink-muted">{{ t('certs.attention.none') }}</p>
           <div v-if="renewing.length" class="flex items-start gap-2.5 border-b border-line py-2.5 last:border-b-0 last:pb-1">
             <TriangleAlert class="mt-[3px] size-4 flex-none text-warn-ink" aria-hidden="true" />
-            <div class="min-w-0 flex-1">
-              <div class="font-semibold [overflow-wrap:anywhere]">{{ t('certs.attention.renewal_group', { count: renewing.length }) }}</div>
-              <div class="text-small text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.attention.renewal_detail', { time: firstRenewal }) }}</div>
+            <div class="flex min-w-0 flex-1 flex-wrap items-start justify-end gap-x-2.5 gap-y-1">
+              <div class="min-w-[min(100%,13rem)] flex-1">
+                <div class="font-semibold [overflow-wrap:anywhere]">{{ t('certs.attention.renewal_group', { count: renewing.length }) }}</div>
+                <div class="text-small text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.attention.renewal_detail', { time: firstRenewal }) }}</div>
+              </div>
+              <JecButton variant="ghost" size="sm" @click="renewAll">{{ t('certs.action.renew_now') }}</JecButton>
             </div>
-            <JecButton variant="ghost" size="sm" @click="renewAll">{{ t('certs.action.renew_now') }}</JecButton>
           </div>
           <div
             v-for="item in todo"
@@ -416,16 +418,18 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
           >
             <CircleX v-if="item.expired" class="mt-[3px] size-4 flex-none text-danger-ink" aria-hidden="true" />
             <TriangleAlert v-else class="mt-[3px] size-4 flex-none text-warn-ink" aria-hidden="true" />
-            <div class="min-w-0 flex-1">
-              <div class="font-semibold [overflow-wrap:anywhere]">{{ item.title }}</div>
-              <div class="text-small text-ink-muted [overflow-wrap:anywhere]">{{ item.detail }}</div>
+            <div class="flex min-w-0 flex-1 flex-wrap items-start justify-end gap-x-2.5 gap-y-1">
+              <div class="min-w-[min(100%,13rem)] flex-1">
+                <div class="font-semibold [overflow-wrap:anywhere]">{{ item.title }}</div>
+                <div class="text-small text-ink-muted [overflow-wrap:anywhere]">{{ item.detail }}</div>
+              </div>
+              <JecButton v-if="item.button" size="sm" :busy="busy === item.cert.id" @click="act(item.button.run, item.cert.id)">
+                {{ t(item.button.label) }}
+              </JecButton>
+              <JecButton variant="ghost" size="sm" :to="item.to" class="max-sm:hidden">
+                {{ t(item.action) }}
+              </JecButton>
             </div>
-            <JecButton v-if="item.button" size="sm" :busy="busy === item.cert.id" @click="act(item.button.run, item.cert.id)">
-              {{ t(item.button.label) }}
-            </JecButton>
-            <JecButton variant="ghost" size="sm" :to="item.to" class="max-sm:hidden">
-              {{ t(item.action) }}
-            </JecButton>
             <RouterLink
               :to="item.to"
               :aria-label="t(item.action)"
@@ -436,44 +440,52 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
           </div>
           <div v-if="siteTodo.length" class="flex items-start gap-2.5 border-b border-line py-2.5 last:border-b-0 last:pb-1">
             <TriangleAlert class="mt-[3px] size-4 flex-none text-warn-ink" aria-hidden="true" />
-            <div class="min-w-0 flex-1">
-              <div class="font-semibold [overflow-wrap:anywhere]">{{ t('watch.overview.title', { count: siteTodo.length }) }}</div>
-              <div class="text-small text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ siteNames }}</div>
+            <div class="flex min-w-0 flex-1 flex-wrap items-start justify-end gap-x-2.5 gap-y-1">
+              <div class="min-w-[min(100%,13rem)] flex-1">
+                <div class="font-semibold [overflow-wrap:anywhere]">{{ t('watch.overview.title', { count: siteTodo.length }) }}</div>
+                <div class="text-small text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ siteNames }}</div>
+              </div>
+              <JecButton variant="ghost" size="sm" to="/sites" class="max-sm:hidden">{{ t('watch.overview.open') }}</JecButton>
             </div>
-            <JecButton variant="ghost" size="sm" to="/sites" class="max-sm:hidden">{{ t('watch.overview.open') }}</JecButton>
             <RouterLink to="/sites" :aria-label="t('watch.overview.open')" class="-my-2.5 grid size-11 flex-none place-items-center text-ink-muted sm:hidden">
               <ChevronRight class="size-4" aria-hidden="true" />
             </RouterLink>
           </div>
           <div v-if="domainTodo.length" class="flex items-start gap-2.5 border-b border-line py-2.5 last:border-b-0 last:pb-1">
             <TriangleAlert class="mt-[3px] size-4 flex-none text-warn-ink" aria-hidden="true" />
-            <div class="min-w-0 flex-1">
-              <div class="font-semibold [overflow-wrap:anywhere]">{{ t('watch.overview.domains', { count: domainTodo.length }) }}</div>
-              <div class="text-small text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ domainNames }}</div>
+            <div class="flex min-w-0 flex-1 flex-wrap items-start justify-end gap-x-2.5 gap-y-1">
+              <div class="min-w-[min(100%,13rem)] flex-1">
+                <div class="font-semibold [overflow-wrap:anywhere]">{{ t('watch.overview.domains', { count: domainTodo.length }) }}</div>
+                <div class="text-small text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ domainNames }}</div>
+              </div>
+              <JecButton variant="ghost" size="sm" to="/sites" class="max-sm:hidden">{{ t('watch.overview.open') }}</JecButton>
             </div>
-            <JecButton variant="ghost" size="sm" to="/sites" class="max-sm:hidden">{{ t('watch.overview.open') }}</JecButton>
             <RouterLink to="/sites" :aria-label="t('watch.overview.open')" class="-my-2.5 grid size-11 flex-none place-items-center text-ink-muted sm:hidden">
               <ChevronRight class="size-4" aria-hidden="true" />
             </RouterLink>
           </div>
           <div v-if="spottedTodo.length" class="flex items-start gap-2.5 border-b border-line py-2.5 last:border-b-0 last:pb-1">
             <TriangleAlert class="mt-[3px] size-4 flex-none text-warn-ink" aria-hidden="true" />
-            <div class="min-w-0 flex-1">
-              <div class="font-semibold [overflow-wrap:anywhere]">{{ t('watch.overview.spotted', { count: spottedTodo.length }) }}</div>
-              <div class="text-small text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ spottedNames }}</div>
+            <div class="flex min-w-0 flex-1 flex-wrap items-start justify-end gap-x-2.5 gap-y-1">
+              <div class="min-w-[min(100%,13rem)] flex-1">
+                <div class="font-semibold [overflow-wrap:anywhere]">{{ t('watch.overview.spotted', { count: spottedTodo.length }) }}</div>
+                <div class="text-small text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ spottedNames }}</div>
+              </div>
+              <JecButton variant="ghost" size="sm" to="/sites" class="max-sm:hidden">{{ t('watch.overview.open') }}</JecButton>
             </div>
-            <JecButton variant="ghost" size="sm" to="/sites" class="max-sm:hidden">{{ t('watch.overview.open') }}</JecButton>
             <RouterLink to="/sites" :aria-label="t('watch.overview.open')" class="-my-2.5 grid size-11 flex-none place-items-center text-ink-muted sm:hidden">
               <ChevronRight class="size-4" aria-hidden="true" />
             </RouterLink>
           </div>
           <div v-if="failingList.length" class="flex items-start gap-2.5 border-b border-line py-2.5 last:border-b-0 last:pb-1">
             <TriangleAlert class="mt-[3px] size-4 flex-none text-warn-ink" aria-hidden="true" />
-            <div class="min-w-0 flex-1">
-              <div class="font-semibold [overflow-wrap:anywhere]">{{ t('kernel.providers.failing', { count: failingList.length }) }}</div>
-              <div class="text-small text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ failingNames }}</div>
+            <div class="flex min-w-0 flex-1 flex-wrap items-start justify-end gap-x-2.5 gap-y-1">
+              <div class="min-w-[min(100%,13rem)] flex-1">
+                <div class="font-semibold [overflow-wrap:anywhere]">{{ t('kernel.providers.failing', { count: failingList.length }) }}</div>
+                <div class="text-small text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ failingNames }}</div>
+              </div>
+              <JecButton variant="ghost" size="sm" :to="failingPage" class="max-sm:hidden">{{ t('kernel.providers.failing_open') }}</JecButton>
             </div>
-            <JecButton variant="ghost" size="sm" :to="failingPage" class="max-sm:hidden">{{ t('kernel.providers.failing_open') }}</JecButton>
             <RouterLink :to="failingPage" :aria-label="t('kernel.providers.failing_open')" class="-my-2.5 grid size-11 flex-none place-items-center text-ink-muted sm:hidden">
               <ChevronRight class="size-4" aria-hidden="true" />
             </RouterLink>

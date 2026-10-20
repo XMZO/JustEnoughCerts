@@ -1450,6 +1450,10 @@
             "format": "int64",
             "type": "integer"
           },
+          "subject": {
+            "description": "What it acted on, as a certificate's main domain or a provider's name",
+            "type": "string"
+          },
           "token": {
             "description": "The name of the API token it came with; none for a session",
             "type": "string"
@@ -5014,12 +5018,12 @@
             }
           },
           {
-            "description": "Only those holding this, letter case aside, in the path, the account, the address, the token or the operation's ID",
+            "description": "Only those holding this, letter case aside, in the path, the subject, the account, the address, the token or the operation's ID",
             "explode": false,
             "in": "query",
             "name": "q",
             "schema": {
-              "description": "Only those holding this, letter case aside, in the path, the account, the address, the token or the operation's ID",
+              "description": "Only those holding this, letter case aside, in the path, the subject, the account, the address, the token or the operation's ID",
               "maxLength": 200,
               "type": "string"
             }

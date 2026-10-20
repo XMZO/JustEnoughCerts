@@ -313,6 +313,7 @@ type recorder struct {
 // reach it. prefix is the path of the API, which the record leaves out.
 func audit(set *module.Set, prefix string, recorders *[]recorder) func(huma.Context, func(huma.Context)) {
 	return func(ctx huma.Context, next func(huma.Context)) {
+		ctx = huma.WithContext(ctx, api.WithSubject(ctx.Context()))
 		next(ctx)
 		method := ctx.Method()
 		audited := ctx.Operation() != nil && ctx.Operation().Metadata[api.Audited] == true
@@ -322,6 +323,7 @@ func audit(set *module.Set, prefix string, recorders *[]recorder) func(huma.Cont
 		req := module.Request{
 			At: time.Now().UTC(), Method: method, Path: strings.TrimPrefix(ctx.URL().Path, prefix), Status: ctx.Status(),
 			Client: auth.ClientFrom(ctx.Context()), UserAgent: ctx.Header("User-Agent"), Token: auth.TokenFrom(ctx.Context()),
+			Subject: api.SubjectOf(ctx.Context()),
 		}
 		if op := ctx.Operation(); op != nil {
 			req.Operation = op.OperationID

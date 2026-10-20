@@ -75,6 +75,7 @@ func registerPullAPI(a huma.API, s *service, confirm func(context.Context, strin
 		Metadata: map[string]any{auth.SessionOnly: true},
 		Summary:  "Make the key servers fetch a certificate with, once the password is confirmed; the old one stops working",
 	}, func(ctx context.Context, in *pullKeyInput) (*pullOutput, error) {
+		s.named(ctx, in.ID)
 		if err := confirm(ctx, in.Body.Password); err != nil {
 			return nil, err
 		}
@@ -104,6 +105,7 @@ func registerPullAPI(a huma.API, s *service, confirm func(context.Context, strin
 		OperationID: "certs-pull-off", Method: http.MethodDelete, Path: "/certificates/{id}/pull", Tags: tags, DefaultStatus: http.StatusNoContent,
 		Summary: "Stop servers fetching a certificate: its key stops working",
 	}, func(ctx context.Context, in *idInput) (*struct{}, error) {
+		s.named(ctx, in.ID)
 		_, err := s.db.ExecContext(ctx, "DELETE FROM certs_pull WHERE certificate_id = ?", in.ID)
 		return nil, err
 	})

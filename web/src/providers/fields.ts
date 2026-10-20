@@ -156,14 +156,16 @@ export interface Shown {
 
 /**
  * summary lists the plain settings of instance worth showing on its card:
- * the ones with a value to read, outside the advanced ones, at most two.
+ * the ones with a value to read in a line, outside the advanced ones, at
+ * most two. Multiline ones, as a PEM block or a script, read as nothing
+ * there.
  */
 export function summary(type: ProviderType | undefined, instance: Provider): Shown[] {
   if (!type) return []
   const out: Shown[] = []
   for (const f of type.fields) {
     const v = instance.config[f.key]
-    if (f.secret || f.advanced || f.kind === 'switch' || f.kind === 'locale' || !v || !applies(f, instance.config, type.fields)) continue
+    if (f.secret || f.advanced || f.kind === 'switch' || f.kind === 'locale' || f.kind === 'multiline' || !v || !applies(f, instance.config, type.fields)) continue
     const option = f.options?.find((o) => o.value === v)
     out.push({ label: f.label as MessageKey | undefined, key: f.key, value: option ? undefined : v, option: option?.label as MessageKey | undefined })
     if (out.length === 2) break

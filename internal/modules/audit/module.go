@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
@@ -23,8 +24,23 @@ var migrationFiles embed.FS
 // keep is how long entries stay.
 const keep = 365 * 24 * time.Hour
 
-// maxUserAgent bounds the User-Agent kept, which clients make up.
-const maxUserAgent = 512
+// maxUserAgent bounds the User-Agent kept, which clients make up;
+// maxSubject the subject, which may come from what a client sent.
+const (
+	maxUserAgent = 512
+	maxSubject   = 256
+)
+
+// truncate cuts s to at most n bytes, on a character boundary.
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
+	}
+	return s[:n]
+}
 
 // Module is the audit module.
 type Module struct {
@@ -64,13 +80,10 @@ func (m *Module) Register(r *module.Registry) error {
 // record stores req. A failure to store it is only logged: the operation
 // it tells of is done.
 func (m *Module) record(ctx context.Context, req module.Request) {
-	agent := req.UserAgent
-	if len(agent) > maxUserAgent {
-		agent = agent[:maxUserAgent]
-	}
+	agent := truncate(req.UserAgent, maxUserAgent)
 	_, err := m.db.ExecContext(context.WithoutCancel(ctx),
-		`INSERT INTO audit_log (at, operation, method, path, status, "user", client, user_agent, token) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		req.At.UnixMilli(), req.Operation, req.Method, req.Path, req.Status, req.User, req.Client, agent, req.Token)
+		`INSERT INTO audit_log (at, operation, method, path, status, "user", client, user_agent, token, subject) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		req.At.UnixMilli(), req.Operation, req.Method, req.Path, req.Status, req.User, req.Client, agent, req.Token, truncate(req.Subject, maxSubject))
 	if err != nil {
 		m.log.Error("record an operation", "operation", req.Operation, "err", err)
 	}
@@ -87,6 +100,7 @@ type entry struct {
 	id                                                  int64
 	at                                                  time.Time
 	operation, method, path, user, client, agent, token string
+	subject                                             string
 	status                                              int
 }
 
@@ -96,8 +110,9 @@ type entry struct {
 type query struct {
 	since  time.Time
 	result string
-	// text is looked for, letter case aside, in the path, the account,
-	// the address, the token and the operation's ID; ops are operations
+	// text is looked for, letter case aside, in the path, the subject,
+	// the account, the address, the token and the operation's ID; ops are
+	// operations
 	// whose names hold it, as the interface words them.
 	text          string
 	ops           []string
@@ -114,7 +129,7 @@ func (m *Module) find(ctx context.Context, q query) ([]entry, tally, error) {
 	if text := strings.ToLower(strings.TrimSpace(q.text)); text != "" {
 		like := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(text) + "%"
 		var holds []string
-		for _, column := range []string{"path", `"user"`, "client", "token", "operation"} {
+		for _, column := range []string{"path", "subject", `"user"`, "client", "token", "operation"} {
 			holds = append(holds, "lower("+column+`) LIKE ? ESCAPE '\'`)
 			args = append(args, like)
 		}
@@ -140,7 +155,7 @@ func (m *Module) find(ctx context.Context, q query) ([]entry, tally, error) {
 		where += " AND status >= 400"
 	}
 	rows, err := m.db.QueryContext(ctx,
-		`SELECT id, at, operation, method, path, status, "user", client, user_agent, token FROM audit_log
+		`SELECT id, at, operation, method, path, status, "user", client, user_agent, token, subject FROM audit_log
 		 WHERE `+where+` ORDER BY at DESC, id DESC LIMIT ? OFFSET ?`, append(args, q.limit, q.offset)...)
 	if err != nil {
 		return nil, tally{}, err
@@ -150,7 +165,7 @@ func (m *Module) find(ctx context.Context, q query) ([]entry, tally, error) {
 	for rows.Next() {
 		var e entry
 		var at int64
-		if err := rows.Scan(&e.id, &at, &e.operation, &e.method, &e.path, &e.status, &e.user, &e.client, &e.agent, &e.token); err != nil {
+		if err := rows.Scan(&e.id, &at, &e.operation, &e.method, &e.path, &e.status, &e.user, &e.client, &e.agent, &e.token, &e.subject); err != nil {
 			return nil, tally{}, err
 		}
 		e.at = time.UnixMilli(at).UTC()

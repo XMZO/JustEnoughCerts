@@ -172,6 +172,7 @@ const solverLabel = computed<MessageKey>(() =>
   only.value === 'dns' || only.value === 'record' ? 'certs.add.dns' : only.value === 'http' ? 'certs.add.http' : 'certs.add.solver',
 )
 const solverHint = computed<MessageKey>(() => {
+  if (solverProvider.value && solverType(solverProvider.value)?.manual) return 'certs.add.manual_help'
   if (solverProvider.value && challengeOf(solverProvider.value) === 'http') return 'certs.add.http_help'
   return accepted.value.includes('dns') ? 'certs.add.dns_help' : 'certs.add.records_help'
 })
@@ -273,7 +274,13 @@ const plan = computed(() => {
   if (bulk.value) steps.unshift(t('certs.plan.bulk', { count: batch.value.length }))
   if (needsSolver.value && solverProvider.value) {
     const name = solverProvider.value.name
-    steps.push(challengeOf(solverProvider.value) === 'http' ? t('certs.plan.http', { solver: name }) : t('certs.plan.dns', { dns: name }))
+    steps.push(
+      solverType(solverProvider.value)?.manual
+        ? t('certs.plan.manual')
+        : challengeOf(solverProvider.value) === 'http'
+          ? t('certs.plan.http', { solver: name })
+          : t('certs.plan.dns', { dns: name }),
+    )
   }
   steps.push(t('certs.plan.download'))
   steps.push(...deploySteps.value, t('certs.plan.renew', { days: renewDays.value, time }))

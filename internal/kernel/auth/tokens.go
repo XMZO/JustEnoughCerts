@@ -199,6 +199,7 @@ func (s *Service) listTokens(ctx context.Context, _ *struct{}) (*tokensOutput, e
 }
 
 func (s *Service) createToken(ctx context.Context, in *createTokenInput) (*createTokenOutput, error) {
+	api.Subject(ctx, strings.TrimSpace(in.Body.Name))
 	if err := s.ConfirmPassword(ctx, in.Body.Password); err != nil {
 		return nil, err
 	}
@@ -240,6 +241,10 @@ func (s *Service) createToken(ctx context.Context, in *createTokenInput) (*creat
 
 func (s *Service) deleteToken(ctx context.Context, in *deleteTokenInput) (*struct{}, error) {
 	u, _ := UserFrom(ctx)
+	var name string
+	if s.db.QueryRowContext(ctx, "SELECT name FROM kernel_api_tokens WHERE id = ? AND user_id = ?", in.ID, u.ID).Scan(&name) == nil {
+		api.Subject(ctx, name)
+	}
 	res, err := s.db.ExecContext(ctx, "DELETE FROM kernel_api_tokens WHERE id = ? AND user_id = ?", in.ID, u.ID)
 	if err != nil {
 		return nil, err

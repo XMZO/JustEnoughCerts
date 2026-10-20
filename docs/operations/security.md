@@ -72,7 +72,9 @@ No token can change the password, two-factor authentication or the tokens.
 The Audit log page records every operation performed through the panel
 (any request other than GET and HEAD, such as signing in, changing
 settings, downloading a private key or exporting the configuration with its
-secrets), with the account, the client address, the client and the result.
+secrets), with what it acted on (such as a certificate's main domain, a
+provider's name or a site), the account, the client address, the client
+and the result.
 Entries are kept for one year, and can be filtered and exported as CSV.
 
 ## Other safeguards

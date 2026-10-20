@@ -214,7 +214,7 @@ async function exportCsv() {
   }
   const lines = [[...columns.map((c) => t(c)), 'HTTP', 'User-Agent']]
   for (const e of list) {
-    lines.push([stamp(e.at, true), `${label(e)} (${raw(e)})`, e.user ?? '', t(resultText[resultOf(e)]), e.client, String(e.status), e.userAgent ?? ''])
+    lines.push([stamp(e.at, true), `${label(e)}${e.subject ? ` · ${e.subject}` : ''} (${raw(e)})`, e.user ?? '', t(resultText[resultOf(e)]), e.client, String(e.status), e.userAgent ?? ''])
   }
   const csv = String.fromCharCode(0xfeff) + lines.map((l) => l.map(cell).join(',')).join('\r\n') + '\r\n'
   saveFile(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `jec-audit-${dayKey(Date.now()).replaceAll('-', '')}.csv`)
@@ -297,10 +297,11 @@ const selectClass =
               <time :datetime="e.at">{{ intl.clock(e.at) }}</time>
             </td>
             <td class="w-full border-b border-line px-3 py-1.5 align-top [overflow-wrap:anywhere]">
-              <span class="flex items-center gap-1.5 font-semibold">
+              <span class="flex flex-wrap items-center gap-x-1.5 font-semibold">
                 <KeyRound v-if="secret.has(e.operation)" class="size-3.5 shrink-0 text-warn-ink" aria-hidden="true" />
                 <template v-if="operations[e.operation]">{{ label(e) }}</template>
                 <code v-else>{{ raw(e) }}</code>
+                <span v-if="e.subject" class="font-normal text-ink-muted" translate="no">· {{ e.subject }}</span>
               </span>
               <code v-if="operations[e.operation]" class="text-caption text-ink-muted">{{ e.path }}</code>
             </td>
@@ -340,11 +341,12 @@ const selectClass =
         >
           <component :is="looks[resultOf(e)].icon" :class="['mt-0.5 size-5', looks[resultOf(e)].ink]" aria-hidden="true" />
           <span class="grid min-w-0 gap-0.5">
-            <span class="flex min-w-0 items-center gap-1.5 font-semibold [overflow-wrap:anywhere]">
+            <span class="flex min-w-0 flex-wrap items-center gap-x-1.5 font-semibold [overflow-wrap:anywhere]">
               <KeyRound v-if="secret.has(e.operation)" class="size-3.5 shrink-0 text-warn-ink" aria-hidden="true" />
               <template v-if="operations[e.operation]">{{ label(e) }}</template>
               <code v-else>{{ raw(e) }}</code>
             </span>
+            <span v-if="e.subject" class="min-w-0 text-small text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ e.subject }}</span>
             <span class="flex flex-wrap gap-x-2 text-small">
               <span v-if="e.user" translate="no">{{ e.user }}</span>
               <span v-else class="text-ink-muted">{{ t('audit.page.no_account') }}</span>

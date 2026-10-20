@@ -23,6 +23,7 @@ type EntryBody struct {
 	Operation string    `json:"operation" doc:"The ID of the operation, such as certs-delete"`
 	Method    string    `json:"method"`
 	Path      string    `json:"path" doc:"The path below /api/v1"`
+	Subject   string    `json:"subject,omitempty" doc:"What it acted on, as a certificate's main domain or a provider's name"`
 	Status    int       `json:"status" doc:"The status of the answer"`
 	User      string    `json:"user,omitempty" doc:"The account signed in; none for a sign-in"`
 	Client    string    `json:"client" doc:"The address of the client"`
@@ -33,7 +34,7 @@ type EntryBody struct {
 type entriesInput struct {
 	Days   int    `query:"days" minimum:"0" maximum:"36500" default:"30" doc:"How many days back to list; 0 for all"`
 	Result string `query:"result" enum:"ok,failed" doc:"Only the entries that succeeded, or only those that failed (status 400 and up)"`
-	Text   string `query:"q" maxLength:"200" doc:"Only those holding this, letter case aside, in the path, the account, the address, the token or the operation's ID"`
+	Text   string `query:"q" maxLength:"200" doc:"Only those holding this, letter case aside, in the path, the subject, the account, the address, the token or the operation's ID"`
 	Ops    string `query:"ops" maxLength:"4000" doc:"Operations, by ID and comma separated, that also match the text: those whose names, as the interface words them, hold it"`
 	Page   int    `query:"page" minimum:"1" default:"1"`
 	Size   int    `query:"size" minimum:"1" maximum:"5000" default:"50" doc:"Entries a page holds"`
@@ -82,7 +83,7 @@ func registerAPI(a huma.API, m *Module) {
 		out.Body.Entries = make([]EntryBody, 0, len(entries))
 		for _, e := range entries {
 			out.Body.Entries = append(out.Body.Entries, EntryBody{ID: e.id, At: e.at, Operation: e.operation, Method: e.method,
-				Path: e.path, Status: e.status, User: e.user, Client: e.client, UserAgent: e.agent, Token: e.token})
+				Path: e.path, Subject: e.subject, Status: e.status, User: e.user, Client: e.client, UserAgent: e.agent, Token: e.token})
 		}
 		return out, nil
 	})

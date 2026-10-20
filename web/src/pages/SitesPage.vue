@@ -48,6 +48,11 @@ const looks: Record<State, { icon: typeof CircleCheck; label: MessageKey; badge:
   invalid: { icon: ShieldAlert, label: 'watch.state.invalid', badge: 'bg-danger-soft text-danger-ink', ink: 'text-danger-ink' },
   unreachable: { icon: Unplug, label: 'watch.state.unreachable', badge: 'bg-warn-soft text-warn-ink', ink: 'text-warn-ink' },
 }
+// A site that serves no intermediates looks as one to see to, not as fine.
+const look = (s: Site) =>
+  s.state === 'ok' && s.incomplete
+    ? { icon: TriangleAlert, label: 'watch.state.incomplete' as MessageKey, badge: 'bg-warn-soft text-warn-ink', ink: 'text-warn-ink' }
+    : looks[s.state]
 const address = (s: Site) => (s.port === 443 ? s.host : s.host.includes(':') ? `[${s.host}]:${s.port}` : `${s.host}:${s.port}`)
 const day = 86_400_000
 // How long is left, or how long ago it ended.
@@ -240,8 +245,8 @@ async function confirmDrop() {
               <span :class="['block', s.name ? 'text-caption text-ink-muted' : 'font-semibold']" translate="no">{{ address(s) }}</span>
             </td>
             <td class="border-b border-line px-3 py-2">
-              <span :class="['inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-semibold whitespace-nowrap', looks[s.state].badge]">
-                <component :is="looks[s.state].icon" class="size-3.5" aria-hidden="true" />{{ t(looks[s.state].label) }}
+              <span :class="['inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-semibold whitespace-nowrap', look(s).badge]">
+                <component :is="look(s).icon" class="size-3.5" aria-hidden="true" />{{ t(look(s).label) }}
               </span>
               <span v-if="s.incomplete" class="mt-1 block max-w-64 text-caption font-semibold text-warn-ink">{{ t('watch.site.incomplete') }}</span>
               <span v-if="s.error" class="mt-1 block max-w-64 truncate text-caption text-ink-muted" :title="s.error" translate="no">{{ s.error }}</span>
@@ -286,12 +291,12 @@ async function confirmDrop() {
     <!-- Phones: a list. -->
     <ul v-if="sites.data.value?.length" class="m-0 list-none overflow-hidden rounded-lg border border-line bg-surface-raised p-0 sm:hidden">
       <li v-for="s in sites.data.value" :key="s.id" class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border-b border-line px-4 py-2.5 last:border-b-0">
-        <component :is="looks[s.state].icon" :class="['mt-0.5 size-5', looks[s.state].ink]" aria-hidden="true" />
+        <component :is="look(s).icon" :class="['mt-0.5 size-5', look(s).ink]" aria-hidden="true" />
         <span class="grid min-w-0 gap-0.5">
           <span class="truncate font-semibold" translate="no" :title="s.name || address(s)">{{ s.name || address(s) }}</span>
           <span v-if="s.name" class="truncate text-caption text-ink-muted" translate="no" :title="address(s)">{{ address(s) }}</span>
           <span class="flex flex-wrap gap-x-2 text-small">
-            <span :class="['font-semibold', looks[s.state].ink]">{{ t(looks[s.state].label) }}</span>
+            <span :class="['font-semibold', look(s).ink]">{{ t(look(s).label) }}</span>
             <template v-if="s.notAfter">
               <time :datetime="s.notAfter" class="text-ink-muted">{{ intl.date(s.notAfter) }}</time>
               <span class="text-ink-muted">{{ left(s) }}</span>

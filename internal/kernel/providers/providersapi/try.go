@@ -67,6 +67,7 @@ func registerTry(a huma.API, r *providers.Registry) {
 		Description: "For solvers whose challenge is dns, but those whose records people add. The record is a TXT record at _acme-challenge under the domain, with a random value. " +
 			"A provider that fails to add it answers 502 with its own message.",
 	}, func(ctx context.Context, in *tryInput) (*tryOutput, error) {
+		named(ctx, r, in.ID)
 		return try(ctx, r, in.ID, in.Body.Domain)
 	})
 }

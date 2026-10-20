@@ -147,6 +147,9 @@ func registerCredentials(a huma.API, r *providers.Registry) {
 		OperationID: "credentials-delete", Method: http.MethodDelete, Path: "/credentials/{id}", Tags: tags, DefaultStatus: http.StatusNoContent,
 		Summary: "Delete a credential, unless a provider uses it",
 	}, func(ctx context.Context, in *idInput) (*struct{}, error) {
+		if c, err := r.GetCredential(ctx, in.ID); err == nil {
+			api.Subject(ctx, c.Name)
+		}
 		return nil, credentialError(r.DeleteCredential(ctx, in.ID))
 	})
 }
@@ -156,6 +159,7 @@ func credentialOut(ctx context.Context, r *providers.Registry, id int64) (*crede
 	if err != nil {
 		return nil, credentialError(err)
 	}
+	api.Subject(ctx, c.Name)
 	return &credentialOutput{Body: credentialBody(c)}, nil
 }
 

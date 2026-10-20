@@ -729,7 +729,7 @@ async function confirmDelete() {
                     <span class="ml-1.5 text-ink-muted" :translate="r.label.brand ? 'no' : undefined">{{ r.label.type }}</span>
                     <span v-if="r.shown.length" class="block text-caption text-ink-muted">
                       <span v-for="s in r.shown" :key="s.key" class="not-first:before:mx-1.5 not-first:before:content-['·']">
-                        <span v-if="s.label" class="mr-1">{{ t(s.label) }}</span>
+                        <span v-if="s.label">{{ t('kernel.providers.setting', { label: t(s.label) }) }}</span>
                         <template v-if="s.option">{{ t(s.option) }}</template>
                         <span v-else translate="no">{{ s.value }}</span>
                       </span>

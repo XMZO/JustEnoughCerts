@@ -148,6 +148,7 @@ func registerIssueAPI(a huma.API, s *service) {
 		Summary:     "Issue a new version of a certificate now",
 		Description: "Starts an issuance, or returns the one under way, which is retried now if it was waiting to.",
 	}, func(ctx context.Context, in *idInput) (*issuanceOutput, error) {
+		s.named(ctx, in.ID)
 		id, err := s.issue(ctx, in.ID)
 		if err != nil {
 			return nil, serviceError(err)

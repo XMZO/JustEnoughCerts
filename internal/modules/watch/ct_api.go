@@ -136,6 +136,7 @@ func registerTransparencyAPI(a huma.API, m *Module) {
 		OperationID: "watch-transparency-ignore", Method: http.MethodPost, Path: "/transparency/certificates/{id}/ignore", Tags: tags, DefaultStatus: http.StatusNoContent,
 		Summary: "Ignore a certificate found",
 	}, func(ctx context.Context, in *spottedInput) (*struct{}, error) {
+		m.spottedNamed(ctx, in.ID)
 		res, err := m.db.ExecContext(ctx, "UPDATE watch_ct_certificates SET state = ? WHERE id = ? AND state IN (?, ?, ?)",
 			ctIgnored, in.ID, ctNew, ctBaseline, ctUnknown)
 		if err != nil {
@@ -151,6 +152,7 @@ func registerTransparencyAPI(a huma.API, m *Module) {
 		Summary:     "Trust the certificates for the names of a certificate found, by its issuer",
 		Description: "As those a CDN makes: the certificates found and found later for the same names by the same issuer are not told of.",
 	}, func(ctx context.Context, in *spottedInput) (*struct{}, error) {
+		m.spottedNamed(ctx, in.ID)
 		var names, issuer string
 		err := m.db.QueryRowContext(ctx, "SELECT names, issuer FROM watch_ct_certificates WHERE id = ?", in.ID).Scan(&names, &issuer)
 		if errors.Is(err, sql.ErrNoRows) {
@@ -314,4 +316,15 @@ func (m *Module) transparency(ctx context.Context) (*transparencyOutput, error) 
 		return strings.Compare(x.Issuer, y.Issuer)
 	})
 	return out, nil
+}
+
+// spottedNamed gives the audit log the first name of certificate id found
+// in the logs.
+func (m *Module) spottedNamed(ctx context.Context, id string) {
+	var raw string
+	var names []string
+	if m.db.QueryRowContext(ctx, "SELECT names FROM watch_ct_certificates WHERE id = ?", id).Scan(&raw) == nil &&
+		json.Unmarshal([]byte(raw), &names) == nil && len(names) > 0 {
+		api.Subject(ctx, names[0])
+	}
 }

@@ -135,6 +135,11 @@
 - 心跳监控（内核 `system/heartbeat.go`，`kernel_meta` 的 `heartbeat`，`PUT /api/v1/system/heartbeat`，任务 `kernel.heartbeat` 每 5 分钟 GET 一次，结果只在内存里；失败算任务失败）：设置页“数据和备份”填地址，离开输入框时保存。输入框的 `placeholder` 也算界面文字，要么翻译要么不写。
 - 域名注册到期在后缀没有 RDAP 时改用 WHOIS（`watch/whois.go`：先问 whois.iana.org 得到服务器，`.uk` 补在 `whoisServers`；按常见写法读到期时间和注册商）；测试一律用 `fakeWhois`，不连真实服务器。
 - 单张证书的通知渠道（`certs_certificates.notify_to`，`PATCH` 的 `notifyTo`，配置文件 `notify_to` 按名称；空为全部）：通知模块收到证书事件时经 `r.Call` 读证书的 `notifyTo` 过滤渠道（证书已删或模块停用时发给全部）；详情页续期设置里勾选。
+- 面板自己提供 HTTPS（`JEC_TLS_CERT`、`JEC_TLS_KEY`，`httpserver/tls.go`，`PLAN.md` 10）：文件变了 10 秒内换上，只写了一半时保留旧的，文件还没有时用临时自签名证书（面板证书可以由 JEC 签发、经“本地目录”目标写进去）；Cookie 随之只经 HTTPS，`jec healthcheck` 改用 HTTPS；设置页“关于”的“面板 HTTPS”。
+- 设置了 `JEC_DNS_RESOLVERS` 时，ACME 的记录检查改用 `dnscheck.Visible`（lego 只用这些解析服务器找 NS 名称，NS 地址却问系统的）。“试一下”和账号的区域检查跟随 `_acme-challenge` 的 CNAME 委派（`dnscheck.Delegated`）。ACME 账号的“首选证书链”（`preferred_chain`，按链顶证书颁发者的 CN）。以上都在 BIND + Pebble 上实测过。
+- 通知渠道又加了 Microsoft Teams（`teams.workflow`，Workflows 的 Webhook，Adaptive Card）、Google Chat（`googlechat.webhook`）、Matrix（`matrix.room`，对着 Conduit 实测过，`live_test.go` 靠 `JEC_TEST_MATRIX` 等环境变量运行）、PushPlus（`pushplus.token`）、QQ（`onebot.qq`，OneBot v11 的 HTTP 接口），共 19 种；除 Matrix 外标“未实测”。
+- 审计日志记下操作对象：处理函数用 `api.Subject(ctx, 名称)` 标出（证书的主域名、服务商和凭据的名称、站点、域名、令牌名），`audit_log.subject`，界面显示在操作名后面，可搜索；新加改动类接口时一并标上。
+- 界面巡检修过：总览“需要处理”的按钮在窄卡片里换到文字下面；证书列表的表格在 1280 宽下放得下（表格单元格上的 `max-w-*` 无效，要套一层块元素再截断）；缺中间证书的站点显示黄色“缺中间证书”；服务商卡片摘要不显示多行字段；手动 DNS 的说明和步骤；部署行的“标签：值”。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

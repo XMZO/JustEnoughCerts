@@ -160,4 +160,8 @@ type Request struct {
 	Token     string // the name of the API token it came with; "" for a session
 	Client    string // the client's address
 	UserAgent string
+	// Subject is what it acted on, as its handler named it with
+	// api.Subject: a certificate's main domain, a provider's name; "" when
+	// none did.
+	Subject string
 }

@@ -77,6 +77,7 @@ func registerAPI(a huma.API, m *Module) {
 		OperationID: "watch-add", Method: http.MethodPost, Path: "/sites", Tags: tags, DefaultStatus: http.StatusCreated,
 		Summary: "Watch a site, which is checked at once",
 	}, func(ctx context.Context, in *addInput) (*siteOutput, error) {
+		api.Subject(ctx, strings.TrimSpace(in.Body.Host))
 		host, port, ok := parseHost(in.Body.Host)
 		if !ok {
 			return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil).WithField("body.host", i18n.WatchErrorHost)
@@ -110,6 +111,7 @@ func registerAPI(a huma.API, m *Module) {
 		OperationID: "watch-delete", Method: http.MethodDelete, Path: "/sites/{id}", Tags: tags, DefaultStatus: http.StatusNoContent,
 		Summary: "Stop watching a site",
 	}, func(ctx context.Context, in *idInput) (*struct{}, error) {
+		m.siteNamed(ctx, in.ID)
 		res, err := m.db.ExecContext(ctx, "DELETE FROM watch_sites WHERE id = ?", in.ID)
 		if err != nil {
 			return nil, err
@@ -124,6 +126,7 @@ func registerAPI(a huma.API, m *Module) {
 		OperationID: "watch-check", Method: http.MethodPost, Path: "/sites/{id}/check", Tags: tags,
 		Summary: "Check a site now",
 	}, func(ctx context.Context, in *idInput) (*siteOutput, error) {
+		m.siteNamed(ctx, in.ID)
 		if err := m.check(ctx, in.ID); errors.Is(err, errNotFound) {
 			return nil, api.NewError(http.StatusNotFound, i18n.KernelErrorNotFound, nil)
 		} else if err != nil {
@@ -133,6 +136,14 @@ func registerAPI(a huma.API, m *Module) {
 	})
 	registerDomainsAPI(a, m)
 	registerTransparencyAPI(a, m)
+}
+
+// siteNamed gives the audit log the host of site id.
+func (m *Module) siteNamed(ctx context.Context, id int64) {
+	var host string
+	if m.db.QueryRowContext(ctx, "SELECT host FROM watch_sites WHERE id = ?", id).Scan(&host) == nil {
+		api.Subject(ctx, host)
+	}
 }
 
 func (m *Module) one(ctx context.Context, id int64) (*siteOutput, error) {

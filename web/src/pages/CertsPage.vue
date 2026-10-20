@@ -570,7 +570,7 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
                 v-for="col in ['certs.column.domain', 'certs.column.state', 'certs.column.left', 'certs.column.source', 'certs.column.targets', 'certs.column.next'] as const"
                 :key="col"
                 scope="col"
-                class="border-b border-line bg-surface-sunken px-3 py-2 text-left text-small font-semibold whitespace-nowrap text-ink-muted"
+                class="border-b border-line bg-surface-sunken px-2 py-2 text-left text-small font-semibold whitespace-nowrap text-ink-muted"
               >
                 {{ t(col) }}
               </th>
@@ -590,25 +590,24 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
                   @change="toggle(r.cert.id)"
                 />
               </td>
-              <td class="border-b border-line px-3 py-1.5 whitespace-nowrap">
+              <td class="border-b border-line px-2 py-1.5 whitespace-nowrap">
                 <RouterLink :to="`/certificates/${r.cert.id}`" class="font-semibold text-ink no-underline hover:text-ink" translate="no">
                   {{ r.domain }}<small v-if="r.extra" class="ml-1 text-small font-normal text-ink-muted">{{ r.extra }}</small>
                 </RouterLink>
                 <span v-if="r.cert.note" class="block max-w-64 truncate text-caption text-ink-muted" translate="no" :title="r.cert.note">{{ r.cert.note }}</span>
               </td>
-              <td class="border-b border-line px-3 py-1.5"><StatusBadge :state="r.cert.state" /></td>
-              <td class="border-b border-line px-3 py-1.5">
+              <td class="border-b border-line px-2 py-1.5"><StatusBadge :state="r.cert.state" /></td>
+              <td class="border-b border-line px-2 py-1.5">
                 <LifeBar v-if="r.life" :life="r.life" inline />
                 <span v-else class="text-small whitespace-nowrap text-ink-muted">{{ t('certs.life.pending') }}</span>
               </td>
-              <td
-                class="max-w-48 truncate border-b border-line px-3 py-1.5 whitespace-nowrap text-ink-muted"
-                :translate="r.cert.source === 'provider' ? 'no' : undefined"
-                :title="r.source"
-              >
-                {{ r.source }}
+              <td class="border-b border-line px-2 py-1.5 text-ink-muted">
+                <!-- A cell's own max-width does nothing in a table. -->
+                <span class="block max-w-48 truncate whitespace-nowrap" :translate="r.cert.source === 'provider' ? 'no' : undefined" :title="r.source">
+                  {{ r.source }}
+                </span>
               </td>
-              <td class="border-b border-line px-3 py-1.5">
+              <td class="border-b border-line px-2 py-1.5">
                 <span class="flex max-w-60 flex-wrap gap-1.5">
                   <span
                     v-for="name in r.targets"
@@ -621,7 +620,9 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
                   </span>
                 </span>
               </td>
-              <td class="max-w-56 truncate border-b border-line px-3 py-1.5 whitespace-nowrap text-ink-muted" :title="r.next">{{ r.next }}</td>
+              <td class="border-b border-line px-2 py-1.5 text-ink-muted">
+                <span class="block max-w-44 truncate whitespace-nowrap" :title="r.next">{{ r.next }}</span>
+              </td>
               <td class="border-b border-line px-1 py-1">
                 <RowMenu :label="t('certs.menu.label', { domain: r.domain })" :items="menu(r.cert)" />
               </td>

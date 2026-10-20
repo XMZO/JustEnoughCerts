@@ -417,7 +417,10 @@ func (a auditor) Register(r *module.Registry) error {
 		*a.seen = append(*a.seen, req)
 	})
 	huma.Register(r.API, huma.Operation{OperationID: "auditor-poke", Method: http.MethodPost, Path: "/poke", DefaultStatus: http.StatusNoContent},
-		func(context.Context, *struct{}) (*struct{}, error) { return nil, nil })
+		func(ctx context.Context, _ *struct{}) (*struct{}, error) {
+			api.Subject(ctx, "poked.example.com")
+			return nil, nil
+		})
 	// A sign-in through another site, which lands on a GET.
 	type signedIn struct {
 		SetCookie http.Cookie `header:"Set-Cookie"`
@@ -483,7 +486,7 @@ func TestAudit(t *testing.T) {
 		t.Fatalf("recorded %+v", got)
 	}
 	if p := got[1]; p.Operation != "auditor-poke" || p.Method != http.MethodPost || p.Path != "/auditor/poke" || p.Status != http.StatusNoContent ||
-		p.User != "admin" || p.Client != "127.0.0.1" || p.UserAgent == "" || p.At.IsZero() {
+		p.User != "admin" || p.Client != "127.0.0.1" || p.UserAgent == "" || p.At.IsZero() || p.Subject != "poked.example.com" || got[0].Subject != "" {
 		t.Errorf("poke recorded as %+v", p)
 	}
 

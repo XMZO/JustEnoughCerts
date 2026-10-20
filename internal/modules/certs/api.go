@@ -439,6 +439,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			Content:     map[string]*huma.MediaType{"application/zip": {Schema: &huma.Schema{Type: huma.TypeString, Format: "binary"}}},
 		}},
 	}, func(ctx context.Context, in *downloadInput) (*downloadOutput, error) {
+		s.named(ctx, in.ID)
 		if err := confirm(ctx, in.Body.Password); err != nil {
 			return nil, err
 		}
@@ -490,6 +491,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 		Description: "Only a version that a source which revokes, such as an ACME account, issued, which has not expired " +
 			"and is not the version in use: a new version replaces that one first.",
 	}, func(ctx context.Context, in *revokeInput) (*struct{}, error) {
+		s.named(ctx, in.ID)
 		if err := confirm(ctx, in.Body.Password); err != nil {
 			return nil, err
 		}
@@ -505,6 +507,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 		Summary:       "Go back to an earlier version, which is deployed to every target",
 		Description:   "Only a version that has not expired or been revoked, for the certificate's names. The renewal goes by it from then on.",
 	}, func(ctx context.Context, in *versionInput) (*struct{}, error) {
+		s.named(ctx, in.ID)
 		switch err := s.useVersion(ctx, in.ID, in.Version); {
 		case errors.Is(err, errUseCurrent):
 			return nil, api.NewError(http.StatusConflict, i18n.CertsErrorUseCurrent, nil)
@@ -522,14 +525,26 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 		OperationID: "certs-delete", Method: http.MethodDelete, Path: "/certificates/{id}", DefaultStatus: http.StatusNoContent,
 		Summary: "Delete a certificate with all its versions",
 	}, func(ctx context.Context, in *idInput) (*struct{}, error) {
+		s.named(ctx, in.ID)
 		return nil, serviceError(s.remove(ctx, in.ID))
 	})
+}
+
+// named gives the audit log the main domain of certificate id, as an
+// operation on it does that answers with no certificate.
+func (s *service) named(ctx context.Context, id int64) {
+	if c, err := s.load(ctx, s.db, id); err == nil && len(c.Domains) > 0 {
+		api.Subject(ctx, c.Domains[0])
+	}
 }
 
 func (s *service) output(ctx context.Context, id int64) (*certificateOutput, error) {
 	c, err := s.load(ctx, s.db, id)
 	if err != nil {
 		return nil, serviceError(err)
+	}
+	if len(c.Domains) > 0 {
+		api.Subject(ctx, c.Domains[0])
 	}
 	b, err := s.body(ctx, c)
 	if err != nil {
