@@ -42,8 +42,9 @@ Minecraft mod JEI.
   load balancers), Tencent Cloud (CDN, EdgeOne), Huawei Cloud (CDN, ELB),
   Cloudflare, AWS (Certificate Manager, CloudFront), Gcore, BaoTa, 1Panel,
   Nginx Proxy Manager, Synology DSM, Proxmox VE, Caddy, local directories,
-  SSH servers, Docker containers, Kubernetes and webhooks; servers JEC
-  cannot reach pull their certificates themselves.
+  SSH servers, Docker containers, Kubernetes and webhooks, in deploy
+  windows if wished; servers JEC cannot reach pull their certificates
+  themselves.
 - **Renewal**: renewal windows with a daily check time, ACME Renewal
   Information (ARI), retries with backoff, daily tests of the providers'
   settings, online checks of the certificate each domain serves and of
