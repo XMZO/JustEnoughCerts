@@ -140,7 +140,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	}
 	accounts, err := auth.New(ctx, st.DB(), log, auth.Options{
 		CookiePath: cookiePath,
-		Secure:     strings.HasPrefix(cfg.BaseURL, "https://"),
+		Secure:     strings.HasPrefix(cfg.BaseURL, "https://") || cfg.TLS(),
 		Secrets:    box.Scope(owner),
 		Clients:    clients,
 		Events:     bus.Scope(owner),
@@ -174,7 +174,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	}
 	system.Register(a.Kernel(), system.Options{
 		DataDir: cfg.DataDir, Listen: cfg.Listen, BaseURL: cfg.BaseURL, KeyFromEnv: cfg.SecretKey != "",
-		TrustedProxies: cfg.TrustedProxies, HSTS: cfg.HSTS == "true",
+		TrustedProxies: cfg.TrustedProxies, HSTS: cfg.HSTS == "true", TLSCert: cfg.TLSCert,
 		VerifyKey: box.Verify, Versions: versions, Restart: func() { restartOnce.Do(func() { close(restart) }) },
 		Database: string(st.Dialect()), Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log,
 		Backup: func(ctx context.Context, path string) error { return st.Snapshot(ctx, path, migrateAll) },

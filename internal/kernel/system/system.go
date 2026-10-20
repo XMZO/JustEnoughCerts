@@ -4,14 +4,18 @@ package system
 
 import (
 	"context"
+	"crypto/x509"
 	"database/sql"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -31,6 +35,9 @@ type Options struct {
 	// TrustedProxies and HSTS are those settings, as config has them.
 	TrustedProxies string
 	HSTS           bool
+	// TLSCert is the file of the certificate JEC serves HTTPS with; empty
+	// when it serves plain HTTP.
+	TLSCert string
 	// VerifyKey tells whether a database's check value is the master
 	// key's; Versions are the last migration of each owner in this
 	// program. A backup is restored only when both agree with it.
@@ -85,6 +92,15 @@ type RuntimeBody struct {
 	AutoBackup     AutoBackupBody `json:"autoBackup" doc:"The backups JEC makes by itself, one a day"`
 	Heartbeat      HeartbeatBody  `json:"heartbeat" doc:"The address JEC asks for while it runs, for a monitoring service"`
 	UpdateCheck    bool           `json:"updateCheck" doc:"JEC checks for releases by itself, once a day"`
+	TLS            *TLSBody       `json:"tls,omitempty" doc:"The certificate JEC serves HTTPS with, as JEC_TLS_CERT names it; absent when it serves plain HTTP"`
+}
+
+// TLSBody is the certificate JEC serves HTTPS with.
+type TLSBody struct {
+	Cert     string     `json:"cert" doc:"Its file"`
+	Missing  bool       `json:"missing,omitempty" doc:"The file holds no certificate yet, and a self-signed one stands in"`
+	Names    []string   `json:"names,omitempty" doc:"The names the certificate in the file is for"`
+	NotAfter *time.Time `json:"notAfter,omitempty" doc:"When it ends"`
 }
 
 type timeZoneInput struct {
@@ -190,6 +206,9 @@ func (o Options) runtime(ctx context.Context) RuntimeBody {
 	if o.KeyFromEnv {
 		info.SecretKey = "env"
 	}
+	if o.TLSCert != "" {
+		info.TLS = tlsState(o.TLSCert)
+	}
 	if loc := o.Zone.Chosen(); loc != nil {
 		info.TimeZone = loc.String()
 	}
@@ -283,4 +302,32 @@ func (o Options) backup(ctx context.Context) ([]byte, error) {
 		return nil, fmt.Errorf("backup: %w", err)
 	}
 	return os.ReadFile(path)
+}
+
+// tlsState reads the certificate in the file the server serves.
+func tlsState(path string) *TLSBody {
+	b := &TLSBody{Cert: path, Missing: true}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return b
+	}
+	block, _ := pem.Decode(data)
+	if block == nil {
+		return b
+	}
+	leaf, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return b
+	}
+	at := leaf.NotAfter
+	b.Missing, b.NotAfter, b.Names = false, &at, slices.Concat(leaf.DNSNames, ipStrings(leaf.IPAddresses))
+	return b
+}
+
+func ipStrings(ips []net.IP) []string {
+	out := make([]string, 0, len(ips))
+	for _, ip := range ips {
+		out = append(out, ip.String())
+	}
+	return out
 }

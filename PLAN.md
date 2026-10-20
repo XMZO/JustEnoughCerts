@@ -903,6 +903,7 @@ services:
   - 界面 `/audit`（侧栏和手机的“更多”，模块关着时不显示）：和签发记录一样按天分组，按结果和文字筛选，可导出 CSV；已知的操作显示成文字，其他显示方法和路径，下载私钥和备份标上钥匙图标；失败的鼠标悬停显示状态码。
 - **安全响应头**：CSP、HSTS（由用户选择是否开启）等。
   - 实现在 `internal/kernel/httpserver`，每个回答都带（界面、接口、`/.well-known/`、健康检查）：CSP 只允许自己的脚本、样式和接口，图片另外允许 `data:`（两步验证的二维码），不许别的网站把面板嵌进框架；还有 `X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`、`Referrer-Policy: same-origin`、`Cross-Origin-Opener-Policy` 和 `Cross-Origin-Resource-Policy: same-origin`。界面没有内联脚本和样式，也不用 `eval`。HSTS 要自己打开（`JEC_HSTS=true`，有效期一年）：打开后浏览器一年内只肯用 HTTPS 访问面板，所以默认关。
+  - 不用反向代理时，JEC 可以自己提供 HTTPS（`JEC_TLS_CERT`、`JEC_TLS_KEY`，`httpserver/tls.go`）：文件变了 10 秒内换上，没写成一对（先写了证书、私钥还没写）时继续用旧的；文件还没有时用临时的自签名证书，所以面板的证书可以由 JEC 自己签发、经“本地目录”目标写进去。会话 Cookie 随之只经 HTTPS 发送，`jec healthcheck` 改用 HTTPS。
   - 伪语言测试监听 `securitypolicyviolation`，界面有任何内容被 CSP 拦下就失败（试过：去掉 `data:` 时二维码那一步会失败）。
 - **备份**：下载备份和下载私钥一样要先输密码，日志记下是谁；备份里的私钥和凭据由主密钥加密，主密钥不在备份里，要另外保存。
 - **公开的 `/.well-known/`**：只回答验证方式放进去的文件（JEC 自己应答），不需要登录；文件只能在 `/.well-known/` 下，内容本来就是要给 CA 公开看的。从外网核对验证文件时不校验证书（5.3.2 ④），这样的客户端只用来取公开的验证文件，不发送任何东西。

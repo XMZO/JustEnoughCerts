@@ -3116,6 +3116,10 @@
             "description": "The time zone chosen for JEC, an IANA name: the panel shows times in it, messages tell times in it, and renewals start at the check time in it; empty while it is the server's",
             "type": "string"
           },
+          "tls": {
+            "$ref": "#/components/schemas/TLSBody",
+            "description": "The certificate JEC serves HTTPS with, as JEC_TLS_CERT names it; absent when it serves plain HTTP"
+          },
           "trustedProxies": {
             "description": "The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES",
             "type": "string"
@@ -3621,6 +3625,35 @@
         },
         "required": [
           "enabled"
+        ],
+        "type": "object"
+      },
+      "TLSBody": {
+        "additionalProperties": false,
+        "properties": {
+          "cert": {
+            "description": "Its file",
+            "type": "string"
+          },
+          "missing": {
+            "description": "The file holds no certificate yet, and a self-signed one stands in",
+            "type": "boolean"
+          },
+          "names": {
+            "description": "The names the certificate in the file is for",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "notAfter": {
+            "description": "When it ends",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cert"
         ],
         "type": "object"
       },

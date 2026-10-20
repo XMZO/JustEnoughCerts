@@ -333,3 +333,31 @@ and `trusted_proxies_strict` in Caddy.
 - **Directly**: with the ports line `"8080:8080"`, the panel is reachable
   from the network over plain HTTP, so passwords and session cookies cross
   it unencrypted. Use this on a trusted network only.
+- **HTTPS served by JEC**: with `JEC_TLS_CERT` and `JEC_TLS_KEY` set, JEC
+  serves HTTPS itself, and can issue and renew that certificate too.
+
+### HTTPS served by JEC
+
+1. Add these two lines to `environment` in `docker-compose.yml`, and change
+   the ports line to `"443:8080"`:
+
+   ```yaml
+   JEC_TLS_CERT: /data/tls/fullchain.pem
+   JEC_TLS_KEY: /data/tls/privkey.pem
+   ```
+
+   The files are not there yet, so JEC starts with a self-signed
+   certificate; the browser warns that it is not trusted, and once you
+   accept, you can sign in. "Panel HTTPS" under "About" on the Settings
+   page tells how it stands.
+2. Under Deploy targets, add a "Local directory": directory `/data/tls`,
+   "Where the files go" set to "Right in this directory".
+3. Add a certificate for the panel's domain, deployed to the target of
+   step 2. Once it is issued and written, JEC serves it within about 10
+   seconds, and every renewal after that takes effect the same way, with
+   no restart.
+4. Once the browser no longer warns, set `JEC_HSTS: "true"` if you wish.
+
+Without containers it is the same: name the files with `-tls-cert` and
+`-tls-key`, or `tls_cert` and `tls_key` in the configuration file, in a
+directory JEC can write to. `jec healthcheck` turns to HTTPS by itself.

@@ -17,6 +17,8 @@ are managed in the interface and are not covered here.
 | `-base-url` | `JEC_BASE_URL` | `base_url` | the address the server sees |
 | `-hsts` | `JEC_HSTS` | `hsts` | `false` |
 | `-trusted-proxies` | `JEC_TRUSTED_PROXIES` | `trusted_proxies` | none |
+| `-tls-cert` | `JEC_TLS_CERT` | `tls_cert` | none (serves HTTP) |
+| `-tls-key` | `JEC_TLS_KEY` | `tls_key` | none |
 | `-dns-resolvers` | `JEC_DNS_RESOLVERS` | `dns_resolvers` | the system's |
 | `-log-level` | `JEC_LOG_LEVEL` | `log.level` | `info` |
 | `-log-format` | `JEC_LOG_FORMAT` | `log.format` | `text` (or `json`) |
@@ -55,6 +57,14 @@ Caddy and nginx, also behind a CDN.
   everyone.
 - `JEC_HSTS`: set it to `true` only when the panel is always reached over
   HTTPS; browsers then refuse plain HTTP to it for a year.
+- `JEC_TLS_CERT`, `JEC_TLS_KEY`: PEM files of a certificate (with its
+  chain) and of its private key, set together. JEC then serves HTTPS itself
+  on `JEC_LISTEN`, with no reverse proxy, and sends the session cookie over
+  HTTPS only. It takes a new certificate within about 10 seconds of the
+  files changing, without a restart. While the files are not there yet, a
+  self-signed certificate stands in; files that are there but do not load
+  stop JEC from starting. See
+  [Without a reverse proxy](reverse-proxy.md#without-a-reverse-proxy).
 
 ## DNS resolvers
 

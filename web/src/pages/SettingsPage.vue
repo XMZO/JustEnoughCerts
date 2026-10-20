@@ -482,7 +482,7 @@ function pickLocale(e: Event) {
 const repository = { name: 'XMZO/JustEnoughCerts', url: 'https://github.com/XMZO/JustEnoughCerts' }
 // The databases, by their own names.
 const databases = { sqlite: 'SQLite', postgres: 'PostgreSQL' } as const
-const variables = { database: 'JEC_DATABASE_URL', baseURL: 'JEC_BASE_URL', listen: 'JEC_LISTEN', trustedProxies: 'JEC_TRUSTED_PROXIES', hsts: 'JEC_HSTS' }
+const variables = { database: 'JEC_DATABASE_URL', baseURL: 'JEC_BASE_URL', listen: 'JEC_LISTEN', trustedProxies: 'JEC_TRUSTED_PROXIES', tls: 'JEC_TLS_CERT', hsts: 'JEC_HSTS' }
 
 // The cards flow into as many columns as fit, each packed from the top, so
 // that short ones leave no gaps.
@@ -922,6 +922,20 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           </dt>
           <dd v-if="system.data.value.trustedProxies" :class="[fact, 'font-mono']" translate="no">{{ system.data.value.trustedProxies }}</dd>
           <dd v-else :class="[fact, 'text-ink-muted']">{{ t('kernel.settings.not_set') }}</dd>
+          <dt>
+            <span class="block font-semibold">{{ t('kernel.settings.tls') }}</span>
+            <code class="block text-caption text-ink-muted" translate="no">{{ variables.tls }}</code>
+          </dt>
+          <dd v-if="!system.data.value.tls" :class="[fact, 'text-ink-muted']">{{ t('kernel.settings.tls_off') }}</dd>
+          <dd v-else-if="system.data.value.tls.missing" :class="[fact, 'inline-flex items-center justify-end gap-1 font-semibold text-warn-ink']">
+            <TriangleAlert class="size-4 flex-none" aria-hidden="true" />{{ t('kernel.settings.tls_missing') }}
+          </dd>
+          <dd v-else :class="[fact, 'flex flex-wrap justify-end gap-x-2']">
+            <span class="font-mono" translate="no">{{ system.data.value.tls.names?.join(', ') }}</span>
+            <span v-if="system.data.value.tls.notAfter" class="text-ink-muted">
+              {{ t('kernel.settings.tls_until') }} <time :datetime="system.data.value.tls.notAfter">{{ intl.date(system.data.value.tls.notAfter) }}</time>
+            </span>
+          </dd>
           <dt>
             <span class="block font-semibold">{{ t('kernel.settings.hsts') }}</span>
             <code class="block text-caption text-ink-muted" translate="no">{{ variables.hsts }}</code>

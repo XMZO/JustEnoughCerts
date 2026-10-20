@@ -44,6 +44,12 @@ type Config struct {
 	// the client of a request: addresses and CIDR ranges, separated by
 	// commas. Empty trusts none, and the client is the peer.
 	TrustedProxies string `yaml:"trusted_proxies"`
+	// TLSCert and TLSKey are the PEM files of a certificate, with its
+	// chain, and of its private key, for the server to serve HTTPS itself
+	// rather than plain HTTP behind a reverse proxy. Both or neither; the
+	// server takes them again once they change.
+	TLSCert string `yaml:"tls_cert"`
+	TLSKey  string `yaml:"tls_key"`
 	// DNSResolvers are the recursive resolvers that find the zones of DNS
 	// records when they are checked: addresses with a port or not,
 	// separated by commas. Empty uses the system's.
@@ -92,6 +98,9 @@ func (c Config) BasePath() string {
 	return strings.TrimRight(u.Path, "/")
 }
 
+// TLS tells whether the server serves HTTPS itself.
+func (c Config) TLS() bool { return c.TLSCert != "" }
+
 // SlogLevel returns Level as a slog.Level.
 func (l Log) SlogLevel() (slog.Level, error) {
 	var level slog.Level
@@ -112,6 +121,8 @@ var settings = []setting{
 	{"base-url", "JEC_BASE_URL", "URL users open in the browser, if it differs from what the server sees", func(c *Config) *string { return &c.BaseURL }},
 	{"hsts", "JEC_HSTS", "true to send Strict-Transport-Security, when the panel is reached over HTTPS alone", func(c *Config) *string { return &c.HSTS }},
 	{"trusted-proxies", "JEC_TRUSTED_PROXIES", "addresses or CIDR ranges of the reverse proxies whose X-Forwarded-For to trust", func(c *Config) *string { return &c.TrustedProxies }},
+	{"tls-cert", "JEC_TLS_CERT", "PEM file of a certificate and its chain, to serve HTTPS rather than HTTP", func(c *Config) *string { return &c.TLSCert }},
+	{"tls-key", "JEC_TLS_KEY", "PEM file of the private key of the certificate in tls-cert", func(c *Config) *string { return &c.TLSKey }},
 	{"dns-resolvers", "JEC_DNS_RESOLVERS", "DNS resolvers that find the zones of records being checked, separated by commas; the system's by default", func(c *Config) *string { return &c.DNSResolvers }},
 	{"log-level", "JEC_LOG_LEVEL", "log level: debug, info, warn or error", func(c *Config) *string { return &c.Log.Level }},
 	{"log-format", "JEC_LOG_FORMAT", "log format: text or json", func(c *Config) *string { return &c.Log.Format }},
@@ -243,6 +254,17 @@ func (c *Config) normalize() error {
 
 	if _, err := clientip.New(c.TrustedProxies); err != nil {
 		return err
+	}
+
+	if (c.TLSCert == "") != (c.TLSKey == "") {
+		return errors.New("tls: give both the certificate and its key, or neither")
+	}
+	for _, f := range []*string{&c.TLSCert, &c.TLSKey} {
+		if *f != "" {
+			if *f, err = filepath.Abs(*f); err != nil {
+				return fmt.Errorf("tls: %w", err)
+			}
+		}
 	}
 
 	c.HSTS = strings.ToLower(c.HSTS)

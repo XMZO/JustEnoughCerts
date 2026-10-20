@@ -83,7 +83,7 @@ Entries are kept for one year, and can be filtered and exported as CSV.
 - Every response carries security headers, including a Content Security
   Policy; with `JEC_HSTS=true`, HSTS as well.
 - The session cookie is protected against CSRF; with an `https`
-  `JEC_BASE_URL`, it is sent over HTTPS only.
+  `JEC_BASE_URL` or `JEC_TLS_CERT` set, it is sent over HTTPS only.
 - Notification channels and deploy targets whose address the user enters
   connect to public addresses only by default, so that they cannot be used
   to reach private networks.

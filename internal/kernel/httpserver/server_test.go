@@ -23,7 +23,7 @@ var teapot = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.W
 func TestHealth(t *testing.T) {
 	cfg := config.Defaults()
 	cfg.BaseURL = "https://example.com/certs"
-	srv := httptest.NewServer(New(cfg, discard, teapot).Handler())
+	srv := httptest.NewServer(newServer(t, cfg).Handler())
 	defer srv.Close()
 
 	tests := []struct {
@@ -61,7 +61,7 @@ func TestSecurityHeaders(t *testing.T) {
 	for _, hsts := range []string{"false", "true"} {
 		cfg := config.Defaults()
 		cfg.HSTS = hsts
-		srv := httptest.NewServer(New(cfg, discard, teapot).Handler())
+		srv := httptest.NewServer(newServer(t, cfg).Handler())
 		for _, path := range []string{"/healthz", "/", "/api/v1/manifest"} {
 			resp, err := srv.Client().Get(srv.URL + path)
 			if err != nil {
@@ -88,7 +88,8 @@ func TestServeStopsOnCancel(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
-	go func() { done <- New(config.Defaults(), discard, teapot).Serve(ctx, ln) }()
+	s := newServer(t, config.Defaults())
+	go func() { done <- s.Serve(ctx, ln) }()
 
 	url := "http://" + ln.Addr().String() + HealthPath
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, url, http.NoBody)
@@ -121,8 +122,17 @@ func TestServeReturnsListenerError(t *testing.T) {
 		t.Fatal(err)
 	}
 	ln.Close()
-	err = New(config.Defaults(), discard, teapot).Serve(t.Context(), ln)
+	err = newServer(t, config.Defaults()).Serve(t.Context(), ln)
 	if err == nil || errors.Is(err, http.ErrServerClosed) {
 		t.Fatalf("Serve() on a closed listener = %v, want an accept error", err)
 	}
+}
+
+func newServer(t *testing.T, cfg config.Config) *Server {
+	t.Helper()
+	s, err := New(cfg, discard, teapot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
 }

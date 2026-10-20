@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/zone"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox/cryptoxtest"
 )
 
 func TestSystem(t *testing.T) {
@@ -111,5 +113,21 @@ func TestSystem(t *testing.T) {
 	left, _ := filepath.Glob(filepath.Join(dir, "backup-*"))
 	if len(left) != 0 {
 		t.Errorf("left behind: %v", left)
+	}
+}
+
+func TestTLSState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "fullchain.pem")
+	if got := tlsState(path); !got.Missing || got.Cert != path || got.NotAfter != nil {
+		t.Errorf("no file yet: %+v", got)
+	}
+	ca := cryptoxtest.NewCA(t)
+	end := time.Date(2027, 1, 2, 3, 4, 5, 0, time.UTC)
+	leaf := ca.Leaf(t, cryptoxtest.NewKey(t), end.AddDate(0, -3, 0), end, "panel.example.com")
+	if err := os.WriteFile(path, []byte(cryptoxtest.CertPEM(leaf)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := tlsState(path); got.Missing || got.NotAfter == nil || !got.NotAfter.Equal(end) || !slices.Equal(got.Names, []string{"panel.example.com"}) {
+		t.Errorf("a certificate: %+v", got)
 	}
 }

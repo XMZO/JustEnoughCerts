@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
@@ -27,7 +28,7 @@ func runHealthcheck(ctx context.Context, args []string, _, stderr io.Writer) int
 		fmt.Fprintln(stderr, "jec healthcheck:", err)
 		return exitError
 	}
-	target, err := healthURL(cfg.Listen)
+	target, err := healthURL(cfg.Listen, cfg.TLS())
 	if err != nil {
 		fmt.Fprintln(stderr, "jec healthcheck:", err)
 		return exitError
@@ -42,8 +43,8 @@ func runHealthcheck(ctx context.Context, args []string, _, stderr io.Writer) int
 }
 
 // healthURL returns the health endpoint of a server listening on listen, as
-// reached from the same host.
-func healthURL(listen string) (string, error) {
+// reached from the same host, over HTTPS when it serves that.
+func healthURL(listen string, https bool) (string, error) {
 	host, port, err := net.SplitHostPort(listen)
 	if err != nil {
 		return "", err
@@ -54,11 +55,16 @@ func healthURL(listen string) (string, error) {
 	case "::":
 		host = "::1"
 	}
-	return "http://" + net.JoinHostPort(host, port) + httpserver.HealthPath, nil
+	scheme := "http://"
+	if https {
+		scheme = "https://"
+	}
+	return scheme + net.JoinHostPort(host, port) + httpserver.HealthPath, nil
 }
 
-// probeClient never uses a proxy: the target is always this host.
-var probeClient = &http.Client{Transport: &http.Transport{}}
+// probeClient never uses a proxy: the target is always this host, whose
+// certificate is for the names it is reached by elsewhere.
+var probeClient = &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}} //nolint:gosec // this host
 
 func probe(ctx context.Context, target string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, http.NoBody)

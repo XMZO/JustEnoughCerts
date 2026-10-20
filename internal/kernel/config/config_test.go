@@ -159,6 +159,8 @@ func TestInvalidValues(t *testing.T) {
 		"log format":            {"--log-format", "xml"},
 		"hsts":                  {"--hsts", "yes"},
 		"empty data dir":        {"--data-dir", ""},
+		"TLS without a key":     {"--tls-cert", "cert.pem"},
+		"TLS without a cert":    {"--tls-key", "key.pem"},
 	}
 	for name, args := range tests {
 		t.Run(name, func(t *testing.T) {

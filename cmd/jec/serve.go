@@ -57,11 +57,15 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	srv, err := httpserver.New(cfg, log, app.Handler())
+	if err != nil {
+		return errors.Join(err, app.Close())
+	}
 	ln, err := net.Listen("tcp", cfg.Listen)
 	if err != nil {
 		return errors.Join(err, app.Close())
 	}
-	log.Info("listening", "addr", ln.Addr().String(), "base_url", cfg.BaseURL)
+	log.Info("listening", "addr", ln.Addr().String(), "base_url", cfg.BaseURL, "https", cfg.TLS())
 	app.Start()
 	// A restored backup stops the server for the process to start again.
 	ctx, stop := context.WithCancel(ctx)
@@ -75,7 +79,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		case <-ctx.Done():
 		}
 	}()
-	err = httpserver.New(cfg, log, app.Handler()).Serve(ctx, ln)
+	err = srv.Serve(ctx, ln)
 	// The HTTP server is down, so no request publishes events any more;
 	// Close then waits for the event handlers and jobs still running.
 	err = errors.Join(err, app.Close())

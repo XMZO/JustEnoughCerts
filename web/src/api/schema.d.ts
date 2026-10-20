@@ -2794,6 +2794,8 @@ export interface components {
             serverTimeZone: string;
             /** @description The time zone chosen for JEC, an IANA name: the panel shows times in it, messages tell times in it, and renewals start at the check time in it; empty while it is the server's */
             timeZone?: string;
+            /** @description The certificate JEC serves HTTPS with, as JEC_TLS_CERT names it; absent when it serves plain HTTP */
+            tls?: components["schemas"]["TLSBody"];
             /** @description The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES */
             trustedProxies?: string;
             /** @description JEC checks for releases by itself, once a day */
@@ -2963,6 +2965,19 @@ export interface components {
         };
         SwitchInputBody1: {
             enabled: boolean;
+        };
+        TLSBody: {
+            /** @description Its file */
+            cert: string;
+            /** @description The file holds no certificate yet, and a self-signed one stands in */
+            missing?: boolean;
+            /** @description The names the certificate in the file is for */
+            names?: string[];
+            /**
+             * Format: date-time
+             * @description When it ends
+             */
+            notAfter?: string;
         };
         TestBody: {
             /** Format: date-time */

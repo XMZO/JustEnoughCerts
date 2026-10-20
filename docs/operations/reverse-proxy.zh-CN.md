@@ -238,3 +238,20 @@ Caddy 在全局选项 `servers` 中添加：
 
 - **SSH 隧道**：在自己的电脑上执行 `ssh -N -L 8080:127.0.0.1:8080 <用户>@<服务器>`，然后打开 `http://localhost:8080`。适合首次初始化与临时使用。
 - **直接访问**：将端口一行改为 `"8080:8080"` 后，面板以明文 HTTP 对网络开放，密码与会话 Cookie 均不加密传输。仅限可信网络使用。
+- **由 JEC 提供 HTTPS**：设置 `JEC_TLS_CERT` 与 `JEC_TLS_KEY` 后，JEC 直接提供 HTTPS，证书也可以由 JEC 自己签发和续期。
+
+### 由 JEC 提供 HTTPS
+
+1. 在 `docker-compose.yml` 的 `environment` 中加入以下两行，并将端口一行改为 `"443:8080"`：
+
+   ```yaml
+   JEC_TLS_CERT: /data/tls/fullchain.pem
+   JEC_TLS_KEY: /data/tls/privkey.pem
+   ```
+
+   文件尚不存在，JEC 先以自签名证书启动，浏览器会提示证书不受信任，确认后即可登录。设置页“关于”中的“面板 HTTPS”显示当前状态。
+2. 在“部署目标”中添加“本地目录”：目录填 `/data/tls`，“文件放在哪里”选“直接放在这个目录里”。
+3. 为面板的域名添加证书，部署目标选第 2 步添加的目录。证书签发并写入后，JEC 约 10 秒内换用该证书；此后每次续期同样自动生效，无需重启。
+4. 确认浏览器不再提示后，可按需设置 `JEC_HSTS: "true"`。
+
+不使用容器时同理：以 `-tls-cert`、`-tls-key` 参数或配置文件中的 `tls_cert`、`tls_key` 指定文件，目录须是 JEC 能写入的位置。`jec healthcheck` 会自动改用 HTTPS。

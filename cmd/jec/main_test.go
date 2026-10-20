@@ -167,9 +167,12 @@ func TestHealthURL(t *testing.T) {
 		"[2001:db8::1]:80": "http://[2001:db8::1]:80/healthz",
 	}
 	for listen, want := range tests {
-		got, err := healthURL(listen)
+		got, err := healthURL(listen, false)
 		if err != nil || got != want {
 			t.Errorf("healthURL(%q) = %q, %v; want %q", listen, got, err, want)
 		}
+	}
+	if got, err := healthURL(":8443", true); err != nil || got != "https://127.0.0.1:8443/healthz" {
+		t.Errorf("over HTTPS: %q, %v", got, err)
 	}
 }

@@ -1,8 +1,9 @@
-// Package httpserver serves the API and the web UI over HTTP.
+// Package httpserver serves the API and the web UI over HTTP, or HTTPS.
 package httpserver
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -29,11 +30,12 @@ const shutdownTimeout = 10 * time.Second
 type Server struct {
 	handler http.Handler
 	log     *slog.Logger
+	tls     *tls.Config // HTTPS, when set
 }
 
 // New builds the server for cfg; app serves every request but the health
-// check.
-func New(cfg config.Config, log *slog.Logger, app http.Handler) *Server {
+// check. It fails when cfg names TLS files that do not load.
+func New(cfg config.Config, log *slog.Logger, app http.Handler) (*Server, error) {
 	r := chi.NewRouter()
 	paths := []string{HealthPath}
 	if base := cfg.BasePath(); base != "" {
@@ -43,7 +45,14 @@ func New(cfg config.Config, log *slog.Logger, app http.Handler) *Server {
 		r.HandleFunc(p, health)
 	}
 	r.Handle("/*", app)
-	return &Server{handler: secure(r, cfg.HSTS == "true"), log: log}
+	s := &Server{handler: secure(r, cfg.HSTS == "true"), log: log}
+	if cfg.TLS() {
+		var err error
+		if s.tls, err = TLSConfig(cfg.TLSCert, cfg.TLSKey, log); err != nil {
+			return nil, err
+		}
+	}
+	return s, nil
 }
 
 // headers are the security headers of every answer (PLAN.md 10): the UI
@@ -89,7 +98,12 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 		ErrorLog:          slog.NewLogLogger(s.log.Handler(), slog.LevelWarn),
 	}
 	served := make(chan error, 1)
-	go func() { served <- srv.Serve(ln) }()
+	if s.tls != nil {
+		srv.TLSConfig = s.tls
+		go func() { served <- srv.ServeTLS(ln, "", "") }()
+	} else {
+		go func() { served <- srv.Serve(ln) }()
+	}
 
 	select {
 	case err := <-served:
