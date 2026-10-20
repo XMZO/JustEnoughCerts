@@ -1,6 +1,7 @@
 package email
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -8,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"mime"
+	"mime/multipart"
 	"net"
 	"net/mail"
 	"net/smtp"
@@ -286,6 +288,47 @@ func TestDefaultPort(t *testing.T) {
 		p, _ := factory(t.Context(), providers.Instance{Config: map[string]string{"security": security}})
 		if got := p.(*mailer).port; got != want {
 			t.Errorf("%s: port %s", security, got)
+		}
+	}
+}
+
+func TestMessageParts(t *testing.T) {
+	m := &mailer{now: func() time.Time { return time.Date(2026, 10, 17, 8, 0, 0, 0, time.UTC) }}
+	note := contracts.Note{Event: "certificate.issued", Title: "New certificate for <a.example.com>", Subject: "[JEC] New certificate",
+		Text: "Ends on 2027-01-15.\nDetails: https://jec.example.com/certificates/3?x=1&y=2"}
+	raw, err := m.message(note, &mail.Address{Address: "jec@example.com"}, []*mail.Address{{Address: "ops@example.com"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	msg, err := mail.ReadMessage(bytes.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mediaType, params, err := mime.ParseMediaType(msg.Header.Get("Content-Type"))
+	if err != nil || mediaType != "multipart/alternative" {
+		t.Fatalf("content type %q: %v", msg.Header.Get("Content-Type"), err)
+	}
+	r := multipart.NewReader(msg.Body, params["boundary"])
+	var parts []string
+	for {
+		p, err := r.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(p) // the reader decodes quoted-printable
+		parts = append(parts, p.Header.Get("Content-Type")+"\n"+strings.ReplaceAll(string(body), "\r\n", "\n"))
+	}
+	if len(parts) != 2 || !strings.HasPrefix(parts[0], "text/plain; charset=utf-8\n"+note.Text) {
+		t.Fatalf("parts %q", parts)
+	}
+	html := parts[1]
+	for _, want := range []string{"text/html; charset=utf-8", "<h1", "New certificate for &lt;a.example.com&gt;",
+		`<a href="https://jec.example.com/certificates/3?x=1&amp;y=2"`} {
+		if !strings.Contains(html, want) {
+			t.Errorf("the HTML lacks %q:\n%s", want, html)
 		}
 	}
 }

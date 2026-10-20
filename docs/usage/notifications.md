@@ -50,7 +50,7 @@ they go out. Test messages are not held.
 
 | Channel | Description |
 |---|---|
-| Email | Sent through SMTP |
+| Email | Sent through SMTP, as plain text and as HTML with links to click |
 | Telegram | Bot token and chat ID; a proxy and a self-hosted API address can be set |
 | DingTalk, Feishu (Lark), WeCom | Group robots; the keyword can be `JEC`; DingTalk and Feishu support signing |
 | ServerChan | The Turbo edition and ServerChan³, told apart by the SendKey |

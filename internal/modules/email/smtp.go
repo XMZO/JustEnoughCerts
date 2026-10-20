@@ -10,12 +10,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"html"
 	"mime"
 	"mime/quotedprintable"
 	"net"
 	"net/mail"
 	"net/smtp"
 	"net/textproto"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -98,7 +100,8 @@ func (m *mailer) Notify(ctx context.Context, n contracts.Note) error {
 	return m.send(ctx, from, to, msg)
 }
 
-// message is the mail of n, in UTF-8 text.
+// message is the mail of n: UTF-8 text, and the same as HTML for mail
+// clients that show it, with its links clickable.
 func (m *mailer) message(n contracts.Note, from *mail.Address, to []*mail.Address) ([]byte, error) {
 	var b bytes.Buffer
 	header := func(name, value string) { b.WriteString(name + ": " + value + "\r\n") }
@@ -115,19 +118,50 @@ func (m *mailer) message(n contracts.Note, from *mail.Address, to []*mail.Addres
 	domain := from.Address[strings.LastIndex(from.Address, "@")+1:]
 	header("Message-ID", "<"+hex.EncodeToString(id)+"@"+domain+">")
 	header("MIME-Version", "1.0")
-	header("Content-Type", "text/plain; charset=utf-8")
-	header("Content-Transfer-Encoding", "quoted-printable")
+	boundary := "jec-" + hex.EncodeToString(id)
+	header("Content-Type", `multipart/alternative; boundary="`+boundary+`"`)
 	header("Auto-Submitted", "auto-generated")
 	header("X-JEC-Event", n.Event)
-	b.WriteString("\r\n")
-	qp := quotedprintable.NewWriter(&b)
-	if _, err := qp.Write([]byte(n.Text + "\n")); err != nil {
-		return nil, err
+	for _, part := range []struct{ typ, body string }{
+		{"text/plain", n.Text + "\n"},
+		{"text/html", noteHTML(n)},
+	} {
+		b.WriteString("\r\n--" + boundary + "\r\n")
+		header("Content-Type", part.typ+"; charset=utf-8")
+		header("Content-Transfer-Encoding", "quoted-printable")
+		b.WriteString("\r\n")
+		qp := quotedprintable.NewWriter(&b)
+		if _, err := qp.Write([]byte(part.body)); err != nil {
+			return nil, err
+		}
+		if err := qp.Close(); err != nil {
+			return nil, err
+		}
 	}
-	if err := qp.Close(); err != nil {
-		return nil, err
-	}
+	b.WriteString("\r\n--" + boundary + "--\r\n")
 	return b.Bytes(), nil
+}
+
+// links are the web addresses in the lines of a note.
+var links = regexp.MustCompile(`https?://[^\s<>"]+`)
+
+// noteHTML is n as a small HTML page: its title, then its lines, each
+// address in them a link. Styles are inline, as mail clients want.
+func noteHTML(n contracts.Note) string {
+	var b strings.Builder
+	b.WriteString(`<!doctype html><html><body style="margin:0;background:#f6f7f6">`)
+	b.WriteString(`<div style="max-width:560px;margin:0 auto;padding:20px 16px;font-family:-apple-system,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;line-height:1.6;color:#1b1f1d">`)
+	b.WriteString(`<p style="margin:0 0 8px;font-size:12px;color:#5c6660">Just Enough Certs</p>`)
+	b.WriteString(`<h1 style="margin:0 0 12px;font-size:18px;line-height:1.4">` + html.EscapeString(n.Title) + `</h1>`)
+	for line := range strings.SplitSeq(n.Text, "\n") {
+		escaped := html.EscapeString(line)
+		escaped = links.ReplaceAllStringFunc(escaped, func(u string) string {
+			return `<a href="` + u + `" style="color:#1d6b46">` + u + `</a>`
+		})
+		b.WriteString(`<p style="margin:0 0 4px">` + escaped + `</p>`)
+	}
+	b.WriteString(`</div></body></html>`)
+	return b.String()
 }
 
 // send delivers msg in one SMTP session.
