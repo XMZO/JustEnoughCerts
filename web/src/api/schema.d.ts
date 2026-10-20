@@ -1129,6 +1129,26 @@ export interface paths {
         patch: operations["providers-update"];
         trace?: never;
     };
+    "/providers/{id}/domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the domains the account of a solver of DNS manages
+         * @description For types marked zones: the first ones, for people to pick from. A provider that fails answers 502 with its own message.
+         */
+        get: operations["providers-domains"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/providers/{id}/test": {
         parameters: {
             query?: never;
@@ -2078,6 +2098,15 @@ export interface components {
              * @enum {string}
              */
             view?: "cn" | "global";
+        };
+        DomainsBody: {
+            /** @description The first of them, as the provider lists them */
+            domains: string[];
+            /**
+             * Format: int64
+             * @description How many there are
+             */
+            total: number;
         };
         DomainsInputBody: {
             /** @description The domains, the primary first; a wildcard as *.example.com */
@@ -5648,6 +5677,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstanceBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "providers-domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DomainsBody"];
                 };
             };
             /** @description Error */

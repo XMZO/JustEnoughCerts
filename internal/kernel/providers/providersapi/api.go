@@ -258,6 +258,7 @@ func Register(a huma.API, r *providers.Registry) {
 
 	registerCredentials(a, r)
 	registerTry(a, r)
+	registerDomains(a, r)
 }
 
 // testTimeout bounds a test, which may reach a server across the world.

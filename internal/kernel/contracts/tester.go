@@ -18,3 +18,10 @@ type Tester interface {
 type ZoneHolder interface {
 	ZoneOf(ctx context.Context, name string) (zone string, held bool, err error)
 }
+
+// DomainLister is a solver of DNS that can list the domains its account
+// manages, for people to pick from: the first few, with how many there
+// are. A ZoneHolder of the types marked providers.Type.Zones is one too.
+type DomainLister interface {
+	Domains(ctx context.Context) (names []string, total int, err error)
+}

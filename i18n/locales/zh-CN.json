@@ -634,6 +634,7 @@
       "title": "最近动态"
     },
     "add": {
+      "account_domains": "这个账号管理的域名（共 {count} 个），点击加入：",
       "apex_add": "加上",
       "apex_hint": "通配符不包含 {names} 本身。",
       "bulk_failed": "{count, plural, other {# 张证书}}没有添加，原因如下；改好后可以再次提交：",
@@ -673,6 +674,7 @@
       "pfx_file_help": "包含证书、证书链和私钥的文件，Windows、IIS 和一些面板导出的就是这种。",
       "pfx_password": "文件密码",
       "pfx_password_help": "导出文件时设的密码，没有就留空。",
+      "pick_domain": "加入 {domain}",
       "plan": "接下来的步骤",
       "records_help": "JEC 在这里添加证书来源要的验证记录（TXT 或 CNAME），签好后删除。它必须管理上面的域名。",
       "reminder": "到期提醒",

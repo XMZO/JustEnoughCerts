@@ -52,7 +52,7 @@ func ZoneOf(ctx context.Context, api API, name string) (zone string, held bool, 
 }
 
 // listed is how many domains Domains lists at most.
-const listed = 20
+const listed = 50
 
 // Codes are the codes of lego's providers JEC adds records of any type
 // through.

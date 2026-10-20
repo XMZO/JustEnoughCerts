@@ -153,3 +153,53 @@ func tryDomain(s string) (string, bool) {
 	}
 	return ascii, true
 }
+
+// DomainsBody lists the domains the account of a solver of DNS manages.
+type DomainsBody struct {
+	Domains []string `json:"domains" doc:"The first of them, as the provider lists them"`
+	Total   int      `json:"total" doc:"How many there are"`
+}
+
+type domainsOutput struct{ Body DomainsBody }
+
+func registerDomains(a huma.API, r *providers.Registry) {
+	huma.Register(a, huma.Operation{
+		OperationID: "providers-domains", Method: http.MethodGet, Path: "/providers/{id}/domains",
+		Summary:     "List the domains the account of a solver of DNS manages",
+		Description: "For types marked zones: the first ones, for people to pick from. A provider that fails answers 502 with its own message.",
+	}, func(ctx context.Context, in *idInput) (*domainsOutput, error) {
+		scope := r.Scope("kernel")
+		t, err := scope.Type(ctx, in.ID)
+		if err != nil {
+			return nil, apiError(err)
+		}
+		if !t.Zones {
+			return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil)
+		}
+		p, _, err := scope.Open(ctx, in.ID)
+		if err != nil {
+			return nil, testError(err)
+		}
+		if c, ok := p.(interface{ Close() error }); ok {
+			defer func() { _ = c.Close() }()
+		}
+		lister, ok := p.(contracts.DomainLister)
+		if !ok {
+			return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil)
+		}
+		lctx, cancel := context.WithTimeout(ctx, testTimeout)
+		defer cancel()
+		names, total, err := lister.Domains(lctx)
+		if err != nil {
+			var p *contracts.Problem
+			if errors.As(err, &p) {
+				return nil, testError(err)
+			}
+			return nil, api.NewError(http.StatusBadGateway, i18n.KernelErrorProviderTry, map[string]any{"message": err.Error()})
+		}
+		if names == nil {
+			names = []string{}
+		}
+		return &domainsOutput{Body: DomainsBody{Domains: names, Total: total}}, nil
+	})
+}

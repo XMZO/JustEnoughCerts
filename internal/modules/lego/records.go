@@ -21,7 +21,17 @@ var (
 	_ contracts.RecordSolver = (*records)(nil)
 	_ contracts.Tester       = (*records)(nil)
 	_ contracts.ZoneHolder   = (*records)(nil)
+	_ contracts.DomainLister = (*records)(nil)
 )
+
+// Domains lists the first domains the provider manages for the keys.
+func (s *records) Domains(ctx context.Context) ([]string, int, error) {
+	api, err := dnsrecord.Open(s.code, s.settings)
+	if err != nil {
+		return nil, 0, err
+	}
+	return api.Domains(ctx)
+}
 
 // ZoneOf finds the zone of name in the DNS and asks the provider whether
 // the account holds it.

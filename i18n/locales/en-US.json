@@ -634,6 +634,7 @@
       "title": "Recent activity"
     },
     "add": {
+      "account_domains": "Domains of this account ({count} in all); choose one to add it:",
       "apex_add": "Add it",
       "apex_hint": "A wildcard does not cover {names} itself.",
       "bulk_failed": "{count, plural, one {# certificate was not added} other {# certificates were not added}}; fix and add again:",
@@ -673,6 +674,7 @@
       "pfx_file_help": "A file with the certificate, its chain and its key, as Windows, IIS and some panels export them.",
       "pfx_password": "File password",
       "pfx_password_help": "The password set when the file was exported; leave it empty if there is none.",
+      "pick_domain": "Add {domain}",
       "plan": "What happens next",
       "records_help": "JEC adds the validation records the source asks for there, TXT or CNAME, and removes them once issued. It must serve the domains above.",
       "reminder": "Reminder",

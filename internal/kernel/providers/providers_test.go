@@ -151,6 +151,9 @@ type probe string
 // zonal holds example.com, not other.org, and cannot tell of the rest.
 type zonal struct{}
 
+// Domains lists one of the three domains it holds.
+func (zonal) Domains(context.Context) ([]string, int, error) { return []string{"example.com"}, 3, nil }
+
 func (zonal) ZoneOf(_ context.Context, name string) (string, bool, error) {
 	switch strings.TrimPrefix(name, "*.") {
 	case "example.com", "www.example.com":
@@ -523,9 +526,16 @@ func TestZones(t *testing.T) {
 	if d := out.Domains[2]; d.Zone != "" || d.Held != nil {
 		t.Errorf("unknown %+v", d)
 	}
+	// Its domains, to pick from.
+	var listed providersapi.DomainsBody
+	if resp := f.api.Get("/providers/" + strconv.FormatInt(z.ID, 10) + "/domains"); resp.Code != http.StatusOK ||
+		json.Unmarshal(resp.Body.Bytes(), &listed) != nil || listed.Total != 3 || len(listed.Domains) != 1 || listed.Domains[0] != "example.com" {
+		t.Fatalf("domains = %d %s", resp.Code, resp.Body)
+	}
 	// A type that cannot tell refuses.
 	solver := f.create(map[string]any{"type": "dns.acme_dns", "name": "x", "config": map[string]string{"API_USER": "u"}, "secrets": map[string]string{"API_KEY": "k"}})
 	f.fails(http.MethodGet, "/providers/"+strconv.FormatInt(solver.ID, 10)+"/zones?domain=example.com", nil, http.StatusUnprocessableEntity)
+	f.fails(http.MethodGet, "/providers/"+strconv.FormatInt(solver.ID, 10)+"/domains", nil, http.StatusUnprocessableEntity)
 	var list struct{ Types []providersapi.TypeSummary }
 	if err := json.Unmarshal(f.api.Get("/providers/types?kind=solver").Body.Bytes(), &list); err != nil {
 		t.Fatal(err)

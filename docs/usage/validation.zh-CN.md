@@ -11,7 +11,7 @@
 
 ## DNS 服务商
 
-JEC 通过 [lego](https://github.com/go-acme/lego) 支持 221 家 DNS 服务商，表单字段与 lego 的环境变量一致。腾讯云 DNSPod、阿里云 DNS、Cloudflare 与华为云 DNS 支持凭据与测试连接（列出账号可管理的域名），并可添加任意类型的记录。
+JEC 通过 [lego](https://github.com/go-acme/lego) 支持 221 家 DNS 服务商，表单字段与 lego 的环境变量一致。腾讯云 DNSPod、阿里云 DNS、Cloudflare 与华为云 DNS 支持凭据与测试连接（列出账号可管理的域名），并可添加任意类型的记录；添加证书时，选择这四家之一会列出账号下的域名（最多 50 个中的前 20 个），点击即可加入。
 
 - **任意记录**：部分证书厂商（如 Namecheap、阿里云）要求的 TXT、CNAME 记录由上述四家自动添加，并在签发完成后删除。
 - **CNAME 委派**：使用 ACME 时，可将 `_acme-challenge.<域名>` 永久 CNAME 到另一个由受支持服务商托管的域，验证记录随之添加在 CNAME 指向的名称上。

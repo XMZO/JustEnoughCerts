@@ -6,7 +6,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiError, networkError } from '../api/client'
 import { useAddCertificate, useCertificates, useCertSettings, useImportCertificates, useIssueCertificate, type Imported, type KeyType } from '../api/certs'
 import { revealError, useApiError } from '../api/errors'
-import { useProviders, useProviderTypes, useZones, type Provider } from '../api/providers'
+import { useAccountDomains, useProviders, useProviderTypes, useZones, type Provider } from '../api/providers'
 import { loadLastChoice, saveLastChoice, type LastChoice } from '../certs/lastChoice'
 import { keyText } from '../certs/life'
 import DomainInput from '../components/DomainInput.vue'
@@ -153,6 +153,11 @@ const solverProvider = computed(() => usable.value.find((p) => p.id === solver.v
 const zoneDomains = computed(() => [...new Set(bulk.value ? batch.value.flat() : domains.value)].slice(0, 50))
 const zones = useZones(solver, zoneDomains, () => needsSolver.value && !!solverProvider.value && !!solverType(solverProvider.value)?.zones)
 const notHeld = computed(() => (zones.data.value ?? []).filter((z) => z.held === false))
+// The domains of the solver's account, to pick from rather than type: those
+// not chosen yet.
+const account = useAccountDomains(solver, () => needsSolver.value && !bulk.value && !!solverProvider.value && !!solverType(solverProvider.value)?.zones)
+const offered = computed(() => (account.data.value?.domains ?? []).filter((d) => !domains.value.includes(d)).slice(0, 20))
+const pickDomain = (d: string) => (domains.value = [...domains.value, d])
 const allHeld = computed(() => !!zones.data.value?.length && zones.data.value.every((z) => z.held === true))
 // What the solver's last test said, as its card says it.
 const solverTest = computed(() => {
@@ -536,6 +541,14 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
               <CircleCheck class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ t('certs.add.zones_held') }}
             </p>
             <p v-if="allHeld || notHeld.length" class="m-0 text-caption text-ink-muted">{{ t('certs.add.zones_untested') }}</p>
+            <div v-if="offered.length" class="flex flex-col gap-1">
+              <span class="text-small text-ink-muted">{{ t('certs.add.account_domains', { count: account.data.value?.total ?? 0 }) }}</span>
+              <span class="flex flex-wrap gap-1.5">
+                <JecButton v-for="d in offered" :key="d" size="sm" :aria-label="t('certs.add.pick_domain', { domain: d })" @click="pickDomain(d)">
+                  <Plus class="size-4" aria-hidden="true" /><span translate="no">{{ d }}</span>
+                </JecButton>
+              </span>
+            </div>
             <RouterLink to="/dns" class="self-start text-small">{{ t('certs.add.manage_solvers') }}</RouterLink>
           </template>
           <div v-else class="flex flex-col items-start gap-2">

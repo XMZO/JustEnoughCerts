@@ -1306,6 +1306,28 @@
         ],
         "type": "object"
       },
+      "DomainsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "domains": {
+            "description": "The first of them, as the provider lists them",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "total": {
+            "description": "How many there are",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "domains",
+          "total"
+        ],
+        "type": "object"
+      },
       "DomainsInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -7803,6 +7825,46 @@
           }
         },
         "summary": "Change a configured provider"
+      }
+    },
+    "/providers/{id}/domains": {
+      "get": {
+        "description": "For types marked zones: the first ones, for people to pick from. A provider that fails answers 502 with its own message.",
+        "operationId": "providers-domains",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the domains the account of a solver of DNS manages"
       }
     },
     "/providers/{id}/test": {

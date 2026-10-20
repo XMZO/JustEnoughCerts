@@ -131,6 +131,17 @@ export function useZones(id: MaybeRefOrGetter<number | undefined>, domains: Mayb
   })
 }
 
+/** The domains the account of solver id manages, the first of them; only while enabled. */
+export function useAccountDomains(id: MaybeRefOrGetter<number | undefined>, enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: computed(() => [...all, 'domains', toValue(id)] as const),
+    queryFn: () => unwrap(api.GET('/providers/{id}/domains', { params: { path: { id: toValue(id) ?? 0 } } })),
+    enabled: computed(() => toValue(enabled) && toValue(id) !== undefined),
+    staleTime: 5 * 60_000,
+    retry: false,
+  })
+}
+
 export type TryResult = components['schemas']['TryBody']
 
 /** Tries a solver of DNS on a domain: adds the record of a challenge, waits for it, and removes it. */
