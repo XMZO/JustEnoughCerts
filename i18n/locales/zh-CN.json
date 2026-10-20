@@ -636,6 +636,7 @@
     },
     "add": {
       "account_domains": "这个账号管理的域名（共 {count} 个），点击加入：",
+      "account_domains_untested": "未实测：这个列表尚未用真实账号验证，可能不完整。",
       "apex_add": "加上",
       "apex_hint": "通配符不包含 {names} 本身。",
       "bulk_failed": "{count, plural, other {# 张证书}}没有添加，原因如下；改好后可以再次提交：",

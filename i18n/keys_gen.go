@@ -478,6 +478,7 @@ const (
 	CertsActivityRenewRunning                Key = "certs.activity.renew.running"
 	CertsActivityTitle                       Key = "certs.activity.title"
 	CertsAddAccountDomains                   Key = "certs.add.account_domains"
+	CertsAddAccountDomainsUntested           Key = "certs.add.account_domains_untested"
 	CertsAddApexAdd                          Key = "certs.add.apex_add"
 	CertsAddApexHint                         Key = "certs.add.apex_hint"
 	CertsAddBulkFailed                       Key = "certs.add.bulk_failed"

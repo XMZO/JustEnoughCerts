@@ -20,7 +20,7 @@ Cloud DNSPod, Alibaba Cloud DNS, Cloudflare and Huawei Cloud DNS also
 support credentials and connection tests (which list the domains the
 account manages), and can add records of any type; with one of them
 chosen, adding a certificate offers the account's domains (the first 20
-of up to 50) to pick.
+of up to 50) to pick, a list not yet tried with real accounts.
 
 - **Arbitrary records**: the TXT and CNAME records that some certificate
   vendors require, such as Namecheap and Alibaba Cloud, are added

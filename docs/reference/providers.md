@@ -116,6 +116,8 @@ These features are no provider types, but reach outside services too:
 | Revocation checks, completing chains, missing intermediates | OCSP, CRLs and issuer addresses (AIA) in certificates | Real services: certificates of Let's Encrypt, Sectigo and others, and badssl.com's site without intermediates |
 | Try on DNS providers | Each DNS provider, through lego | Real software: RFC 2136 dynamic updates of BIND; other providers take the path of an issuance |
 | [Single sign-on](../operations/security.md#single-sign-on) | OpenID Connect providers | Real software: Dex |
+| The account's domains offered when adding a certificate | Tencent Cloud DNSPod, Alibaba Cloud DNS, Cloudflare, Huawei Cloud DNS | Stand-ins; marked untested in the UI |
+| Checking for updates by itself | GitHub's list of releases | Real service |
 
 ## Vendor requirements
 

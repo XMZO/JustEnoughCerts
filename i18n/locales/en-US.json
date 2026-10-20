@@ -636,6 +636,7 @@
     },
     "add": {
       "account_domains": "Domains of this account ({count} in all); choose one to add it:",
+      "account_domains_untested": "Untested: this list has not been tried with a real account, and may be incomplete.",
       "apex_add": "Add it",
       "apex_hint": "A wildcard does not cover {names} itself.",
       "bulk_failed": "{count, plural, one {# certificate was not added} other {# certificates were not added}}; fix and add again:",

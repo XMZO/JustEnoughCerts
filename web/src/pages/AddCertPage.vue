@@ -543,6 +543,7 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
             <p v-if="allHeld || notHeld.length" class="m-0 text-caption text-ink-muted">{{ t('certs.add.zones_untested') }}</p>
             <div v-if="offered.length" class="flex flex-col gap-1">
               <span class="text-small text-ink-muted">{{ t('certs.add.account_domains', { count: account.data.value?.total ?? 0 }) }}</span>
+              <span class="text-caption text-ink-muted">{{ t('certs.add.account_domains_untested') }}</span>
               <span class="flex flex-wrap gap-1.5">
                 <JecButton v-for="d in offered" :key="d" size="sm" :aria-label="t('certs.add.pick_domain', { domain: d })" @click="pickDomain(d)">
                   <Plus class="size-4" aria-hidden="true" /><span translate="no">{{ d }}</span>

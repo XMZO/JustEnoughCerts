@@ -109,6 +109,8 @@
 | 吊销检查、补齐证书链、缺中间证书检查 | 证书中的 OCSP、CRL 与颁发者地址（AIA） | 真实服务：Let's Encrypt、Sectigo 等的证书，以及 badssl.com 的缺中间证书站点 |
 | DNS 服务商的“试一下” | 各 DNS 服务商（经 lego） | 真实软件：BIND 的 RFC 2136 动态更新；其他服务商与签发时走同一路径 |
 | [单点登录](../operations/security.zh-CN.md#单点登录) | OpenID Connect 身份提供方 | 真实软件：Dex |
+| 添加证书时列出账号下的域名 | 腾讯云 DNSPod、阿里云 DNS、Cloudflare、华为云 DNS | 替身；界面上已注明未实测 |
+| 自动检查更新 | GitHub 的发布列表 | 真实服务 |
 
 ## 厂商使用条件
 

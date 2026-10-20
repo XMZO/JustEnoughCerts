@@ -486,6 +486,7 @@ export type MessageKey =
   | "certs.activity.renew.running"
   | "certs.activity.title"
   | "certs.add.account_domains"
+  | "certs.add.account_domains_untested"
   | "certs.add.apex_add"
   | "certs.add.apex_hint"
   | "certs.add.bulk_failed"
