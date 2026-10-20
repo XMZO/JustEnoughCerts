@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"errors"
 	"flag"
@@ -89,6 +91,9 @@ func (d *doctor) local(ctx context.Context, cfg config.Config) {
 		return
 	}
 	d.ok("data", "%s is writable", cfg.DataDir)
+	if cfg.TLS() {
+		d.tls(cfg.TLSCert, cfg.TLSKey, time.Now())
+	}
 
 	if _, err := os.Stat(filepath.Join(cfg.DataDir, store.RestoreFile)); err == nil {
 		d.info("restore", "%s waits to take the database's place at the next start", store.RestoreFile)
@@ -132,6 +137,37 @@ func (d *doctor) local(ctx context.Context, cfg config.Config) {
 	}
 	d.ok("database", "%s opens, %d account(s)", where, accounts)
 	d.key(ctx, cfg, st.DB())
+}
+
+// tlsWarn is how close to its end the panel's own certificate is warned of.
+const tlsWarn = 14 * 24 * time.Hour
+
+// tls checks the certificate the panel serves HTTPS with, from the files
+// certFile and keyFile, as of now.
+func (d *doctor) tls(certFile, keyFile string, now time.Time) {
+	pair, err := tls.LoadX509KeyPair(certFile, keyFile)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		d.warn("https", "%v: until the files are there, the panel serves a certificate of its own, which browsers do not trust", err)
+		return
+	case err != nil:
+		d.fail("https", "%s and %s: %v", certFile, keyFile, err)
+		return
+	}
+	leaf, err := x509.ParseCertificate(pair.Certificate[0])
+	if err != nil {
+		d.fail("https", "%s: %v", certFile, err)
+		return
+	}
+	names := strings.Join(leaf.DNSNames, ", ")
+	switch left := leaf.NotAfter.Sub(now); {
+	case left <= 0:
+		d.fail("https", "the certificate for %s expired on %s", names, leaf.NotAfter.Format(time.DateOnly))
+	case left < tlsWarn:
+		d.warn("https", "the certificate for %s expires on %s", names, leaf.NotAfter.Format(time.DateOnly))
+	default:
+		d.ok("https", "a certificate for %s, until %s", names, leaf.NotAfter.Format(time.DateOnly))
+	}
 }
 
 // key checks that the master key opens the secrets of db, if any.

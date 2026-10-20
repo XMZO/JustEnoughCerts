@@ -19,8 +19,8 @@ or through an SSH tunnel; see [Reverse proxy and CDN](../operations/reverse-prox
 ## Checking the server
 
 `jec doctor` checks the data directory, the database, the master key, the
-network to a CA and the server's clock, a line each, and exits with 1 when
-something is wrong:
+panel's own HTTPS certificate when it has one, the network to a CA and the
+server's clock, a line each, and exits with 1 when something is wrong:
 
 ```sh
 docker exec jec /jec doctor                                   # Docker

@@ -12,7 +12,7 @@
 
 ## 检查服务器
 
-`jec doctor` 逐行检查数据目录、数据库、主密钥、到 CA 的网络和服务器时钟，发现问题时以退出码 1 结束：
+`jec doctor` 逐行检查数据目录、数据库、主密钥、面板自己的 HTTPS 证书（设置了时）、到 CA 的网络和服务器时钟，发现问题时以退出码 1 结束：
 
 ```sh
 docker exec jec /jec doctor                                   # Docker

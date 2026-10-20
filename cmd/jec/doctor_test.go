@@ -15,6 +15,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/config"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox/cryptoxtest"
 )
 
 func TestDoctorLocal(t *testing.T) {
@@ -160,6 +161,42 @@ func TestDoctorClock(t *testing.T) {
 		d.clock(tt.date, now)
 		if !strings.HasPrefix(out.String(), tt.mark) || d.failed != (tt.mark == "[FAIL]") {
 			t.Errorf("Date %q: %s (failed %v)", tt.date, out.String(), d.failed)
+		}
+	}
+}
+
+func TestDoctorTLS(t *testing.T) {
+	now := time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
+	ca := cryptoxtest.NewCAFrom(t, now.Add(-24*time.Hour))
+	key := cryptoxtest.NewKey(t)
+	dir := t.TempDir()
+	write := func(name, data string) string {
+		t.Helper()
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	keyFile := write("key.pem", cryptoxtest.KeyPEM(t, key))
+	good := write("good.pem", cryptoxtest.CertPEM(ca.Leaf(t, key, now.Add(-time.Hour), now.Add(60*24*time.Hour), "jec.example.com")))
+	soon := write("soon.pem", cryptoxtest.CertPEM(ca.Leaf(t, key, now.Add(-time.Hour), now.Add(3*24*time.Hour), "jec.example.com")))
+	old := write("old.pem", cryptoxtest.CertPEM(ca.Leaf(t, key, now.Add(-2*time.Hour), now.Add(-time.Hour), "jec.example.com")))
+	other := write("other.pem", cryptoxtest.CertPEM(ca.Leaf(t, cryptoxtest.NewKey(t), now.Add(-time.Hour), now.Add(60*24*time.Hour), "jec.example.com")))
+	for _, tt := range []struct {
+		cert, mark string
+	}{
+		{good, "[ok  ]"},
+		{soon, "[WARN]"},
+		{old, "[FAIL]"},
+		{other, "[FAIL]"},
+		{filepath.Join(dir, "missing.pem"), "[WARN]"},
+	} {
+		var out bytes.Buffer
+		d := &doctor{out: &out}
+		d.tls(tt.cert, keyFile, now)
+		if !strings.HasPrefix(out.String(), tt.mark) || d.failed != (tt.mark == "[FAIL]") {
+			t.Errorf("%s: %s", filepath.Base(tt.cert), out.String())
 		}
 	}
 }
