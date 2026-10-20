@@ -704,6 +704,9 @@
       "title": "Needs attention"
     },
     "bulk": {
+      "add": "Add",
+      "add_target": "Add a deploy target",
+      "add_target_intro": "Adds a deploy target to the {count} certificates chosen; it gets the version in use at once.",
       "choose": "Choose {domain}",
       "choose_all": "Choose every certificate shown",
       "chosen": "{count, plural, one {# chosen} other {# chosen}}",
@@ -713,8 +716,12 @@
       "label": "For the certificates chosen",
       "pause": "Pause renewal ({count})",
       "redeploy": "Deploy again ({count})",
+      "remove": "Remove",
+      "remove_target": "Remove a deploy target",
+      "remove_target_intro": "Takes a deploy target off the {count} certificates chosen; what was deployed there stays.",
       "renew": "Renew now ({count})",
-      "resume": "Resume renewal ({count})"
+      "resume": "Resume renewal ({count})",
+      "target": "Deploy target"
     },
     "ca_revoked": {
       "reason": {

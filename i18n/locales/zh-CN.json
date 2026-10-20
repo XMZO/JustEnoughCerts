@@ -704,6 +704,9 @@
       "title": "需要处理"
     },
     "bulk": {
+      "add": "添加",
+      "add_target": "添加部署目标",
+      "add_target_intro": "把一个部署目标加到选中的 {count} 张证书上；新加的目标立即部署当前版本。",
       "choose": "选择 {domain}",
       "choose_all": "选择显示的全部证书",
       "chosen": "已选 {count, plural, other {# 张}}",
@@ -713,8 +716,12 @@
       "label": "对选中的证书",
       "pause": "暂停自动续期（{count}）",
       "redeploy": "重新部署（{count}）",
+      "remove": "移除",
+      "remove_target": "移除部署目标",
+      "remove_target_intro": "把一个部署目标从选中的 {count} 张证书上移除；已部署的证书留在目标上。",
       "renew": "立即续期（{count}）",
-      "resume": "恢复自动续期（{count}）"
+      "resume": "恢复自动续期（{count}）",
+      "target": "部署目标"
     },
     "ca_revoked": {
       "reason": {

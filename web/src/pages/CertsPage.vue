@@ -15,6 +15,8 @@ import {
   Plus,
   RefreshCw,
   Send,
+  Server,
+  ServerOff,
   ShieldX,
   Trash2,
   TriangleAlert,
@@ -24,7 +26,7 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
-import { saveFile, useCertificates, useDeleteCertificate, useDeleteOf, useExportAll, usePauseOf, type Certificate } from '../api/certs'
+import { saveFile, useCertificates, useDeleteCertificate, useDeleteOf, useExportAll, usePauseOf, useTargetsOf, type Certificate } from '../api/certs'
 import { useApiError } from '../api/errors'
 import { useMonitorStates } from '../api/monitor'
 import { useProviders } from '../api/providers'
@@ -303,6 +305,41 @@ const pausable = computed(() => renewable.value.filter((c) => !c.paused))
 const resumable = computed(() => renewable.value.filter((c) => c.paused))
 const pause = usePauseOf()
 const pausing = ref(false)
+// A deploy target added to those chosen, or taken off them: one added gets
+// the version in use at once.
+const targeting = ref<'add' | 'remove'>()
+const targetOpen = computed({
+  get: () => targeting.value !== undefined,
+  set: (open) => {
+    if (!open) targeting.value = undefined
+  },
+})
+const targetChoice = ref<number>()
+const setTargets = useTargetsOf()
+const setTargetsError = useApiError(setTargets.error)
+const settingTargets = ref(false)
+function startTargets(how: 'add' | 'remove') {
+  targetChoice.value = targets.data.value?.[0]?.id
+  setTargets.reset()
+  targeting.value = how
+}
+async function submitTargets() {
+  const target = targetChoice.value
+  if (target === undefined || settingTargets.value) return
+  settingTargets.value = true
+  try {
+    const certs = chosenCerts.value.filter((c) => (targeting.value === 'add' ? !c.targets.includes(target) : c.targets.includes(target)))
+    await each(certs, (id) => {
+      const c = certs.find((x) => x.id === id)!
+      return setTargets.mutateAsync({ id, targets: targeting.value === 'add' ? [...c.targets, target] : c.targets.filter((t) => t !== target) })
+    })
+  } catch {
+    return // shown in the dialog; those changed before stay changed
+  } finally {
+    settingTargets.value = false
+  }
+  targeting.value = undefined
+}
 async function pauseChosen(paused: boolean) {
   pausing.value = true
   try {
@@ -461,6 +498,12 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
         </JecButton>
         <JecButton v-if="resumable.length" size="sm" :busy="pausing" @click="pauseChosen(false)">
           <Play class="size-4" aria-hidden="true" />{{ t('certs.bulk.resume', { count: resumable.length }) }}
+        </JecButton>
+        <JecButton v-if="targets.data.value?.length" size="sm" @click="startTargets('add')">
+          <Server class="size-4" aria-hidden="true" />{{ t('certs.bulk.add_target') }}
+        </JecButton>
+        <JecButton v-if="chosenCerts.some((c) => c.targets.length)" size="sm" @click="startTargets('remove')">
+          <ServerOff class="size-4" aria-hidden="true" />{{ t('certs.bulk.remove_target') }}
         </JecButton>
         <JecButton size="sm" variant="danger" @click="deletingMany = chosenCerts">
           <Trash2 class="size-4" aria-hidden="true" />{{ t('certs.bulk.delete', { count: chosen.length }) }}
@@ -629,6 +672,24 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
       <JecButton @click="exportingAll = false">{{ t('kernel.action.cancel') }}</JecButton>
       <JecButton type="submit" form="export-all-form" variant="primary" :busy="exportAll.isPending.value" :disabled="!exportPassword">
         <Archive class="size-4" aria-hidden="true" />{{ t('certs.export_all.action') }}
+      </JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-model:open="targetOpen" :title="t(targeting === 'remove' ? 'certs.bulk.remove_target' : 'certs.bulk.add_target')" small>
+    <form id="bulk-targets-form" class="flex flex-col gap-3" novalidate @submit.prevent="submitTargets">
+      <p class="m-0">{{ t(targeting === 'remove' ? 'certs.bulk.remove_target_intro' : 'certs.bulk.add_target_intro', { count: chosen.length }) }}</p>
+      <JecField id="bulk-target" label="certs.bulk.target">
+        <select id="bulk-target" v-model.number="targetChoice" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
+          <option v-for="p in targets.data.value" :key="p.id" :value="p.id" translate="no">{{ p.name }}</option>
+        </select>
+      </JecField>
+      <JecAlert v-if="setTargetsError.error.value" :code="setTargetsError.error.value.code" :params="setTargetsError.error.value.params" />
+    </form>
+    <template #footer>
+      <JecButton @click="targetOpen = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton type="submit" form="bulk-targets-form" variant="primary" :busy="settingTargets" :disabled="targetChoice === undefined">
+        {{ t(targeting === 'remove' ? 'certs.bulk.remove' : 'certs.bulk.add') }}
       </JecButton>
     </template>
   </JecDialog>

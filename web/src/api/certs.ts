@@ -266,6 +266,13 @@ export function useDeleteCertificate(id: MaybeRefOrGetter<number>) {
 }
 
 /** Deletes the certificate it is given, as several chosen at once are. */
+/** Sets the targets of the certificate it is given; a new one gets the version in use at once. */
+export function useTargetsOf() {
+  return useCertsMutation(({ id, targets }: { id: number; targets: number[] }) =>
+    unwrap(api.PATCH('/certs/certificates/{id}', { params: { path: { id } }, body: { targets } })),
+  )
+}
+
 /** Pauses or resumes the renewal of the certificate it is given. */
 export function usePauseOf() {
   return useCertsMutation(({ id, paused }: { id: number; paused: boolean }) =>
