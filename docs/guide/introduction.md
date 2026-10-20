@@ -56,12 +56,12 @@ and servers, and renews them before they expire.
   manage, when domain registrations end, and certificates issued to
   someone else, from certificate transparency logs.
 - [Notifications](../usage/notifications.md): 14 notification channels,
-  each with its own language and events, and a weekly digest; a calendar
-  feed of the ends and renewals; [Prometheus metrics and a
-  heartbeat](../operations/monitoring.md).
+  each with its own language, events and quiet hours, and a weekly
+  digest; a calendar feed of the ends and renewals; [Prometheus metrics
+  and a heartbeat](../operations/monitoring.md).
 - [Accounts and security](../operations/security.md): encrypted secrets,
-  two-factor authentication, single sign-on, signed-in devices and
-  sign-in notes, API tokens and an audit log;
+  two-factor authentication with recovery codes, single sign-on,
+  signed-in devices and sign-in notes, API tokens and an audit log;
   issued certificates can be [revoked](../usage/certificates.md#revoking).
 - Modules and [plugins](../development/plugins.md): everything outside the
   kernel is a module, which can be enabled, disabled or excluded at build
