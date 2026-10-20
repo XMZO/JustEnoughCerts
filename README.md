@@ -44,8 +44,9 @@ Minecraft mod JEI.
   SSH servers, Docker containers, Kubernetes and webhooks.
 - **Renewal**: renewal windows with a daily check time, ACME Renewal
   Information (ARI), retries with backoff, online checks of the
-  certificate each domain serves, and checks that the CA did not revoke
-  it; the private key can be kept across renewals.
+  certificate each domain serves and of its intermediates, and checks
+  that the CA did not revoke it; the private key can be kept across
+  renewals, and an earlier version taken back into use.
 - **Expiry watch**: the certificates of sites JEC does not manage, and
   the registrations of the domains of your certificates and sites (RDAP,
   WHOIS), and certificate transparency logs for certificates issued to
@@ -56,8 +57,9 @@ Minecraft mod JEI.
   of the ends and renewals; metrics for Prometheus, and a heartbeat for a
   monitoring service.
 - **Security**: encrypted secrets, two-factor authentication, OpenID
-  Connect single sign-on, API tokens, an audit log, daily backups with
-  copies to S3 compatible storage, and revocation of issued certificates at their CA.
+  Connect single sign-on, signed-in devices and sign-in notes, API tokens,
+  an audit log, daily backups with copies to S3 compatible storage, and
+  revocation of issued certificates at their CA.
 - **Lightweight**: a single static binary or a small container image, with
   data in SQLite, or PostgreSQL; every feature outside the kernel is a
   module, and plugins can be written in any language.

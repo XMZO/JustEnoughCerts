@@ -50,8 +50,8 @@ and servers, and renews them before they expire.
   such as BaoTa and 1Panel, and local directories, SSH servers, Docker
   containers and Kubernetes.
 - [Renewal](../usage/renewal.md): renewal windows and a daily check time,
-  ACME Renewal Information (ARI), automatic retries, online checks and
-  revocation checks.
+  ACME Renewal Information (ARI), automatic retries, online checks (with
+  the intermediates) and revocation checks.
 - [Expiry watch](../usage/sites.md): the certificates of sites JEC does not
   manage, when domain registrations end, and certificates issued to
   someone else, from certificate transparency logs.
@@ -60,7 +60,8 @@ and servers, and renews them before they expire.
   feed of the ends and renewals; [Prometheus metrics and a
   heartbeat](../operations/monitoring.md).
 - [Accounts and security](../operations/security.md): encrypted secrets,
-  two-factor authentication, single sign-on, API tokens and an audit log;
+  two-factor authentication, single sign-on, signed-in devices and
+  sign-in notes, API tokens and an audit log;
   issued certificates can be [revoked](../usage/certificates.md#revoking).
 - Modules and [plugins](../development/plugins.md): everything outside the
   kernel is a module, which can be enabled, disabled or excluded at build
