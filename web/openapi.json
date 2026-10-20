@@ -353,6 +353,10 @@
             },
             "type": "array"
           },
+          "paused": {
+            "description": "The renewal is paused: the certificate is issued only when someone asks",
+            "type": "boolean"
+          },
           "renewAt": {
             "description": "When the renewal of the current version starts, or started: for a certificate with a source",
             "format": "date-time",
@@ -4045,6 +4049,10 @@
             },
             "maxItems": 50,
             "type": "array"
+          },
+          "paused": {
+            "description": "Pause the renewal: the certificate is issued only when someone asks; unchanged if left out",
+            "type": "boolean"
           },
           "renewBeforeDays": {
             "description": "Unchanged if left out",

@@ -215,6 +215,14 @@ certificates:
 	if data, err := f.configFile().Export(t.Context(), configfile.Export{}); err != nil || !strings.Contains(string(data), "reuse_key: true") {
 		t.Errorf("export %s: %v", data, err)
 	}
+	// And pausing its renewal.
+	f.importConfig("version: 1\ncertificates:\n  - {domains: [example.com], source: LE, solver: DNS 2, paused: true}\n", true)
+	if c, err := f.svc.load(t.Context(), f.db, body.ID); err != nil || !c.Paused {
+		t.Errorf("paused %+v, %v", c, err)
+	}
+	if data, err := f.configFile().Export(t.Context(), configfile.Export{}); err != nil || !strings.Contains(string(data), "paused: true") {
+		t.Errorf("export %s: %v", data, err)
+	}
 }
 
 func TestConfigImportProblems(t *testing.T) {

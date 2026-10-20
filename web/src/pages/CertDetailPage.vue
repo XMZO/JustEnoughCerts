@@ -344,6 +344,8 @@ const days = ref('')
 // makes.
 const reuseKey = ref(false)
 const keyKept = computed(() => issued.value && !ownKey.value)
+// Pausing the renewal of a certificate with a source.
+const paused = ref(false)
 // The channels its notes go to; none chosen goes to all.
 const notifyTo = ref<number[]>([])
 const update = useUpdateCertificate(() => props.id)
@@ -351,6 +353,7 @@ const updateError = useApiError(update.error)
 function edit() {
   days.value = String(cert.value?.renewBeforeDays ?? 30)
   reuseKey.value = !!cert.value?.reuseKey
+  paused.value = !!cert.value?.paused
   notifyTo.value = [...(cert.value?.notifyTo ?? [])]
   update.reset()
   editing.value = true
@@ -400,7 +403,12 @@ async function saveDomains() {
 
 async function saveSettings() {
   try {
-    await update.mutateAsync({ renewBeforeDays: Number(days.value), notifyTo: notifyTo.value, ...(keyKept.value ? { reuseKey: reuseKey.value } : {}) })
+    await update.mutateAsync({
+      renewBeforeDays: Number(days.value),
+      notifyTo: notifyTo.value,
+      ...(keyKept.value ? { reuseKey: reuseKey.value } : {}),
+      ...(issued.value ? { paused: paused.value } : {}),
+    })
   } catch {
     return
   }
@@ -632,7 +640,8 @@ async function confirmDelete() {
           <div>
             <dt class="text-caption text-ink-muted">{{ t(issued ? 'certs.field.renewal' : 'certs.field.reminder') }}</dt>
             <dd class="m-0 mt-0.5 font-semibold tabular-nums">
-              <time v-if="issued && cert.renewAt" :datetime="cert.renewAt">{{ intl.dateTime(cert.renewAt) }}</time>
+              <span v-if="issued && cert.paused" class="text-warn-ink">{{ t('certs.settings.paused_state') }}</span>
+              <time v-else-if="issued && cert.renewAt" :datetime="cert.renewAt">{{ intl.dateTime(cert.renewAt) }}</time>
               <time v-else :datetime="new Date(reminderAt).toISOString()">{{ intl.date(reminderAt) }}</time>
               <span v-if="issued && cert.renewalWindow" class="mt-0.5 block text-caption font-normal text-ink-muted [overflow-wrap:anywhere]">
                 {{ t('certs.renewal.suggested', { start: intl.date(cert.renewalWindow.start), end: intl.date(cert.renewalWindow.end) }) }}
@@ -983,6 +992,13 @@ async function confirmDelete() {
           <span class="min-w-0 [overflow-wrap:anywhere]" translate="no">{{ n.name }}</span>
         </label>
       </fieldset>
+      <label v-if="issued" class="flex cursor-pointer items-start gap-2">
+        <input v-model="paused" type="checkbox" class="mt-1 size-4 flex-none accent-brand" />
+        <span class="min-w-0">
+          <span class="block font-semibold">{{ t('certs.settings.paused') }}</span>
+          <span class="block text-small text-ink-muted">{{ t('certs.settings.paused_help') }}</span>
+        </span>
+      </label>
       <label v-if="keyKept" class="flex cursor-pointer items-start gap-2">
         <input v-model="reuseKey" type="checkbox" class="mt-1 size-4 flex-none accent-brand" />
         <span class="min-w-0">

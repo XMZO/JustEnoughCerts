@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleCheck, Clock, EyeOff, ExternalLink, KeyRound, RefreshCw, ScanSearch, ShieldCheck, ShieldQuestion, Undo2 } from '@lucide/vue'
+import { CircleCheck, Clock, EyeOff, ExternalLink, KeyRound, Plus, RefreshCw, ScanSearch, ShieldCheck, ShieldQuestion, Undo2 } from '@lucide/vue'
 import { computed, ref } from 'vue'
 
 import { useApiError } from '../api/errors'
@@ -153,6 +153,9 @@ async function saveKey(clear = false) {
           </JecButton>
           <JecButton size="sm" variant="ghost" :busy="busy === s.id + 'ignore'" @click="act(s, 'ignore')">
             <EyeOff class="size-4" aria-hidden="true" />{{ t('watch.ct.ignore') }}
+          </JecButton>
+          <JecButton size="sm" variant="ghost" :to="{ path: '/certificates/new', query: { domains: s.names.join(',') } }" :title="t('watch.ct.manage_help')">
+            <Plus class="size-4" aria-hidden="true" />{{ t('watch.ct.manage') }}
           </JecButton>
           <a
             :href="`https://crt.sh/?sha256=${s.sha256}`"

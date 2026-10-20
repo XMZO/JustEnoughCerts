@@ -1641,6 +1641,8 @@ export interface components {
             note?: string;
             /** @description The notifiers its notes go to; empty for all */
             notifyTo: number[];
+            /** @description The renewal is paused: the certificate is issued only when someone asks */
+            paused?: boolean;
             /**
              * Format: date-time
              * @description When the renewal of the current version starts, or started: for a certificate with a source
@@ -2965,6 +2967,8 @@ export interface components {
             note?: string;
             /** @description The notifiers the certificate's notes go to; empty for all; unchanged if left out */
             notifyTo?: number[];
+            /** @description Pause the renewal: the certificate is issued only when someone asks; unchanged if left out */
+            paused?: boolean;
             /**
              * Format: int64
              * @description Unchanged if left out

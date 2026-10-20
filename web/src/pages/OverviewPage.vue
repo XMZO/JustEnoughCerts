@@ -61,7 +61,7 @@ const selectedExtra = computed(() => {
 
 // The certificates in their renewal window that renew by themselves need no
 // one: they show apart, with when they renew.
-const renewing = computed(() => attention.value.filter((c) => c.source === 'provider' && c.state === 'expiring'))
+const renewing = computed(() => attention.value.filter((c) => c.source === 'provider' && c.state === 'expiring' && !c.paused))
 const firstRenewal = computed(() => {
   const at = renewing.value.map((c) => (c.renewAt ? Date.parse(c.renewAt) : Date.now())).sort((a, b) => a - b)[0]
   return at === undefined ? '' : intl.dateTime(Math.max(at, Date.now()))
@@ -130,6 +130,7 @@ function plan(c: Certificate, l: Life | null): string {
     }
     if (c.state === 'failed') return t('certs.next.gave_up')
     if (!c.current) return t('certs.next.first')
+    if (c.paused) return t('certs.next.paused')
     return t('certs.next.auto', { date: intl.date(windowStart(c.current, c.renewBeforeDays)) })
   }
   if (!l || l.expired) return t('certs.plan.expired')

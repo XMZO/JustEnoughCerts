@@ -28,6 +28,7 @@ type CertificateBody struct {
 	KeyType         string           `json:"keyType" doc:"Type and size of the key, such as rsa-2048 or ecdsa-p256"`
 	Note            string           `json:"note,omitempty" doc:"What people wrote about it"`
 	ReuseKey        bool             `json:"reuseKey,omitempty" doc:"Renewals keep the private key of the version in use"`
+	Paused          bool             `json:"paused,omitempty" doc:"The renewal is paused: the certificate is issued only when someone asks"`
 	NotifyTo        []int64          `json:"notifyTo" doc:"The notifiers its notes go to; empty for all"`
 	RenewBeforeDays int              `json:"renewBeforeDays" doc:"How many days before the end the certificate is renewed, or a reminder sent"`
 	State           string           `json:"state" enum:"ok,expiring,expired,issuing,deploying,failed,deploy_failed,revoked" doc:"issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)"`
@@ -122,11 +123,12 @@ func certificateBody(c *Certificate, now time.Time, sch schedule) CertificateBod
 	b := CertificateBody{
 		ID: c.ID, Domains: c.Domains, Source: c.Source, SourceProvider: c.SourceProvider, SolverProvider: c.SolverProvider,
 		KeyType: c.KeyType, RenewBeforeDays: c.RenewBeforeDays, State: c.state(now), CreatedAt: c.CreatedAt, Note: c.Note, ReuseKey: c.ReuseKey, NotifyTo: c.NotifyTo,
+		Paused: c.Paused,
 	}
 	if c.Current != nil {
 		v := versionBody(c.Current)
 		b.Current = &v
-		if c.Source == sourceProvider {
+		if c.Source == sourceProvider && !c.Paused {
 			at := sch.due(c)
 			b.RenewAt = &at
 		}
@@ -260,6 +262,7 @@ type updateInput struct {
 		Note            *string  `json:"note,omitempty" maxLength:"500" doc:"Replaces the note when given; empty removes it"`
 		ReuseKey        *bool    `json:"reuseKey,omitempty" doc:"Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out"`
 		NotifyTo        *[]int64 `json:"notifyTo,omitempty" maxItems:"50" doc:"The notifiers the certificate's notes go to; empty for all; unchanged if left out"`
+		Paused          *bool    `json:"paused,omitempty" doc:"Pause the renewal: the certificate is issued only when someone asks; unchanged if left out"`
 	}
 }
 
@@ -398,7 +401,8 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			}
 			notifyTo = &list
 		}
-		if err := s.update(ctx, in.ID, in.Body.RenewBeforeDays, targets, in.Body.Note, in.Body.ReuseKey, notifyTo); err != nil {
+		ch := changes{days: in.Body.RenewBeforeDays, targets: targets, note: in.Body.Note, reuseKey: in.Body.ReuseKey, paused: in.Body.Paused, notifyTo: notifyTo}
+		if err := s.update(ctx, in.ID, ch); err != nil {
 			return nil, serviceError(err)
 		}
 		return s.output(ctx, in.ID)

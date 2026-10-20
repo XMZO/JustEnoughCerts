@@ -138,6 +138,7 @@ function note(c: Certificate): string {
   if (c.state === 'revoked') return revokedNote(c)
   if (c.state === 'ok' || c.state === 'issuing' || c.state === 'deploying') return ''
   if (c.source === 'provider') {
+    if (c.paused) return t('certs.note.paused')
     // Waiting for the check time, or under way already.
     return c.renewAt && Date.parse(c.renewAt) > Date.now() ? t('certs.next.auto', { date: intl.dateTime(c.renewAt) }) : t('certs.note.renewing')
   }
@@ -164,6 +165,7 @@ function next(c: Certificate): string {
   if (c.state === 'issuing') return t('certs.next.issuing')
   if (c.state === 'failed') return issueNote(c)
   if (!c.current) return t('certs.next.first')
+  if (c.paused) return t('certs.next.paused')
   return t('certs.next.auto', { date: c.renewAt ? intl.dateTime(c.renewAt) : intl.date(windowStart(c.current, c.renewBeforeDays)) })
 }
 

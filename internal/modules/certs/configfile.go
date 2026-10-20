@@ -49,6 +49,9 @@ type certificateEntry struct {
 	// ReuseKey keeps the private key for renewals; left out, it stays as
 	// it is.
 	ReuseKey *bool `yaml:"reuse_key,omitempty"`
+	// Paused stops the renewal of a certificate with a source; left out,
+	// it stays as it is.
+	Paused *bool `yaml:"paused,omitempty"`
 	// NotifyTo names the notifiers its notes go to, all when empty; left
 	// out, they stay as they are.
 	NotifyTo []string `yaml:"notify_to,omitempty"`
@@ -143,6 +146,9 @@ func (s *service) exportCertificates(ctx context.Context, _ configfile.Export) (
 		}
 		if c.ReuseKey {
 			e.ReuseKey = &c.ReuseKey
+		}
+		if c.Paused {
+			e.Paused = &c.Paused
 		}
 		if c.Source == sourceProvider {
 			if e.Source, err = s.providerName(ctx, c.SourceProvider); err != nil {
@@ -315,6 +321,9 @@ func (s *service) addCertificate(ctx context.Context, ci *certImport, e certific
 	if e.ReuseKey != nil {
 		c.ReuseKey = *e.ReuseKey
 	}
+	if e.Paused != nil {
+		c.Paused = *e.Paused
+	}
 	source, pr := ci.in.Provider(providers.Source, e.Source)
 	if pr != nil {
 		pr.Field = "source"
@@ -471,6 +480,17 @@ func (s *service) changeCertificate(ctx context.Context, ci *certImport, e certi
 		}
 		if _, err := ci.tx.ExecContext(ctx, "UPDATE certs_certificates SET reuse_key = ?, updated_at = ? WHERE id = ?",
 			reuse, s.now().UnixMilli(), c.ID); err != nil {
+			return it, err
+		}
+	}
+	if e.Paused != nil && *e.Paused != c.Paused {
+		changed = true
+		paused := 0
+		if *e.Paused {
+			paused = 1
+		}
+		if _, err := ci.tx.ExecContext(ctx, "UPDATE certs_certificates SET paused = ?, updated_at = ? WHERE id = ?",
+			paused, s.now().UnixMilli(), c.ID); err != nil {
 			return it, err
 		}
 	}

@@ -783,6 +783,7 @@ test('every page is translated and fits', async ({ page }, info) => {
     ]
     body.certificate.current = versions[0]
     body.certificate.state = 'revoked'
+    body.certificate.paused = true
     body.versions = versions
     await route.fulfill({ response: res, json: body })
   })
@@ -806,6 +807,13 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(versionRows).toHaveCount(3)
   await expect(page.getByText(label('certs.detail.revoked_renewing'))).toBeVisible()
   expect.soft(await problems(page), 'versions, one revocable and one revoked; an online check').toEqual([])
+  // Its renewal paused: said where the renewal goes, and in the settings.
+  await expect(page.getByText(label('certs.settings.paused_state'))).toBeVisible()
+  await page.getByRole('button', { name: label('certs.settings.edit') }).click()
+  await expect(page.locator('dialog[open]').getByLabel(label('certs.settings.paused'))).toBeChecked()
+  expect.soft(await problems(page), 'the renewal settings, paused').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
   // Going back to it, which the server, not knowing it, refuses.
   await versionRows.nth(1).getByRole('button').first().click()
   await expect(page.locator('dialog[open]')).toBeVisible()

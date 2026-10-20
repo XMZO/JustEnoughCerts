@@ -1008,6 +1008,34 @@ func TestRenew(t *testing.T) {
 	}
 }
 
+func TestRenewPaused(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+	f.run()
+	paused := true
+	f.call(f.api.Patch("/certificates/"+strconv.FormatInt(c.ID, 10), map[string]any{"paused": paused}), http.StatusOK, nil)
+	got := f.certificate(c.ID)
+	if !got.Paused || got.RenewAt != nil {
+		t.Fatalf("paused: %+v", got)
+	}
+
+	// Due, but paused: not renewed, though someone may still ask.
+	f.now = f.now.Add(61 * day)
+	if err := f.svc.renew(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.certificate(c.ID).Issuance.Reason; got != "first" {
+		t.Fatalf("renewed while paused: %s", got)
+	}
+	f.call(f.api.Patch("/certificates/"+strconv.FormatInt(c.ID, 10), map[string]any{"paused": false}), http.StatusOK, nil)
+	if err := f.svc.renew(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.certificate(c.ID); got.Issuance.Reason != "renewal" || got.Paused || got.RenewAt == nil {
+		t.Fatalf("not renewed once resumed: %+v", got)
+	}
+}
+
 func TestFailedStateEnds(t *testing.T) {
 	f := newFixture(t)
 	c := f.issueNew("example.com")

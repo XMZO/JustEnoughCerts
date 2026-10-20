@@ -348,9 +348,12 @@ func (s *service) insertIssued(ctx context.Context, tx *sql.Tx, c Certificate) (
 	now := s.now().UnixMilli()
 	domainsJSON, _ := json.Marshal(c.Domains)
 	solver := sql.NullInt64{Int64: c.SolverProvider, Valid: c.SolverProvider != 0}
-	reuse := 0
+	reuse, paused := 0, 0
 	if c.ReuseKey {
 		reuse = 1
+	}
+	if c.Paused {
+		paused = 1
 	}
 	notifyTo, _ := json.Marshal(c.NotifyTo)
 	if c.NotifyTo == nil {
@@ -358,9 +361,11 @@ func (s *service) insertIssued(ctx context.Context, tx *sql.Tx, c Certificate) (
 	}
 	var id int64
 	err := tx.QueryRowContext(ctx,
-		`INSERT INTO certs_certificates (domains, source, source_provider, solver_provider, key_type, renew_before_days, note, reuse_key, notify_to, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-		string(domainsJSON), sourceProvider, c.SourceProvider, solver, c.KeyType, c.RenewBeforeDays, c.Note, reuse, string(notifyTo), now, now).Scan(&id)
+		`INSERT INTO certs_certificates (domains, source, source_provider, solver_provider, key_type, renew_before_days, note, reuse_key, notify_to,
+		 paused, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+		string(domainsJSON), sourceProvider, c.SourceProvider, solver, c.KeyType, c.RenewBeforeDays, c.Note, reuse, string(notifyTo),
+		paused, now, now).Scan(&id)
 	if err != nil {
 		return 0, err
 	}

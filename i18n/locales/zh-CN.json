@@ -1069,12 +1069,14 @@
       "gave_up": "不会再自动重试，处理好原因后点“重试”。",
       "issuing": "正在签发",
       "manual": "需手动更换",
+      "paused": "自动续期已暂停",
       "retry": "将于 {time} 自动重试（第 {attempt} 次）。"
     },
     "note": {
       "deploy_failed": "{target}：{error}",
       "expired": "请上传新证书",
       "manual": "无法自动续期，请上传新证书",
+      "paused": "自动续期已暂停，需要手动签发",
       "renewing": "即将自动续期",
       "revoked": "CA 已吊销这张证书（{reason}），请尽快换上新证书。",
       "revoked_renewing": "CA 已吊销这张证书（{reason}），JEC 正在重新签发。"
@@ -1189,6 +1191,9 @@
       "notify_none": "没有通知渠道",
       "notify_to": "通知发给",
       "notify_to_help": "只勾选的通知渠道收到这张证书的通知；都不勾选时发给全部渠道。",
+      "paused": "暂停自动续期",
+      "paused_help": "暂停期间不会自动签发，只在你选择“立即签发”时签发；到期提醒照常发送。适用于迁移 DNS 或准备下线的域名。",
+      "paused_state": "已暂停",
       "reminder_value": "到期前 {days, plural, other {# 天}}",
       "renewal_value": "到期前 {days, plural, other {# 天}}，每天 {time} 检查",
       "reuse_key": "续期时沿用私钥",
@@ -3519,6 +3524,8 @@
       "key_intro": "可选。不填时每小时只能查找少量域名；在 sslmate.com 注册 Cert Spotter 可获得 API 密钥。",
       "key_kept": "已保存；填写新密钥将替换它。",
       "last": "最近一次：",
+      "manage": "交给 JEC",
+      "manage_help": "为这些域名添加一张由 JEC 签发和续期的证书。",
       "none": "没有发现 JEC 管理以外的证书。",
       "off": "未开启",
       "on": "已开启",

@@ -110,9 +110,16 @@ const typeLabel = (p: Provider, types: typeof sourceTypes) => {
 const add = useAddCertificate()
 const pem = ref({ certificate: '', privateKey: '', pfx: '', pfxPassword: '' })
 
-// Issue.
+// Issue: for the domains the link names (?domains=a,b), as a certificate
+// found in transparency logs offers, if any.
 const issue = useIssueCertificate()
-const domains = ref<string[]>([])
+const domains = ref<string[]>(
+  String(route.query.domains ?? '')
+    .split(',')
+    .map((d) => d.trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, 100),
+)
 // A wildcard covers the names under a domain, not the domain itself: the
 // page offers to add those left out, a common slip.
 const missingApex = computed(() =>

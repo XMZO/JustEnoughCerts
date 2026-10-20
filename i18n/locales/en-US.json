@@ -1069,12 +1069,14 @@
       "gave_up": "No more retries by itself: once the cause is dealt with, retry.",
       "issuing": "Issuing now",
       "manual": "Replace by hand",
+      "paused": "Renewal paused",
       "retry": "Retries by itself at {time} (attempt {attempt})."
     },
     "note": {
       "deploy_failed": "{target}: {error}",
       "expired": "Upload a new certificate",
       "manual": "Not renewed automatically, upload a new one",
+      "paused": "Renewal paused: issue it by hand",
       "renewing": "Renewing soon",
       "revoked": "Its CA revoked it ({reason}): replace it soon.",
       "revoked_renewing": "Its CA revoked it ({reason}); JEC is issuing a new one."
@@ -1189,6 +1191,9 @@
       "notify_none": "No notification channels",
       "notify_to": "Notes go to",
       "notify_to_help": "Only the channels checked get the notes of this certificate; with none checked, all of them do.",
+      "paused": "Pause the renewal",
+      "paused_help": "While paused, the certificate is issued only when you choose Issue now; its end is still told. For a domain whose DNS moves, or that is going away.",
+      "paused_state": "Paused",
       "reminder_value": "{days, plural, one {# day} other {# days}} before expiry",
       "renewal_value": "{days, plural, one {# day} other {# days}} before it ends, looked at daily at {time}",
       "reuse_key": "Keep the private key on renewal",
@@ -3519,6 +3524,8 @@
       "key_intro": "Optional. Without one, only a few domains can be searched an hour; a Cert Spotter account at sslmate.com comes with an API key.",
       "key_kept": "Saved; a new key replaces it.",
       "last": "Last search:",
+      "manage": "Hand to JEC",
+      "manage_help": "Add a certificate for these names that JEC issues and renews.",
       "none": "No certificates found beyond those JEC holds.",
       "off": "Off",
       "on": "On",

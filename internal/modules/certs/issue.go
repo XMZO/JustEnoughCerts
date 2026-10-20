@@ -800,8 +800,8 @@ func (s *service) usesProvider(ctx context.Context, id int64) (bool, error) {
 
 // renew is the job certs.renew. For each certificate with a source whose
 // current version is due for renewal (schedule.due), or that has no
-// version, it starts an issuance, unless one is under way or the last one
-// failed for good less than failedPause ago.
+// version, it starts an issuance, unless its renewal is paused, one is
+// under way or the last one failed for good less than failedPause ago.
 func (s *service) renew(ctx context.Context) error {
 	certs, err := s.list(ctx)
 	if err != nil {
@@ -814,7 +814,7 @@ func (s *service) renew(ctx context.Context) error {
 	now := s.now()
 	started := false
 	for _, c := range certs {
-		if c.Source != sourceProvider {
+		if c.Source != sourceProvider || c.Paused {
 			continue
 		}
 		if c.Current != nil && now.Before(sch.due(c)) {

@@ -139,6 +139,9 @@ type Certificate struct {
 	Note string
 	// ReuseKey keeps the private key of the version in use for renewals.
 	ReuseKey bool
+	// Paused stops the renewal: the certificate is issued only when
+	// someone asks.
+	Paused bool
 	// NotifyTo are the notifiers its notes go to; empty for all.
 	NotifyTo []int64
 }
@@ -400,7 +403,7 @@ type querier interface {
 }
 
 const selectCertificates = `SELECT c.id, c.domains, c.source, c.source_provider, c.solver_provider, c.key_type,
-	c.renew_before_days, c.created_at, c.note, c.reuse_key, c.notify_to,
+	c.renew_before_days, c.created_at, c.note, c.reuse_key, c.notify_to, c.paused,
 	v.id, v.origin, v.names, v.serial, v.fingerprint, v.issuer, v.key_type, v.not_before, v.not_after, v.chain, v.created_at,
 	v.source_provider, v.renewal_start, v.renewal_end, v.renewal_at, v.renewal_explanation, v.renewal_check,
 	v.ca_revoked_at, v.ca_revoke_reason, v.status_check,
@@ -456,15 +459,15 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 			caRevoked, caReason, statusCheck                                        sql.NullInt64
 		}
 		var is issuanceRow
-		var reuseKey int64
+		var reuseKey, paused int64
 		var notifyTo string
-		dest := []any{&c.ID, &domains, &c.Source, &sourceProvider, &solverProvider, &c.KeyType, &c.RenewBeforeDays, &created, &c.Note, &reuseKey, &notifyTo,
+		dest := []any{&c.ID, &domains, &c.Source, &sourceProvider, &solverProvider, &c.KeyType, &c.RenewBeforeDays, &created, &c.Note, &reuseKey, &notifyTo, &paused,
 			&v.id, &v.origin, &v.names, &v.serial, &v.fingerprint, &v.issuer, &v.keyType, &v.notBefore, &v.notAfter, &v.chain, &v.created,
 			&v.source, &v.start, &v.end, &v.at, &v.explanation, &v.check, &v.caRevoked, &v.caReason, &v.statusCheck}
 		if err := rows.Scan(append(dest, is.dest()...)...); err != nil {
 			return nil, err
 		}
-		c.ReuseKey = reuseKey == 1
+		c.ReuseKey, c.Paused = reuseKey == 1, paused == 1
 		if json.Unmarshal([]byte(notifyTo), &c.NotifyTo) != nil || c.NotifyTo == nil {
 			c.NotifyTo = []int64{}
 		}
@@ -545,9 +548,20 @@ func (s *service) versions(ctx context.Context, id int64) ([]*Version, error) {
 	return out, rows.Err()
 }
 
-// update changes the renewal window of certificate id, unless days is 0,
-// and its targets, unless targets is nil.
-func (s *service) update(ctx context.Context, id int64, days int, targets []int64, note *string, reuseKey *bool, notifyTo *[]int64) error {
+// changes are what an update of a certificate changes: the renewal window,
+// unless days is 0, the targets, unless nil, and each of the others that
+// is not nil.
+type changes struct {
+	days             int
+	targets          []int64
+	note             *string
+	reuseKey, paused *bool
+	notifyTo         *[]int64
+}
+
+// update makes the changes ch to certificate id.
+func (s *service) update(ctx context.Context, id int64, ch changes) error {
+	days, targets, note, reuseKey, notifyTo := ch.days, ch.targets, ch.note, ch.reuseKey, ch.notifyTo
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -588,6 +602,16 @@ func (s *service) update(ctx context.Context, id int64, days int, targets []int6
 		}
 		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET reuse_key = ?, updated_at = ? WHERE id = ?",
 			reuse, s.now().UnixMilli(), id); err != nil {
+			return err
+		}
+	}
+	if ch.paused != nil {
+		paused := 0
+		if *ch.paused {
+			paused = 1
+		}
+		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET paused = ?, updated_at = ? WHERE id = ?",
+			paused, s.now().UnixMilli(), id); err != nil {
 			return err
 		}
 	}
