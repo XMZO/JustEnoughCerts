@@ -61,7 +61,8 @@ func newFixture(t *testing.T) *fixture {
 	}
 	bus := events.New(st.DB(), slog.New(slog.DiscardHandler), func(string) bool { return true })
 	bus.Seal()
-	f := &fixture{t: t, ca: cryptoxtest.NewCA(t), now: start, served: map[string][]*x509.Certificate{}, targets: map[string][2]string{}}
+	// The CA is valid from before the test's clock, whatever the real time.
+	f := &fixture{t: t, ca: cryptoxtest.NewCAFrom(t, start.AddDate(0, -1, 0)), now: start, served: map[string][]*x509.Certificate{}, targets: map[string][2]string{}}
 	f.m = &Module{now: func() time.Time { return f.now }, db: st.DB(), events: bus.Scope("monitor"), log: slog.New(slog.DiscardHandler)}
 	f.m.serve = func(_ context.Context, domain, address string) ([]*x509.Certificate, error) {
 		f.mu.Lock()
@@ -249,7 +250,7 @@ func TestTrack(t *testing.T) {
 func TestChainIncomplete(t *testing.T) {
 	f := newFixture(t)
 	// Chains are verified at the time it is, as the test CA was made.
-	v1 := f.ca.Leaf(t, cryptoxtest.NewKey(t), time.Now().Add(-time.Hour), time.Now().Add(90*24*time.Hour), "example.com", "www.example.com")
+	v1 := f.ca.Leaf(t, cryptoxtest.NewKey(t), f.now.Add(-time.Hour), f.now.Add(90*24*time.Hour), "example.com", "www.example.com")
 	f.tell(contracts.CertificateIssued, 1, v1)
 	f.serve("example.com", v1)
 	f.serveAlone("www.example.com", v1) // set up with the certificate alone

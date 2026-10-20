@@ -420,7 +420,7 @@ func (m *Module) incomplete(ctx context.Context, domain string, certs []*x509.Ce
 	for _, c := range certs[1:] {
 		pool.AddCert(c)
 	}
-	opts := x509.VerifyOptions{DNSName: domain, Intermediates: pool, Roots: m.roots}
+	opts := x509.VerifyOptions{DNSName: domain, Intermediates: pool, Roots: m.roots, CurrentTime: m.now()}
 	_, err := leaf.Verify(opts)
 	var unknown x509.UnknownAuthorityError
 	if err == nil || !errors.As(err, &unknown) || m.issuers == nil {
