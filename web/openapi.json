@@ -3082,6 +3082,74 @@
         ],
         "type": "object"
       },
+      "SessionBody": {
+        "additionalProperties": false,
+        "properties": {
+          "client": {
+            "description": "The client's address when it signed in",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "current": {
+            "description": "The session of this request",
+            "type": "boolean"
+          },
+          "device": {
+            "description": "The browser and system, as its User-Agent header told them",
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "description": "Names the session in this API; not its cookie",
+            "type": "string"
+          },
+          "lastSeen": {
+            "description": "When it was last used, to within a few minutes",
+            "format": "date-time",
+            "type": "string"
+          },
+          "userAgent": {
+            "type": "string"
+          },
+          "via": {
+            "description": "How it began; absent for those from before JEC noted it",
+            "enum": [
+              "password",
+              "sso",
+              "setup"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "current",
+          "createdAt",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
+      "SessionsOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/SessionBody"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "sessions"
+        ],
+        "type": "object"
+      },
       "SettingsInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -4260,6 +4328,96 @@
           }
         },
         "summary": "Change the password, which signs the account out everywhere else",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/account/sessions": {
+      "get": {
+        "operationId": "sessions-list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionsOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List where the account is signed in, the latest first",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/account/sessions/sign-out-others": {
+      "post": {
+        "operationId": "sessions-sign-out-others",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Sign the account out everywhere but here",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/account/sessions/{id}": {
+      "delete": {
+        "operationId": "sessions-delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Sign a session out; this one, through DELETE /session",
         "tags": [
           "auth"
         ]

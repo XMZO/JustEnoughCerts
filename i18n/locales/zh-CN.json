@@ -292,6 +292,8 @@
       "providers_test": "测试服务商连接",
       "providers_update": "修改服务商",
       "restore": "恢复备份",
+      "sessions_delete": "退出一个登录的设备",
+      "sessions_sign_out_others": "退出其他所有设备",
       "set_auto_backup": "设置每日自动备份",
       "set_time_zone": "修改时区",
       "setup": "初始化 JEC",
@@ -1922,6 +1924,7 @@
       "restore_newer": "这个备份来自更新版本的 JEC：请先升级 JEC。",
       "restore_not_backup": "这个文件不是 JEC 的备份。",
       "restore_other_key": "这个备份是用另一个主密钥加密的。请先换回当时的主密钥（JEC_SECRET_KEY，或者当时的 secret.key 文件），再恢复。",
+      "session_current": "这是当前使用的登录，请用“退出登录”。",
       "setup_done": "JEC 已经初始化过了，请直接登录。",
       "setup_token_invalid": "初始化令牌不对，请从服务器日志里重新复制。",
       "token_invalid": "API 令牌无效：它已被删除，或者根本不存在。",
@@ -2004,8 +2007,10 @@
         "expiring": "证书快到期或已经过期时通知",
         "issue_failed": "签发失败时通知",
         "issued": "有新证书（签发或上传）时通知",
+        "locked": "有人连续登录失败、被暂时锁定时通知",
         "revoked": "证书被 CA 吊销时通知",
         "served_old": "网站上还是旧证书",
+        "sign_in": "有人登录面板时通知",
         "site_expiring": "监控的站点证书快到期或已经过期时通知",
         "spotted": "证书透明度日志里出现不是 JEC 管理的证书时通知"
       },
@@ -2114,6 +2119,20 @@
       "submit": "恢复并重启",
       "title": "恢复备份",
       "waiting": "JEC 正在用备份重新启动……"
+    },
+    "sessions": {
+      "current": "当前设备",
+      "hint": "在哪些设备和浏览器上登录了，可以退出其中某个或其他全部。",
+      "last_seen": "最近使用",
+      "manage": "查看",
+      "sign_out": "退出",
+      "sign_out_one": "退出 {device}",
+      "sign_out_others": "退出其他所有设备",
+      "signed_in": "登录于",
+      "title": "登录的设备",
+      "via_password": "密码登录",
+      "via_setup": "初始化时登录",
+      "via_sso": "单点登录"
     },
     "settings": {
       "about": "关于",
@@ -2459,6 +2478,15 @@
       "name": "通知"
     },
     "note": {
+      "account": {
+        "device": "设备：{device}",
+        "from": "来自 {client}",
+        "hint": "如果不是你本人，请立即修改密码，并在设置页的“登录的设备”中退出其他设备。",
+        "locked_title": "有人登录 JEC 连续失败，已锁定 {minutes} 分钟",
+        "signed_in_title": "{username} 登录了 JEC",
+        "tried": "尝试的用户名：{username}",
+        "via": "方式：{via, select, password {密码} sso {单点登录} setup {初始化} other {{via}}}"
+      },
       "also": "这张证书还包括：{names}",
       "chain_incomplete": "网站只发送了证书本身，没有发送中间证书。电脑上的浏览器会自行补齐，但许多 App、安卓设备和 curl 会验证失败。请部署包含中间证书的完整证书链（如 fullchain.pem）。",
       "chain_incomplete_title": "{domain} 缺少中间证书",

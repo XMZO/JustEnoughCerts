@@ -292,6 +292,8 @@
       "providers_test": "Test a provider's connection",
       "providers_update": "Change a provider",
       "restore": "Restore a backup",
+      "sessions_delete": "Signed a device out",
+      "sessions_sign_out_others": "Signed out all other devices",
       "set_auto_backup": "Choose daily backups",
       "set_time_zone": "Change the time zone",
       "setup": "Set up JEC",
@@ -1922,6 +1924,7 @@
       "restore_newer": "The backup comes from a later JEC: update JEC first.",
       "restore_not_backup": "This file is no backup of JEC.",
       "restore_other_key": "The backup was sealed with another master key. Put back the key of then, JEC_SECRET_KEY or the secret.key file, before restoring it.",
+      "session_current": "This is the sign-in in use: sign out instead.",
       "setup_done": "JEC is already set up. Sign in instead.",
       "setup_token_invalid": "The setup token is wrong. Copy it again from the server log.",
       "token_invalid": "The API token is not valid: it was deleted, or never was.",
@@ -2004,8 +2007,10 @@
         "expiring": "When a certificate is about to expire, or has expired",
         "issue_failed": "When an issuance fails",
         "issued": "When a new certificate is issued or uploaded",
+        "locked": "Someone failed to sign in too many times and is locked out for a while",
         "revoked": "The CA revoked a certificate",
         "served_old": "A website still serves the old certificate",
+        "sign_in": "Someone signs in to the panel",
         "site_expiring": "A watched site's certificate ends soon or ended",
         "spotted": "A certificate JEC does not hold shows up in certificate transparency logs"
       },
@@ -2114,6 +2119,20 @@
       "submit": "Restore and restart",
       "title": "Restore a backup",
       "waiting": "JEC is starting again with the backup…"
+    },
+    "sessions": {
+      "current": "This device",
+      "hint": "Where the account is signed in: sign one out, or all but this one.",
+      "last_seen": "Last used",
+      "manage": "View",
+      "sign_out": "Sign out",
+      "sign_out_one": "Sign out {device}",
+      "sign_out_others": "Sign out all other devices",
+      "signed_in": "Signed in",
+      "title": "Signed-in devices",
+      "via_password": "With the password",
+      "via_setup": "At the setup",
+      "via_sso": "Through single sign-on"
     },
     "settings": {
       "about": "About",
@@ -2459,6 +2478,15 @@
       "name": "Notifications"
     },
     "note": {
+      "account": {
+        "device": "Device: {device}",
+        "from": "From {client}",
+        "hint": "If it was not you, change the password at once, and sign out the other devices under Signed-in devices in the settings.",
+        "locked_title": "Someone failed to sign in to JEC too many times: locked out for {minutes} minutes",
+        "signed_in_title": "{username} signed in to JEC",
+        "tried": "Username tried: {username}",
+        "via": "By {via, select, password {password} sso {single sign-on} setup {the setup} other {{via}}}"
+      },
       "also": "The certificate also covers {names}.",
       "chain_incomplete": "The website sends the certificate but not its intermediates. Browsers on computers fetch them themselves; many apps, Android devices and curl fail to verify it. Deploy the full chain, with the intermediates (such as fullchain.pem).",
       "chain_incomplete_title": "{domain} serves its certificate without the intermediates",

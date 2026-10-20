@@ -31,6 +31,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/clientip"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 )
 
@@ -64,6 +65,9 @@ type Options struct {
 	// Clients finds the client of a request, behind trusted proxies too,
 	// which sign-in lockouts go by. Nil means the peer.
 	Clients *clientip.Resolver
+	// Events tells of sign-ins and lockouts (contracts.AccountSignedIn,
+	// contracts.AccountLocked); nil tells nobody.
+	Events *events.Scope
 }
 
 // Service is the account system.
@@ -78,13 +82,14 @@ type Service struct {
 	setupToken string                  // set while no account exists
 	pending    map[int64]pendingSecret // new secrets of two-factor authentication, by account
 	touched    map[int64]time.Time     // when the last use of each API token was written
+	seen       map[string]time.Time    // when the last use of each session was written, by its hash
 }
 
 // New starts the account system on db, whose kernel migrations are applied.
 // Without any account it makes a setup token and logs it.
 func New(ctx context.Context, db *sql.DB, log *slog.Logger, opts Options) (*Service, error) {
 	s := &Service{db: db, log: log, opts: opts, now: time.Now, limit: newLimiter(maxFailures, lockout), pending: map[int64]pendingSecret{},
-		touched: map[int64]time.Time{}}
+		touched: map[int64]time.Time{}, seen: map[string]time.Time{}}
 	var n int
 	if err := db.QueryRowContext(ctx, "SELECT count(*) FROM kernel_users").Scan(&n); err != nil {
 		return nil, fmt.Errorf("count accounts: %w", err)
@@ -110,6 +115,7 @@ type User struct {
 type (
 	sessionKey struct{}
 	clientKey  struct{}
+	agentKey   struct{}
 )
 
 type session struct {
@@ -161,6 +167,7 @@ func clientFrom(ctx context.Context) string {
 // without one unless its operation is api.Public.
 func (s *Service) Middleware(ctx huma.Context, next func(huma.Context)) {
 	ctx = huma.WithValue(ctx, clientKey{}, s.client(ctx))
+	ctx = huma.WithValue(ctx, agentKey{}, ctx.Header("User-Agent"))
 	ctx = huma.WithValue(ctx, actorKey{}, &actor{})
 	if via, ok := ctx.Context().Value(localKey{}).(string); ok {
 		if sess, ok := s.authorizeLocal(ctx, via); ok {
@@ -229,6 +236,7 @@ func (s *Service) lookup(ctx context.Context, token string) (session, bool) {
 		}
 		return session{}, false
 	}
+	s.touchSession(ctx, hash[:])
 	return sess, true
 }
 
@@ -336,6 +344,7 @@ func (s *Service) Register(a huma.API) {
 		Summary: "Turn two-factor authentication off, once the password is confirmed", DefaultStatus: http.StatusNoContent,
 	}, s.disableTwoFactor)
 	s.registerTokens(a, tags)
+	s.registerSessions(a, tags)
 }
 
 func (s *Service) getSetup(context.Context, *struct{}) (*setupStatus, error) {
@@ -359,7 +368,7 @@ func (s *Service) setup(ctx context.Context, in *setupInput) (*sessionOutput, er
 	}
 	given := strings.ToLower(strings.TrimSpace(in.Body.Token))
 	if subtle.ConstantTimeCompare([]byte(given), []byte(want)) != 1 {
-		s.limit.fail(client, s.now())
+		s.failed(ctx, client, "")
 		return nil, api.NewError(http.StatusForbidden, i18n.KernelErrorSetupTokenInvalid, nil)
 	}
 	var locale sql.NullString
@@ -400,7 +409,7 @@ func (s *Service) setup(ctx context.Context, in *setupInput) (*sessionOutput, er
 	if err != nil {
 		return nil, err
 	}
-	token, expires, err := s.newSession(ctx, tx, id, defaultSessionDays)
+	token, expires, err := s.newSession(ctx, tx, id, defaultSessionDays, viaSetup)
 	if err != nil {
 		return nil, err
 	}
@@ -414,6 +423,7 @@ func (s *Service) setup(ctx context.Context, in *setupInput) (*sessionOutput, er
 	s.limit.reset(client)
 	signedIn(ctx, in.Body.Username)
 	s.log.Info("first account created", "username", in.Body.Username)
+	s.tellSignIn(ctx, in.Body.Username, viaSetup)
 	account, err := s.account(ctx, id)
 	if err != nil {
 		return nil, err
@@ -435,7 +445,7 @@ func (s *Service) signIn(ctx context.Context, in *signInInput) (*sessionOutput, 
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		_, _ = checkPassword(dummyHash(), in.Body.Password) // take as long as a wrong password
-		s.limit.fail(client, s.now())
+		s.failed(ctx, client, in.Body.Username)
 		return nil, loginFailed()
 	case err != nil:
 		return nil, err
@@ -445,7 +455,7 @@ func (s *Service) signIn(ctx context.Context, in *signInInput) (*sessionOutput, 
 		return nil, err
 	}
 	if !ok {
-		s.limit.fail(client, s.now())
+		s.failed(ctx, client, in.Body.Username)
 		return nil, loginFailed()
 	}
 	if len(secret) > 0 {
@@ -457,7 +467,7 @@ func (s *Service) signIn(ctx context.Context, in *signInInput) (*sessionOutput, 
 	if _, err := s.db.ExecContext(ctx, "DELETE FROM kernel_sessions WHERE expires_at <= ?", timestamp(s.now())); err != nil {
 		s.log.Warn("remove expired sessions", "err", err)
 	}
-	token, expires, err := s.newSession(ctx, s.db, id, days)
+	token, expires, err := s.newSession(ctx, s.db, id, days, viaPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -466,6 +476,7 @@ func (s *Service) signIn(ctx context.Context, in *signInInput) (*sessionOutput, 
 		return nil, err
 	}
 	signedIn(ctx, account.Username)
+	s.tellSignIn(ctx, account.Username, viaPassword)
 	return &sessionOutput{SetCookie: s.cookie(token, expires), Body: account}, nil
 }
 
@@ -557,7 +568,7 @@ func (s *Service) ConfirmPassword(ctx context.Context, password string) error {
 		return err
 	}
 	if !ok {
-		s.limit.fail(client, s.now())
+		s.failed(ctx, client, u.Username)
 		return api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorPasswordWrong, nil).
 			WithField("body.password", i18n.KernelErrorPasswordWrong)
 	}
@@ -590,11 +601,12 @@ func (s *Service) StartSession(ctx context.Context) (http.Cookie, error) {
 	case err != nil:
 		return http.Cookie{}, err
 	}
-	token, expires, err := s.newSession(ctx, s.db, id, days)
+	token, expires, err := s.newSession(ctx, s.db, id, days, viaSSO)
 	if err != nil {
 		return http.Cookie{}, err
 	}
 	signedIn(ctx, username)
+	s.tellSignIn(ctx, username, viaSSO)
 	return s.cookie(token, expires), nil
 }
 
@@ -602,8 +614,9 @@ type execer interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 }
 
-// newSession signs userID in for days.
-func (s *Service) newSession(ctx context.Context, db execer, userID int64, days int) (string, time.Time, error) {
+// newSession signs userID in for days, by way of via, from the client of
+// ctx.
+func (s *Service) newSession(ctx context.Context, db execer, userID int64, days int, via string) (string, time.Time, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return "", time.Time{}, err
@@ -613,8 +626,8 @@ func (s *Service) newSession(ctx context.Context, db execer, userID int64, days 
 	now := s.now()
 	expires := now.Add(time.Duration(max(days, 1)) * 24 * time.Hour)
 	_, err := db.ExecContext(ctx,
-		"INSERT INTO kernel_sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
-		hash[:], userID, timestamp(now), timestamp(expires))
+		"INSERT INTO kernel_sessions (token_hash, user_id, created_at, expires_at, client, user_agent, via) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		hash[:], userID, timestamp(now), timestamp(expires), clientFrom(ctx), agentFrom(ctx), via)
 	return token, expires, err
 }
 

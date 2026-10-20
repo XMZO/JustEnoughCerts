@@ -1079,6 +1079,13 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(dialog).toBeHidden()
   await expect(page.locator('#session-days')).toHaveValue('30')
 
+  // Signed-in devices: this one at least, marked.
+  await page.getByRole('button', { name: label('kernel.sessions.manage') }).click()
+  await expect(dialog.getByText(label('kernel.sessions.current'))).toBeVisible()
+  expect.soft(await problems(page), 'signed-in devices').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.close') }).last().click()
+  await expect(dialog).toBeHidden()
+
   // Single sign-on: switched on with a provider that is not there, which
   // the server refuses, field by field.
   await page.getByRole('button', { name: label('oidc.settings.edit') }).click()

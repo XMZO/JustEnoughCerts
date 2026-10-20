@@ -78,6 +78,12 @@ func (s *service) handle(ctx context.Context, ev events.Event) error {
 			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
 		}
 		write = func(tag language.Tag) contracts.Note { return s.domainNote(tag, ev, d) }
+	case contracts.AccountSignedIn, contracts.AccountLocked:
+		var d contracts.SignInEvent
+		if err := ev.Decode(&d); err != nil {
+			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
+		}
+		write = func(tag language.Tag) contracts.Note { return s.accountNote(tag, ev, d) }
 	case contracts.CertificateSpotted:
 		var d contracts.SpottedEvent
 		if err := ev.Decode(&d); err != nil {
@@ -446,6 +452,35 @@ func (s *service) domainNote(tag language.Tag, ev events.Event, d contracts.Doma
 	if len(d.Certificates) > 0 {
 		lines = append(lines, w.text(i18n.NotifyNoteDomainCertificates, i18n.Args{"count": len(d.Certificates)}))
 	}
+	if n.Link != "" {
+		lines = append(lines, w.text(i18n.NotifyNoteLink, i18n.Args{"url": n.Link}))
+	}
+	n.Text = strings.Join(lines, "\n")
+	n.Subject = w.subject(n.Title)
+	return n
+}
+
+// accountNote writes the note about a sign-in, or a client locked out.
+func (s *service) accountNote(tag language.Tag, ev events.Event, d contracts.SignInEvent) contracts.Note {
+	w := writer{s: s, tag: tag}
+	n := contracts.Note{Event: ev.Type, Time: ev.Time, Data: ev.Data, Link: s.link("/settings")}
+	var lines []string
+	if ev.Type == contracts.AccountLocked {
+		n.Title = w.text(i18n.NotifyNoteAccountLockedTitle, i18n.Args{"minutes": d.Minutes})
+		if d.Username != "" {
+			lines = append(lines, w.text(i18n.NotifyNoteAccountTried, i18n.Args{"username": d.Username}))
+		}
+	} else {
+		n.Title = w.text(i18n.NotifyNoteAccountSignedInTitle, i18n.Args{"username": d.Username})
+		if d.Via != "" {
+			lines = append(lines, w.text(i18n.NotifyNoteAccountVia, i18n.Args{"via": d.Via}))
+		}
+	}
+	lines = append(lines, w.text(i18n.NotifyNoteAccountFrom, i18n.Args{"client": d.Client}))
+	if d.Device != "" {
+		lines = append(lines, w.text(i18n.NotifyNoteAccountDevice, i18n.Args{"device": d.Device}))
+	}
+	lines = append(lines, w.text(i18n.NotifyNoteAccountHint, nil))
 	if n.Link != "" {
 		lines = append(lines, w.text(i18n.NotifyNoteLink, i18n.Args{"url": n.Link}))
 	}

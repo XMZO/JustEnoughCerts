@@ -47,6 +47,7 @@ import JecField from '../components/JecField.vue'
 import JecInput from '../components/JecInput.vue'
 import OffsiteSettings from '../components/OffsiteSettings.vue'
 import OidcSettings from '../components/OidcSettings.vue'
+import SessionsSettings from '../components/SessionsSettings.vue'
 import PageHeader from '../components/PageHeader.vue'
 import { locales, setLocale, useT, type Locale, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
@@ -853,6 +854,7 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           <KeySquare class="size-4" aria-hidden="true" />{{ t('kernel.settings.tokens_manage') }}
         </JecButton>
       </div>
+      <SessionsSettings :row-class="row" />
     </section>
 
     <section v-if="manifest.data.value" aria-labelledby="about" :class="panel">

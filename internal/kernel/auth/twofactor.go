@@ -171,7 +171,7 @@ func (s *Service) enableTwoFactor(ctx context.Context, in *codeInput) (*struct{}
 	}
 	step, ok := checkCode(p.secret, in.Body.Code, now, 0)
 	if !ok {
-		s.limit.fail(client, now)
+		s.failed(ctx, client, u.Username)
 		return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorTwoFactorCode, nil).
 			WithField("body.code", i18n.KernelErrorTwoFactorCode)
 	}
@@ -253,7 +253,7 @@ func (s *Service) secondFactor(ctx context.Context, client string, id int64, sea
 		ok = n == 1
 	}
 	if !ok {
-		s.limit.fail(client, s.now())
+		s.failed(ctx, client, "")
 		return api.NewError(http.StatusUnauthorized, i18n.KernelErrorTwoFactorCode, nil).WithField("body.code", i18n.KernelErrorTwoFactorCode)
 	}
 	return nil

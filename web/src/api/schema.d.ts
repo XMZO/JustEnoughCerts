@@ -38,6 +38,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/account/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List where the account is signed in, the latest first */
+        get: operations["sessions-list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/sessions/sign-out-others": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign the account out everywhere but here */
+        post: operations["sessions-sign-out-others"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Sign a session out; this one, through DELETE /session */
+        delete: operations["sessions-delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/account/tokens": {
         parameters: {
             query?: never;
@@ -2568,6 +2619,34 @@ export interface components {
             /** @description One for each notifier that sent something */
             sends: components["schemas"]["SendBody"][];
         };
+        SessionBody: {
+            /** @description The client's address when it signed in */
+            client?: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description The session of this request */
+            current: boolean;
+            /** @description The browser and system, as its User-Agent header told them */
+            device?: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** @description Names the session in this API; not its cookie */
+            id: string;
+            /**
+             * Format: date-time
+             * @description When it was last used, to within a few minutes
+             */
+            lastSeen?: string;
+            userAgent?: string;
+            /**
+             * @description How it began; absent for those from before JEC noted it
+             * @enum {string}
+             */
+            via?: "password" | "sso" | "setup";
+        };
+        SessionsOutputBody: {
+            sessions: components["schemas"]["SessionBody"][];
+        };
         SettingsInputBody: {
             accessKey: string;
             bucket: string;
@@ -2994,6 +3073,91 @@ export interface operations {
                 "application/json": components["schemas"]["PasswordInputBody"];
             };
         };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "sessions-list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionsOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "sessions-sign-out-others": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "sessions-delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description No Content */
             204: {

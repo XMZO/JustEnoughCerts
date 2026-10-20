@@ -16,6 +16,12 @@ page.
   [Reverse proxy and CDN](reverse-proxy.md).
 - Sign-ins last one, seven or 30 days, seven by default.
 - Changing the password signs the account out everywhere else.
+- Signed-in devices, under Account and security in the settings, lists
+  each sign-in: the device (browser and system), address, how it signed
+  in, when, and when it was last used; sign one out, or all but this one.
+- Notification channels can tell when someone signs in (off by default)
+  and when a client is locked out after failed sign-ins (on by default),
+  with the address and device.
 
 ## Two-factor authentication
 

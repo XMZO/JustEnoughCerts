@@ -112,6 +112,28 @@ const (
 	CertificateSpotted = "domain.certificate_spotted"
 )
 
+// Events of the accounts of the kernel.
+const (
+	// AccountSignedIn: someone signed in to JEC, with a password, through
+	// single sign-on or at the setup. The subject is the username. Payload
+	// SignInEvent.
+	AccountSignedIn = "account.signed_in"
+	// AccountLocked: a client failed to sign in too many times in a row
+	// and is locked out for a while. The subject is the client's address.
+	// Payload SignInEvent, with Minutes.
+	AccountLocked = "account.locked"
+)
+
+// SignInEvent is the payload of the events of the accounts.
+type SignInEvent struct {
+	Username  string `json:"username,omitempty"` // the account, or the name tried
+	Client    string `json:"client"`             // the client's address
+	UserAgent string `json:"userAgent,omitempty"`
+	Device    string `json:"device,omitempty"`  // the browser and system, as "Chrome 141 · Windows"
+	Via       string `json:"via,omitempty"`     // password, sso or setup
+	Minutes   int    `json:"minutes,omitempty"` // how long a client is locked out
+}
+
 // SpottedEvent is the payload of CertificateSpotted.
 type SpottedEvent struct {
 	Domain    string    `json:"domain"` // the registered domain, as example.com

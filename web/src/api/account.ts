@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
-import type { MaybeRefOrGetter } from 'vue'
+import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 
 import { api, ApiError, unwrap } from './client'
 import { queryClient } from './query'
@@ -132,5 +132,30 @@ export function useDeleteToken() {
   return useMutation({
     mutationFn: (id: number) => unwrap(api.DELETE('/account/tokens/{id}', { params: { path: { id } } })),
     onSuccess: () => client.invalidateQueries({ queryKey: tokensKey }),
+  })
+}
+
+export type Session = components['schemas']['SessionBody']
+
+const sessionsKey = ['account', 'sessions'] as const
+
+/** Where the account is signed in, this session first; only while enabled, as while a dialog shows them. */
+export function useSessions(enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: sessionsKey,
+    queryFn: async () => (await unwrap(api.GET('/account/sessions'))).sessions,
+    enabled: computed(() => toValue(enabled)),
+  })
+}
+
+/** Signs one session out, or with 'others' every one but this. */
+export function useEndSession() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      id === 'others'
+        ? unwrap(api.POST('/account/sessions/sign-out-others'))
+        : unwrap(api.DELETE('/account/sessions/{id}', { params: { path: { id } } })),
+    onSuccess: () => client.invalidateQueries({ queryKey: sessionsKey }),
   })
 }

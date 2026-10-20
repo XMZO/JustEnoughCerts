@@ -38,8 +38,8 @@ func (l *limiter) wait(client string, now time.Time) time.Duration {
 }
 
 // fail records a failed attempt by client and locks it out when that makes
-// too many in a row.
-func (l *limiter) fail(client string, now time.Time) {
+// too many in a row, which it tells.
+func (l *limiter) fail(client string, now time.Time) (locked bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	for c, a := range l.clients { // keep the map small
@@ -57,7 +57,9 @@ func (l *limiter) fail(client string, now time.Time) {
 	if a.streak >= l.max {
 		a.streak = 0
 		a.until = now.Add(l.lock)
+		return true
 	}
+	return false
 }
 
 // reset ends client's streak, after it succeeded.

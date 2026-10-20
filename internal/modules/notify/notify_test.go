@@ -418,6 +418,36 @@ func TestSpottedNote(t *testing.T) {
 	}
 }
 
+func TestAccountNotes(t *testing.T) {
+	f := newFixture(t)
+	en := f.notifier("ops", map[string]string{"locale": "en-US", "on_sign_in": "true"}) // sign-ins are off by default
+	quiet := f.notifier("quiet", map[string]string{"locale": "en-US"})
+	for i, ev := range []struct {
+		typ string
+		d   contracts.SignInEvent
+	}{
+		{contracts.AccountSignedIn, contracts.SignInEvent{Username: "admin", Client: "203.0.113.7", Device: "Chrome 141 · Windows", Via: "sso"}},
+		{contracts.AccountLocked, contracts.SignInEvent{Username: "root", Client: "198.51.100.9", Minutes: 15}},
+	} {
+		raw, _ := json.Marshal(ev.d)
+		if err := f.svc.handle(t.Context(), events.Event{ID: int64(i + 1), Type: ev.typ, Source: "kernel", Subject: ev.d.Client, Data: raw, Time: start}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	notes := f.notes(en)
+	if len(notes) != 2 || len(f.notes(quiet)) != 1 {
+		t.Fatalf("notes %v, quiet %v", notes, f.notes(quiet))
+	}
+	if n := notes[0]; n.Title != "admin signed in to JEC" ||
+		!strings.HasPrefix(n.Text, "By single sign-on\nFrom 203.0.113.7\nDevice: Chrome 141 · Windows\nIf it was not you") || n.Link != "https://jec.example.com/settings" {
+		t.Errorf("note %q\n%s", n.Title, n.Text)
+	}
+	if n := notes[1]; n.Title != "Someone failed to sign in to JEC too many times: locked out for 15 minutes" ||
+		!strings.HasPrefix(n.Text, "Username tried: root\nFrom 198.51.100.9\nIf it was not you") {
+		t.Errorf("note %q\n%s", n.Title, n.Text)
+	}
+}
+
 func TestRevokedNote(t *testing.T) {
 	f := newFixture(t)
 	en := f.notifier("ops", map[string]string{"locale": "en-US"}) // on by default

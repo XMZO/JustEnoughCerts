@@ -141,6 +141,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		Secure:     strings.HasPrefix(cfg.BaseURL, "https://"),
 		Secrets:    box.Scope(owner),
 		Clients:    clients,
+		Events:     bus.Scope(owner),
 	})
 	if err != nil {
 		return nil, err

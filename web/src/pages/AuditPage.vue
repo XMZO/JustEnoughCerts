@@ -81,6 +81,8 @@ const operations: Partial<Record<string, MessageKey>> = {
   'oidc-save': 'audit.op.oidc_save',
   'oidc-callback': 'audit.op.oidc_callback',
   'offsite-save': 'audit.op.offsite_save',
+  'sessions-delete': 'audit.op.sessions_delete',
+  'sessions-sign-out-others': 'audit.op.sessions_sign_out_others',
   'watch-transparency-save': 'audit.op.watch_ct_save',
   'watch-transparency-check': 'audit.op.watch_ct_check',
   'watch-transparency-trust': 'audit.op.watch_ct_trust',
