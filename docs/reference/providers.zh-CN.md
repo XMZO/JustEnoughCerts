@@ -97,6 +97,19 @@
 | `hooks.script` | 自定义脚本，由内置 shell 运行 | 真实脚本 |
 | `plugins.*` | 插件 | 真实程序 |
 
+## 其他外部服务
+
+以下功能不是服务商类型，但同样连接外部服务：
+
+| 功能 | 连接的服务 | 测试方式 |
+|---|---|---|
+| [异地备份](../operations/backup.zh-CN.md#异地备份) | S3 兼容存储 | 真实软件：SeaweedFS 的 S3 接口；AWS S3、Cloudflare R2、阿里云 OSS、腾讯云 COS 等未实测，界面上已注明 |
+| [证书透明度](../usage/sites.zh-CN.md#证书透明度) | Cert Spotter | 真实服务（不带 API 密钥） |
+| [域名注册](../usage/sites.zh-CN.md#域名注册) | IANA 与各注册局的 RDAP、WHOIS | 真实服务 |
+| 吊销检查、补齐证书链、缺中间证书检查 | 证书中的 OCSP、CRL 与颁发者地址（AIA） | 真实服务：Let's Encrypt、Sectigo 等的证书，以及 badssl.com 的缺中间证书站点 |
+| DNS 服务商的“试一下” | 各 DNS 服务商（经 lego） | 真实软件：BIND 的 RFC 2136 动态更新；其他服务商与签发时走同一路径 |
+| [单点登录](../operations/security.zh-CN.md#单点登录) | OpenID Connect 身份提供方 | 真实软件：Dex |
+
 ## 厂商使用条件
 
 部分证书来源与部署目标须满足厂商的条件方可使用。证书颁发机构支持 ACME（需要账号时提供 External Account Binding）的，建议优先使用 ACME，或手动上传其签发的证书；厂商专有接口均为可选模块。

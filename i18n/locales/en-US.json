@@ -2777,6 +2777,7 @@
       "state_failed": "Copy failed",
       "state_off": "Off",
       "state_on": "On",
+      "tested": "Untested: tried against the S3 interface of SeaweedFS only; AWS S3, R2, OSS, COS and others may need their settings adjusted.",
       "title": "Offsite backups"
     }
   },

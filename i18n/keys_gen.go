@@ -2071,6 +2071,7 @@ const (
 	OffsiteSettingsStateFailed               Key = "offsite.settings.state_failed"
 	OffsiteSettingsStateOff                  Key = "offsite.settings.state_off"
 	OffsiteSettingsStateOn                   Key = "offsite.settings.state_on"
+	OffsiteSettingsTested                    Key = "offsite.settings.tested"
 	OffsiteSettingsTitle                     Key = "offsite.settings.title"
 	OidcErrorDiscovery                       Key = "oidc.error.discovery"
 	OidcErrorIssuer                          Key = "oidc.error.issuer"

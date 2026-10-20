@@ -87,6 +87,7 @@ async function submit() {
   <JecDialog v-model:open="open" :title="t('offsite.settings.title')">
     <form id="offsite-form" class="flex flex-col gap-3" novalidate @submit.prevent="submit">
       <p class="m-0">{{ t('offsite.settings.intro') }}</p>
+      <p class="m-0 text-small text-ink-muted">{{ t('offsite.settings.tested') }}</p>
       <JecAlert v-if="errors.alert.value" :code="errors.alert.value.code" :params="errors.alert.value.params" />
       <label class="flex min-h-9 items-center gap-2.5 font-semibold max-sm:min-h-11">
         <input v-model="form.enabled" type="checkbox" class="size-4 flex-none accent-brand" />{{ t('offsite.settings.enabled') }}

@@ -2777,6 +2777,7 @@
       "state_failed": "复制失败",
       "state_off": "未开启",
       "state_on": "已开启",
+      "tested": "未实测：目前只对 SeaweedFS 的 S3 接口测试过，AWS S3、R2、OSS、COS 等可能需要调整设置。",
       "title": "异地备份"
     }
   },

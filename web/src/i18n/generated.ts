@@ -2079,6 +2079,7 @@ export type MessageKey =
   | "offsite.settings.state_failed"
   | "offsite.settings.state_off"
   | "offsite.settings.state_on"
+  | "offsite.settings.tested"
   | "offsite.settings.title"
   | "oidc.error.discovery"
   | "oidc.error.issuer"
