@@ -1032,6 +1032,15 @@ async function confirmDelete() {
                 <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.validation') }}</dt>
                 <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ solverName ?? '' }}</dd>
               </template>
+              <!-- Without a version, the life bar that holds the settings' pencil is not there. -->
+              <template v-if="issued && !current">
+                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.settings.title') }}</dt>
+                <dd class="m-0 [overflow-wrap:anywhere]">
+                  <button type="button" class="cursor-pointer border-0 bg-transparent p-0 text-small text-brand underline underline-offset-2 hover:text-brand-hover" @click="edit">
+                    {{ t('certs.settings.edit') }}
+                  </button>
+                </dd>
+              </template>
               <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.key') }}</dt>
               <dd v-if="key" class="m-0 [overflow-wrap:anywhere]">{{ t(key.key, key.params) }}</dd>
               <dd v-else class="m-0 [overflow-wrap:anywhere]">{{ t(keyText(cert.keyType).key, keyText(cert.keyType).params) }}</dd>
