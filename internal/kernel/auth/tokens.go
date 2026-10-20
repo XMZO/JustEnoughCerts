@@ -79,7 +79,8 @@ func (s *Service) lookupToken(ctx context.Context, token string) (session, bool)
 	err := s.db.QueryRowContext(ctx,
 		`SELECT t.id, t.name, t.scope, u.id, u.username, coalesce(u.locale, '')
 		   FROM kernel_api_tokens t JOIN kernel_users u ON u.id = t.user_id
-		  WHERE t.token_hash = ?`, hash[:]).Scan(&id, &sess.token, &sess.scope, &sess.user.ID, &sess.user.Username, &sess.user.Locale)
+		  WHERE t.token_hash = ? AND (t.expires_at IS NULL OR t.expires_at > ?)`, hash[:], timestamp(s.now())).
+		Scan(&id, &sess.token, &sess.scope, &sess.user.ID, &sess.user.Username, &sess.user.Locale)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			s.log.Error("look up API token", "err", err)
@@ -120,6 +121,7 @@ type TokenBody struct {
 	Scope      string     `json:"scope" enum:"read,write" doc:"read: GET and HEAD alone; write: any operation but those managing the account"`
 	CreatedAt  time.Time  `json:"createdAt"`
 	LastUsedAt *time.Time `json:"lastUsedAt,omitempty" doc:"When it was last used, to the minute"`
+	ExpiresAt  *time.Time `json:"expiresAt,omitempty" doc:"When it stops working; never when absent"`
 }
 
 type tokensOutput struct {
@@ -132,6 +134,7 @@ type createTokenInput struct {
 	Body struct {
 		Name     string `json:"name" minLength:"1" maxLength:"64" doc:"What the token is for, such as a script"`
 		Scope    string `json:"scope" enum:"read,write"`
+		Days     int    `json:"days,omitempty" minimum:"0" maximum:"3650" doc:"How many days it works; 0 or left out for ever"`
 		Password string `json:"password" maxLength:"1024" doc:"The account's password, to confirm"`
 	}
 }
@@ -167,7 +170,7 @@ func (s *Service) registerTokens(a huma.API, tags []string) {
 func (s *Service) listTokens(ctx context.Context, _ *struct{}) (*tokensOutput, error) {
 	u, _ := UserFrom(ctx)
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, name, scope, created_at, last_used_at FROM kernel_api_tokens WHERE user_id = ? ORDER BY id DESC`, u.ID)
+		`SELECT id, name, scope, created_at, last_used_at, expires_at FROM kernel_api_tokens WHERE user_id = ? ORDER BY id DESC`, u.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -177,9 +180,13 @@ func (s *Service) listTokens(ctx context.Context, _ *struct{}) (*tokensOutput, e
 	for rows.Next() {
 		var t TokenBody
 		var created string
-		var used sql.NullString
-		if err := rows.Scan(&t.ID, &t.Name, &t.Scope, &created, &used); err != nil {
+		var used, expires sql.NullString
+		if err := rows.Scan(&t.ID, &t.Name, &t.Scope, &created, &used, &expires); err != nil {
 			return nil, err
+		}
+		if expires.Valid {
+			at, _ := time.Parse(time.RFC3339, expires.String)
+			t.ExpiresAt = &at
 		}
 		t.CreatedAt, _ = time.Parse(time.RFC3339, created)
 		if used.Valid {
@@ -210,17 +217,24 @@ func (s *Service) createToken(ctx context.Context, in *createTokenInput) (*creat
 	token := tokenPrefix + base64.RawURLEncoding.EncodeToString(b)
 	hash := sha256.Sum256([]byte(token))
 	now := s.now()
+	var expires sql.NullString
+	var expiresAt *time.Time
+	if in.Body.Days > 0 {
+		at := now.Add(time.Duration(in.Body.Days) * 24 * time.Hour).UTC().Truncate(time.Second)
+		expires, expiresAt = sql.NullString{String: timestamp(at), Valid: true}, &at
+	}
 	var id int64
 	err := s.db.QueryRowContext(ctx,
-		`INSERT INTO kernel_api_tokens (user_id, name, token_hash, scope, created_at) VALUES (?, ?, ?, ?, ?) RETURNING id`,
-		u.ID, strings.TrimSpace(in.Body.Name), hash[:], in.Body.Scope, timestamp(now)).Scan(&id)
+		`INSERT INTO kernel_api_tokens (user_id, name, token_hash, scope, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
+		u.ID, strings.TrimSpace(in.Body.Name), hash[:], in.Body.Scope, timestamp(now), expires).Scan(&id)
 	if err != nil {
 		return nil, err
 	}
 	s.log.Info("API token created", "username", u.Username, "token", in.Body.Name, "scope", in.Body.Scope)
 	out := &createTokenOutput{}
 	out.Body.Token = token
-	out.Body.Detail = TokenBody{ID: id, Name: strings.TrimSpace(in.Body.Name), Scope: in.Body.Scope, CreatedAt: now.UTC().Truncate(time.Second)}
+	out.Body.Detail = TokenBody{ID: id, Name: strings.TrimSpace(in.Body.Name), Scope: in.Body.Scope, CreatedAt: now.UTC().Truncate(time.Second),
+		ExpiresAt: expiresAt}
 	return out, nil
 }
 

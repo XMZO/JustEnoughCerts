@@ -13,7 +13,8 @@ Every function of the panel is available through its HTTP API, at
 | Session cookie | Used by the browser after signing in; requests from other sites that change something are refused (CSRF protection) |
 | API token | For scripts and other programs: created under API tokens on the Settings page, and sent as `Authorization: Bearer jec_...` |
 
-API tokens are read-only or read-write. They cannot manage the account (the
+API tokens are read-only or read-write, and may work for a number of days
+only, after which they get 401. They cannot manage the account (the
 password, two-factor authentication, the session length, API tokens and
 single sign-on) or restore a backup; these operations require a session.
 Changes made with a token are recorded in the audit log with the token's

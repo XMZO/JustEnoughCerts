@@ -118,3 +118,27 @@ func TestTokens(t *testing.T) {
 		t.Errorf("a token after reset-password = %d", r.status)
 	}
 }
+
+func TestTokenExpires(t *testing.T) {
+	f := signedUp(t)
+	cookie := f.call(http.MethodPost, "/session", "", `{"username": "admin", "password": "correct horse"}`).cookie.Value
+	r := f.call(http.MethodPost, "/account/tokens", cookie, `{"name": "ci", "scope": "read", "days": 30, "password": "correct horse"}`)
+	var out struct {
+		Token  string    `json:"token"`
+		Detail TokenBody `json:"detail"`
+	}
+	if r.status != http.StatusCreated || json.Unmarshal([]byte(r.body), &out) != nil || out.Detail.ExpiresAt == nil ||
+		!out.Detail.ExpiresAt.Equal(f.clock.Add(30*24*time.Hour)) {
+		t.Fatalf("create = %d %s", r.status, r.body)
+	}
+	if r := f.call(http.MethodGet, "/account/tokens", cookie, ""); !strings.Contains(r.body, `"expiresAt":"2026-11-15T12:00:00Z"`) {
+		t.Errorf("list = %s", r.body)
+	}
+	if r := f.withToken(http.MethodGet, "/whoami", "Bearer "+out.Token, ""); r.status != http.StatusOK {
+		t.Fatalf("before its end = %d", r.status)
+	}
+	f.clock = f.clock.Add(30 * 24 * time.Hour)
+	if r := f.withToken(http.MethodGet, "/whoami", "Bearer "+out.Token, ""); r.status != http.StatusUnauthorized {
+		t.Errorf("at its end = %d", r.status)
+	}
+}

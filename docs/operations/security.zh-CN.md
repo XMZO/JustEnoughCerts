@@ -35,7 +35,7 @@ docker exec -it jec /jec reset-password
 
 ## API 令牌
 
-在设置页的“API 令牌”中创建令牌，权限为只读或读写。令牌以 Bearer 方式使用，参见 [API](../reference/api.zh-CN.md)。任何令牌都不能修改密码、两步验证与令牌本身。
+在设置页的“API 令牌”中创建令牌，权限为只读或读写，有效期为永久或 30、90、365 天，到期后自动失效。令牌以 Bearer 方式使用，参见 [API](../reference/api.zh-CN.md)。任何令牌都不能修改密码、两步验证与令牌本身。
 
 ## 审计日志
 

@@ -2263,9 +2263,13 @@
     "tokens": {
       "copy": "Copy the token",
       "create": "Make the token",
+      "days": "Works for",
       "delete": "Delete {name}",
       "delete_confirm": "Delete it",
       "empty": "No tokens yet.",
+      "ended": "Ended on {date}",
+      "ends": "Ends on {date}",
+      "forever": "Ever",
       "intro": "A program sends the header Authorization: Bearer and a token to use the API as this account. A read token may only read; no token changes the password, two-factor authentication or the tokens.",
       "made": "Made {date}",
       "made_new": "The token {name}. Copy it now: it shows this once.",

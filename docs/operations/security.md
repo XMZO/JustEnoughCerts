@@ -56,7 +56,8 @@ keeps working:
 ## API tokens
 
 Under API tokens on the Settings page, create read-only or read-write
-tokens. Tokens are sent as bearer tokens; see [API](../reference/api.md).
+tokens, working for ever or for 30, 90 or 365 days, after which they stop
+working by themselves. Tokens are sent as bearer tokens; see [API](../reference/api.md).
 No token can change the password, two-factor authentication or the tokens.
 
 ## Audit log

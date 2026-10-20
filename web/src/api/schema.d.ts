@@ -1778,6 +1778,11 @@ export interface components {
             type: string;
         };
         CreateTokenInputBody: {
+            /**
+             * Format: int64
+             * @description How many days it works; 0 or left out for ever
+             */
+            days?: number;
             /** @description What the token is for, such as a script */
             name: string;
             /** @description The account's password, to confirm */
@@ -2789,6 +2794,11 @@ export interface components {
         TokenBody: {
             /** Format: date-time */
             createdAt: string;
+            /**
+             * Format: date-time
+             * @description When it stops working; never when absent
+             */
+            expiresAt?: string;
             /** Format: int64 */
             id: number;
             /**

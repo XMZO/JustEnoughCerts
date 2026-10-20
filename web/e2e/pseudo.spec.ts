@@ -1100,6 +1100,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'API tokens').toEqual([])
   await dialog.locator('#token-name').fill('ci')
   await dialog.locator('#token-scope').selectOption('write')
+  await dialog.locator('#token-days').selectOption('30')
   await dialog.locator('#token-password').fill('correct horse')
   await dialog.locator('button[type=submit]').click()
   await expect(dialog.locator('code').filter({ hasText: 'jec_' })).toBeVisible()

@@ -217,7 +217,10 @@ const createToken = useCreateToken()
 const deleteToken = useDeleteToken()
 const tokenError = useApiError(computed(() => createToken.error.value))
 const deleteTokenError = useApiError(computed(() => deleteToken.error.value))
-const emptyToken = () => ({ name: '', scope: 'read' as 'read' | 'write', password: '' })
+const emptyToken = () => ({ name: '', scope: 'read' as 'read' | 'write', days: 0, password: '' })
+// How long a new token works: for ever, or a number of days.
+const tokenDays = [0, 30, 90, 365]
+const tokenEnded = (at?: string) => !!at && Date.parse(at) <= Date.now()
 const tokenForm = ref(emptyToken())
 const madeToken = ref<{ name: string; token: string }>()
 const confirmDelete = ref<number>()
@@ -1097,6 +1100,9 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
               <span class="font-semibold">{{ t(scopeText[tk.scope]) }}</span>
               <span>{{ t('kernel.tokens.made', { date: intl.date(tk.createdAt) }) }}</span>
               <span>{{ tk.lastUsedAt ? t('kernel.tokens.used', { date: intl.dateTime(tk.lastUsedAt) }) : t('kernel.tokens.never_used') }}</span>
+              <span v-if="tk.expiresAt" :class="tokenEnded(tk.expiresAt) ? 'font-semibold text-danger-ink' : ''">
+                {{ t(tokenEnded(tk.expiresAt) ? 'kernel.tokens.ended' : 'kernel.tokens.ends', { date: intl.date(tk.expiresAt) }) }}
+              </span>
             </span>
           </div>
           <JecButton
@@ -1122,6 +1128,11 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           <select id="token-scope" v-model="tokenForm.scope" :class="control">
             <option value="read">{{ t('kernel.tokens.scope_read') }}</option>
             <option value="write">{{ t('kernel.tokens.scope_write') }}</option>
+          </select>
+        </JecField>
+        <JecField id="token-days" label="kernel.tokens.days">
+          <select id="token-days" v-model.number="tokenForm.days" :class="control">
+            <option v-for="d in tokenDays" :key="d" :value="d">{{ d ? t('kernel.settings.days', { days: d }) : t('kernel.tokens.forever') }}</option>
           </select>
         </JecField>
         <JecField id="token-password" label="kernel.account.confirm_password" :error="tokenError.fields.value.password">

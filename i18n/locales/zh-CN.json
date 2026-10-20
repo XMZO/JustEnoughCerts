@@ -2263,9 +2263,13 @@
     "tokens": {
       "copy": "复制令牌",
       "create": "创建令牌",
+      "days": "有效期",
       "delete": "删除 {name}",
       "delete_confirm": "确认删除",
       "empty": "还没有令牌。",
+      "ended": "已于 {date} 过期",
+      "ends": "{date} 到期",
+      "forever": "永久有效",
       "intro": "程序在请求头里带上 Authorization: Bearer 和令牌，就能以这个账号使用接口。只读令牌只能读取；任何令牌都不能修改密码、两步验证和令牌。",
       "made": "{date} 创建",
       "made_new": "令牌 {name}。请现在复制：它只显示这一次。",

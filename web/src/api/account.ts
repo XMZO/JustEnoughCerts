@@ -121,7 +121,7 @@ export function useTokens(enabled: MaybeRefOrGetter<boolean>) {
 export function useCreateToken() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: (body: { name: string; scope: 'read' | 'write'; password: string }) => unwrap(api.POST('/account/tokens', { body })),
+    mutationFn: (body: { name: string; scope: 'read' | 'write'; days?: number; password: string }) => unwrap(api.POST('/account/tokens', { body })),
     onSuccess: () => client.invalidateQueries({ queryKey: tokensKey }),
   })
 }

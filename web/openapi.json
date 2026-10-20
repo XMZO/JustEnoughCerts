@@ -710,6 +710,13 @@
       "CreateTokenInputBody": {
         "additionalProperties": false,
         "properties": {
+          "days": {
+            "description": "How many days it works; 0 or left out for ever",
+            "format": "int64",
+            "maximum": 3650,
+            "minimum": 0,
+            "type": "integer"
+          },
           "name": {
             "description": "What the token is for, such as a script",
             "maxLength": 64,
@@ -3536,6 +3543,11 @@
         "additionalProperties": false,
         "properties": {
           "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expiresAt": {
+            "description": "When it stops working; never when absent",
             "format": "date-time",
             "type": "string"
           },
