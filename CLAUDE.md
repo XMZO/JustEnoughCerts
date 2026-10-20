@@ -141,6 +141,7 @@
 - 审计日志记下操作对象：处理函数用 `api.Subject(ctx, 名称)` 标出（证书的主域名、服务商和凭据的名称、站点、域名、令牌名），`audit_log.subject`，界面显示在操作名后面，可搜索；新加改动类接口时一并标上。
 - 界面巡检修过：总览“需要处理”的按钮在窄卡片里换到文字下面；证书列表的表格在 1280 宽下放得下（表格单元格上的 `max-w-*` 无效，要套一层块元素再截断）；缺中间证书的站点显示黄色“缺中间证书”；服务商卡片摘要不显示多行字段；手动 DNS 的说明和步骤；部署行的“标签：值”。
 - 生成 CSR（`certs/csr.go`，表 `certs_csr`，状态 `awaiting`“等待证书”）：向商业 CA 手动购买的证书由 JEC 生成私钥（加密，`csr:<id>`）和 CSR；`POST /api/v1/certs/certificates/request` 新建、`POST|DELETE /api/v1/certs/certificates/{id}/csr` 续费重签或放弃；上传不带私钥的证书时配上等待中的私钥或当前版本的私钥（`keyFor`），添加页直接上传也会找到对应的证书（`requestFor`）。界面：添加页来源“生成 CSR”、详情页的等待横幅和 `RequestDialog.vue`；e2e 走到了。
+- 访问白名单 `JEC_ALLOWED_CLIENTS`（按可信反向代理认定客户端）：界面和接口只对这些地址开放，其他得 403（`kernel.error.client_not_allowed`）；`/.well-known/`、健康检查、标了 `api.AnyClient` 的机器接口（拉取文件、日历订阅、Prometheus 指标）和进程内调用不受限，新加给机器用的接口照此标上。测试的时钟固定在某个日期时，测试 CA 要用 `cryptoxtest.NewCAFrom`（`NewCA` 按真实时间生效，过了那个钟点就验证不过）。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定
