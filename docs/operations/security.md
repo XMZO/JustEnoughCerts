@@ -29,6 +29,13 @@ With two-factor authentication turned on in the Settings page, signing in
 also requires the 6-digit code (TOTP) of an authenticator app. Turning it
 on signs the account out everywhere else.
 
+Turning it on also makes ten recovery codes, shown that once: keep them
+somewhere safe, as a password manager. If the phone or the app is lost,
+choose "Use a recovery code" on the sign-in page and enter one; each works
+once. The Settings page tells how many are left and makes new ones once
+the password is confirmed, which ends the old ones. They are kept sealed
+by the master key.
+
 ## Resetting the password
 
 If the password or the authenticator is lost, reset the password on the

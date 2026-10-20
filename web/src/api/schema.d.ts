@@ -150,8 +150,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Turn two-factor authentication on with a code of the new secret, which signs the account out everywhere else */
+        /** Turn two-factor authentication on with a code of the new secret, which signs the account out everywhere else, and make recovery codes */
         post: operations["two-factor-enable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/two-factor/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make new recovery codes, once the password is confirmed; the old ones stop working */
+        post: operations["two-factor-recovery"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1514,6 +1531,11 @@ export interface components {
             passwordChangedAt?: string;
             /**
              * Format: int64
+             * @description How many recovery codes are left, with two-factor authentication on
+             */
+            recoveryCodes?: number;
+            /**
+             * Format: int64
              * @description How many days a sign-in lasts
              */
             sessionDays: number;
@@ -2475,6 +2497,10 @@ export interface components {
             /** @description Warnings tell of what the import leaves as it is; other problems stop it */
             warning?: boolean;
         };
+        RecoveryOutputBody: {
+            /** @description Each signs in once in place of a code of the authenticator app; shown this once */
+            recoveryCodes: string[];
+        };
         ReleaseBody: {
             /** @description The running version */
             current: string;
@@ -3355,12 +3381,47 @@ export interface operations {
             };
         };
         responses: {
-            /** @description No Content */
-            204: {
+            /** @description OK */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RecoveryOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "two-factor-recovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryOutputBody"];
+                };
             };
             /** @description Error */
             default: {

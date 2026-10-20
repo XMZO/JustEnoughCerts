@@ -75,7 +75,12 @@ func TestTwoFactor(t *testing.T) {
 	if r := f.call(http.MethodPost, "/account/two-factor/enable", session, `{"code": "`+wrong(first)+`"}`); r.status != http.StatusUnprocessableEntity || !strings.Contains(r.body, "body.code") {
 		t.Errorf("a wrong code = %d %s", r.status, r.body)
 	}
-	if r := f.call(http.MethodPost, "/account/two-factor/enable", session, `{"code": "`+first[:3]+" "+first[3:]+`"}`); r.status != http.StatusNoContent {
+	r := f.call(http.MethodPost, "/account/two-factor/enable", session, `{"code": "`+first[:3]+" "+first[3:]+`"}`)
+	var made struct {
+		RecoveryCodes []string `json:"recoveryCodes"`
+	}
+	if r.status != http.StatusOK || json.Unmarshal([]byte(r.body), &made) != nil || len(made.RecoveryCodes) != recoveryCount ||
+		len(made.RecoveryCodes[0]) != 9 || made.RecoveryCodes[0][4] != '-' {
 		t.Fatalf("enable = %d %s", r.status, r.body)
 	}
 	if r := f.call(http.MethodGet, "/session", other, ""); r.status != http.StatusUnauthorized {
@@ -104,6 +109,35 @@ func TestTwoFactor(t *testing.T) {
 		t.Errorf("a secret while it is on = %d %s", r.status, r.body)
 	}
 
+	// A recovery code in place of a code, once each, typed as people do.
+	if r := f.call(http.MethodPost, "/session", "", withCode(made.RecoveryCodes[0])); r.status != http.StatusOK {
+		t.Errorf("a recovery code = %d %s", r.status, r.body)
+	}
+	if r := f.call(http.MethodPost, "/session", "", withCode(made.RecoveryCodes[0])); r.status != http.StatusUnauthorized {
+		t.Errorf("a recovery code again = %d %s", r.status, r.body)
+	}
+	typed := strings.ToUpper(strings.Replace(made.RecoveryCodes[1], "-", " ", 1))
+	if r := f.call(http.MethodPost, "/session", "", withCode(typed)); r.status != http.StatusOK {
+		t.Errorf("a recovery code in capitals = %d %s", r.status, r.body)
+	}
+	if r := f.call(http.MethodGet, "/session", session, ""); !strings.Contains(r.body, `"recoveryCodes":8`) {
+		t.Errorf("codes left: %s", r.body)
+	}
+	// New ones, and the old stop working.
+	r = f.call(http.MethodPost, "/account/two-factor/recovery-codes", session, `{"password": "correct horse"}`)
+	var renewed struct {
+		RecoveryCodes []string `json:"recoveryCodes"`
+	}
+	if r.status != http.StatusOK || json.Unmarshal([]byte(r.body), &renewed) != nil || len(renewed.RecoveryCodes) != recoveryCount {
+		t.Fatalf("new codes = %d %s", r.status, r.body)
+	}
+	if r := f.call(http.MethodPost, "/session", "", withCode(made.RecoveryCodes[2])); r.status != http.StatusUnauthorized {
+		t.Errorf("an old code = %d %s", r.status, r.body)
+	}
+	if r := f.call(http.MethodPost, "/session", "", withCode(renewed.RecoveryCodes[9])); r.status != http.StatusOK {
+		t.Errorf("a new code = %d %s", r.status, r.body)
+	}
+
 	// Off again, with the password.
 	if r := f.call(http.MethodPost, "/account/two-factor/disable", session, `{"password": "correct horse"}`); r.status != http.StatusNoContent {
 		t.Fatalf("disable = %d %s", r.status, r.body)
@@ -130,7 +164,7 @@ func TestResetTurnsTwoFactorOff(t *testing.T) {
 	f := signedUp(t)
 	session := f.call(http.MethodPost, "/session", "", signIn).cookie.Value
 	setup := f.secret(session)
-	if r := f.call(http.MethodPost, "/account/two-factor/enable", session, `{"code": "`+codeAt(t, setup.Secret, f.clock)+`"}`); r.status != http.StatusNoContent {
+	if r := f.call(http.MethodPost, "/account/two-factor/enable", session, `{"code": "`+codeAt(t, setup.Secret, f.clock)+`"}`); r.status != http.StatusOK {
 		t.Fatalf("enable = %d %s", r.status, r.body)
 	}
 	if err := SetPassword(t.Context(), f.svc.db, "admin", "correct horse"); err != nil {

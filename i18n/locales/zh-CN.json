@@ -305,6 +305,7 @@
       "tokens_delete": "删除 API 令牌",
       "two_factor_disable": "关闭两步验证",
       "two_factor_enable": "开启两步验证",
+      "two_factor_recovery": "重新生成两步验证的恢复码",
       "two_factor_secret": "开始设置两步验证",
       "update_account": "修改账户设置",
       "watch_add": "添加监控站点",
@@ -704,8 +705,10 @@
       "delete": "删除（{count}）",
       "delete_title": "删除 {count, plural, other {# 张证书}}",
       "label": "对选中的证书",
+      "pause": "暂停自动续期（{count}）",
       "redeploy": "重新部署（{count}）",
-      "renew": "立即续期（{count}）"
+      "renew": "立即续期（{count}）",
+      "resume": "恢复自动续期（{count}）"
     },
     "ca_revoked": {
       "reason": {
@@ -1952,6 +1955,7 @@
       "too_many_attempts": "失败次数太多，请 {minutes, plural, other {# 分钟}}后再试。",
       "two_factor_code": "验证码不对，或者已经用过了。验证码每 30 秒变一次；一直不对的话，请检查装着 App 的设备的时间。",
       "two_factor_expired": "超过 10 分钟了，请重新开始。",
+      "two_factor_off": "两步验证没有开启。",
       "two_factor_on": "两步验证已经开启了。",
       "two_factor_required": "请输入验证器 App 里的验证码。",
       "unauthorized": "请先登录。",
@@ -1985,8 +1989,12 @@
       "code": "验证器 App 里的验证码",
       "code_hint": "6 位数字，每 30 秒更新一次。",
       "forgot": "忘记密码或者验证器 App 丢了：在服务器上运行",
+      "recovery": "恢复码",
+      "recovery_hint": "开启两步验证时保存的恢复码之一，如 abcd-2345，每个只能用一次。",
       "submit": "登录",
-      "title": "登录"
+      "title": "登录",
+      "use_code": "改用验证码",
+      "use_recovery": "改用恢复码"
     },
     "modules": {
       "builtin": "内置",
@@ -2133,6 +2141,16 @@
       "untested": "未实测",
       "untested_help": "只用模拟的接口测过，没有用真实账号验证，可能不生效。欢迎反馈结果。",
       "uses": "{count, plural, =0 {没有证书在用} other {# 张证书在用}}"
+    },
+    "recovery": {
+      "copy": "复制全部恢复码",
+      "intro": "每个恢复码可以代替验证码登录一次，适用于手机或验证器丢失时。请保存在密码管理器等安全的地方；关闭后不再显示。",
+      "left": "{count, plural, =0 {恢复码已用完，请重新生成} other {还剩 # 个，丢失验证器时可代替验证码登录}}",
+      "make": "生成",
+      "new": "重新生成恢复码",
+      "new_intro": "生成 10 个新的恢复码，旧的恢复码随即失效。",
+      "saved": "我已保存",
+      "title": "恢复码"
     },
     "restore": {
       "choose": "选择文件",

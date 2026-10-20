@@ -248,6 +248,7 @@ type Account struct {
 	Locale            string     `json:"locale,omitempty" doc:"BCP 47 tag of the language chosen for the account"`
 	PasswordChangedAt *time.Time `json:"passwordChangedAt,omitempty" doc:"When the password last changed"`
 	TwoFactor         bool       `json:"twoFactor" doc:"Signing in also takes a code of an authenticator app"`
+	RecoveryCodes     int        `json:"recoveryCodes,omitempty" doc:"How many recovery codes are left, with two-factor authentication on"`
 	SessionDays       int        `json:"sessionDays" doc:"How many days a sign-in lasts"`
 }
 
@@ -336,8 +337,7 @@ func (s *Service) Register(a huma.API) {
 	}, s.setUpTwoFactor)
 	huma.Register(a, huma.Operation{
 		OperationID: "two-factor-enable", Method: http.MethodPost, Path: "/account/two-factor/enable", Tags: tags, Metadata: only,
-		Summary:       "Turn two-factor authentication on with a code of the new secret, which signs the account out everywhere else",
-		DefaultStatus: http.StatusNoContent,
+		Summary: "Turn two-factor authentication on with a code of the new secret, which signs the account out everywhere else, and make recovery codes",
 	}, s.enableTwoFactor)
 	huma.Register(a, huma.Operation{
 		OperationID: "two-factor-disable", Method: http.MethodPost, Path: "/account/two-factor/disable", Tags: tags, Metadata: only,
@@ -345,6 +345,7 @@ func (s *Service) Register(a huma.API) {
 	}, s.disableTwoFactor)
 	s.registerTokens(a, tags)
 	s.registerSessions(a, tags)
+	s.registerRecovery(a, tags)
 }
 
 func (s *Service) getSetup(context.Context, *struct{}) (*setupStatus, error) {
@@ -493,10 +494,14 @@ func (s *Service) getSession(ctx context.Context, _ *struct{}) (*accountOutput, 
 func (s *Service) account(ctx context.Context, id int64) (Account, error) {
 	var a Account
 	var changed sql.NullString
+	var codes []byte
 	if err := s.db.QueryRowContext(ctx,
-		"SELECT username, coalesce(locale, ''), password_changed_at, totp_secret IS NOT NULL, session_days FROM kernel_users WHERE id = ?", id).
-		Scan(&a.Username, &a.Locale, &changed, &a.TwoFactor, &a.SessionDays); err != nil {
+		"SELECT username, coalesce(locale, ''), password_changed_at, totp_secret IS NOT NULL, session_days, recovery_codes FROM kernel_users WHERE id = ?", id).
+		Scan(&a.Username, &a.Locale, &changed, &a.TwoFactor, &a.SessionDays, &codes); err != nil {
 		return Account{}, err
+	}
+	if a.TwoFactor {
+		a.RecoveryCodes = s.recoveryLeft(id, codes)
 	}
 	if t, err := time.Parse(time.RFC3339, changed.String); err == nil {
 		a.PasswordChangedAt = &t

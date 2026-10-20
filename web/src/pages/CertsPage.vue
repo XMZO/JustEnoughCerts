@@ -1,10 +1,30 @@
 <script setup lang="ts">
-import { Activity, Archive, CircleCheck, CircleX, CopyPlus, Download, Eye, FileDown, LoaderCircle, OctagonX, Plus, RefreshCw, Send, ShieldX, Trash2, TriangleAlert, Upload } from '@lucide/vue'
+import {
+  Activity,
+  Archive,
+  CircleCheck,
+  CircleX,
+  CopyPlus,
+  Download,
+  Eye,
+  FileDown,
+  LoaderCircle,
+  OctagonX,
+  Pause,
+  Play,
+  Plus,
+  RefreshCw,
+  Send,
+  ShieldX,
+  Trash2,
+  TriangleAlert,
+  Upload,
+} from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
-import { saveFile, useCertificates, useDeleteCertificate, useDeleteOf, useExportAll, type Certificate } from '../api/certs'
+import { saveFile, useCertificates, useDeleteCertificate, useDeleteOf, useExportAll, usePauseOf, type Certificate } from '../api/certs'
 import { useApiError } from '../api/errors'
 import { useMonitorStates } from '../api/monitor'
 import { useProviders } from '../api/providers'
@@ -278,6 +298,21 @@ const toggleAll = () => (chosen.value = allChosen.value ? [] : rows.value.map((r
 const toggle = (id: number) => (chosen.value = chosen.value.includes(id) ? chosen.value.filter((x) => x !== id) : [...chosen.value, id])
 const renewable = computed(() => chosenCerts.value.filter((c) => c.source === 'provider'))
 const deployable = computed(() => chosenCerts.value.filter((c) => c.current && c.targets.length))
+// Pausing the renewal of those chosen that renew, or resuming it.
+const pausable = computed(() => renewable.value.filter((c) => !c.paused))
+const resumable = computed(() => renewable.value.filter((c) => c.paused))
+const pause = usePauseOf()
+const pausing = ref(false)
+async function pauseChosen(paused: boolean) {
+  pausing.value = true
+  try {
+    await each(paused ? pausable.value : resumable.value, (id) => pause.mutateAsync({ id, paused }))
+  } catch {
+    // the rows show how far it got
+  } finally {
+    pausing.value = false
+  }
+}
 async function each(certs: Certificate[], run: (id: number) => Promise<unknown>) {
   for (const c of certs) await run(c.id)
 }
@@ -420,6 +455,12 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
         </JecButton>
         <JecButton size="sm" :disabled="!deployable.length" @click="deployChosen">
           <Send class="size-4" aria-hidden="true" />{{ t('certs.bulk.redeploy', { count: deployable.length }) }}
+        </JecButton>
+        <JecButton v-if="pausable.length" size="sm" :busy="pausing" @click="pauseChosen(true)">
+          <Pause class="size-4" aria-hidden="true" />{{ t('certs.bulk.pause', { count: pausable.length }) }}
+        </JecButton>
+        <JecButton v-if="resumable.length" size="sm" :busy="pausing" @click="pauseChosen(false)">
+          <Play class="size-4" aria-hidden="true" />{{ t('certs.bulk.resume', { count: resumable.length }) }}
         </JecButton>
         <JecButton size="sm" variant="danger" @click="deletingMany = chosenCerts">
           <Trash2 class="size-4" aria-hidden="true" />{{ t('certs.bulk.delete', { count: chosen.length }) }}

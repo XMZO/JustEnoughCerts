@@ -305,6 +305,7 @@
       "tokens_delete": "Delete an API token",
       "two_factor_disable": "Turn off two-factor authentication",
       "two_factor_enable": "Turn on two-factor authentication",
+      "two_factor_recovery": "Made new recovery codes",
       "two_factor_secret": "Start setting up two-factor authentication",
       "update_account": "Change the account settings",
       "watch_add": "Watch a site",
@@ -704,8 +705,10 @@
       "delete": "Delete ({count})",
       "delete_title": "Delete {count, plural, one {# certificate} other {# certificates}}",
       "label": "For the certificates chosen",
+      "pause": "Pause renewal ({count})",
       "redeploy": "Deploy again ({count})",
-      "renew": "Renew now ({count})"
+      "renew": "Renew now ({count})",
+      "resume": "Resume renewal ({count})"
     },
     "ca_revoked": {
       "reason": {
@@ -1952,6 +1955,7 @@
       "too_many_attempts": "Too many failed attempts. Try again in {minutes, plural, one {# minute} other {# minutes}}.",
       "two_factor_code": "That code is not right, or was used already. Codes change every 30 seconds; if they keep failing, check the clock of the device with the app.",
       "two_factor_expired": "That took more than ten minutes: start again.",
+      "two_factor_off": "Two-factor authentication is off.",
       "two_factor_on": "Two-factor authentication is on already.",
       "two_factor_required": "Enter the code of your authenticator app.",
       "unauthorized": "Sign in to continue.",
@@ -1985,8 +1989,12 @@
       "code": "Code from your authenticator app",
       "code_hint": "6 digits, new every 30 seconds.",
       "forgot": "Forgot the password, or lost the authenticator app? Run this on the server:",
+      "recovery": "Recovery code",
+      "recovery_hint": "One of the recovery codes saved when two-factor authentication was turned on, as abcd-2345; each works once.",
       "submit": "Sign in",
-      "title": "Sign in"
+      "title": "Sign in",
+      "use_code": "Use a code of the app",
+      "use_recovery": "Use a recovery code"
     },
     "modules": {
       "builtin": "Built in",
@@ -2133,6 +2141,16 @@
       "untested": "Untested",
       "untested_help": "Tested only against a stand-in for the service's API, not with a real account: it may not work. Reports are welcome.",
       "uses": "{count, plural, =0 {Used by no certificate} one {Used by # certificate} other {Used by # certificates}}"
+    },
+    "recovery": {
+      "copy": "Copy all recovery codes",
+      "intro": "Each recovery code signs in once in place of a code of the authenticator, for when the phone or the app is lost. Keep them somewhere safe, as a password manager: they are not shown again.",
+      "left": "{count, plural, =0 {None left: make new ones} one {# left, to sign in in place of a code if the authenticator is lost} other {# left, to sign in in place of a code if the authenticator is lost}}",
+      "make": "Make them",
+      "new": "New recovery codes",
+      "new_intro": "Ten new recovery codes; the old ones stop working.",
+      "saved": "I saved them",
+      "title": "Recovery codes"
     },
     "restore": {
       "choose": "Choose a file",

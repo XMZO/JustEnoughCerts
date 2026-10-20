@@ -13,6 +13,11 @@
             "format": "date-time",
             "type": "string"
           },
+          "recoveryCodes": {
+            "description": "How many recovery codes are left, with two-factor authentication on",
+            "format": "int64",
+            "type": "integer"
+          },
           "sessionDays": {
             "description": "How many days a sign-in lasts",
             "format": "int64",
@@ -2678,6 +2683,22 @@
         ],
         "type": "object"
       },
+      "RecoveryOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "recoveryCodes": {
+            "description": "Each signs in once in place of a code of the authenticator app; shown this once",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "recoveryCodes"
+        ],
+        "type": "object"
+      },
       "ReleaseBody": {
         "additionalProperties": false,
         "properties": {
@@ -4610,8 +4631,15 @@
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "No Content"
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryOutputBody"
+                }
+              }
+            },
+            "description": "OK"
           },
           "default": {
             "content": {
@@ -4624,7 +4652,48 @@
             "description": "Error"
           }
         },
-        "summary": "Turn two-factor authentication on with a code of the new secret, which signs the account out everywhere else",
+        "summary": "Turn two-factor authentication on with a code of the new secret, which signs the account out everywhere else, and make recovery codes",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/account/two-factor/recovery-codes": {
+      "post": {
+        "operationId": "two-factor-recovery",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Make new recovery codes, once the password is confirmed; the old ones stop working",
         "tags": [
           "auth"
         ]

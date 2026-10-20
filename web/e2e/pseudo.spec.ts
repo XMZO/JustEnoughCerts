@@ -862,7 +862,7 @@ test('every page is translated and fits', async ({ page }, info) => {
       expect.soft(await problems(page), 'deploy several again').toEqual([])
       await page.keyboard.press('Escape')
     }
-    await bulk.getByRole('button').nth(2).click()
+    await bulk.getByRole('button').nth(-2).click()
     await expect(page.locator('dialog[open]')).toBeVisible()
     expect.soft(await problems(page), 'delete several').toEqual([])
     await page.keyboard.press('Escape')
@@ -1082,6 +1082,12 @@ test('every page is translated and fits', async ({ page }, info) => {
   await dialog.locator('#two-factor-code').fill(totp(key, 0))
   await dialog.locator('button[type=submit]').click()
   await expect(page.getByRole('status').filter({ hasText: label('kernel.settings.two_factor_done') })).toBeVisible()
+  // Its recovery codes, shown once.
+  await expect(dialog.getByText(label('kernel.recovery.intro'))).toBeVisible()
+  expect.soft(await problems(page), 'two-factor authentication on: the recovery codes').toEqual([])
+  const recoveryCode = ((await dialog.locator('ol li').first().textContent()) ?? '').trim()
+  await dialog.getByRole('button', { name: label('kernel.recovery.saved') }).click()
+  await expect(dialog).toBeHidden()
   expect.soft(await problems(page), 'two-factor authentication on').toEqual([])
   await page.locator('#session-days').selectOption('30')
 
@@ -1166,13 +1172,16 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page.getByRole('alert')).toBeVisible()
   expect.soft(await problems(page), 'sign-in page with an error').toEqual([])
 
-  // The right password asks for the code, which works once: the next one
-  // signs in. Then two-factor authentication goes off again.
+  // The right password asks for the code, or a recovery code, which signs
+  // in. Then two-factor authentication goes off again.
   await page.locator('#password').fill('correct horse')
   await page.locator('form button[type=submit]').click()
   await expect(page.locator('#code')).toBeVisible()
   expect.soft(await problems(page), 'sign-in page asking for the code').toEqual([])
-  await page.locator('#code').fill(totp(key, 1))
+  // A recovery code in its place.
+  await page.getByRole('button', { name: label('kernel.login.use_recovery') }).click()
+  expect.soft(await problems(page), 'sign-in page asking for a recovery code').toEqual([])
+  await page.locator('#code').fill(recoveryCode)
   await page.locator('form button[type=submit]').click()
   await expect(page).not.toHaveURL(/\/login$/)
   await page.goto('./settings')

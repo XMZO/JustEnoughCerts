@@ -92,11 +92,20 @@ export function useTwoFactorSecret() {
   })
 }
 
-/** Turns two-factor authentication on with a code of the new secret; the account's other sessions end. */
+/** Turns two-factor authentication on with a code of the new secret; the account's other sessions end, and the answer holds the recovery codes, this once. */
 export function useEnableTwoFactor() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (body: { code: string }) => unwrap(api.POST('/account/two-factor/enable', { body })),
+    onSuccess: () => client.invalidateQueries({ queryKey: sessionKey }),
+  })
+}
+
+/** Makes new recovery codes once the password is confirmed; the old ones stop working. */
+export function useNewRecoveryCodes() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { password: string }) => unwrap(api.POST('/account/two-factor/recovery-codes', { body })),
     onSuccess: () => client.invalidateQueries({ queryKey: sessionKey }),
   })
 }

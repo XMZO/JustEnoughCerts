@@ -42,6 +42,7 @@ const operations: Partial<Record<string, MessageKey>> = {
   'two-factor-secret': 'audit.op.two_factor_secret',
   'two-factor-enable': 'audit.op.two_factor_enable',
   'two-factor-disable': 'audit.op.two_factor_disable',
+  'two-factor-recovery': 'audit.op.two_factor_recovery',
   backup: 'audit.op.backup',
   restore: 'audit.op.restore',
   'set-time-zone': 'audit.op.set_time_zone',

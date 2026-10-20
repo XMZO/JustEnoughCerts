@@ -47,6 +47,7 @@ import JecField from '../components/JecField.vue'
 import JecInput from '../components/JecInput.vue'
 import OffsiteSettings from '../components/OffsiteSettings.vue'
 import OidcSettings from '../components/OidcSettings.vue'
+import RecoveryCodes from '../components/RecoveryCodes.vue'
 import SessionsSettings from '../components/SessionsSettings.vue'
 import PageHeader from '../components/PageHeader.vue'
 import { locales, setLocale, useT, type Locale, type MessageKey, type Params } from '../i18n'
@@ -156,6 +157,8 @@ const accountError = useApiError(computed(() => updateAccount.error.value))
 const turningOn = ref(false)
 const turningOff = ref(false)
 const twoFactorDone = ref<'on' | 'off'>()
+// The recovery codes made as it turned on, shown once.
+const newCodes = ref<string[]>()
 const tfPassword = ref('')
 const tfCode = ref('')
 const resetCommand = 'jec reset-password'
@@ -180,7 +183,7 @@ async function submitTurnOn() {
       await secret.mutateAsync({ password: tfPassword.value })
       return // the QR code shows next
     }
-    await enable.mutateAsync({ code: tfCode.value })
+    newCodes.value = (await enable.mutateAsync({ code: tfCode.value })).recoveryCodes
   } catch {
     // A secret that waited too long goes: the dialog starts over.
     if (enableError.error.value?.code === 'kernel.error.two_factor_expired') secret.reset()
@@ -828,6 +831,7 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           {{ t('kernel.settings.two_factor_turn_on') }}
         </JecButton>
       </div>
+      <RecoveryCodes v-if="session.data.value.twoFactor" v-model:codes="newCodes" :row-class="row" :left="session.data.value.recoveryCodes ?? 0" />
       <OidcSettings v-if="oidcOn" :row-class="row" />
       <div :class="row">
         <div class="min-w-0 flex-1">

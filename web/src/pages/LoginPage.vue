@@ -25,6 +25,13 @@ const password = ref('')
 // The code of the authenticator app, asked for once the password proves
 // right for an account with two-factor authentication on.
 const code = ref('')
+// A recovery code in place of the app's, for a lost authenticator.
+const recovery = ref(false)
+function switchCode() {
+  recovery.value = !recovery.value
+  code.value = ''
+  document.getElementById('code')?.focus()
+}
 const needsCode = ref(false)
 const resetCommand = 'jec reset-password'
 
@@ -82,18 +89,34 @@ async function submit() {
       <JecField id="password" label="kernel.account.password">
         <JecInput id="password" v-model="password" type="password" autocomplete="current-password" required />
       </JecField>
-      <JecField v-if="needsCode" id="code" label="kernel.login.code" hint="kernel.login.code_hint" :error="failure.fields.value.code">
+      <JecField
+        v-if="needsCode"
+        id="code"
+        :label="recovery ? 'kernel.login.recovery' : 'kernel.login.code'"
+        :hint="recovery ? 'kernel.login.recovery_hint' : 'kernel.login.code_hint'"
+        :error="failure.fields.value.code"
+      >
         <JecInput
           id="code"
           v-model="code"
-          inputmode="numeric"
-          autocomplete="one-time-code"
-          maxlength="7"
+          :inputmode="recovery ? 'text' : 'numeric'"
+          :autocomplete="recovery ? 'off' : 'one-time-code'"
+          :maxlength="recovery ? 12 : 7"
+          autocapitalize="none"
+          spellcheck="false"
           required
           :invalid="!!failure.fields.value.code"
           :aria-describedby="failure.fields.value.code ? 'code-error' : 'code-hint'"
         />
       </JecField>
+      <button
+        v-if="needsCode"
+        type="button"
+        class="-mt-2 cursor-pointer self-start border-0 bg-transparent p-0 text-small text-ink-muted underline hover:text-ink max-sm:min-h-11"
+        @click="switchCode"
+      >
+        {{ t(recovery ? 'kernel.login.use_code' : 'kernel.login.use_recovery') }}
+      </button>
       <JecButton type="submit" variant="primary" :busy="signIn.isPending.value">{{ t('kernel.login.submit') }}</JecButton>
       <template v-if="sso.data.value?.enabled">
         <div class="flex items-center gap-2 text-small text-ink-muted" aria-hidden="true">

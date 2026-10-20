@@ -154,8 +154,9 @@ func (s *Service) setUpTwoFactor(ctx context.Context, in *confirmInput) (*setupS
 }
 
 // enableTwoFactor turns two-factor authentication on with a code of the
-// new secret, and ends the account's other sessions.
-func (s *Service) enableTwoFactor(ctx context.Context, in *codeInput) (*struct{}, error) {
+// new secret, ends the account's other sessions and returns new recovery
+// codes.
+func (s *Service) enableTwoFactor(ctx context.Context, in *codeInput) (*recoveryOutput, error) {
 	client := clientFrom(ctx)
 	if err := s.throttle(client); err != nil {
 		return nil, err
@@ -176,13 +177,21 @@ func (s *Service) enableTwoFactor(ctx context.Context, in *codeInput) (*struct{}
 			WithField("body.code", i18n.KernelErrorTwoFactorCode)
 	}
 	sealed := s.opts.Secrets.Seal([]byte(p.secret), secretContext(u.ID))
+	codes, err := newRecoveryCodes()
+	if err != nil {
+		return nil, err
+	}
+	sealedCodes, err := s.sealCodes(u.ID, codes)
+	if err != nil {
+		return nil, err
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, "UPDATE kernel_users SET totp_secret = ?, totp_step = ?, updated_at = ? WHERE id = ?",
-		sealed, step, timestamp(now), u.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, "UPDATE kernel_users SET totp_secret = ?, totp_step = ?, recovery_codes = ?, updated_at = ? WHERE id = ?",
+		sealed, step, sealedCodes, timestamp(now), u.ID); err != nil {
 		return nil, err
 	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM kernel_sessions WHERE user_id = ? AND token_hash != ?", u.ID, sess.tokenHash); err != nil {
@@ -196,7 +205,9 @@ func (s *Service) enableTwoFactor(ctx context.Context, in *codeInput) (*struct{}
 	s.mu.Unlock()
 	s.limit.reset(client)
 	s.log.Info("two-factor authentication on", "username", u.Username)
-	return nil, nil
+	out := &recoveryOutput{}
+	out.Body.RecoveryCodes = codes
+	return out, nil
 }
 
 // disableTwoFactor turns two-factor authentication off, once the password
@@ -206,7 +217,7 @@ func (s *Service) disableTwoFactor(ctx context.Context, in *confirmInput) (*stru
 		return nil, err
 	}
 	u, _ := UserFrom(ctx)
-	if _, err := s.db.ExecContext(ctx, "UPDATE kernel_users SET totp_secret = NULL, totp_step = 0, updated_at = ? WHERE id = ?",
+	if _, err := s.db.ExecContext(ctx, "UPDATE kernel_users SET totp_secret = NULL, totp_step = 0, recovery_codes = NULL, updated_at = ? WHERE id = ?",
 		timestamp(s.now()), u.ID); err != nil {
 		return nil, err
 	}
@@ -251,6 +262,12 @@ func (s *Service) secondFactor(ctx context.Context, client string, id int64, sea
 			return err
 		}
 		ok = n == 1
+	}
+	if !ok {
+		// A recovery code, in place of a lost authenticator app.
+		if ok, err = s.useRecoveryCode(ctx, id, code); err != nil {
+			return err
+		}
 	}
 	if !ok {
 		s.failed(ctx, client, "")

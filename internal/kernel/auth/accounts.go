@@ -64,7 +64,7 @@ func SetPassword(ctx context.Context, db *sql.DB, username, password string) err
 	}
 	now := timestamp(time.Now())
 	if _, err := tx.ExecContext(ctx,
-		"UPDATE kernel_users SET password_hash = ?, password_changed_at = ?, totp_secret = NULL, totp_step = 0, updated_at = ? WHERE id = ?",
+		"UPDATE kernel_users SET password_hash = ?, password_changed_at = ?, totp_secret = NULL, totp_step = 0, recovery_codes = NULL, updated_at = ? WHERE id = ?",
 		hash, now, now, id); err != nil {
 		return err
 	}
