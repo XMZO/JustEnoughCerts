@@ -41,6 +41,7 @@ func commands() []command {
 		{"healthcheck", "exit 0 if the local server is up (for container health checks)", runHealthcheck},
 		{"reset-password", "set a new password for an account, turn its two-factor authentication off and sign it out everywhere", runResetPassword},
 		{"import-sqlite", "copy the SQLite database into the PostgreSQL that JEC_DATABASE_URL names", runImportSQLite},
+		{"doctor", "check the data directory, the database, the master key, the network to a CA and the clock", runDoctor},
 		{"service", "install or uninstall JEC as a systemd service", runService},
 		{"version", "print version information", runVersion},
 	}

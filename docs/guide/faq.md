@@ -16,6 +16,20 @@ otherwise upload the certificates. See [Certificate sources](../usage/sources.md
 server itself reaches. Open the panel through a reverse proxy with HTTPS,
 or through an SSH tunnel; see [Reverse proxy and CDN](../operations/reverse-proxy.md).
 
+## Checking the server
+
+`jec doctor` checks the data directory, the database, the master key, the
+network to a CA and the server's clock, a line each, and exits with 1 when
+something is wrong:
+
+```sh
+docker exec jec /jec doctor                                   # Docker
+sudo -u jec /usr/local/bin/jec doctor -data-dir /var/lib/jec  # systemd service
+```
+
+`-ca` names another ACME directory to reach than Let's Encrypt's;
+`-offline` skips the network and the clock.
+
 ## An issuance failed. How do I find out why?
 
 Open the certificate, then the latest issuance: its page lists each step

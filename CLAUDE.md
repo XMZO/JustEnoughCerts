@@ -145,6 +145,7 @@
 - 异地备份也能存到 WebDAV（`offsite_settings.kind`，`offsite/webdav.go`：Basic 认证，按需 MKCOL 建子文件夹再 PUT；对着 rclone 的 WebDAV 实测过，`live_test.go` 靠 `JEC_TEST_WEBDAV` 运行）。
 - 线上检查的端口（`monitor_certificates.ports`，`PUT /api/v1/monitor/certificates/{id}/ports`，详情页“线上检查”底部改）：每个域名按设的端口逐个连，25、587 走 SMTP STARTTLS，其余直接 TLS；结果按 `域名:端口` 存（443 不带）。对 Gmail 的 993、587 实测过（`live_test.go` 靠 `JEC_TEST_PORTS`）。当前版本所在的结果还记下 TLS 版本和是否仍接受 TLS 1.0/1.1（`monitor_results.tls_version`、`legacy_tls`，只提示不通知；对 tls-v1-0.badssl.com:1010 实测过）。
 - 证书提醒（`certs_certificates.reminder_on`、`reminder_note`、`reminder_sent`，`PATCH` 的 `reminder: {on, note}`，配置文件 `reminder: {day, note}`，因为 YAML 1.1 把 `on` 读成布尔值）：任务 `certs.reminders` 每 15 分钟看一次，到当天 9:00（面板时区）发一次 `certificate.reminder`（通知开关 `on_reminder` 默认开）；日历订阅里是全天事件。界面在证书详情“证书信息”的“提醒”。
+- 自检命令 `jec doctor`（`cmd/jec/doctor.go`）：逐行检查数据目录、数据库（不新建、不迁移；空库和没有库都只是说明）、主密钥（和 `kernel_meta` 的 `secret_check` 核对，不生成 `secret.key`）、等待中的 `restore.db`、到 CA 的 DNS 和 HTTPS（`-ca`，默认 Let's Encrypt；设了 `JEC_DNS_RESOLVERS` 也经它们找区域）、时钟（按 CA 回答的 `Date`，差 30 秒警告、5 分钟失败）；`-offline` 跳过网络；有失败时退出码 1。文档在 FAQ 的“检查服务器”。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定
