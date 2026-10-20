@@ -63,7 +63,7 @@ func accountType() providers.Type {
 			{Key: "preferred_chain", Label: i18n.AcmeFieldPreferredChain, Help: i18n.AcmeFieldPreferredChainHelp, Kind: providers.Text, Advanced: true},
 			httpx.ProxyField(),
 		},
-		NeedsSolver: true, Challenges: []string{providers.ChallengeDNS, providers.ChallengeHTTP}, Testable: true, Revocable: true,
+		NeedsSolver: true, Challenges: []string{providers.ChallengeDNS, providers.ChallengeHTTP}, Testable: true, Revocable: true, Backup: true,
 	}
 }
 

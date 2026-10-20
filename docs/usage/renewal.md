@@ -38,7 +38,8 @@ a certificate directory on this machine, do not take the setting.
 - The number of retries is set under Renewal defaults on the Settings
   page: 7 by default, from 0 to 20.
 - Errors that retries cannot fix, such as a missing EAB or a refusal by the
-  certificate authority, are not retried.
+  certificate authority, are not retried, unless the certificate has a
+  [backup source](sources.md#backup-source) to try next.
 - After an issuance fails for good, renewal pauses for 24 hours before the
   next attempt; an issuance can be started by hand at any time on the
   certificate's page.

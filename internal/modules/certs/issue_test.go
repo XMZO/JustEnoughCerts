@@ -42,6 +42,8 @@ type fakes struct {
 	// the serials it revoked, with the reasons.
 	revoke  func(leaf *x509.Certificate, reason contracts.RevocationReason) error
 	revoked []string
+	// spared counts the certificates the CA to fall back on issued.
+	spared int
 }
 
 func (f *fixture) addFakes() {
@@ -58,12 +60,15 @@ func (f *fixture) addFakes() {
 		{ID: "fake.files", Kind: providers.Source, Brand: "Fake files of another client", OwnKey: true},
 		{ID: "fake.acme", Kind: providers.Source, Brand: "Fake CA that revokes", NeedsSolver: true, Revocable: true},
 		{ID: "fake.chat", Kind: providers.Notifier, Brand: "Fake chat"},
+		{ID: "fake.spare", Kind: providers.Source, Brand: "Fake CA to fall back on", NeedsSolver: true, Challenges: []string{providers.ChallengeHTTP}, Backup: true},
 	} {
 		err := scope.Add(typ, func(context.Context, providers.Instance) (any, error) {
 			f.fake.mu.Lock()
 			defer f.fake.mu.Unlock()
 			f.fake.opened++
 			switch {
+			case typ.Backup:
+				return &fakeSpare{f}, nil
 			case typ.OwnKey:
 				return &fakeKeySource{f}, nil
 			case typ.Revocable:
@@ -135,6 +140,19 @@ func (s *fakeRevoker) Revoke(_ context.Context, leaf *x509.Certificate, reason c
 	s.f.fake.revoked = append(s.f.fake.revoked, fmt.Sprintf("%x %d", leaf.SerialNumber, reason))
 	return nil
 }
+
+// fakeSpare is a fake CA to fall back on: it issues whatever the fake
+// source does, counting the certificates.
+type fakeSpare struct{ f *fixture }
+
+func (s *fakeSpare) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509.Certificate, error) {
+	s.f.fake.mu.Lock()
+	s.f.fake.spared++
+	s.f.fake.mu.Unlock()
+	return s.f.issueAll(ctx, req)
+}
+
+func (s *fakeSpare) Close() error { return s.f.closed() }
 
 type fakeKeySource struct{ f *fixture }
 
@@ -1330,5 +1348,92 @@ func TestChangeSolverAndKeyType(t *testing.T) {
 	up := f.add(f.leaf(30, "upload.example.com"))
 	if e := f.apiError(f.api.Patch("/certificates/"+strconv.FormatInt(up.ID, 10), map[string]any{"keyType": "rsa-2048"}), http.StatusUnprocessableEntity); len(e.Fields) != 1 {
 		t.Errorf("an uploaded one: %+v", e)
+	}
+}
+
+func TestIssueBackup(t *testing.T) {
+	f := newFixture(t)
+	// The source takes files and records; its backup files only.
+	source, records, web, spare := f.provider("fake.vendor"), f.provider("fake.records"), f.provider("fake.web"), f.provider("fake.spare")
+	issue := func(backup, solver int64) map[string]any {
+		return map[string]any{"domains": []string{"example.com"}, "sourceProvider": source, "solverProvider": solver, "backupProvider": backup, "keyType": "ecdsa-p256"}
+	}
+	for name, tt := range map[string]struct {
+		body map[string]any
+		code i18n.Key
+	}{
+		"not a backup":    {issue(f.provider("fake.acme"), web), i18n.CertsErrorBackupSource},
+		"the source":      {issue(source, web), i18n.CertsErrorBackupSource},
+		"another solver":  {issue(spare, records), i18n.CertsErrorBackupSolver},
+		"not a source":    {issue(web, web), i18n.CertsErrorWrongProvider},
+		"for its own key": {map[string]any{"domains": []string{"example.com"}, "sourceProvider": f.provider("fake.files"), "backupProvider": spare}, i18n.CertsErrorBackupSource},
+	} {
+		e := f.apiError(f.api.Post("/certificates/issue", tt.body), http.StatusUnprocessableEntity)
+		if len(e.Fields) != 1 || e.Fields[0].Location != "body.backupProvider" || i18n.Key(e.Fields[0].Code) != tt.code {
+			t.Errorf("%s: %+v", name, e.Fields)
+		}
+	}
+
+	var c CertificateBody
+	f.call(f.api.Post("/certificates/issue", issue(spare, web)), http.StatusCreated, &c)
+	if c.BackupProvider != spare {
+		t.Fatalf("backup %d, want %d", c.BackupProvider, spare)
+	}
+	// The source fails for good: its backup tries next all the same.
+	f.failWith(retry.Permanent(errors.New("the CA is down")))
+	f.run()
+	is := f.certificate(c.ID).Issuance
+	if is.State != "pending" || is.Attempts != 1 || f.fake.spared != 0 {
+		t.Fatalf("after the source failed: %+v, %d from the backup", is, f.fake.spared)
+	}
+	f.now = *is.NextAt
+	f.run()
+	c = f.certificate(c.ID)
+	if c.State != "ok" || c.Issuance.Attempts != 2 || f.fake.spared != 1 {
+		t.Fatalf("after the backup: %s %+v, %d from the backup", c.State, c.Issuance, f.fake.spared)
+	}
+	d := f.issuanceDetail(c.Issuance.ID)
+	if i := slices.IndexFunc(d.Log, func(l LogLineBody) bool { return l.Key == i18n.CertsLogBackupSource }); i < 0 || d.Log[i].Params["name"] != "fake.spare" {
+		t.Errorf("log %v", logKeys(d))
+	}
+	got, err := f.svc.load(t.Context(), f.db, c.ID)
+	if err != nil || got.Current.SourceProvider != spare {
+		t.Fatalf("version from %d, want %d: %v", got.Current.SourceProvider, spare, err)
+	}
+	if leaf := replaced(got, spare); leaf == nil || replaced(got, source) != nil {
+		t.Errorf("the renewal through the backup replaces %v, through the source %v", leaf, replaced(got, source))
+	}
+
+	// The next issuance starts with the source again.
+	f.succeed()
+	f.call(f.api.Post("/certificates/"+strconv.FormatInt(c.ID, 10)+"/issue"), http.StatusAccepted, nil)
+	f.run()
+	if got, err = f.svc.load(t.Context(), f.db, c.ID); err != nil || got.Current.SourceProvider != source || f.fake.spared != 1 {
+		t.Errorf("renewed by %d, %d from the backup: %v", got.Current.SourceProvider, f.fake.spared, err)
+	}
+
+	// Without the backup, a failure for good is final.
+	if err := f.reg.Delete(t.Context(), spare); err == nil {
+		t.Error("deleted the backup in use")
+	}
+	path := "/certificates/" + strconv.FormatInt(c.ID, 10)
+	e := f.apiError(f.api.Patch(path, map[string]any{"solverProvider": records}), http.StatusUnprocessableEntity)
+	if len(e.Fields) != 1 || e.Fields[0].Location != "body.solverProvider" || i18n.Key(e.Fields[0].Code) != i18n.CertsErrorBackupSolver {
+		t.Errorf("a solver the backup cannot use: %+v", e.Fields)
+	}
+	c = CertificateBody{}
+	f.call(f.api.Patch(path, map[string]any{"backupProvider": 0, "solverProvider": records}), http.StatusOK, &c)
+	if c.BackupProvider != 0 || c.SolverProvider != records {
+		t.Errorf("after removing the backup: %+v", c)
+	}
+	f.failWith(retry.Permanent(errors.New("the CA is down")))
+	f.call(f.api.Post(path+"/issue"), http.StatusAccepted, nil)
+	f.run()
+	if is := f.certificate(c.ID).Issuance; is.State != "failed" || is.Attempts != 1 {
+		t.Errorf("without a backup: %+v", is)
+	}
+	e = f.apiError(f.api.Patch(path, map[string]any{"backupProvider": spare}), http.StatusUnprocessableEntity)
+	if len(e.Fields) != 1 || e.Fields[0].Location != "body.backupProvider" || i18n.Key(e.Fields[0].Code) != i18n.CertsErrorBackupSolver {
+		t.Errorf("a backup that cannot use the solver: %+v", e.Fields)
 	}
 }

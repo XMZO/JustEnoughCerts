@@ -1,11 +1,12 @@
 /**
- * The source, solver and targets the last certificate was added with, kept
- * in this browser: the add page starts from them, as a run of new
- * certificates mostly shares them.
+ * The source, solver, backup source and targets the last certificate was
+ * added with, kept in this browser: the add page starts from them, as a run
+ * of new certificates mostly shares them.
  */
 export interface LastChoice {
   source?: number
   solver?: number
+  backup?: number
   targets?: number[]
 }
 
@@ -20,6 +21,7 @@ export function loadLastChoice(): LastChoice {
     return {
       source: id(o.source),
       solver: id(o.solver),
+      backup: id(o.backup),
       targets: Array.isArray(o.targets) ? o.targets.map(id).filter((x): x is number => x !== undefined) : undefined,
     }
   } catch {

@@ -757,9 +757,25 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(dialog).toBeHidden()
 
   // A certificate from the source: the form, its errors, the issuance.
+  // Another ACME account, to fall back on.
+  const backupStatus = await page.evaluate(async () => {
+    const res = await fetch(new URL('api/v1/providers', document.baseURI), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'acme.account', name: 'e2e zz backup CA', config: { ca: 'custom', directory: 'https://127.0.0.1:9/backup' }, secrets: {} }),
+    })
+    return res.status
+  })
+  expect(backupStatus).toBe(201)
   await page.goto('./certificates/new')
   await expect(page.locator('#domain-input')).toBeVisible()
   expect.soft(await problems(page), 'add a certificate from a source').toEqual([])
+  // From the first account, with the other as its backup; then back to
+  // the directory watched, which the page starts from.
+  await page.getByRole('radio').filter({ hasText: label('acme.account.name') }).filter({ hasNotText: 'e2e zz backup CA' }).click()
+  await page.locator('#backup').selectOption({ index: 1 })
+  expect.soft(await problems(page), 'add a certificate with a backup source').toEqual([])
+  await page.getByRole('radio').filter({ hasText: 'e2e watch' }).click()
   await page.locator('button[form=add-form]').click()
   await expect(page.locator('#domains-help')).toHaveText(label('kernel.error.invalid_field'))
   expect.soft(await problems(page), 'add a certificate from a source with an error').toEqual([])

@@ -183,6 +183,12 @@ const sourceType = computed(() => {
 })
 const ownKey = computed(() => !!sourceType.value?.ownKey)
 const solverName = computed(() => solvers.data.value?.find((p) => p.id === cert.value?.solverProvider)?.name)
+const backupName = computed(() => sources.data.value?.find((p) => p.id === cert.value?.backupProvider)?.name)
+// The sources that can stand in for its own when that fails, as ACME
+// accounts of other CAs; the server tells whether one takes the solver.
+const backups = computed(() =>
+  (sources.data.value ?? []).filter((p) => p.id !== cert.value?.sourceProvider && !!sourceTypes.data.value?.find((s) => s.id === p.type)?.backup),
+)
 const issuances = useIssuances(() => props.id, issued)
 
 const latest = computed(() => cert.value?.issuance)
@@ -366,6 +372,7 @@ const paused = ref(false)
 // Another solver, as when the DNS moves, and another key type, from the
 // next issuance; the server checks the source takes them.
 const solverChoice = ref<number>(0)
+const backupChoice = ref<number>(0)
 // The hours new versions go to the targets in.
 const windowChoice = ref<DeployWindow>('')
 const windows: { value: DeployWindow; label: MessageKey }[] = [
@@ -387,6 +394,7 @@ function edit() {
   reuseKey.value = !!cert.value?.reuseKey
   paused.value = !!cert.value?.paused
   solverChoice.value = cert.value?.solverProvider ?? 0
+  backupChoice.value = cert.value?.backupProvider ?? 0
   windowChoice.value = (cert.value?.deployWindow ?? '') as DeployWindow
   keyChoice.value = (cert.value?.keyType ?? '') as KeyType | ''
   notifyTo.value = [...(cert.value?.notifyTo ?? [])]
@@ -464,6 +472,7 @@ async function saveSettings() {
       ...(keyKept.value ? { reuseKey: reuseKey.value } : {}),
       ...(issued.value ? { paused: paused.value } : {}),
       ...(needsSolverHere.value && solverChoice.value && solverChoice.value !== cert.value?.solverProvider ? { solverProvider: solverChoice.value } : {}),
+      ...(keyKept.value && backupChoice.value !== (cert.value?.backupProvider ?? 0) ? { backupProvider: backupChoice.value } : {}),
       ...(keyKept.value && keyChoice.value && keyChoice.value !== cert.value?.keyType ? { keyType: keyChoice.value } : {}),
       ...(windowChoice.value !== (cert.value?.deployWindow ?? '') ? { deployWindow: windowChoice.value } : {}),
     })
@@ -1015,6 +1024,10 @@ async function confirmDelete() {
               <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.source') }}</dt>
               <dd v-if="issued" class="m-0 [overflow-wrap:anywhere]" translate="no">{{ sourceName ?? '' }}</dd>
               <dd v-else class="m-0 [overflow-wrap:anywhere]">{{ t('certs.source.upload') }}</dd>
+              <template v-if="issued && cert.backupProvider">
+                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.backup') }}</dt>
+                <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ backupName ?? '' }}</dd>
+              </template>
               <template v-if="issued && cert.solverProvider">
                 <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.validation') }}</dt>
                 <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ solverName ?? '' }}</dd>
@@ -1094,6 +1107,18 @@ async function confirmDelete() {
       <JecField v-if="needsSolverHere" id="settings-solver" label="certs.settings.solver" hint="certs.settings.solver_help" :error="updateError.fields.value.solverProvider">
         <select id="settings-solver" v-model.number="solverChoice" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
           <option v-for="s in solvers.data.value" :key="s.id" :value="s.id" translate="no">{{ s.name }}</option>
+        </select>
+      </JecField>
+      <JecField
+        v-if="keyKept && (backups.length || cert.backupProvider)"
+        id="settings-backup"
+        label="certs.add.backup"
+        hint="certs.add.backup_help"
+        :error="updateError.fields.value.backupProvider"
+      >
+        <select id="settings-backup" v-model.number="backupChoice" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
+          <option :value="0">{{ t('certs.add.backup_none') }}</option>
+          <option v-for="s in backups" :key="s.id" :value="s.id" translate="no">{{ s.name }}</option>
         </select>
       </JecField>
       <JecField id="settings-window" label="certs.settings.window" hint="certs.settings.window_help" :error="updateError.fields.value.deployWindow">

@@ -40,8 +40,11 @@ type certificateEntry struct {
 	Domains []string `yaml:"domains"`
 	// Source and Solver are the names of the providers; no Source is a
 	// certificate that was uploaded.
-	Source          string   `yaml:"source,omitempty"`
-	Solver          string   `yaml:"solver,omitempty"`
+	Source string `yaml:"source,omitempty"`
+	Solver string `yaml:"solver,omitempty"`
+	// BackupSource names the source that tries when an attempt with
+	// Source failed; empty removes it, and left out, it stays as it is.
+	BackupSource    *string  `yaml:"backup_source,omitempty"`
 	KeyType         string   `yaml:"key_type,omitempty"`
 	RenewBeforeDays int      `yaml:"renew_before_days,omitempty"`
 	Targets         []string `yaml:"targets"`
@@ -203,6 +206,13 @@ func (s *service) exportCertificates(ctx context.Context, _ configfile.Export) (
 				if e.Solver, err = s.providerName(ctx, c.SolverProvider); err != nil {
 					return nil, err
 				}
+			}
+			if c.BackupProvider != 0 {
+				name, err := s.providerName(ctx, c.BackupProvider)
+				if err != nil {
+					return nil, err
+				}
+				e.BackupSource = &name
 			}
 			e.KeyType = c.KeyType
 		}
@@ -381,11 +391,14 @@ func (s *service) addCertificate(ctx context.Context, ci *certImport, e certific
 		it.Problems = append(it.Problems, *pr)
 	}
 	c.SourceProvider = source.ID
+	var solverType *providers.Type
 	if e.Solver != "" {
 		solver, pr := ci.in.Provider(providers.Solver, e.Solver)
 		if pr != nil {
 			pr.Field = "solver"
 			it.Problems = append(it.Problems, *pr)
+		} else {
+			solverType = &solver.Type
 		}
 		c.SolverProvider = solver.ID
 		if pr == nil && source.ID != 0 {
@@ -393,6 +406,19 @@ func (s *service) addCertificate(ctx context.Context, ci *certImport, e certific
 		}
 	} else if source.Type.NeedsSolver {
 		it.Problems = append(it.Problems, configfile.Problem{Field: "solver", Key: i18n.KernelErrorFieldRequired})
+	}
+	if e.BackupSource != nil && *e.BackupSource != "" {
+		backup, pr := ci.in.Provider(providers.Source, *e.BackupSource)
+		switch {
+		case pr != nil:
+			pr.Field = "backup_source"
+			it.Problems = append(it.Problems, *pr)
+		case source.ID != 0:
+			if key := backupProblem(backup.ID, source.ID, backup.Type, source.Type, solverType); key != "" {
+				it.Problems = append(it.Problems, configfile.Problem{Field: "backup_source", Key: key})
+			}
+		}
+		c.BackupProvider = backup.ID
 	}
 	switch {
 	case source.Type.OwnKey:
@@ -431,6 +457,43 @@ func (s *service) addCertificate(ctx context.Context, ci *certImport, e certific
 	return it, nil
 }
 
+// backupOf sets backup to the backup source e names for c, whose source
+// is of type source and whose solver is to be solver, of solverType when
+// e names it, and tells why it cannot stand in, if so. Left out of e, the
+// backup stays, as long as it takes the solver.
+func (s *service) backupOf(ctx context.Context, ci *certImport, e certificateEntry, c *Certificate, source providers.Type, solver int64, solverType *providers.Type, backup *int64) ([]configfile.Problem, error) {
+	var backupType providers.Type
+	switch {
+	case e.BackupSource != nil && *e.BackupSource == "":
+		*backup = 0
+		return nil, nil
+	case e.BackupSource != nil:
+		p, pr := ci.in.Provider(providers.Source, *e.BackupSource)
+		if pr != nil {
+			pr.Field = "backup_source"
+			return []configfile.Problem{*pr}, nil
+		}
+		*backup, backupType = p.ID, p.Type
+	case *backup == 0:
+		return nil, nil
+	default:
+		t, err := s.providers.Type(ctx, *backup)
+		if err != nil {
+			return nil, nil //nolint:nilerr // a backup of a module turned off stays as it is
+		}
+		backupType = t
+	}
+	if solverType == nil && solver != 0 {
+		if t, err := s.providers.Type(ctx, solver); err == nil {
+			solverType = &t
+		}
+	}
+	if key := backupProblem(*backup, c.SourceProvider, backupType, source, solverType); key != "" {
+		return []configfile.Problem{{Field: "backup_source", Key: key}}, nil
+	}
+	return nil, nil
+}
+
 // solverProblems tell why solver cannot prove control of domains for
 // source.
 func solverProblems(source, solver providers.Type, domains []string) []configfile.Problem {
@@ -448,7 +511,8 @@ func solverProblems(source, solver providers.Type, domains []string) []configfil
 func (s *service) changeCertificate(ctx context.Context, ci *certImport, e certificateEntry, c *Certificate, targets, notifyTo []int64,
 	targetProblems []configfile.Problem, it configfile.Item,
 ) (configfile.Item, error) {
-	solver, keyType, days := c.SolverProvider, c.KeyType, c.RenewBeforeDays
+	solver, backup, keyType, days := c.SolverProvider, c.BackupProvider, c.KeyType, c.RenewBeforeDays
+	var solverType *providers.Type
 	current, err := s.providers.Type(ctx, c.SourceProvider)
 	switch {
 	case c.Source != sourceProvider:
@@ -476,13 +540,18 @@ func (s *service) changeCertificate(ctx context.Context, ci *certImport, e certi
 				it.Problems = append(it.Problems, *pr)
 			} else {
 				it.Problems = append(it.Problems, solverProblems(current, p.Type, c.Domains)...)
-				solver = p.ID
+				solver, solverType = p.ID, &p.Type
 			}
 		case current.NeedsSolver:
 			it.Problems = append(it.Problems, configfile.Problem{Field: "solver", Key: i18n.KernelErrorFieldRequired})
 		default:
 			solver = 0
 		}
+		problems, err := s.backupOf(ctx, ci, e, c, current, solver, solverType, &backup)
+		if err != nil {
+			return it, err
+		}
+		it.Problems = append(it.Problems, problems...)
 		if e.KeyType != "" && !current.OwnKey {
 			keyType = e.KeyType
 			if !slices.Contains(cryptox.KeyTypes, e.KeyType) {
@@ -504,11 +573,11 @@ func (s *service) changeCertificate(ctx context.Context, ci *certImport, e certi
 		return it, nil
 	}
 	changed := false
-	if solver != c.SolverProvider || keyType != c.KeyType || days != c.RenewBeforeDays {
+	if solver != c.SolverProvider || backup != c.BackupProvider || keyType != c.KeyType || days != c.RenewBeforeDays {
 		changed = true
 		_, err := ci.tx.ExecContext(ctx,
-			"UPDATE certs_certificates SET solver_provider = ?, key_type = ?, renew_before_days = ?, updated_at = ? WHERE id = ?",
-			sql.NullInt64{Int64: solver, Valid: solver != 0}, keyType, days, s.now().UnixMilli(), c.ID)
+			"UPDATE certs_certificates SET solver_provider = ?, backup_provider = ?, key_type = ?, renew_before_days = ?, updated_at = ? WHERE id = ?",
+			sql.NullInt64{Int64: solver, Valid: solver != 0}, sql.NullInt64{Int64: backup, Valid: backup != 0}, keyType, days, s.now().UnixMilli(), c.ID)
 		if err != nil {
 			return it, err
 		}

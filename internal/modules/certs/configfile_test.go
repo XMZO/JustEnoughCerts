@@ -311,3 +311,47 @@ func TestConfigNamesProviders(t *testing.T) {
 		t.Errorf("report %+v", rep)
 	}
 }
+
+func TestConfigBackupSource(t *testing.T) {
+	f := newFixture(t)
+	f.named("fake.vendor", "Vendor")
+	f.named("fake.web", "Web root")
+	f.named("fake.records", "Records")
+	spare := f.named("fake.spare", "Spare")
+	f.named("fake.acme", "Other")
+
+	// Added with its backup, which an export writes again.
+	rep := f.importConfig(`version: 1
+certificates:
+  - {domains: [a.example.com], source: Vendor, solver: Web root, backup_source: Spare}
+  - {domains: [b.example.com], source: Vendor, solver: Web root, backup_source: Other}
+  - {domains: [c.example.com], source: Vendor, solver: Records, backup_source: Spare}
+`, false)
+	want := []string{
+		"a.example.com: add",
+		"b.example.com: skip", "b.example.com/backup_source: " + string(i18n.CertsErrorBackupSource),
+		"c.example.com: skip", "c.example.com/backup_source: " + string(i18n.CertsErrorBackupSolver),
+	}
+	if got := itemsOf(rep, "certificates"); !slices.Equal(got, want) {
+		t.Fatalf("report:\n%s", strings.Join(got, "\n"))
+	}
+	f.importConfig("version: 1\ncertificates:\n  - {domains: [a.example.com], source: Vendor, solver: Web root, backup_source: Spare}\n", true)
+	list, err := f.svc.list(t.Context())
+	if err != nil || len(list) != 1 || list[0].BackupProvider != spare {
+		t.Fatalf("added %+v, %v", list, err)
+	}
+	if data, err := f.configFile().Export(t.Context(), configfile.Export{}); err != nil || !strings.Contains(string(data), "backup_source: Spare") {
+		t.Errorf("export %s: %v", data, err)
+	}
+
+	// Left out, it stays, unless the new solver does not suit it; empty
+	// removes it.
+	rep = f.importConfig("version: 1\ncertificates:\n  - {domains: [a.example.com], source: Vendor, solver: Records}\n", false)
+	if got := itemsOf(rep, "certificates"); !slices.Equal(got, []string{"a.example.com: skip", "a.example.com/backup_source: " + string(i18n.CertsErrorBackupSolver)}) {
+		t.Errorf("another solver: %v", got)
+	}
+	f.importConfig("version: 1\ncertificates:\n  - {domains: [a.example.com], source: Vendor, solver: Records, backup_source: \"\"}\n", true)
+	if c, err := f.svc.load(t.Context(), f.db, list[0].ID); err != nil || c.BackupProvider != 0 {
+		t.Errorf("removed %+v, %v", c, err)
+	}
+}

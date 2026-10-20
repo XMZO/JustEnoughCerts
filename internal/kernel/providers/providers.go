@@ -128,6 +128,10 @@ type Type struct {
 	// Revocable is set on a source whose providers can have the
 	// certificates they issued revoked (contracts.Revoker).
 	Revocable bool `json:"revocable,omitempty"`
+	// Backup is set on a source whose providers can stand in for a
+	// certificate's own source when it fails: one that issues within an
+	// attempt, never waiting and keeping nothing between attempts.
+	Backup bool `json:"backup,omitempty"`
 	// Challenge is how the providers of a solver type prove control of a
 	// domain, ChallengeDNS when left out.
 	Challenge string `json:"challenge,omitempty" enum:"dns,http"`
@@ -328,6 +332,8 @@ func (s *Scope) Add(t Type, f Factory) error {
 		return fmt.Errorf("provider type %s: own keys are for sources that need no solver", t.ID)
 	case t.Revocable && t.Kind != Source:
 		return fmt.Errorf("provider type %s: revoking is for sources", t.ID)
+	case t.Backup && (t.Kind != Source || t.OwnKey):
+		return fmt.Errorf("provider type %s: backups are for sources whose keys JEC makes", t.ID)
 	}
 	texts := make(map[string]map[i18n.Key]string, len(t.Texts))
 	for tag, messages := range t.Texts {

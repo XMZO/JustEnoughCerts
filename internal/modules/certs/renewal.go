@@ -24,12 +24,13 @@ const (
 	renewalInfoRetry   = time.Hour
 )
 
-// replaced is the leaf of the current version of c when the source of c
-// issued it: the certificate its renewal replaces, as an ACME order says
-// (RFC 9773), and the one to ask that source about. Nil otherwise.
-func replaced(c *Certificate) *x509.Certificate {
+// replaced is the leaf of the current version of c when source issued it,
+// source being that of c or its backup: the certificate its renewal
+// through source replaces, as an ACME order says (RFC 9773), and the one
+// to ask source about. Nil otherwise.
+func replaced(c *Certificate, source int64) *x509.Certificate {
 	v := c.Current
-	if v == nil || v.SourceProvider == 0 || v.SourceProvider != c.SourceProvider {
+	if v == nil || v.SourceProvider == 0 || v.SourceProvider != source || (source != c.SourceProvider && source != c.BackupProvider) {
 		return nil
 	}
 	chain, err := cryptox.ParseCertificates([]byte(v.Chain))
@@ -67,7 +68,10 @@ func (s *service) checkRenewalInfo(ctx context.Context) error {
 	}
 	now := s.now()
 	for _, c := range certs {
-		leaf := replaced(c)
+		var leaf *x509.Certificate
+		if c.Current != nil {
+			leaf = replaced(c, c.Current.SourceProvider)
+		}
 		if c.Source != sourceProvider || leaf == nil || now.Before(c.Current.RenewalCheck) || !now.Before(c.Current.NotAfter) {
 			continue
 		}
@@ -78,11 +82,11 @@ func (s *service) checkRenewalInfo(ctx context.Context) error {
 	return nil
 }
 
-// askRenewalInfo asks the source of c about renewing leaf, its current
-// version, and stores the answer with the time to ask again.
+// askRenewalInfo asks the source that issued leaf, the current version of
+// c, about renewing it, and stores the answer with the time to ask again.
 func (s *service) askRenewalInfo(ctx context.Context, c *Certificate, leaf *x509.Certificate, now time.Time) error {
 	v := c.Current
-	provider, err := openProvider[io.Closer](ctx, s.providers, c.SourceProvider)
+	provider, err := openProvider[io.Closer](ctx, s.providers, v.SourceProvider)
 	if err != nil {
 		// A source turned off, say: ask later.
 		return s.renewalCheck(ctx, v.ID, now.Add(renewalInfoDefault))

@@ -148,6 +148,7 @@
 - 自检命令 `jec doctor`（`cmd/jec/doctor.go`）：逐行检查数据目录、数据库（不新建、不迁移；空库和没有库都只是说明）、主密钥（和 `kernel_meta` 的 `secret_check` 核对，不生成 `secret.key`）、等待中的 `restore.db`、到 CA 的 DNS 和 HTTPS（`-ca`，默认 Let's Encrypt；设了 `JEC_DNS_RESOLVERS` 也经它们找区域）、时钟（按 CA 回答的 `Date`，差 30 秒警告、5 分钟失败）；`-offline` 跳过网络；有失败时退出码 1。文档在 FAQ 的“检查服务器”。
 - 升级前的备份（`internal/kernel/upgrade.go`）：SQLite 数据库有待迁移的版本（内核或任一模块，`store.Versions`）且不是新库时，迁移前先 `VACUUM INTO` 到 `backups/upgrade-<UTC 时间>.db`，只留最近三份；做不成只记警告、照常启动。退回旧版：复制成 `restore.db` 再启动旧版（对 alpha.31 实测过）。PostgreSQL 不做，文档让用户 `pg_dump`。异地备份只传 `jec-*.db`，不传这些。
 - 总览的“开始使用”（`web/src/components/GettingStarted.vue`，还没有证书时代替空状态）：证书来源、域名验证、部署目标（可选）、通知（可选）各一行，显示已添加几个，点进对应页面；下面是添加证书和导入已有证书。
+- 备用来源（`certs_certificates.backup_provider`，`PLAN.md` 4.3）：证书可另选一个来源（类型标 `providers.Type.Backup`，目前只有 ACME 账号：一次尝试内签完、不等待、不留状态）；签发的第偶数次尝试改用它（`claimed.backup`，日志 `certs.log.backup_source`），有备用来源时永久错误也接着试另一个，直到重试次数用完；来源的状态不交给备用来源；版本记下实际签发的来源，ARI 和 `replaces` 按它；校验 `checkBackup`/`backupProblem`（须能用证书的验证方式，换验证方式时也查）；接口 `backupProvider`（签发、`PATCH`，0 为去掉），配置文件 `backup_source`；界面在添加页“证书来源”和续期设置里。对 Pebble 实测过（主来源连不上，第二次由备用账号签出）。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

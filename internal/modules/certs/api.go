@@ -24,6 +24,7 @@ type CertificateBody struct {
 	Domains         []string         `json:"domains" doc:"The domains, the primary first"`
 	Source          string           `json:"source" enum:"upload,provider" doc:"Where new versions come from: uploads only, or the source provider"`
 	SourceProvider  int64            `json:"sourceProvider,omitempty" doc:"The source provider instance that issues the certificate"`
+	BackupProvider  int64            `json:"backupProvider,omitempty" doc:"The source that tries when an attempt with the certificate's own failed"`
 	SolverProvider  int64            `json:"solverProvider,omitempty" doc:"The solver provider instance that proves control of the domains"`
 	KeyType         string           `json:"keyType" doc:"Type and size of the key, such as rsa-2048 or ecdsa-p256"`
 	Note            string           `json:"note,omitempty" doc:"What people wrote about it"`
@@ -130,7 +131,7 @@ type CSRBody struct {
 
 func certificateBody(c *Certificate, now time.Time, sch schedule) CertificateBody {
 	b := CertificateBody{
-		ID: c.ID, Domains: c.Domains, Source: c.Source, SourceProvider: c.SourceProvider, SolverProvider: c.SolverProvider,
+		ID: c.ID, Domains: c.Domains, Source: c.Source, SourceProvider: c.SourceProvider, BackupProvider: c.BackupProvider, SolverProvider: c.SolverProvider,
 		KeyType: c.KeyType, RenewBeforeDays: c.RenewBeforeDays, State: c.state(now), CreatedAt: c.CreatedAt, Note: c.Note, ReuseKey: c.ReuseKey, NotifyTo: c.NotifyTo,
 		Paused: c.Paused, DeployWindow: c.DeployWindow,
 	}
@@ -278,6 +279,7 @@ type updateInput struct {
 		NotifyTo        *[]int64      `json:"notifyTo,omitempty" maxItems:"50" doc:"The notifiers the certificate's notes go to; empty for all; unchanged if left out"`
 		Paused          *bool         `json:"paused,omitempty" doc:"Pause the renewal: the certificate is issued only when someone asks; unchanged if left out"`
 		SolverProvider  *int64        `json:"solverProvider,omitempty" doc:"Another solver for a certificate with a source that needs one, from its next issuance; unchanged if left out"`
+		BackupProvider  *int64        `json:"backupProvider,omitempty" doc:"The source, of a type marked backup, that tries when an attempt with the certificate's own failed; 0 for none; unchanged if left out"`
 		KeyType         *string       `json:"keyType,omitempty" enum:"ecdsa-p256,ecdsa-p384,rsa-2048,rsa-3072,rsa-4096" doc:"Another key type for a certificate with a source whose keys JEC makes, from its next issuance; unchanged if left out"`
 		DeployWindow    *string       `json:"deployWindow,omitempty" enum:",0-6,1-5,2-6,22-6" doc:"The hours, in the panel's time zone, new versions are deployed in, as 1-5; empty for any time; unchanged if left out. Deploying by hand starts at once."`
 	}
@@ -436,7 +438,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			}
 			notifyTo = &list
 		}
-		if err := s.checkIssuing(ctx, in.ID, in.Body.SolverProvider, in.Body.KeyType); err != nil {
+		if err := s.checkIssuing(ctx, in.ID, in.Body.SolverProvider, in.Body.BackupProvider, in.Body.KeyType); err != nil {
 			return nil, err
 		}
 		var rem *reminder
@@ -447,7 +449,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			rem = &reminder{on: r.On, note: r.Note}
 		}
 		ch := changes{days: in.Body.RenewBeforeDays, targets: targets, note: in.Body.Note, reuseKey: in.Body.ReuseKey, paused: in.Body.Paused, notifyTo: notifyTo, reminder: rem,
-			solver: in.Body.SolverProvider, keyType: in.Body.KeyType, deployWindow: in.Body.DeployWindow}
+			solver: in.Body.SolverProvider, backup: in.Body.BackupProvider, keyType: in.Body.KeyType, deployWindow: in.Body.DeployWindow}
 		if err := s.update(ctx, in.ID, ch); err != nil {
 			return nil, serviceError(err)
 		}

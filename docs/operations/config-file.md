@@ -51,7 +51,7 @@ certificates:
 | `providers` | Providers: name, type, the name of the credential they use (`credential`) and plain settings (`config`), with their secrets (`secrets`) in an export that includes them |
 | `time_zone` | The panel's time zone; omitted while it follows the server, and an empty string imported makes it follow the server again |
 | `renewal` | The renewal defaults: days before expiry, daily check time, default key type and number of retries |
-| `certificates` | Certificates: domains, source, validation method, key type, renewal days and deploy targets |
+| `certificates` | Certificates: domains, source, validation method, backup source (`backup_source`), key type, renewal days and deploy targets |
 
 An export holds nothing that changes from one export to the next, such as
 its time, so its diff in Git shows only real changes.

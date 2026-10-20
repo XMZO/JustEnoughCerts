@@ -29,6 +29,17 @@ ACME protocol (RFC 8555).
 - ACME Renewal Information (ARI, RFC 9773) is supported, so certificates
   are renewed earlier when the certificate authority advises it.
 
+### Backup source
+
+A certificate can name another ACME account, preferably at another
+certificate authority, as its backup source, when it is added or under its
+renewal settings. When an attempt with the source fails, even with an
+error that retrying cannot fix, the next attempt goes to the backup, and
+the two take turns until one issues the certificate or the retries run
+out; the next renewal starts with the source again. The backup must be
+able to use the certificate's validation method, and the CAA records of
+the domains must allow both certificate authorities.
+
 ## Certificates on this machine
 
 Reads the certificates and keys that certbot or acme.sh renews on the same

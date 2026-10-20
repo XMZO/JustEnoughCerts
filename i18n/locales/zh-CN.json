@@ -645,6 +645,9 @@
       "account_domains_untested": "未实测：这个列表尚未用真实账号验证，可能不完整。",
       "apex_add": "加上",
       "apex_hint": "通配符不包含 {names} 本身。",
+      "backup": "备用来源",
+      "backup_help": "来源签发失败时，下一次尝试改用这个 ACME 账号，之后两者轮流。请选择另一家 CA 的账号。",
+      "backup_none": "不使用",
       "bulk_failed": "{count, plural, other {# 张证书}}没有添加，原因如下；改好后可以再次提交：",
       "bulk_help": "每行一张证书，同一行的多个域名用空格或逗号分隔，第一个是主域名；表单里的其余设置对每张都一样。共 {count, plural, other {# 张}}。",
       "bulk_label": "每行一张证书",
@@ -901,6 +904,8 @@
       "time_stamping": "时间戳"
     },
     "error": {
+      "backup_solver": "备用来源不能用这种方式验证域名。",
+      "backup_source": "不能用作备用来源：请选择证书来源以外的 ACME 账号，且证书须由 JEC 生成私钥。",
       "bad_certificate": "有一张证书读不出来。请完整地重新粘贴，从 -----BEGIN CERTIFICATE----- 到 -----END CERTIFICATE-----。",
       "bad_domain": "这不是有效的域名。通配符写成 *.example.com。",
       "bad_key": "私钥读不出来。请完整地重新粘贴。",
@@ -944,6 +949,7 @@
       "title": "下载全部证书和私钥"
     },
     "field": {
+      "backup": "备用来源",
       "csr": "CSR",
       "days": "{days, plural, other {# 天}}",
       "domains": "域名",
@@ -1065,6 +1071,7 @@
     },
     "log": {
       "attempt": "第 {attempt} 次尝试",
+      "backup_source": "这次改用备用来源“{name}”",
       "deploy": "部署到 {target}",
       "deployed": "部署完成，用时 {seconds, plural, other {# 秒}}",
       "done": "全部完成，用时 {seconds, plural, other {# 秒}}",

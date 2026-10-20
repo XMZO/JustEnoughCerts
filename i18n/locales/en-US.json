@@ -645,6 +645,9 @@
       "account_domains_untested": "Untested: this list has not been tried with a real account, and may be incomplete.",
       "apex_add": "Add it",
       "apex_hint": "A wildcard does not cover {names} itself.",
+      "backup": "Backup source",
+      "backup_help": "When an attempt with the source fails, the next one goes to this ACME account, and the two take turns from then on. Pick an account at another CA.",
+      "backup_none": "None",
       "bulk_failed": "{count, plural, one {# certificate was not added} other {# certificates were not added}}; fix and add again:",
       "bulk_help": "A certificate a line, its domains apart by spaces or commas, the first its primary; the rest of the form is for each. {count, plural, one {# certificate} other {# certificates}}.",
       "bulk_label": "A certificate a line",
@@ -901,6 +904,8 @@
       "time_stamping": "Time stamping"
     },
     "error": {
+      "backup_solver": "The backup source cannot have the domains validated this way.",
+      "backup_source": "This source cannot be the backup: pick an ACME account other than the source, for a certificate whose keys JEC makes.",
       "bad_certificate": "A certificate cannot be read. Paste it again in full, from -----BEGIN CERTIFICATE----- to -----END CERTIFICATE-----.",
       "bad_domain": "This is not a valid domain name. Write a wildcard as *.example.com.",
       "bad_key": "The private key cannot be read. Paste it again in full.",
@@ -944,6 +949,7 @@
       "title": "Download every certificate and key"
     },
     "field": {
+      "backup": "Backup source",
       "csr": "CSR",
       "days": "{days, plural, one {# day} other {# days}}",
       "domains": "Domains",
@@ -1065,6 +1071,7 @@
     },
     "log": {
       "attempt": "Attempt {attempt}",
+      "backup_source": "This attempt goes to the backup source “{name}”",
       "deploy": "Deploying to {target}",
       "deployed": "Deployed in {seconds, plural, one {# second} other {# seconds}}",
       "done": "Done in {seconds, plural, one {# second} other {# seconds}}",

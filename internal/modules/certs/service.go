@@ -121,11 +121,15 @@ func newService(db *sql.DB, ev *events.Scope, box *secrets.Scope, prov *provider
 
 // Certificate is a certificate with its current version.
 type Certificate struct {
-	ID              int64
-	Domains         []string
-	Source          string
-	SourceProvider  int64 // with Source "provider"
-	SolverProvider  int64 // 0 for none
+	ID             int64
+	Domains        []string
+	Source         string
+	SourceProvider int64 // with Source "provider"
+	SolverProvider int64 // 0 for none
+	// BackupProvider is the source that stands in for SourceProvider when
+	// an attempt with it failed: every second attempt of an issuance goes
+	// to it. 0 for none.
+	BackupProvider  int64
 	KeyType         string
 	RenewBeforeDays int
 	Current         *Version
@@ -430,7 +434,7 @@ type querier interface {
 
 const selectCertificates = `SELECT c.id, c.domains, c.source, c.source_provider, c.solver_provider, c.key_type,
 	c.renew_before_days, c.created_at, c.note, c.reuse_key, c.notify_to, c.paused, c.deploy_window,
-	c.reminder_on, c.reminder_note, c.reminder_sent,
+	c.reminder_on, c.reminder_note, c.reminder_sent, c.backup_provider,
 	v.id, v.origin, v.names, v.serial, v.fingerprint, v.issuer, v.key_type, v.not_before, v.not_after, v.chain, v.created_at,
 	v.source_provider, v.renewal_start, v.renewal_end, v.renewal_at, v.renewal_explanation, v.renewal_check,
 	v.ca_revoked_at, v.ca_revoke_reason, v.status_check,
@@ -479,7 +483,7 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 		c := &Certificate{}
 		var domains string
 		var created int64
-		var sourceProvider, solverProvider sql.NullInt64
+		var sourceProvider, solverProvider, backupProvider sql.NullInt64
 		var v struct {
 			id                                                                      sql.NullInt64
 			origin, names, serial, fingerprint, issuer, keyType, chain, explanation sql.NullString
@@ -491,7 +495,7 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 		var reuseKey, paused, reminderSent int64
 		var notifyTo string
 		dest := []any{&c.ID, &domains, &c.Source, &sourceProvider, &solverProvider, &c.KeyType, &c.RenewBeforeDays, &created, &c.Note, &reuseKey, &notifyTo, &paused, &c.DeployWindow,
-			&c.ReminderOn, &c.ReminderNote, &reminderSent,
+			&c.ReminderOn, &c.ReminderNote, &reminderSent, &backupProvider,
 			&v.id, &v.origin, &v.names, &v.serial, &v.fingerprint, &v.issuer, &v.keyType, &v.notBefore, &v.notAfter, &v.chain, &v.created,
 			&v.source, &v.start, &v.end, &v.at, &v.explanation, &v.check, &v.caRevoked, &v.caReason, &v.statusCheck, &csrAt}
 		if err := rows.Scan(append(dest, is.dest()...)...); err != nil {
@@ -504,7 +508,7 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 		if json.Unmarshal([]byte(notifyTo), &c.NotifyTo) != nil || c.NotifyTo == nil {
 			c.NotifyTo = []int64{}
 		}
-		c.SourceProvider, c.SolverProvider = sourceProvider.Int64, solverProvider.Int64
+		c.SourceProvider, c.SolverProvider, c.BackupProvider = sourceProvider.Int64, solverProvider.Int64, backupProvider.Int64
 		if is.id.Valid {
 			var err error
 			if c.Issuance, err = is.issuance(); err != nil {
@@ -590,7 +594,7 @@ type changes struct {
 	note             *string
 	reuseKey, paused *bool
 	notifyTo         *[]int64
-	solver           *int64
+	solver, backup   *int64
 	keyType          *string
 	deployWindow     *string
 	reminder         *reminder
@@ -665,6 +669,13 @@ func (s *service) update(ctx context.Context, id int64, ch changes) error {
 	if ch.solver != nil {
 		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET solver_provider = ?, updated_at = ? WHERE id = ?",
 			*ch.solver, s.now().UnixMilli(), id); err != nil {
+			return err
+		}
+	}
+	if ch.backup != nil {
+		backup := sql.NullInt64{Int64: *ch.backup, Valid: *ch.backup != 0}
+		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET backup_provider = ?, updated_at = ? WHERE id = ?",
+			backup, s.now().UnixMilli(), id); err != nil {
 			return err
 		}
 	}

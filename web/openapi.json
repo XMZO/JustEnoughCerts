@@ -312,6 +312,11 @@
       "CertificateBody": {
         "additionalProperties": false,
         "properties": {
+          "backupProvider": {
+            "description": "The source that tries when an attempt with the certificate's own failed",
+            "format": "int64",
+            "type": "integer"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -2028,6 +2033,11 @@
       "IssueRequest": {
         "additionalProperties": false,
         "properties": {
+          "backupProvider": {
+            "description": "A source provider instance of a type marked backup, as an ACME account of another CA, that tries when an attempt with the source failed",
+            "format": "int64",
+            "type": "integer"
+          },
           "domains": {
             "description": "The domains, the primary first; a wildcard as *.example.com, an internationalized name in any form",
             "items": {
@@ -4157,6 +4167,9 @@
       "Type": {
         "additionalProperties": false,
         "properties": {
+          "backup": {
+            "type": "boolean"
+          },
           "brand": {
             "type": "string"
           },
@@ -4274,6 +4287,10 @@
       "TypeSummary": {
         "additionalProperties": false,
         "properties": {
+          "backup": {
+            "description": "For a source: it can stand in for a certificate's own source when that fails",
+            "type": "boolean"
+          },
           "brand": {
             "description": "A third party's name for the type, shown as it is",
             "type": "string"
@@ -4477,6 +4494,11 @@
       "UpdateInputBody1": {
         "additionalProperties": false,
         "properties": {
+          "backupProvider": {
+            "description": "The source, of a type marked backup, that tries when an attempt with the certificate's own failed; 0 for none; unchanged if left out",
+            "format": "int64",
+            "type": "integer"
+          },
           "deployWindow": {
             "description": "The hours, in the panel's time zone, new versions are deployed in, as 1-5; empty for any time; unchanged if left out. Deploying by hand starts at once.",
             "enum": [

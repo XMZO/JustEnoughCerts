@@ -1822,6 +1822,11 @@ export interface components {
             retries?: number;
         };
         CertificateBody: {
+            /**
+             * Format: int64
+             * @description The source that tries when an attempt with the certificate's own failed
+             */
+            backupProvider?: number;
             /** Format: date-time */
             createdAt: string;
             /** @description The version in use */
@@ -2458,6 +2463,11 @@ export interface components {
             issuances: components["schemas"]["IssuanceBody"][];
         };
         IssueRequest: {
+            /**
+             * Format: int64
+             * @description A source provider instance of a type marked backup, as an ACME account of another CA, that tries when an attempt with the source failed
+             */
+            backupProvider?: number;
             /** @description The domains, the primary first; a wildcard as *.example.com, an internationalized name in any form */
             domains: string[];
             /**
@@ -3220,6 +3230,7 @@ export interface components {
             uri: string;
         };
         Type: {
+            backup?: boolean;
             brand?: string;
             /** @enum {string} */
             challenge?: "dns" | "http";
@@ -3252,6 +3263,8 @@ export interface components {
             zones?: boolean;
         };
         TypeSummary: {
+            /** @description For a source: it can stand in for a certificate's own source when that fails */
+            backup?: boolean;
             /** @description A third party's name for the type, shown as it is */
             brand?: string;
             /**
@@ -3334,6 +3347,11 @@ export interface components {
             };
         };
         UpdateInputBody1: {
+            /**
+             * Format: int64
+             * @description The source, of a type marked backup, that tries when an attempt with the certificate's own failed; 0 for none; unchanged if left out
+             */
+            backupProvider?: number;
             /**
              * @description The hours, in the panel's time zone, new versions are deployed in, as 1-5; empty for any time; unchanged if left out. Deploying by hand starts at once.
              * @enum {string}

@@ -306,6 +306,7 @@ type claimed struct {
 	started           time.Time // the attempt
 	resumed           bool      // after a wait
 	source            int64     // the source provider asked, once it is
+	backup            bool      // the certificate has a backup source
 }
 
 // runIssuances is the job certs.issue: it runs the due issuances (see
@@ -423,21 +424,31 @@ func (s *service) obtain(ctx context.Context, cl *claimed, log func(contracts.Lo
 	if c.Source != sourceProvider {
 		return nil, retry.Permanent(errNoSource)
 	}
+	// Once an attempt with the source failed, every second one goes to
+	// the backup, if any.
+	cl.backup = c.BackupProvider != 0
+	cl.source = c.SourceProvider
+	if cl.backup && cl.attempt%2 == 0 {
+		cl.source = c.BackupProvider
+	}
 	// The providers first: a problem with them belongs to no step.
-	provider, err := openProvider[io.Closer](ctx, s.providers, c.SourceProvider)
+	provider, err := openProvider[io.Closer](ctx, s.providers, cl.source)
 	if err != nil {
 		return nil, err
 	}
 	defer closeProvider(provider, s)
-	cl.source = c.SourceProvider
+	if cl.source != c.SourceProvider {
+		name, _ := s.providerName(ctx, cl.source)
+		log(contracts.LogLine{Level: contracts.Info, Key: i18n.CertsLogBackupSource, Params: map[string]any{"name": name}})
+	}
 	if ks, ok := provider.(contracts.KeySource); ok {
 		return s.collect(ctx, cl, c, ks, log)
 	}
 	source, ok := provider.(contracts.Source)
 	if !ok {
-		return nil, retry.Permanent(fmt.Errorf("provider %d is no source", c.SourceProvider))
+		return nil, retry.Permanent(fmt.Errorf("provider %d is no source", cl.source))
 	}
-	req := contracts.IssueRequest{Domains: c.Domains, Log: log, Replaces: replaced(c)}
+	req := contracts.IssueRequest{Domains: c.Domains, Log: log, Replaces: replaced(c, cl.source)}
 	if c.SolverProvider != 0 {
 		solver, err := openProvider[io.Closer](ctx, s.providers, c.SolverProvider)
 		if err != nil {
@@ -453,6 +464,9 @@ func (s *service) obtain(ctx context.Context, cl *claimed, log func(contracts.Lo
 	}
 	if req.Key, req.State, err = s.kept(ctx, cl, c.KeyType, log); err != nil {
 		return nil, err
+	}
+	if cl.source != c.SourceProvider {
+		req.State = nil // the source's, which the backup knows nothing of
 	}
 	chain, err := source.Issue(ctx, req)
 	if err != nil {
@@ -693,7 +707,12 @@ func (s *service) fail(ctx context.Context, c *claimed, cause error, log *taskLo
 	log.add(contracts.LogLine{Level: contracts.Error, Step: log.current(), Key: msg.Key, Params: msg.Params, Detail: detail})
 
 	now := s.now()
-	final, next := nextAttempt(c.attempt, s.retries(ctx), cause, now)
+	retries := s.retries(ctx)
+	final, next := nextAttempt(c.attempt, retries, cause, now)
+	// With a backup, the other source tries next, whatever this one said.
+	if final && c.backup && c.attempt <= retries {
+		final, next = nextAttempt(c.attempt, retries, nil, now)
+	}
 	recorded, err := s.recordFailure(ctx, c, msg, now, next, contracts.IsRestart(cause), contracts.KeptState(cause))
 	if err != nil {
 		s.log.Error("record failed issuance", "issuance", c.id, "err", err)
@@ -789,12 +808,13 @@ func explain(err error, fallback i18n.Key) (contracts.Message, string) {
 }
 
 // usesProvider reports whether a certificate uses provider instance id,
-// as its source, solver or a target, which may then not be deleted.
+// as its source, solver, backup source or a target, which may then not be
+// deleted.
 func (s *service) usesProvider(ctx context.Context, id int64) (bool, error) {
 	var used bool
 	err := s.db.QueryRowContext(ctx,
-		`SELECT EXISTS (SELECT 1 FROM certs_certificates WHERE source_provider = ? OR solver_provider = ?)
-		 OR EXISTS (SELECT 1 FROM certs_targets WHERE provider_id = ?)`, id, id, id).Scan(&used)
+		`SELECT EXISTS (SELECT 1 FROM certs_certificates WHERE source_provider = ? OR solver_provider = ? OR backup_provider = ?)
+		 OR EXISTS (SELECT 1 FROM certs_targets WHERE provider_id = ?)`, id, id, id, id).Scan(&used)
 	return used, err
 }
 

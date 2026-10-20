@@ -58,7 +58,7 @@ const templateReady = computed(() => !from || certificates.isSuccess.value || ce
 const stored = loadLastChoice()
 const last = computed<LastChoice>(() =>
   template.value
-    ? { source: template.value.sourceProvider, solver: template.value.solverProvider, targets: template.value.targets }
+    ? { source: template.value.sourceProvider, solver: template.value.solverProvider, backup: template.value.backupProvider, targets: template.value.targets }
     : from
       ? {}
       : stored,
@@ -95,8 +95,9 @@ type Challenge = 'dns' | 'http' | 'record'
 const accepted = computed<Challenge[]>(() => sourceType.value?.challenges ?? ['dns'])
 const solverType = (p: Provider) => solverTypes.data.value?.find((s) => s.id === p.type)
 const challengeOf = (p: Provider): 'dns' | 'http' => solverType(p)?.challenge ?? 'dns'
-const takes = (p: Provider) =>
-  accepted.value.includes(challengeOf(p)) || (challengeOf(p) === 'dns' && !!solverType(p)?.records && accepted.value.includes('record'))
+const takesWith = (kinds: Challenge[], p: Provider) =>
+  kinds.includes(challengeOf(p)) || (challengeOf(p) === 'dns' && !!solverType(p)?.records && kinds.includes('record'))
+const takes = (p: Provider) => takesWith(accepted.value, p)
 const usable = computed(() => (solvers.data.value ?? []).filter(takes))
 // The kinds of solver that add records of any type, for a source that has none to use.
 const recordKinds = computed(() =>
@@ -159,6 +160,20 @@ const solver = computed(
   () => usable.value.find((p) => p.id === (pickedSolver.value ?? last.value.solver))?.id ?? usable.value[0]?.id,
 )
 const solverProvider = computed(() => usable.value.find((p) => p.id === solver.value))
+// A source to fall back on, as an ACME account of another CA: the next
+// attempt goes to it when one with the source failed. Those of a type that
+// can, taking the solver.
+const backups = computed(() =>
+  ownKey.value
+    ? []
+    : (sources.data.value ?? []).filter((p) => {
+        const typ = sourceTypes.data.value?.find((s) => s.id === p.type)
+        if (p.id === source.value || !typ?.backup) return false
+        return !typ.needsSolver || (!!solverProvider.value && takesWith(typ.challenges ?? ['dns'], solverProvider.value))
+      }),
+)
+const pickedBackup = ref<number>()
+const backup = computed(() => backups.value.find((p) => p.id === (pickedBackup.value ?? last.value.backup))?.id ?? 0)
 // Whether the solver's account holds the zones of the domains, for a type
 // that can tell: a domain it cannot prove fails the issuance.
 const zoneDomains = computed(() => [...new Set(bulk.value ? batch.value.flat() : domains.value)].slice(0, 50))
@@ -315,7 +330,12 @@ const form = ref<HTMLFormElement>()
 
 // Keeps what this certificate is added with, for the next one.
 const remember = () =>
-  saveLastChoice({ source: typeof source.value === 'number' ? source.value : undefined, solver: needsSolver.value ? solver.value : undefined, targets: chosenTargets.value })
+  saveLastChoice({
+    source: typeof source.value === 'number' ? source.value : undefined,
+    solver: needsSolver.value ? solver.value : undefined,
+    backup: backup.value || undefined,
+    targets: chosenTargets.value,
+  })
 
 async function submit() {
   if (uploading.value && importing.value) {
@@ -364,6 +384,7 @@ async function submit() {
       domains: domains.value,
       sourceProvider: source.value,
       solverProvider: needsSolver.value ? solver.value : undefined,
+      backupProvider: backup.value || undefined,
       keyType: ownKey.value ? undefined : keyType.value,
       renewBeforeDays: Number(days.value) || undefined,
       targets: chosenTargets.value,
@@ -388,6 +409,7 @@ async function submitBatch(from: number) {
           domains: d,
           sourceProvider: from,
           solverProvider: needsSolver.value ? solver.value : undefined,
+          backupProvider: backup.value || undefined,
           keyType: ownKey.value ? undefined : keyType.value,
           renewBeforeDays: Number(days.value) || undefined,
           targets: chosenTargets.value,
@@ -529,6 +551,17 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
             class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11 sm:max-w-60"
           >
             <option v-for="k in keyTypes" :key="k" :value="k">{{ keyLabel(k) }}</option>
+          </select>
+        </JecField>
+        <JecField v-if="provider && backups.length" id="backup" label="certs.add.backup" hint="certs.add.backup_help" :error="fieldError('backupProvider')">
+          <select
+            id="backup"
+            :value="backup"
+            class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11 sm:max-w-96"
+            @change="pickedBackup = Number(($event.target as HTMLSelectElement).value)"
+          >
+            <option :value="0">{{ t('certs.add.backup_none') }}</option>
+            <option v-for="p in backups" :key="p.id" :value="p.id" translate="no">{{ p.name }} · {{ typeLabel(p, sourceTypes).text }}</option>
           </select>
         </JecField>
       </section>

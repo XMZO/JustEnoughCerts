@@ -97,6 +97,7 @@ type IssueRequest struct {
 	Domains         []string `json:"domains" minItems:"1" maxItems:"100" doc:"The domains, the primary first; a wildcard as *.example.com, an internationalized name in any form"`
 	SourceProvider  int64    `json:"sourceProvider" doc:"The source provider instance that issues the certificate"`
 	SolverProvider  int64    `json:"solverProvider,omitempty" doc:"The solver provider instance that proves control of the domains, for a source that needs one"`
+	BackupProvider  int64    `json:"backupProvider,omitempty" doc:"A source provider instance of a type marked backup, as an ACME account of another CA, that tries when an attempt with the source failed"`
 	KeyType         string   `json:"keyType,omitempty" enum:"ecdsa-p256,ecdsa-p384,rsa-2048,rsa-3072,rsa-4096" doc:"The type of the private key, new for each version; that of the settings if left out"`
 	RenewBeforeDays int      `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Days before the end to renew; that of the settings if left out"`
 	Targets         []int64  `json:"targets,omitempty" maxItems:"50" doc:"The target provider instances to deploy each version to, in order"`
@@ -266,10 +267,12 @@ func (s *service) checkDomains(ctx context.Context, id int64, names []string) er
 	return nil
 }
 
-// checkIssuing checks another solver and key type for certificate id, as
-// its source takes them; nil changes nothing.
-func (s *service) checkIssuing(ctx context.Context, id int64, solver *int64, keyType *string) error {
-	if solver == nil && keyType == nil {
+// checkIssuing checks the changes to how certificate id is issued from its
+// next issuance: another solver, which its source and backup take, another
+// backup source, 0 for none, or another key type, which its source takes;
+// nil changes nothing.
+func (s *service) checkIssuing(ctx context.Context, id int64, solver, backup *int64, keyType *string) error {
+	if solver == nil && backup == nil && keyType == nil {
 		return nil
 	}
 	c, err := s.load(ctx, s.db, id)
@@ -277,17 +280,30 @@ func (s *service) checkIssuing(ctx context.Context, id int64, solver *int64, key
 		return serviceError(err)
 	}
 	invalid := api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil)
+	field := "body.solverProvider"
+	if solver == nil && backup != nil {
+		field = "body.backupProvider"
+	}
 	if c.Source != sourceProvider {
-		return invalid.WithField("body.solverProvider", i18n.KernelErrorInvalidField)
+		return invalid.WithField(field, i18n.KernelErrorInvalidField)
 	}
 	source, err := s.providers.Type(ctx, c.SourceProvider)
 	if err != nil {
-		return invalid.WithField("body.solverProvider", i18n.KernelErrorInvalidField)
+		return invalid.WithField(field, i18n.KernelErrorInvalidField)
+	}
+	// The solver the certificate goes on with, for its backup.
+	var solverType *providers.Type
+	if c.SolverProvider != 0 {
+		if typ, err := s.providers.Type(ctx, c.SolverProvider); err == nil {
+			solverType = &typ
+		}
 	}
 	if solver != nil {
+		solverType = nil
 		if code := s.checkProvider(ctx, *solver, providers.Solver); code != "" {
 			invalid = invalid.WithField("body.solverProvider", code)
 		} else if typ, err := s.providers.Type(ctx, *solver); err == nil {
+			solverType = &typ
 			switch {
 			case !source.NeedsSolver:
 				invalid = invalid.WithField("body.solverProvider", i18n.KernelErrorInvalidField)
@@ -298,6 +314,17 @@ func (s *service) checkIssuing(ctx context.Context, id int64, solver *int64, key
 			case typ.Solves() != providers.ChallengeHTTP && slices.ContainsFunc(c.Domains, isIP):
 				invalid = invalid.WithField("body.solverProvider", i18n.CertsErrorIpDns)
 			}
+		}
+	}
+	switch {
+	case backup != nil && *backup != 0:
+		if code := s.checkBackup(ctx, *backup, c.SourceProvider, &source, solverType); code != "" {
+			invalid = invalid.WithField("body.backupProvider", code)
+		}
+	case backup == nil && solver != nil && c.BackupProvider != 0:
+		// The backup kept must take the new solver too.
+		if code := s.checkBackup(ctx, c.BackupProvider, c.SourceProvider, &source, solverType); code == i18n.CertsErrorBackupSolver {
+			invalid = invalid.WithField("body.solverProvider", code)
 		}
 	}
 	if keyType != nil && (source.OwnKey || !slices.Contains(cryptox.KeyTypes, *keyType)) {
@@ -326,10 +353,12 @@ func (s *service) addIssued(ctx context.Context, in *IssueRequest) (int64, error
 			invalid = invalid.WithField("body.solverProvider", i18n.KernelErrorFieldRequired)
 		}
 	}
+	var solver *providers.Type
 	if in.SolverProvider != 0 {
 		if code := s.checkProvider(ctx, in.SolverProvider, providers.Solver); code != "" {
 			invalid = invalid.WithField("body.solverProvider", code)
 		} else if typ, err := s.providers.Type(ctx, in.SolverProvider); err == nil {
+			solver = &typ
 			switch {
 			case source != nil && source.NeedsSolver && !source.Takes(typ):
 				invalid = invalid.WithField("body.solverProvider", i18n.CertsErrorSolverChallenge)
@@ -338,6 +367,11 @@ func (s *service) addIssued(ctx context.Context, in *IssueRequest) (int64, error
 			case typ.Solves() != providers.ChallengeHTTP && slices.ContainsFunc(domains, isIP):
 				invalid = invalid.WithField("body.solverProvider", i18n.CertsErrorIpDns)
 			}
+		}
+	}
+	if in.BackupProvider != 0 {
+		if code := s.checkBackup(ctx, in.BackupProvider, in.SourceProvider, source, solver); code != "" {
+			invalid = invalid.WithField("body.backupProvider", code)
 		}
 	}
 	targets, badTargets := s.checkTargets(ctx, in.Targets)
@@ -372,7 +406,7 @@ func (s *service) addIssued(ctx context.Context, in *IssueRequest) (int64, error
 	}
 	defer func() { _ = tx.Rollback() }()
 	id, err := s.insertIssued(ctx, tx, Certificate{
-		Domains: domains, SourceProvider: in.SourceProvider, SolverProvider: in.SolverProvider,
+		Domains: domains, SourceProvider: in.SourceProvider, SolverProvider: in.SolverProvider, BackupProvider: in.BackupProvider,
 		KeyType: keyType, RenewBeforeDays: renewBefore, Targets: targets,
 	})
 	if err != nil {
@@ -392,6 +426,7 @@ func (s *service) insertIssued(ctx context.Context, tx *sql.Tx, c Certificate) (
 	now := s.now().UnixMilli()
 	domainsJSON, _ := json.Marshal(c.Domains)
 	solver := sql.NullInt64{Int64: c.SolverProvider, Valid: c.SolverProvider != 0}
+	backup := sql.NullInt64{Int64: c.BackupProvider, Valid: c.BackupProvider != 0}
 	reuse, paused := 0, 0
 	if c.ReuseKey {
 		reuse = 1
@@ -405,10 +440,10 @@ func (s *service) insertIssued(ctx context.Context, tx *sql.Tx, c Certificate) (
 	}
 	var id int64
 	err := tx.QueryRowContext(ctx,
-		`INSERT INTO certs_certificates (domains, source, source_provider, solver_provider, key_type, renew_before_days, note, reuse_key, notify_to,
+		`INSERT INTO certs_certificates (domains, source, source_provider, solver_provider, backup_provider, key_type, renew_before_days, note, reuse_key, notify_to,
 		 paused, deploy_window, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-		string(domainsJSON), sourceProvider, c.SourceProvider, solver, c.KeyType, c.RenewBeforeDays, c.Note, reuse, string(notifyTo),
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+		string(domainsJSON), sourceProvider, c.SourceProvider, solver, backup, c.KeyType, c.RenewBeforeDays, c.Note, reuse, string(notifyTo),
 		paused, c.DeployWindow, now, now).Scan(&id)
 	if err != nil {
 		return 0, err
@@ -420,6 +455,36 @@ func (s *service) insertIssued(ctx context.Context, tx *sql.Tx, c Certificate) (
 		return 0, err
 	}
 	return id, nil
+}
+
+// checkBackup returns what is wrong with instance id as the backup of
+// source, instance sourceID, which proves control of the domains through
+// solver, if it needs to: "" for nothing.
+func (s *service) checkBackup(ctx context.Context, id, sourceID int64, source, solver *providers.Type) i18n.Key {
+	if code := s.checkProvider(ctx, id, providers.Source); code != "" {
+		return code
+	}
+	typ, err := s.providers.Type(ctx, id)
+	switch {
+	case err != nil:
+		return i18n.KernelErrorInternal
+	case source == nil:
+		return i18n.CertsErrorBackupSource
+	}
+	return backupProblem(id, sourceID, typ, *source, solver)
+}
+
+// backupProblem tells why instance backupID, of type backup, cannot stand
+// in for instance sourceID, of type source, proving control of the domains
+// through solver, if any: "" when it can.
+func backupProblem(backupID, sourceID int64, backup, source providers.Type, solver *providers.Type) i18n.Key {
+	switch {
+	case !backup.Backup || backupID == sourceID || source.OwnKey:
+		return i18n.CertsErrorBackupSource
+	case backup.NeedsSolver && (solver == nil || !backup.Takes(*solver)):
+		return i18n.CertsErrorBackupSolver
+	}
+	return ""
 }
 
 // checkProvider returns what is wrong with using instance id as a provider
