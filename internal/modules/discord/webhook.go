@@ -97,7 +97,8 @@ func color(event string) int {
 	switch event {
 	case contracts.CertificateIssueFailed, contracts.CertificateDeployFailed:
 		return colorDanger
-	case contracts.CertificateExpiring, contracts.CertificateServedOld:
+	case contracts.CertificateExpiring, contracts.CertificateServedOld, contracts.CertificateChainIncomplete,
+		contracts.CertificateSpotted:
 		return colorWarn
 	case contracts.CertificateIssued, contracts.CertificateDeployed:
 		return colorOK

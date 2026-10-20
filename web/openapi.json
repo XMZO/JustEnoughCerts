@@ -488,6 +488,11 @@
             "format": "int64",
             "type": "integer"
           },
+          "incomplete": {
+            "description": "The domains that serve the version in use without the intermediates clients need",
+            "format": "int64",
+            "type": "integer"
+          },
           "old": {
             "description": "The domains that still serve an older certificate",
             "format": "int64",
@@ -501,7 +506,8 @@
         "required": [
           "certificateId",
           "old",
-          "unreachable"
+          "unreachable",
+          "incomplete"
         ],
         "type": "object"
       },
@@ -1244,6 +1250,10 @@
           "fingerprint": {
             "description": "SHA-256 of the certificate served, lowercase hex",
             "type": "string"
+          },
+          "incomplete": {
+            "description": "The version in use was served without the intermediates clients need: browsers on computers fetch them, many apps, Android and curl fail",
+            "type": "boolean"
           },
           "issuer": {
             "description": "Who issued the certificate served",

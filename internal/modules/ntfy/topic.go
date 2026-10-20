@@ -120,7 +120,8 @@ func (t *topic) Notify(ctx context.Context, n contracts.Note) error {
 // style is the priority and the tag, an emoji, of the notes about event.
 func style(event string) (int, string) {
 	switch event {
-	case contracts.CertificateIssueFailed, contracts.CertificateDeployFailed, contracts.CertificateExpiring, contracts.CertificateServedOld:
+	case contracts.CertificateIssueFailed, contracts.CertificateDeployFailed, contracts.CertificateExpiring, contracts.CertificateServedOld, contracts.CertificateChainIncomplete,
+		contracts.CertificateSpotted:
 		return 4, "warning"
 	case contracts.CertificateIssued, contracts.CertificateDeployed:
 		return 3, "white_check_mark"

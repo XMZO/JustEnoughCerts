@@ -1996,6 +1996,7 @@
     },
     "notify": {
       "event": {
+        "chain_incomplete": "A website serves the certificate without its intermediates",
         "deploy_failed": "When a deployment fails",
         "deployed": "When a deployment succeeds",
         "digest": "A weekly digest, on Monday morning",
@@ -2349,6 +2350,7 @@
       "name": "Online checks"
     },
     "note": {
+      "chain_incomplete": "Intermediates missing",
       "served_old": "A domain still serves the old certificate"
     },
     "section": {
@@ -2359,6 +2361,7 @@
       "untracked": "Not checked yet: the checks start once the monitor knows the version in use."
     },
     "state": {
+      "incomplete": "Without the intermediates: some apps, Android devices and curl fail to verify it. Deploy the full chain.",
       "ok": "Serves the version in use",
       "old": "Still serves an older certificate, which ends on {date}",
       "other": "Serves another certificate, not one JEC deployed: from {issuer}, ending on {date}",
@@ -2457,6 +2460,8 @@
     },
     "note": {
       "also": "The certificate also covers {names}.",
+      "chain_incomplete": "The website sends the certificate but not its intermediates. Browsers on computers fetch them themselves; many apps, Android devices and curl fail to verify it. Deploy the full chain, with the intermediates (such as fullchain.pem).",
+      "chain_incomplete_title": "{domain} serves its certificate without the intermediates",
       "deploy_failed": {
         "title": "Could not deploy {domain} to {target}"
       },

@@ -71,6 +71,7 @@ type tally struct {
 	CertificateID int64 `json:"certificateId"`
 	Old           int   `json:"old"`
 	Unreachable   int   `json:"unreachable"`
+	Incomplete    int   `json:"incomplete"`
 }
 
 type promOutput struct {
@@ -206,6 +207,10 @@ func (m *Module) render(ctx context.Context) ([]byte, error) {
 		family("jec_certificate_unreachable", "gauge", "The domains of a certificate that answered nothing over TLS on port 443.")
 		for _, c := range certs {
 			fmt.Fprintf(&b, "jec_certificate_unreachable{%s} %d\n", labels(c), byID[c.ID].Unreachable)
+		}
+		family("jec_certificate_chain_incomplete", "gauge", "The domains of a certificate that serve it without the intermediates clients need.")
+		for _, c := range certs {
+			fmt.Fprintf(&b, "jec_certificate_chain_incomplete{%s} %d\n", labels(c), byID[c.ID].Incomplete)
 		}
 	}
 	// The watched sites, unless their module is off.

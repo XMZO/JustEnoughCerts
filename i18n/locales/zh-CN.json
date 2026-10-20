@@ -1996,6 +1996,7 @@
     },
     "notify": {
       "event": {
+        "chain_incomplete": "网站发送的证书链不完整（缺少中间证书）时通知",
         "deploy_failed": "部署失败时通知",
         "deployed": "部署成功时通知",
         "digest": "每周一上午发一份概况",
@@ -2349,6 +2350,7 @@
       "name": "线上巡检"
     },
     "note": {
+      "chain_incomplete": "缺少中间证书",
       "served_old": "线上还是旧证书"
     },
     "section": {
@@ -2359,6 +2361,7 @@
       "untracked": "还没开始检查：巡检知道当前版本后就会自动检查。"
     },
     "state": {
+      "incomplete": "缺少中间证书：部分 App、安卓设备和 curl 会验证失败，请部署完整证书链。",
       "ok": "线上是当前证书",
       "old": "线上还是旧证书，{date} 到期",
       "other": "线上是另一张证书（不是 JEC 部署的）：{issuer} 签发，{date} 到期",
@@ -2457,6 +2460,8 @@
     },
     "note": {
       "also": "这张证书还包括：{names}",
+      "chain_incomplete": "网站只发送了证书本身，没有发送中间证书。电脑上的浏览器会自行补齐，但许多 App、安卓设备和 curl 会验证失败。请部署包含中间证书的完整证书链（如 fullchain.pem）。",
+      "chain_incomplete_title": "{domain} 缺少中间证书",
       "deploy_failed": {
         "title": "{domain} 部署到 {target} 失败"
       },

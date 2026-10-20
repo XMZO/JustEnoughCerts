@@ -78,6 +78,12 @@ does, and verifies the certificate actually served:
 - if the old certificate is still served 30 minutes after the current
   version took effect, for example because a CDN has not applied it, a
   notification is sent;
+- likewise if the current version is served without its intermediates,
+  as when only the certificate was deployed and not the full chain.
+  Browsers on computers fetch the intermediates themselves; many apps,
+  Android devices and curl fail. JEC tells of it only when the chain
+  verifies once the issuers its certificates name (AIA) are fetched, so a
+  private CA's certificate raises nothing;
 - the Online check section of the certificate's page shows the result for
   each domain, and can run a check at once.
 

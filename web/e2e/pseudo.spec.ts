@@ -769,11 +769,26 @@ test('every page is translated and fits', async ({ page }, info) => {
     body.versions = versions
     await route.fulfill({ response: res, json: body })
   })
+  // The online check, made up as well: a domain served without the
+  // intermediates, one with an older version.
+  const monitorRoute = `**/api/v1/monitor/certificates/${issuedId}`
+  await page.route(monitorRoute, (route) =>
+    route.fulfill({
+      json: {
+        tracked: true, checkAt: at(0.25), skipped: ['*.issued.example.com'],
+        results: [
+          { domain: 'issued.example.com', state: 'ok', fingerprint: 'a'.repeat(64), notAfter: at(80), issuer: 'Fake CA', incomplete: true, checkedAt: at(0) },
+          { domain: 'www.issued.example.com', state: 'old', fingerprint: 'b'.repeat(64), notAfter: at(20), issuer: 'Fake CA', checkedAt: at(0) },
+        ],
+      },
+    }),
+  )
   await page.reload()
+  await expect(page.getByText(label('monitor.state.incomplete'))).toBeVisible()
   const versionRows = page.locator('section[aria-labelledby=versions] li')
   await expect(versionRows).toHaveCount(3)
   await expect(page.getByText(label('certs.detail.revoked_renewing'))).toBeVisible()
-  expect.soft(await problems(page), 'versions, one revocable and one revoked').toEqual([])
+  expect.soft(await problems(page), 'versions, one revocable and one revoked; an online check').toEqual([])
   await versionRows.nth(1).getByRole('button').first().click()
   await expect(page.locator('dialog[open]')).toBeVisible()
   expect.soft(await problems(page), 'revoke a version').toEqual([])
@@ -783,6 +798,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'revoke a version, refused').toEqual([])
   await page.keyboard.press('Escape')
   await page.unroute(detailRoute)
+  await page.unroute(monitorRoute)
   // One like it: the add page starts from its source, validation and
   // targets.
   await page.goto(`./certificates/new?from=${issuedId}`)

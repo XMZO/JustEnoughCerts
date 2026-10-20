@@ -321,6 +321,11 @@ func (s *service) note(ctx context.Context, tag language.Tag, ev events.Event, d
 			n.Title = w.text(i18n.NotifyNoteServedOldTitle, i18n.Args{"domain": c.Domain})
 			lines = append(lines, w.text(i18n.NotifyNoteServedOld, i18n.Args{"served": w.day(c.NotAfter), "current": w.day(d.NotAfter)}))
 		}
+	case contracts.CertificateChainIncomplete:
+		if c := d.Check; c != nil {
+			n.Title = w.text(i18n.NotifyNoteChainIncompleteTitle, i18n.Args{"domain": c.Domain})
+			lines = append(lines, w.text(i18n.NotifyNoteChainIncomplete, nil))
+		}
 	case contracts.CertificateRevoked:
 		n.Title = w.text(i18n.NotifyNoteRevokedTitle, i18n.Args{"domain": domain})
 		if r := d.Revocation; r != nil {

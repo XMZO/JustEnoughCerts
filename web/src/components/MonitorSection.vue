@@ -10,7 +10,8 @@ import JecAlert from './JecAlert.vue'
 import JecButton from './JecButton.vue'
 
 // The online check of a certificate (module monitor): what each domain
-// served the last time it was connected to, with a way to check now; the
+// served the last time it was connected to, and whether without its
+// intermediates, with a way to check now; the
 // domains that served the same, as visitors from the same side see them,
 // share a row. It shows only while the module runs.
 const props = defineProps<{ id: number }>()
@@ -41,7 +42,7 @@ const views: Record<NonNullable<MonitorResult['view']>, MessageKey> = {
 const rows = computed(() => {
   const out: { key: string; domains: string[]; result: MonitorResult; at: string }[] = []
   for (const r of body.value?.results ?? []) {
-    const key = [r.view, r.state, r.fingerprint, r.issuer, r.notAfter, r.error].map((x) => x ?? '').join('|')
+    const key = [r.view, r.state, r.fingerprint, r.issuer, r.notAfter, r.error, r.incomplete].map((x) => x ?? '').join('|')
     const row = out.find((x) => x.key === key)
     if (!row) out.push({ key, domains: [r.domain], result: r, at: r.checkedAt })
     else {
@@ -89,7 +90,11 @@ function line(r: MonitorResult): string {
       </p>
       <ul v-else class="m-0 flex list-none flex-col p-0">
         <li v-for="row in rows" :key="row.key" class="flex items-start gap-2 border-b border-line py-1.5 last:border-b-0">
-          <component :is="looks[row.result.state].icon" :class="['mt-0.5 size-4 flex-none', looks[row.result.state].tone]" aria-hidden="true" />
+          <component
+            :is="row.result.incomplete ? TriangleAlert : looks[row.result.state].icon"
+            :class="['mt-0.5 size-4 flex-none', row.result.incomplete ? 'text-warn-ink' : looks[row.result.state].tone]"
+            aria-hidden="true"
+          />
           <div class="min-w-0 flex-1">
             <span class="flex flex-wrap items-center gap-x-2">
               <span v-for="d in row.domains" :key="d" class="font-semibold [overflow-wrap:anywhere]" translate="no">{{ d }}</span>
@@ -99,6 +104,7 @@ function line(r: MonitorResult): string {
               <span>{{ line(row.result) }}</span>
               <time class="text-caption text-ink-muted tabular-nums" :datetime="row.at">{{ intl.dateTime(row.at) }}</time>
             </span>
+            <span v-if="row.result.incomplete" class="block text-small font-semibold text-warn-ink">{{ t('monitor.state.incomplete') }}</span>
             <span v-if="row.result.error" class="block font-mono text-caption text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ row.result.error }}</span>
           </div>
         </li>

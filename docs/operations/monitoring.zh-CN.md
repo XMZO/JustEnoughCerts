@@ -35,6 +35,7 @@ scrape_configs:
 | `jec_certificate_deployments_failed` | 最近一次部署失败的部署目标数 |
 | `jec_certificate_served_old` | 仍在提供旧证书的域名数（需启用线上巡检模块） |
 | `jec_certificate_unreachable` | 443 端口无 TLS 响应的域名数（同上） |
+| `jec_certificate_chain_incomplete` | 提供当前版本但缺少中间证书的域名数（同上） |
 | `jec_certificates` | 各状态的证书数 |
 | `jec_build_info` | JEC 的版本（标签 `version`） |
 | `jec_site_expiry_timestamp_seconds` | [监控的站点](../usage/sites.zh-CN.md)上次所见证书的到期时间，标签为 `host` 与 `port` |

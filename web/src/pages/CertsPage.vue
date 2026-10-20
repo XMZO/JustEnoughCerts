@@ -43,11 +43,12 @@ const error = computed(() => {
   return err instanceof ApiError ? err : networkError
 })
 
-// Domains that still serve an older certificate, as the monitor found,
-// need attention too.
+// Domains that still serve an older certificate, or this one without its
+// intermediates, as the monitor found, need attention too.
 const monitorStates = useMonitorStates()
 const servedOld = (c: Certificate) => (monitorStates.data.value?.get(c.id)?.old ?? 0) > 0
-const attention = (c: Certificate) => needsAttention(c) || servedOld(c)
+const chainIncomplete = (c: Certificate) => (monitorStates.data.value?.get(c.id)?.incomplete ?? 0) > 0
+const attention = (c: Certificate) => needsAttention(c) || servedOld(c) || chainIncomplete(c)
 
 type Filter = 'all' | 'attention' | 'ok'
 const filter = ref<Filter>('all')
@@ -131,6 +132,7 @@ interface Row {
 /** note says why a certificate needs attention. */
 function note(c: Certificate): string {
   if (servedOld(c) && (c.state === 'ok' || c.state === 'deploying')) return t('monitor.note.served_old')
+  if (chainIncomplete(c) && (c.state === 'ok' || c.state === 'deploying')) return t('monitor.note.chain_incomplete')
   if (c.state === 'failed') return issueNote(c)
   if (c.state === 'deploy_failed') return deployNote(c)
   if (c.state === 'revoked') return revokedNote(c)

@@ -83,7 +83,8 @@ func (u *user) Notify(ctx context.Context, n contracts.Note) error {
 		form.Set("url_title", "JEC")
 	}
 	switch n.Event {
-	case contracts.CertificateIssueFailed, contracts.CertificateDeployFailed, contracts.CertificateExpiring, contracts.CertificateServedOld:
+	case contracts.CertificateIssueFailed, contracts.CertificateDeployFailed, contracts.CertificateExpiring, contracts.CertificateServedOld, contracts.CertificateChainIncomplete,
+		contracts.CertificateSpotted:
 		form.Set("priority", "1")
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.endpoint, strings.NewReader(form.Encode()))

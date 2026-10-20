@@ -105,7 +105,8 @@ func (a *app) Notify(ctx context.Context, n contracts.Note) error {
 // priority is that of the notes about event.
 func priority(event string) int {
 	switch event {
-	case contracts.CertificateIssueFailed, contracts.CertificateDeployFailed, contracts.CertificateExpiring, contracts.CertificateServedOld:
+	case contracts.CertificateIssueFailed, contracts.CertificateDeployFailed, contracts.CertificateExpiring, contracts.CertificateServedOld, contracts.CertificateChainIncomplete,
+		contracts.CertificateSpotted:
 		return priorityHigh
 	}
 	return priorityNormal

@@ -23,6 +23,7 @@ type DomainCheckBody struct {
 	NotAfter    *time.Time `json:"notAfter,omitempty" doc:"When the certificate served ends"`
 	Issuer      string     `json:"issuer,omitempty" doc:"Who issued the certificate served"`
 	Error       string     `json:"error,omitempty" doc:"Why the connection failed, as Go put it"`
+	Incomplete  bool       `json:"incomplete,omitempty" doc:"The version in use was served without the intermediates clients need: browsers on computers fetch them, many apps, Android and curl fail"`
 	CheckedAt   time.Time  `json:"checkedAt"`
 }
 
@@ -41,6 +42,9 @@ type CheckTallyBody struct {
 	Old int `json:"old" doc:"The domains that still serve an older certificate"`
 	// Unreachable counts those it could not connect to.
 	Unreachable int `json:"unreachable"`
+	// Incomplete counts those that serve the version without its
+	// intermediates.
+	Incomplete int `json:"incomplete" doc:"The domains that serve the version in use without the intermediates clients need"`
 }
 
 type idInput struct {
@@ -80,8 +84,9 @@ func registerAPI(a huma.API, m *Module) {
 		Summary: "Sum up the checks of every certificate",
 	}, func(ctx context.Context, _ *struct{}) (*statesOutput, error) {
 		rows, err := m.db.QueryContext(ctx,
-			`SELECT certificate_id, count(CASE WHEN state = 'old' THEN 1 END), count(CASE WHEN state = 'unreachable' THEN 1 END) FROM monitor_results
-			 GROUP BY certificate_id ORDER BY certificate_id`)
+			`SELECT certificate_id, count(CASE WHEN state = 'old' THEN 1 END), count(CASE WHEN state = 'unreachable' THEN 1 END),
+			   count(CASE WHEN state = 'ok' AND incomplete = 1 THEN 1 END)
+			 FROM monitor_results GROUP BY certificate_id ORDER BY certificate_id`)
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +95,7 @@ func registerAPI(a huma.API, m *Module) {
 		out.Body.Certificates = []CheckTallyBody{}
 		for rows.Next() {
 			var s CheckTallyBody
-			if err := rows.Scan(&s.CertificateID, &s.Old, &s.Unreachable); err != nil {
+			if err := rows.Scan(&s.CertificateID, &s.Old, &s.Unreachable, &s.Incomplete); err != nil {
 				return nil, err
 			}
 			out.Body.Certificates = append(out.Body.Certificates, s)
@@ -113,7 +118,7 @@ func (m *Module) output(ctx context.Context, id int64) (*certificateOutput, erro
 	checkAt := t.checkAt.UTC()
 	out.Body.CheckAt = &checkAt
 	rows, err := m.db.QueryContext(ctx,
-		"SELECT domain, view, state, fingerprint, not_after, issuer, error, checked_at FROM monitor_results WHERE certificate_id = ? ORDER BY view", id)
+		"SELECT domain, view, state, fingerprint, not_after, issuer, error, checked_at, incomplete FROM monitor_results WHERE certificate_id = ? ORDER BY view", id)
 	if err != nil {
 		return nil, err
 	}
@@ -121,10 +126,11 @@ func (m *Module) output(ctx context.Context, id int64) (*certificateOutput, erro
 	byDomain := map[string][]DomainCheckBody{}
 	for rows.Next() {
 		var r DomainCheckBody
-		var notAfter, checked int64
-		if err := rows.Scan(&r.Domain, &r.View, &r.State, &r.Fingerprint, &notAfter, &r.Issuer, &r.Error, &checked); err != nil {
+		var notAfter, checked, incomplete int64
+		if err := rows.Scan(&r.Domain, &r.View, &r.State, &r.Fingerprint, &notAfter, &r.Issuer, &r.Error, &checked, &incomplete); err != nil {
 			return nil, err
 		}
+		r.Incomplete = incomplete == 1 && r.State == stateOK
 		if notAfter != 0 {
 			na := time.UnixMilli(notAfter).UTC()
 			r.NotAfter = &na

@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -8,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -182,6 +184,9 @@ type result struct {
 	// for the domain: what tells an older version from another's.
 	ca    string
 	valid bool
+	// incomplete tells that the version in use was served without the
+	// intermediates clients need.
+	incomplete bool
 }
 
 // view is how visitors reach a domain: through address, or through the
@@ -219,7 +224,7 @@ func (m *Module) check(ctx context.Context, id int64) ([]result, error) {
 		wg.Go(func() {
 			slots <- struct{}{}
 			defer func() { <-slots }()
-			results[i] = m.probe(ctx, j.domain, j.view)
+			results[i] = m.probe(ctx, j.domain, j.view, t.fingerprint)
 		})
 	}
 	wg.Wait()
@@ -259,10 +264,24 @@ func (m *Module) check(ctx context.Context, id int64) ([]result, error) {
 	kept := map[[2]string]bool{}
 	for _, r := range results {
 		kept[[2]string{r.domain, r.view}] = true
-		var alerted string
-		if err := tx.QueryRowContext(ctx, "SELECT alerted FROM monitor_results WHERE certificate_id = ? AND domain = ? AND view = ?",
-			id, r.domain, r.view).Scan(&alerted); err != nil && !errors.Is(err, sql.ErrNoRows) {
+		var alerted, chainAlerted string
+		if err := tx.QueryRowContext(ctx, "SELECT alerted, chain_alerted FROM monitor_results WHERE certificate_id = ? AND domain = ? AND view = ?",
+			id, r.domain, r.view).Scan(&alerted, &chainAlerted); err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, err
+		}
+		// A chain served without its intermediates, told once for the version.
+		if r.state == stateOK && r.incomplete && settled && chainAlerted != t.fingerprint {
+			err := m.events.PublishTx(ctx, tx, contracts.CertificateChainIncomplete, strconv.FormatInt(id, 10), contracts.CertificateEvent{
+				CertificateID: id, Domains: t.domains, VersionID: t.version, Fingerprint: t.fingerprint, NotAfter: t.notAfter.UTC(),
+				Check: &contracts.Check{Domain: r.domain, View: r.view, Fingerprint: r.fingerprint, NotAfter: r.notAfter.UTC()},
+			})
+			if err != nil {
+				return nil, err
+			}
+			chainAlerted = t.fingerprint
+		}
+		if r.incomplete && !settled {
+			next = earliest(next, t.currentSince.Add(grace))
 		}
 		switch {
 		case r.state == stateOld && settled && alerted != t.fingerprint:
@@ -289,13 +308,17 @@ func (m *Module) check(ctx context.Context, id int64) ([]result, error) {
 		if !r.notAfter.IsZero() {
 			notAfter = r.notAfter.UnixMilli()
 		}
+		incomplete := 0
+		if r.incomplete {
+			incomplete = 1
+		}
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO monitor_results (certificate_id, domain, view, state, fingerprint, not_after, issuer, error, checked_at, alerted)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`INSERT INTO monitor_results (certificate_id, domain, view, state, fingerprint, not_after, issuer, error, checked_at, alerted, incomplete, chain_alerted)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			 ON CONFLICT (certificate_id, domain, view) DO UPDATE SET state = excluded.state, fingerprint = excluded.fingerprint,
 			   not_after = excluded.not_after, issuer = excluded.issuer, error = excluded.error, checked_at = excluded.checked_at,
-			   alerted = excluded.alerted`,
-			id, r.domain, r.view, r.state, r.fingerprint, notAfter, r.issuer, r.err, now.UnixMilli(), alerted); err != nil {
+			   alerted = excluded.alerted, incomplete = excluded.incomplete, chain_alerted = excluded.chain_alerted`,
+			id, r.domain, r.view, r.state, r.fingerprint, notAfter, r.issuer, r.err, now.UnixMilli(), alerted, incomplete, chainAlerted); err != nil {
 			return nil, err
 		}
 	}
@@ -353,7 +376,8 @@ func merged(results []result) []result {
 	for i := 0; i < len(results); i++ {
 		r := results[i]
 		if r.view == viewChina && i+1 < len(results) {
-			if g := results[i+1]; g.domain == r.domain && g.view == viewGlobal && g.fingerprint == r.fingerprint && (g.err == "") == (r.err == "") {
+			if g := results[i+1]; g.domain == r.domain && g.view == viewGlobal && g.fingerprint == r.fingerprint && (g.err == "") == (r.err == "") &&
+				g.incomplete == r.incomplete {
 				r.view = viewAll
 				i++
 			}
@@ -364,17 +388,68 @@ func merged(results []result) []result {
 }
 
 // probe connects to domain as visitors of v reach it and says what it
-// served.
-func (m *Module) probe(ctx context.Context, domain string, v view) result {
+// served; for the version in use, by its fingerprint, whether the chain
+// served is complete.
+func (m *Module) probe(ctx context.Context, domain string, v view, fingerprint string) result {
 	r := result{domain: domain, view: v.name}
-	leaf, err := m.serve(ctx, domain, v.address)
+	certs, err := m.serve(ctx, domain, v.address)
 	if err != nil {
 		r.state, r.err = stateUnreachable, truncate(err.Error(), 500)
 		return r
 	}
+	leaf := certs[0]
 	r.fingerprint, r.notAfter, r.issuer = cryptox.Fingerprint(leaf), leaf.NotAfter, issuerName(leaf)
 	r.ca, r.valid = caOf(leaf), leaf.VerifyHostname(domain) == nil
+	if r.fingerprint == fingerprint {
+		r.incomplete = m.incomplete(ctx, domain, certs)
+	}
 	return r
+}
+
+// incomplete tells that certs, as a server sent them for domain, lack an
+// intermediate: they reach no trusted root as sent, but do with the
+// issuers the certificates name (AIA) fetched. Browsers on computers fetch
+// those themselves; many apps, Android and curl do not. A chain that does
+// not verify for another reason, as one of a private CA, is not told.
+func (m *Module) incomplete(ctx context.Context, domain string, certs []*x509.Certificate) bool {
+	leaf := certs[0]
+	pool := x509.NewCertPool()
+	for _, c := range certs[1:] {
+		pool.AddCert(c)
+	}
+	opts := x509.VerifyOptions{DNSName: domain, Intermediates: pool, Roots: m.roots}
+	_, err := leaf.Verify(opts)
+	var unknown x509.UnknownAuthorityError
+	if err == nil || !errors.As(err, &unknown) || m.issuers == nil {
+		return false
+	}
+	b := &cryptox.Bundle{Leaf: leaf, Chain: chainOf(leaf, certs[1:])}
+	if err := m.issuers(ctx, b); err != nil {
+		return false
+	}
+	for _, c := range b.Chain {
+		pool.AddCert(c)
+	}
+	_, err = leaf.Verify(opts)
+	return err == nil
+}
+
+// chainOf puts the intermediates sent in order from leaf up, as far as
+// they go, for the missing ones to be fetched from the last.
+func chainOf(leaf *x509.Certificate, sent []*x509.Certificate) []*x509.Certificate {
+	var chain []*x509.Certificate
+	cur := leaf
+	for range sent {
+		i := slices.IndexFunc(sent, func(c *x509.Certificate) bool {
+			return bytes.Equal(cur.RawIssuer, c.RawSubject) && cur.CheckSignatureFrom(c) == nil
+		})
+		if i < 0 || slices.Contains(chain, sent[i]) {
+			break
+		}
+		chain = append(chain, sent[i])
+		cur = sent[i]
+	}
+	return chain
 }
 
 // classify says what r served compared with the version t uses, whose CA is
@@ -402,18 +477,18 @@ func caOf(c *x509.Certificate) string {
 }
 
 // served connects to address, or to domain when "", on port 443 as a
-// browser does for domain, and returns the leaf of what it serves.
-func served(ctx context.Context, domain, address string) (*x509.Certificate, error) {
+// browser does for domain, and returns what it serves, leaf first.
+func served(ctx context.Context, domain, address string) ([]*x509.Certificate, error) {
 	if address == "" {
 		address = domain
 	}
 	return servedAt(ctx, domain, net.JoinHostPort(address, "443"))
 }
 
-// servedAt connects to address for domain and returns the leaf it serves.
-// It does not verify it: what matters is which certificate it is, valid or
-// not.
-func servedAt(ctx context.Context, domain, address string) (*x509.Certificate, error) {
+// servedAt connects to address for domain and returns what it serves, leaf
+// first. It does not verify it: what matters is which certificate it is,
+// valid or not.
+func servedAt(ctx context.Context, domain, address string) ([]*x509.Certificate, error) {
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
 	d := tls.Dialer{Config: &tls.Config{ServerName: domain, InsecureSkipVerify: true}} //nolint:gosec // it looks at the certificate served, valid or not
@@ -426,7 +501,7 @@ func servedAt(ctx context.Context, domain, address string) (*x509.Certificate, e
 	if len(certs) == 0 {
 		return nil, errors.New("the server sent no certificate")
 	}
-	return certs[0], nil
+	return certs, nil
 }
 
 // issuerName is what the UI shows of the issuer of a certificate.

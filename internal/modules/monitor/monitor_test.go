@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/x509"
@@ -12,7 +13,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -38,8 +41,9 @@ type fixture struct {
 	now time.Time
 
 	mu      sync.Mutex
-	served  map[string]*x509.Certificate // by domain, or by the address of a view; none is unreachable
-	targets map[string][2]string         // where the DNS of a domain sends mainland China and elsewhere
+	served  map[string][]*x509.Certificate // by domain, or by the address of a view, leaf first; none is unreachable
+	targets map[string][2]string           // where the DNS of a domain sends mainland China and elsewhere
+	fetched int                            // the chains completed
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -57,9 +61,9 @@ func newFixture(t *testing.T) *fixture {
 	}
 	bus := events.New(st.DB(), slog.New(slog.DiscardHandler), func(string) bool { return true })
 	bus.Seal()
-	f := &fixture{t: t, ca: cryptoxtest.NewCA(t), now: start, served: map[string]*x509.Certificate{}, targets: map[string][2]string{}}
+	f := &fixture{t: t, ca: cryptoxtest.NewCA(t), now: start, served: map[string][]*x509.Certificate{}, targets: map[string][2]string{}}
 	f.m = &Module{now: func() time.Time { return f.now }, db: st.DB(), events: bus.Scope("monitor"), log: slog.New(slog.DiscardHandler)}
-	f.m.serve = func(_ context.Context, domain, address string) (*x509.Certificate, error) {
+	f.m.serve = func(_ context.Context, domain, address string) ([]*x509.Certificate, error) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
 		if address == "" {
@@ -69,6 +73,18 @@ func newFixture(t *testing.T) *fixture {
 			return c, nil
 		}
 		return nil, errors.New("dial tcp: connection refused")
+	}
+	// The test CA's root is trusted; its intermediate can be fetched.
+	f.m.roots = x509.NewCertPool()
+	f.m.roots.AddCert(f.ca.Root)
+	f.m.issuers = func(_ context.Context, b *cryptox.Bundle) error {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		f.fetched++
+		if len(b.Chain) == 0 && bytes.Equal(b.Leaf.RawIssuer, f.ca.Intermediate.RawSubject) {
+			b.Chain = append(b.Chain, f.ca.Intermediate)
+		}
+		return nil
 	}
 	// A DNS that does not answer by region, unless split says otherwise.
 	f.m.target = func(_ context.Context, name string, subnet netip.Prefix) (string, error) {
@@ -121,10 +137,19 @@ func (f *fixture) foreign(org string, days int, names ...string) *x509.Certifica
 	return c
 }
 
+// serve has domain serve c with the test CA's intermediate, as a server
+// set up right does.
 func (f *fixture) serve(domain string, c *x509.Certificate) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.served[domain] = c
+	f.served[domain] = []*x509.Certificate{c, f.ca.Intermediate}
+}
+
+// serveAlone has domain serve c without the intermediate.
+func (f *fixture) serveAlone(domain string, c *x509.Certificate) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.served[domain] = []*x509.Certificate{c}
 }
 
 // tell hands the module an event of the certs module about certificate 1.
@@ -163,9 +188,12 @@ func (f *fixture) checkAt() time.Time {
 }
 
 // alerts are the CertificateServedOld events published, by domain.
-func (f *fixture) alerts() []string {
+func (f *fixture) alerts() []string { return f.events(contracts.CertificateServedOld) }
+
+// events are the events of type typ published, by domain.
+func (f *fixture) events(typ string) []string {
 	f.t.Helper()
-	rows, err := f.m.db.QueryContext(f.t.Context(), "SELECT data FROM kernel_events WHERE type = ? ORDER BY id", contracts.CertificateServedOld)
+	rows, err := f.m.db.QueryContext(f.t.Context(), "SELECT data FROM kernel_events WHERE type = ? ORDER BY id", typ)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -215,6 +243,57 @@ func TestTrack(t *testing.T) {
 	f.tell(contracts.CertificateDeleted, 0, nil)
 	if b := f.certificate(); b.Tracked {
 		t.Errorf("deleted, still %+v", b)
+	}
+}
+
+func TestChainIncomplete(t *testing.T) {
+	f := newFixture(t)
+	// Chains are verified at the time it is, as the test CA was made.
+	v1 := f.ca.Leaf(t, cryptoxtest.NewKey(t), time.Now().Add(-time.Hour), time.Now().Add(90*24*time.Hour), "example.com", "www.example.com")
+	f.tell(contracts.CertificateIssued, 1, v1)
+	f.serve("example.com", v1)
+	f.serveAlone("www.example.com", v1) // set up with the certificate alone
+	f.tell(contracts.CertificateDeployed, 1, v1)
+	f.now = start.Add(afterDeploy)
+	if err := f.m.checkDue(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	b := f.certificate()
+	if len(b.Results) != 2 || b.Results[0].Incomplete || !b.Results[1].Incomplete || b.Results[1].State != stateOK {
+		t.Fatalf("results %+v", b.Results)
+	}
+	if f.fetched != 1 {
+		t.Errorf("chains completed: %d, want only the one served alone", f.fetched)
+	}
+	// Told of once the grace is over, once.
+	if got := f.events(contracts.CertificateChainIncomplete); len(got) != 0 {
+		t.Fatalf("told before the grace was over: %v", got)
+	}
+	if got := f.checkAt(); !got.Equal(start.Add(grace)) {
+		t.Errorf("next check %s, want the end of the grace", got)
+	}
+	for range 2 {
+		f.now = f.now.Add(grace)
+		if err := f.m.checkDue(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := f.events(contracts.CertificateChainIncomplete); !slices.Equal(got, []string{"www.example.com"}) {
+		t.Fatalf("told %v", got)
+	}
+	resp := f.api.Get("/states")
+	if !strings.Contains(resp.Body.String(), `"incomplete":1`) {
+		t.Errorf("states %s", resp.Body)
+	}
+
+	// A chain that cannot be completed, as one of a private CA, is not told.
+	f.serveAlone("www.example.com", f.foreign("Private", 30, "www.example.com"))
+	f.tell(contracts.CertificateCurrent, 2, f.served["www.example.com"][0])
+	if err := f.m.checkDue(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if b := f.certificate(); b.Results[1].Incomplete || b.Results[1].State != stateOK {
+		t.Fatalf("a private CA's: %+v", b.Results[1])
 	}
 }
 
@@ -296,7 +375,7 @@ func TestStates(t *testing.T) {
 		t.Errorf("results %+v", b.Results)
 	}
 	resp = f.api.Get("/states")
-	if resp.Code != http.StatusOK || resp.Body.String() != `{"certificates":[{"certificateId":1,"old":0,"unreachable":1}]}`+"\n" {
+	if resp.Code != http.StatusOK || resp.Body.String() != `{"certificates":[{"certificateId":1,"old":0,"unreachable":1,"incomplete":0}]}`+"\n" {
 		t.Errorf("states = %d %s", resp.Code, resp.Body.String())
 	}
 	if resp := f.api.Post("/certificates/" + strconv.Itoa(2) + "/check"); resp.Code != http.StatusNotFound {
@@ -307,9 +386,9 @@ func TestStates(t *testing.T) {
 func TestServedAt(t *testing.T) {
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	defer srv.Close()
-	leaf, err := servedAt(t.Context(), "example.com", srv.Listener.Addr().String())
-	if err != nil || !leaf.Equal(srv.Certificate()) {
-		t.Errorf("served %v, %v", leaf, err)
+	certs, err := servedAt(t.Context(), "example.com", srv.Listener.Addr().String())
+	if err != nil || len(certs) != 1 || !certs[0].Equal(srv.Certificate()) {
+		t.Errorf("served %v, %v", certs, err)
 	}
 	if _, err := servedAt(t.Context(), "example.com", "127.0.0.1:1"); err == nil {
 		t.Error("nothing listening, and no error")

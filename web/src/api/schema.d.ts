@@ -1631,6 +1631,11 @@ export interface components {
             certificateId: number;
             /**
              * Format: int64
+             * @description The domains that serve the version in use without the intermediates clients need
+             */
+            incomplete: number;
+            /**
+             * Format: int64
              * @description The domains that still serve an older certificate
              */
             old: number;
@@ -1895,6 +1900,8 @@ export interface components {
             error?: string;
             /** @description SHA-256 of the certificate served, lowercase hex */
             fingerprint?: string;
+            /** @description The version in use was served without the intermediates clients need: browsers on computers fetch them, many apps, Android and curl fail */
+            incomplete?: boolean;
             /** @description Who issued the certificate served */
             issuer?: string;
             /**

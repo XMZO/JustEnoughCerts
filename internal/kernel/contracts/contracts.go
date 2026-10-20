@@ -88,6 +88,11 @@ const (
 	// current, as when a CDN did not take it. Payload CertificateEvent with
 	// VersionID, Fingerprint, NotAfter and Check set.
 	CertificateServedOld = "certificate.served_old"
+	// CertificateChainIncomplete: a domain of a certificate serves the
+	// version in use without the intermediates clients need, a while after
+	// it became current. Payload CertificateEvent with VersionID,
+	// Fingerprint, NotAfter and Check set.
+	CertificateChainIncomplete = "certificate.chain_incomplete"
 )
 
 // Events of the sites module, which watches the certificates of sites JEC
