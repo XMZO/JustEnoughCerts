@@ -2034,6 +2034,7 @@
         "issue_failed": "签发失败时通知",
         "issued": "有新证书（签发或上传）时通知",
         "locked": "有人连续登录失败、被暂时锁定时通知",
+        "provider_failing": "每日自检发现部署目标、DNS 服务商或证书来源测试失败时通知",
         "revoked": "证书被 CA 吊销时通知",
         "served_old": "网站上还是旧证书",
         "sign_in": "有人登录面板时通知",
@@ -2535,6 +2536,7 @@
       "issue_failed": "签发失败",
       "issued": "新证书",
       "locked": "登录锁定",
+      "provider_failing": "服务商自检失败",
       "revoked": "被吊销",
       "served_old": "线上旧证书",
       "sign_in": "登录",
@@ -2596,6 +2598,11 @@
         "title": "{domain} 有新证书了"
       },
       "link": "详情：{url}",
+      "provider": {
+        "failing_title": "{name} 测试失败",
+        "hint": "JEC 每天测试一次部署目标、DNS 服务商和证书来源。请检查它的设置和密钥，否则之后的签发或部署可能失败。",
+        "problem": "原因：{problem}"
+      },
       "retry": "JEC 会在 {time} 再试一次。",
       "revoked": {
         "manual": "这张证书没有来源，JEC 无法自动重新签发，请尽快换上新证书。",

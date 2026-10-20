@@ -536,3 +536,36 @@ func TestZones(t *testing.T) {
 		}
 	}
 }
+
+func TestCheckAll(t *testing.T) {
+	f := newFixture(t)
+	ok := f.create(map[string]any{"type": "probe.target", "name": "fine"})
+	bad := f.create(map[string]any{"type": "probe.target", "name": "broken", "config": map[string]string{"RESULT": "refused"}})
+	f.create(map[string]any{"type": "dns.acme_dns", "name": "untestable", "config": map[string]string{"API_USER": "u"}, "secrets": map[string]string{"API_KEY": "k"}})
+	var told []contracts.ProviderEvent
+	tell := func(_ context.Context, ev contracts.ProviderEvent) error {
+		told = append(told, ev)
+		return nil
+	}
+	if err := providersapi.CheckAll(t.Context(), f.reg, tell); err != nil {
+		t.Fatal(err)
+	}
+	if len(told) != 1 || told[0].ProviderID != bad.ID || told[0].Name != "broken" || told[0].Kind != "target" ||
+		told[0].Problem.Key != "probe.error.refused" || told[0].Problem.Params["why"] != "no" {
+		t.Fatalf("told %+v", told)
+	}
+	if s, err := f.reg.Get(t.Context(), ok.ID); err != nil || s.LastTest == nil || !s.LastTest.OK {
+		t.Errorf("the fine one kept %+v, %v", s.LastTest, err)
+	}
+	// Still failing the next day: told once.
+	if err := providersapi.CheckAll(t.Context(), f.reg, tell); err != nil || len(told) != 1 {
+		t.Fatalf("told again: %v %+v", err, told)
+	}
+	// Its settings changed, and still failing: told anew.
+	if resp := f.api.Patch("/providers/"+strconv.FormatInt(bad.ID, 10), map[string]any{"config": map[string]string{"RESULT": "odd"}}); resp.Code != http.StatusOK {
+		t.Fatalf("update = %d %s", resp.Code, resp.Body)
+	}
+	if err := providersapi.CheckAll(t.Context(), f.reg, tell); err != nil || len(told) != 2 || told[1].Problem.Key != "kernel.error.provider_test" {
+		t.Fatalf("after a change: %v %+v", err, told)
+	}
+}

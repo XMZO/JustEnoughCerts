@@ -64,6 +64,7 @@ const noteEvents = [
   { key: 'on_site_expiring', label: 'notify.event.site_expiring', on: true },
   { key: 'on_domain_expiring', label: 'notify.event.domain_expiring', on: true },
   { key: 'on_spotted', label: 'notify.event.spotted', on: true },
+  { key: 'on_provider_failing', label: 'notify.event.provider_failing', on: true },
   { key: 'on_locked', label: 'notify.event.locked', on: true },
   { key: 'on_issued', label: 'notify.event.issued', on: false },
   { key: 'on_deployed', label: 'notify.event.deployed', on: false },

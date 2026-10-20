@@ -112,6 +112,21 @@ const (
 	CertificateSpotted = "domain.certificate_spotted"
 )
 
+// ProviderFailing is published by the kernel when its daily check of the
+// providers finds one whose test fails, having passed or not been tested
+// since its settings changed, as when a key stopped working. The subject
+// is the instance's ID, in decimal. Payload ProviderEvent.
+const ProviderFailing = "provider.failing"
+
+// ProviderEvent is the payload of ProviderFailing.
+type ProviderEvent struct {
+	ProviderID int64   `json:"providerId"`
+	Name       string  `json:"name"`
+	Kind       string  `json:"kind"` // source, solver or target
+	Type       string  `json:"type"`
+	Problem    Message `json:"problem"` // what the test said
+}
+
 // Events of the accounts of the kernel.
 const (
 	// AccountSignedIn: someone signed in to JEC, with a password, through

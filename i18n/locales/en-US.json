@@ -2034,6 +2034,7 @@
         "issue_failed": "When an issuance fails",
         "issued": "When a new certificate is issued or uploaded",
         "locked": "Someone failed to sign in too many times and is locked out for a while",
+        "provider_failing": "The daily check finds that a deploy target, DNS provider or source fails its test",
         "revoked": "The CA revoked a certificate",
         "served_old": "A website still serves the old certificate",
         "sign_in": "Someone signs in to the panel",
@@ -2535,6 +2536,7 @@
       "issue_failed": "failed issuances",
       "issued": "new certificates",
       "locked": "sign-in lockouts",
+      "provider_failing": "failing providers",
       "revoked": "revocations",
       "served_old": "old certificates served",
       "sign_in": "sign-ins",
@@ -2596,6 +2598,11 @@
         "title": "A new certificate for {domain}"
       },
       "link": "Details: {url}",
+      "provider": {
+        "failing_title": "{name} fails its test",
+        "hint": "JEC tests the deploy targets, DNS providers and sources once a day. Check its settings and keys, or the next issuance or deployment may fail.",
+        "problem": "Why: {problem}"
+      },
       "retry": "JEC tries again at {time}.",
       "revoked": {
         "manual": "The certificate has no source for JEC to issue a new one from: replace it soon.",

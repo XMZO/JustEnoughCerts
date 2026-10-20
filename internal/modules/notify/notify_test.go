@@ -448,6 +448,22 @@ func TestAccountNotes(t *testing.T) {
 	}
 }
 
+func TestProviderNote(t *testing.T) {
+	f := newFixture(t)
+	en := f.notifier("ops", map[string]string{"locale": "en-US"}) // on by default
+	d := contracts.ProviderEvent{ProviderID: 7, Name: "ESA", Kind: "target", Type: "esa.site",
+		Problem: contracts.Message{Key: "kernel.error.provider_try", Params: map[string]any{"message": "InvalidAccessKeyId"}}}
+	raw, _ := json.Marshal(d)
+	if err := f.svc.handle(t.Context(), events.Event{ID: 1, Type: contracts.ProviderFailing, Source: "kernel", Subject: "7", Data: raw, Time: start}); err != nil {
+		t.Fatal(err)
+	}
+	notes := f.notes(en)
+	if len(notes) != 1 || notes[0].Title != "ESA fails its test" || notes[0].Link != "https://jec.example.com/targets" ||
+		!strings.HasPrefix(notes[0].Text, "Why: The provider did not add the record: InvalidAccessKeyId\nJEC tests") {
+		t.Fatalf("notes %+v", notes)
+	}
+}
+
 func TestRevokedNote(t *testing.T) {
 	f := newFixture(t)
 	en := f.notifier("ops", map[string]string{"locale": "en-US"}) // on by default

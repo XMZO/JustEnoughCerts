@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,6 +34,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/config"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/configfile"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/configfile/configfileapi"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
@@ -224,6 +226,15 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		}
 	}
 	if err := sched.Scope(owner).Add(jobs.Job{Name: "prune_events", Every: 24 * time.Hour, Run: bus.Prune}); err != nil {
+		return nil, err
+	}
+	kernelEvents := bus.Scope(owner)
+	if err := sched.Scope(owner).Add(jobs.Job{Name: "check_providers", Every: 24 * time.Hour, Timeout: 30 * time.Minute,
+		Run: func(ctx context.Context) error {
+			return providersapi.CheckAll(ctx, registry, func(ctx context.Context, ev contracts.ProviderEvent) error {
+				return kernelEvents.Publish(ctx, contracts.ProviderFailing, strconv.FormatInt(ev.ProviderID, 10), ev)
+			})
+		}}); err != nil {
 		return nil, err
 	}
 	bus.Seal()

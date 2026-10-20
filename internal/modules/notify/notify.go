@@ -78,6 +78,12 @@ func (s *service) handle(ctx context.Context, ev events.Event) error {
 			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
 		}
 		write = func(tag language.Tag) contracts.Note { return s.domainNote(tag, ev, d) }
+	case contracts.ProviderFailing:
+		var d contracts.ProviderEvent
+		if err := ev.Decode(&d); err != nil {
+			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
+		}
+		write = func(tag language.Tag) contracts.Note { return s.providerNote(tag, ev, d) }
 	case contracts.AccountSignedIn, contracts.AccountLocked:
 		var d contracts.SignInEvent
 		if err := ev.Decode(&d); err != nil {
@@ -458,6 +464,21 @@ func (s *service) domainNote(tag language.Tag, ev events.Event, d contracts.Doma
 	if len(d.Certificates) > 0 {
 		lines = append(lines, w.text(i18n.NotifyNoteDomainCertificates, i18n.Args{"count": len(d.Certificates)}))
 	}
+	if n.Link != "" {
+		lines = append(lines, w.text(i18n.NotifyNoteLink, i18n.Args{"url": n.Link}))
+	}
+	n.Text = strings.Join(lines, "\n")
+	n.Subject = w.subject(n.Title)
+	return n
+}
+
+// providerNote writes the note about a provider that fails its daily test.
+func (s *service) providerNote(tag language.Tag, ev events.Event, d contracts.ProviderEvent) contracts.Note {
+	w := writer{s: s, tag: tag}
+	pages := map[string]string{"source": "/sources", "solver": "/dns", "target": "/targets"}
+	n := contracts.Note{Event: ev.Type, Time: ev.Time, Data: ev.Data, Link: s.link(pages[d.Kind])}
+	n.Title = w.text(i18n.NotifyNoteProviderFailingTitle, i18n.Args{"name": d.Name})
+	lines := []string{w.text(i18n.NotifyNoteProviderProblem, i18n.Args{"problem": w.message(d.Problem)}), w.text(i18n.NotifyNoteProviderHint, nil)}
 	if n.Link != "" {
 		lines = append(lines, w.text(i18n.NotifyNoteLink, i18n.Args{"url": n.Link}))
 	}
