@@ -2589,10 +2589,14 @@
       },
       "digest": {
         "attention": "需要处理：",
+        "domains": "快到期的域名：{names}",
         "item": "· {domain}：{state}",
         "no_renewals": "未来 7 天没有续期。",
+        "providers": "测试失败的服务商：{names}",
         "renewal": "· {domain}：{time}",
         "renewals": "未来 7 天续期：",
+        "sites": "需要留意的站点：{names}",
+        "spotted": "证书透明度中有 {count, plural, other {# 张}}不是 JEC 管理的证书需要查看。",
         "title": "本周概况：{total, plural, other {# 张证书}}，{attention, plural, other {# 张需要处理}}",
         "title_ok": "本周概况：{total, plural, other {# 张证书}}，一切正常"
       },

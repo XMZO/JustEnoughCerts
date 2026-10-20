@@ -65,7 +65,8 @@ func (s *service) handle(ctx context.Context, ev events.Event) error {
 		if err := ev.Decode(&d); err != nil {
 			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
 		}
-		write = func(tag language.Tag) contracts.Note { return s.digestNote(tag, ev, d) }
+		extra := s.digestExtra(ctx)
+		write = func(tag language.Tag) contracts.Note { return s.digestNote(tag, ev, d, extra) }
 	case contracts.SiteExpiring:
 		var d contracts.SiteEvent
 		if err := ev.Decode(&d); err != nil {
@@ -385,7 +386,7 @@ var stateText = map[string]i18n.Key{
 
 // digestNote writes the weekly digest in the language tag: what needs
 // someone, and the renewals of the week to come.
-func (s *service) digestNote(tag language.Tag, ev events.Event, d contracts.Digest) contracts.Note {
+func (s *service) digestNote(tag language.Tag, ev events.Event, d contracts.Digest, extra digestExtra) contracts.Note {
 	w := writer{s: s, tag: tag}
 	n := contracts.Note{Event: ev.Type, Time: ev.Time, Data: ev.Data, Link: s.link("/")}
 	if len(d.Attention) == 0 {
@@ -411,6 +412,22 @@ func (s *service) digestNote(tag language.Tag, ev events.Event, d contracts.Dige
 		}
 	} else {
 		lines = append(lines, w.text(i18n.NotifyNoteDigestNoRenewals, nil))
+	}
+	// What else needs someone, beyond the certificates.
+	for _, it := range []struct {
+		key   i18n.Key
+		names []string
+	}{
+		{i18n.NotifyNoteDigestProviders, extra.providers},
+		{i18n.NotifyNoteDigestSites, extra.sites},
+		{i18n.NotifyNoteDigestDomains, extra.domains},
+	} {
+		if len(it.names) > 0 {
+			lines = append(lines, w.text(it.key, i18n.Args{"names": strings.Join(it.names, ", ")}))
+		}
+	}
+	if extra.spotted > 0 {
+		lines = append(lines, w.text(i18n.NotifyNoteDigestSpotted, i18n.Args{"count": extra.spotted}))
 	}
 	if n.Link != "" {
 		lines = append(lines, w.text(i18n.NotifyNoteLink, i18n.Args{"url": n.Link}))

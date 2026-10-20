@@ -347,6 +347,25 @@ func TestDigestNote(t *testing.T) {
 	if n := f.notes(weekly)[1]; n.Title != "This week: 1 certificate, all well" || !strings.HasPrefix(n.Text, "No renewals in the next 7 days.") {
 		t.Errorf("all well: %q\n%s", n.Title, n.Text)
 	}
+
+	// What else needs someone, as the API tells: the watch module off.
+	f.svc.call = func(_ context.Context, _, _, path string, _, out any) error {
+		answers := map[string]string{
+			"/providers": `{"providers": [{"name": "ESA", "kind": "target", "lastTest": {"ok": false}}, {"name": "Mail", "kind": "notifier", "lastTest": {"ok": false}},
+				{"name": "DNS", "kind": "solver", "lastTest": {"ok": true}}]}`,
+		}
+		body, ok := answers[path]
+		if !ok {
+			return &module.CallError{Status: http.StatusNotFound}
+		}
+		return json.Unmarshal([]byte(body), out)
+	}
+	if err := f.svc.handle(t.Context(), events.Event{ID: 3, Type: contracts.CertificatesDigest, Source: "certs", Subject: "2026-W45", Data: raw, Time: start}); err != nil {
+		t.Fatal(err)
+	}
+	if n := f.notes(weekly)[2]; !strings.Contains(n.Text, "\nProviders failing their test: ESA\n") || strings.Contains(n.Text, "Sites") {
+		t.Errorf("with more: %q\n%s", n.Title, n.Text)
+	}
 }
 
 func TestSiteNote(t *testing.T) {

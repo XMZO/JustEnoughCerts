@@ -2589,10 +2589,14 @@
       },
       "digest": {
         "attention": "Needing attention:",
+        "domains": "Domain registrations ending: {names}",
         "item": "· {domain}: {state}",
         "no_renewals": "No renewals in the next 7 days.",
+        "providers": "Providers failing their test: {names}",
         "renewal": "· {domain}: {time}",
         "renewals": "Renewals in the next 7 days:",
+        "sites": "Sites to look at: {names}",
+        "spotted": "{count, plural, one {# certificate} other {# certificates}} JEC does not hold, from transparency logs, to look at.",
         "title": "This week: {total, plural, one {# certificate} other {# certificates}}, {attention, plural, one {# needs} other {# need}} attention",
         "title_ok": "This week: {total, plural, one {# certificate} other {# certificates}}, all well"
       },
