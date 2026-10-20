@@ -19,6 +19,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/zone"
@@ -48,6 +49,9 @@ type Options struct {
 	// DB keeps the choice of daily backups, which Jobs makes.
 	DB   *sql.DB
 	Jobs *jobs.Scope
+	// Events tells of a newer release, when checking for them is on; nil
+	// tells nobody.
+	Events *events.Scope
 	// JobStatus tells the jobs of the modules that are on, with their last
 	// runs.
 	JobStatus func(ctx context.Context) ([]jobs.Status, error)
@@ -80,6 +84,7 @@ type RuntimeBody struct {
 	ServerTimeZone string         `json:"serverTimeZone" doc:"The server's time zone, which TZ sets: an IANA name, or Local when the server tells none"`
 	AutoBackup     AutoBackupBody `json:"autoBackup" doc:"The backups JEC makes by itself, one a day"`
 	Heartbeat      HeartbeatBody  `json:"heartbeat" doc:"The address JEC asks for while it runs, for a monitoring service"`
+	UpdateCheck    bool           `json:"updateCheck" doc:"JEC checks for releases by itself, once a day"`
 }
 
 type timeZoneInput struct {
@@ -103,8 +108,8 @@ type backupOutput struct {
 
 // Register adds GET /system, PUT /system/time-zone, PUT
 // /system/auto-backup, POST /system/backup, POST /system/restore, GET
-// /system/release and GET /system/health to a, and the job of daily
-// backups to o.Jobs.
+// /system/release, PUT /system/update-check and GET /system/health to a,
+// and the jobs of daily backups and checks for releases to o.Jobs.
 func Register(a huma.API, o Options) {
 	tags := []string{"system"}
 	client := o.Client
@@ -141,6 +146,7 @@ func Register(a huma.API, o Options) {
 	registerRestore(a, o, tags)
 	registerHealth(a, o, tags)
 	registerHeartbeat(a, o, client, tags)
+	registerUpdates(a, o, client, tags)
 	huma.Register(a, huma.Operation{
 		OperationID: "backup", Method: http.MethodPost, Path: "/system/backup", Tags: tags,
 		Summary: "Download a copy of the database, once the password is confirmed",
@@ -177,6 +183,9 @@ func (o Options) runtime(ctx context.Context) RuntimeBody {
 		ServerTimeZone: o.Zone.Server().String(),
 		AutoBackup:     o.autoBackupState(ctx),
 		Heartbeat:      o.heartbeatState(ctx),
+	}
+	if on, err := o.meta(ctx, updateCheckMeta); err == nil {
+		info.UpdateCheck = on == "1"
 	}
 	if o.KeyFromEnv {
 		info.SecretKey = "env"

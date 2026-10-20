@@ -44,6 +44,15 @@ export function useSetHeartbeat() {
   })
 }
 
+/** Turns checking for releases by itself, once a day, on or off. */
+export function useSetUpdateCheck() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (enabled: boolean) => unwrap(api.PUT('/system/update-check', { body: { enabled } })),
+    onSuccess: (info) => client.setQueryData(['system'], info),
+  })
+}
+
 export type ReleaseInfo = components['schemas']['ReleaseBody']
 
 /** Asks whether a newer release of JEC is out: only when someone asks, as JEC never calls home on its own. */

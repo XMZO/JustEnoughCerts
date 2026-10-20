@@ -37,7 +37,20 @@ import { saveFile, useCertSettings, useSaveCertSettings, type CertSettingsInput,
 import { useExportConfig, useImportConfig, type ConfigItem, type ConfigReport } from '../api/config'
 import { useApiError } from '../api/errors'
 import { useManifest } from '../api/manifest'
-import { lowDisk, useBackup, useHealth, useSetHeartbeat, useReleaseCheck, useRestore, useSetAutoBackup, useSetTimeZone, useSystem, waitForRestart, type Health } from '../api/system'
+import {
+  lowDisk,
+  useBackup,
+  useHealth,
+  useSetHeartbeat,
+  useReleaseCheck,
+  useRestore,
+  useSetAutoBackup,
+  useSetTimeZone,
+  useSetUpdateCheck,
+  useSystem,
+  waitForRestart,
+  type Health,
+} from '../api/system'
 import { keyText } from '../certs/life'
 import CopyButton from '../components/CopyButton.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -80,6 +93,7 @@ const themeLabels: Record<Theme, MessageKey> = {
 
 // Whether a newer release is out, when someone asks.
 const release = useReleaseCheck()
+const setUpdateCheck = useSetUpdateCheck()
 const releaseError = useApiError(computed(() => release.error.value))
 // A build of its own, as dev, has no version to compare.
 const versioned = computed(() => /^\d/.test(release.data.value?.current ?? ''))
@@ -948,6 +962,19 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           <RefreshCw class="size-4" aria-hidden="true" />{{ t('kernel.settings.check_update') }}
         </JecButton>
       </div>
+      <label :class="[row, 'cursor-pointer']">
+        <span class="min-w-0 flex-1">
+          <span class="block font-semibold">{{ t('kernel.settings.update_check') }}</span>
+          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.update_check_hint') }}</span>
+        </span>
+        <input
+          type="checkbox"
+          class="size-4 flex-none accent-brand"
+          :checked="system.data.value?.updateCheck"
+          :disabled="setUpdateCheck.isPending.value || !system.data.value"
+          @change="setUpdateCheck.mutate(($event.target as HTMLInputElement).checked)"
+        />
+      </label>
       <JecAlert v-if="releaseError.alert.value" :code="releaseError.alert.value.code" :params="releaseError.alert.value.params" />
       <p v-else-if="release.data.value" role="status" class="m-0 py-2 text-small [overflow-wrap:anywhere]">
         <template v-if="!release.data.value.latest">{{ t('kernel.settings.no_release') }}</template>

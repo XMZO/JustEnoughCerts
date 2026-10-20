@@ -64,6 +64,7 @@ var NotifyEvents = []NotifyEvent{
 	{Type: CertificateSpotted, Key: "on_spotted", Label: i18n.KernelNotifyEventSpotted, Default: true},
 	{Type: ProviderFailing, Key: "on_provider_failing", Label: i18n.KernelNotifyEventProviderFailing, Default: true},
 	{Type: AccountLocked, Key: "on_locked", Label: i18n.KernelNotifyEventLocked, Default: true},
+	{Type: ReleaseAvailable, Key: "on_release", Label: i18n.KernelNotifyEventRelease, Default: true},
 	{Type: CertificateIssued, Key: "on_issued", Label: i18n.KernelNotifyEventIssued},
 	{Type: CertificateDeployed, Key: "on_deployed", Label: i18n.KernelNotifyEventDeployed},
 	{Type: CertificatesDigest, Key: "on_digest", Label: i18n.KernelNotifyEventDigest},

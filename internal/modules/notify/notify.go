@@ -79,6 +79,12 @@ func (s *service) handle(ctx context.Context, ev events.Event) error {
 			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
 		}
 		write = func(tag language.Tag) contracts.Note { return s.domainNote(tag, ev, d) }
+	case contracts.ReleaseAvailable:
+		var d contracts.ReleaseEvent
+		if err := ev.Decode(&d); err != nil {
+			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
+		}
+		write = func(tag language.Tag) contracts.Note { return s.releaseNote(tag, ev, d) }
 	case contracts.ProviderFailing:
 		var d contracts.ProviderEvent
 		if err := ev.Decode(&d); err != nil {
@@ -483,6 +489,20 @@ func (s *service) domainNote(tag language.Tag, ev events.Event, d contracts.Doma
 	}
 	if n.Link != "" {
 		lines = append(lines, w.text(i18n.NotifyNoteLink, i18n.Args{"url": n.Link}))
+	}
+	n.Text = strings.Join(lines, "\n")
+	n.Subject = w.subject(n.Title)
+	return n
+}
+
+// releaseNote writes the note about a new release of JEC.
+func (s *service) releaseNote(tag language.Tag, ev events.Event, d contracts.ReleaseEvent) contracts.Note {
+	w := writer{s: s, tag: tag}
+	n := contracts.Note{Event: ev.Type, Time: ev.Time, Data: ev.Data, Link: d.URL}
+	n.Title = w.text(i18n.NotifyNoteReleaseTitle, i18n.Args{"version": d.Version})
+	lines := []string{w.text(i18n.NotifyNoteReleaseText, i18n.Args{"current": d.Current})}
+	if d.URL != "" {
+		lines = append(lines, w.text(i18n.NotifyNoteReleaseView, i18n.Args{"url": d.URL}))
 	}
 	n.Text = strings.Join(lines, "\n")
 	n.Subject = w.subject(n.Title)

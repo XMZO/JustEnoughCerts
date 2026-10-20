@@ -25,6 +25,7 @@ message at once.
 | A deploy target, DNS provider or source fails the daily test of its settings (each testable one is tested once a day, as its card's Test does; told once until its settings change; those failing also show among what needs attention on the overview) | On |
 | Someone failed to sign in too many times and is locked out (see [Security](../operations/security.md)) | On |
 | Someone signs in to the panel (likewise) | Off |
+| A new release of JEC is out (once "Check for updates by itself" is on in the settings; see [Upgrades](../guide/installation.md#upgrades)) | On |
 | Weekly digest, on Monday from 9:00 in the panel's time zone: certificates needing attention, renewals of the coming week, and the providers failing their test, the sites and domains to look at, and the certificates from transparency logs to look at | Off |
 
 The notes of one certificate can go to some channels only: check them

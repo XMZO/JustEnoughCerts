@@ -1391,6 +1391,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/update-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Choose whether JEC checks for releases by itself, once a day */
+        put: operations["set-update-check"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/watch/domains": {
         parameters: {
             query?: never;
@@ -2749,6 +2766,8 @@ export interface components {
             timeZone?: string;
             /** @description The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES */
             trustedProxies?: string;
+            /** @description JEC checks for releases by itself, once a day */
+            updateCheck: boolean;
         };
         SectionReport: {
             items: components["schemas"]["Item"][];
@@ -3102,6 +3121,10 @@ export interface components {
         };
         TypesOutputBody: {
             types: components["schemas"]["TypeSummary"][];
+        };
+        UpdateCheckBody: {
+            /** @description JEC asks GitHub once a day for a newer release, and tells of one through the notification channels */
+            enabled: boolean;
         };
         UpdateCredentialInputBody: {
             /** @description Replaces the plain values when given */
@@ -6213,6 +6236,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["TimeZoneInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "set-update-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCheckBody"];
             };
         };
         responses: {

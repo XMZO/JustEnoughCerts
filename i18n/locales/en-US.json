@@ -301,6 +301,7 @@
       "sessions_sign_out_others": "Signed out all other devices",
       "set_auto_backup": "Choose daily backups",
       "set_time_zone": "Change the time zone",
+      "set_update_check": "Set the check for updates",
       "setup": "Set up JEC",
       "sign_in": "Sign in",
       "sign_out": "Sign out",
@@ -2063,6 +2064,7 @@
         "issued": "When a new certificate is issued or uploaded",
         "locked": "Someone failed to sign in too many times and is locked out for a while",
         "provider_failing": "The daily check finds that a deploy target, DNS provider or source fails its test",
+        "release": "A new release of JEC is out (once checking for updates is on in the settings)",
         "revoked": "The CA revoked a certificate",
         "served_old": "A website still serves the old certificate",
         "sign_in": "Someone signs in to the panel",
@@ -2308,6 +2310,8 @@
       "two_factor_turn_on": "Turn on",
       "up_to_date": "This is the newest version.",
       "update_available": "A newer version is out: {version}",
+      "update_check": "Check for updates by itself",
+      "update_check_hint": "Once on, JEC asks GitHub once a day and tells of a new release through the notification channels; off, it asks only when you choose Check for updates.",
       "update_help": "JEC asks GitHub for its releases only when you press the button, never on its own.",
       "version": "Version"
     },
@@ -2567,6 +2571,7 @@
       "issued": "new certificates",
       "locked": "sign-in lockouts",
       "provider_failing": "failing providers",
+      "release": "new releases",
       "revoked": "revocations",
       "served_old": "old certificates served",
       "sign_in": "sign-ins",
@@ -2636,6 +2641,11 @@
         "failing_title": "{name} fails its test",
         "hint": "JEC tests the deploy targets, DNS providers and sources once a day. Check its settings and keys, or the next issuance or deployment may fail.",
         "problem": "Why: {problem}"
+      },
+      "release": {
+        "text": "This one runs {current}.",
+        "title": "JEC {version} is out",
+        "view": "Release notes: {url}"
       },
       "retry": "JEC tries again at {time}.",
       "revoked": {

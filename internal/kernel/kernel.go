@@ -181,7 +181,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		DB:     st.DB(), Jobs: sched.Scope(owner), JobStatus: sched.Status,
 		// The releases are asked for through the proxy of the environment, if any.
 		Version: build.Version, Client: &http.Client{Timeout: 30 * time.Second},
-		Zone: tz,
+		Zone: tz, Events: bus.Scope(owner),
 	})
 	cfgFile := configfile.New(st.DB(), registry, enabled)
 	if err := cfgFile.Add(owner, tz.Section()); err != nil {

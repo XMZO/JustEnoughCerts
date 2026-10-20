@@ -301,6 +301,7 @@
       "sessions_sign_out_others": "退出其他所有设备",
       "set_auto_backup": "设置每日自动备份",
       "set_time_zone": "修改时区",
+      "set_update_check": "设置自动检查更新",
       "setup": "初始化 JEC",
       "sign_in": "登录",
       "sign_out": "退出登录",
@@ -2063,6 +2064,7 @@
         "issued": "有新证书（签发或上传）时通知",
         "locked": "有人连续登录失败、被暂时锁定时通知",
         "provider_failing": "每日自检发现部署目标、DNS 服务商或证书来源测试失败时通知",
+        "release": "JEC 有新版本时通知（须在设置页开启自动检查更新）",
         "revoked": "证书被 CA 吊销时通知",
         "served_old": "网站上还是旧证书",
         "sign_in": "有人登录面板时通知",
@@ -2308,6 +2310,8 @@
       "two_factor_turn_on": "开启",
       "up_to_date": "已经是最新版本。",
       "update_available": "有新版本：{version}",
+      "update_check": "自动检查更新",
+      "update_check_hint": "开启后 JEC 每天问一次 GitHub，有新版本时经通知渠道提醒；关闭时只在点击“检查更新”时联网。",
       "update_help": "点按钮时才会去 GitHub 查发布记录，JEC 不会自己联网检查。",
       "version": "版本"
     },
@@ -2567,6 +2571,7 @@
       "issued": "新证书",
       "locked": "登录锁定",
       "provider_failing": "服务商自检失败",
+      "release": "新版本",
       "revoked": "被吊销",
       "served_old": "线上旧证书",
       "sign_in": "登录",
@@ -2636,6 +2641,11 @@
         "failing_title": "{name} 测试失败",
         "hint": "JEC 每天测试一次部署目标、DNS 服务商和证书来源。请检查它的设置和密钥，否则之后的签发或部署可能失败。",
         "problem": "原因：{problem}"
+      },
+      "release": {
+        "text": "当前运行的是 {current}。",
+        "title": "JEC {version} 已发布",
+        "view": "发布说明：{url}"
       },
       "retry": "JEC 会在 {time} 再试一次。",
       "revoked": {

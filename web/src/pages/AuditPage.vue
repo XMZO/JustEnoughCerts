@@ -47,6 +47,7 @@ const operations: Partial<Record<string, MessageKey>> = {
   restore: 'audit.op.restore',
   'set-time-zone': 'audit.op.set_time_zone',
   'set-auto-backup': 'audit.op.set_auto_backup',
+  'set-update-check': 'audit.op.set_update_check',
   'calendar-switch': 'audit.op.calendar_switch',
   'calendar-rotate': 'audit.op.calendar_rotate',
   'watch-add': 'audit.op.watch_add',

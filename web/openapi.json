@@ -3081,6 +3081,10 @@
           "trustedProxies": {
             "description": "The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES",
             "type": "string"
+          },
+          "updateCheck": {
+            "description": "JEC checks for releases by itself, once a day",
+            "type": "boolean"
           }
         },
         "required": [
@@ -3091,7 +3095,8 @@
           "hsts",
           "serverTimeZone",
           "autoBackup",
-          "heartbeat"
+          "heartbeat",
+          "updateCheck"
         ],
         "type": "object"
       },
@@ -4129,6 +4134,19 @@
         },
         "required": [
           "types"
+        ],
+        "type": "object"
+      },
+      "UpdateCheckBody": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "description": "JEC asks GitHub once a day for a newer release, and tells of one through the notification channels",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
         ],
         "type": "object"
       },
@@ -8530,6 +8548,47 @@
           }
         },
         "summary": "Choose the time zone JEC tells times in, or go back to the server's",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/system/update-check": {
+      "put": {
+        "operationId": "set-update-check",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCheckBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Choose whether JEC checks for releases by itself, once a day",
         "tags": [
           "system"
         ]

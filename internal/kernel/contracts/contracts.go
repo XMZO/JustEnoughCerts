@@ -127,6 +127,18 @@ type ProviderEvent struct {
 	Problem    Message `json:"problem"` // what the test said
 }
 
+// ReleaseAvailable is published by the kernel when, checking for releases
+// by itself as someone chose, it finds one newer than the running version.
+// The subject is the new version. Payload ReleaseEvent.
+const ReleaseAvailable = "system.release"
+
+// ReleaseEvent is the payload of ReleaseAvailable.
+type ReleaseEvent struct {
+	Version string `json:"version"` // the new one, as 0.2.0
+	Current string `json:"current"` // the running one
+	URL     string `json:"url"`     // its page
+}
+
 // Events of the accounts of the kernel.
 const (
 	// AccountSignedIn: someone signed in to JEC, with a password, through

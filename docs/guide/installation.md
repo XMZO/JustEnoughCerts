@@ -131,6 +131,11 @@ polkit.addRule(function (action, subject) {
   new binary; it replaces the binary and restarts the service.
 - **Other binaries**: stop JEC, replace the binary and start it again.
 
+Check for updates, under About on the Settings page, asks GitHub for a
+newer release; JEC does not check by itself unless "Check for updates by
+itself" is on, after which it checks once a day and tells of a new
+release through the notification channels, once for each.
+
 Back up before upgrading; see [Data and backups](../operations/backup.md).
 To verify the signatures of a release, see
 [Verifying releases](../operations/releases.md).
