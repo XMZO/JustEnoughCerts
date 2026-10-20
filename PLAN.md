@@ -464,6 +464,7 @@ DNS 验证分成两种能力，实现方式不同：
 | M1 | Telegram、SMTP 邮件、通用 Webhook |
 | M3 | 钉钉、飞书、企业微信、Server酱、Bark、ntfy、Gotify（已完成） |
 | M3 之外 | Discord、Slack（Mattermost、Rocket.Chat 的 incoming webhook 也能用）、Pushover（已完成） |
+| M4 期间 | Microsoft Teams（Workflows 的 Webhook，Adaptive Card）、Google Chat、Matrix（客户端 API，`m.notice`，房间 ID 或别名）、PushPlus、QQ（OneBot v11 的 HTTP 接口，`auto_escape`）（已完成；Matrix 对着 Conduit 实测过，其余只用替身测过） |
 
 **实现**（M1）：
 

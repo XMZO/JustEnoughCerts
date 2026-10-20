@@ -59,13 +59,20 @@ they go out. Test messages are not held.
 | Discord | The channel's webhook URL |
 | Slack | Incoming webhooks; Mattermost and Rocket.Chat are compatible |
 | Pushover | User key and application token |
+| Microsoft Teams | The webhook URL of a workflow; notes come as cards |
+| Google Chat | The space's webhook URL |
+| Matrix | Homeserver, access token and room (ID or alias); self-hosted homeservers are supported |
+| PushPlus | User token; to a group too, or through WeCom or mail instead |
+| QQ (OneBot v11) | Through the HTTP API of NapCat, Lagrange or another implementation you run, to a group or a person |
 | Webhook | JSON or a custom template; signing key, headers, method and Content-Type can be set |
 | Run a script | Runs a script from the `hooks/` directory of the data directory with the built-in shell; see below |
 
-Channels with self-hosted servers (Bark, ntfy, Gotify, Slack and Webhook)
+Channels with self-hosted servers (Bark, ntfy, Gotify, Matrix, QQ, Slack
+and Webhook)
 have an option to allow private addresses; by default they connect to public
 addresses only. Channels that reach services abroad (Telegram, Discord,
-Slack, Pushover, ntfy, Gotify, Bark and Webhook) accept a proxy of their
+Slack, Teams, Google Chat, Matrix, Pushover, ntfy, Gotify, Bark and Webhook)
+accept a proxy of their
 own in the advanced settings.
 
 ## Commands and menu of a Telegram bot

@@ -55,8 +55,9 @@ Minecraft mod JEI.
   the registrations of the domains of your certificates and sites (RDAP,
   WHOIS), and certificate transparency logs for certificates issued to
   someone else.
-- **Notifications**: 14 channels, such as email, Telegram, DingTalk,
-  Feishu, WeCom, Discord, Slack, Bark, ntfy, webhooks and scripts, each
+- **Notifications**: 19 channels, such as email, Telegram, DingTalk,
+  Feishu, WeCom, QQ, Discord, Slack, Teams, Matrix, Bark, ntfy, webhooks
+  and scripts, each
   with its own events, language and quiet hours, and a weekly digest; a calendar feed
   of the ends and renewals; metrics for Prometheus, and a heartbeat for a
   monitoring service.

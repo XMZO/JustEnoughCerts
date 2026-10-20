@@ -55,7 +55,7 @@ and servers, and renews them before they expire.
 - [Expiry watch](../usage/sites.md): the certificates of sites JEC does not
   manage, when domain registrations end, and certificates issued to
   someone else, from certificate transparency logs.
-- [Notifications](../usage/notifications.md): 14 notification channels,
+- [Notifications](../usage/notifications.md): 19 notification channels,
   each with its own language, events and quiet hours, and a weekly
   digest; a calendar feed of the ends and renewals; [Prometheus metrics
   and a heartbeat](../operations/monitoring.md).

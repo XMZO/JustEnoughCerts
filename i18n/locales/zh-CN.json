@@ -1757,6 +1757,25 @@
       "ok": "找到了 CDN 资源 {names}。"
     }
   },
+  "googlechat": {
+    "error": {
+      "api": "Google Chat 拒绝了消息：{message}（HTTP {status}）",
+      "network": "连不上 Google Chat。",
+      "url": "不是 Google Chat 的 Webhook 地址：它以 https://chat.googleapis.com/v1/spaces/ 开头。"
+    },
+    "field": {
+      "url": "Webhook 地址",
+      "url_help": "在聊天室里：聊天室名称 → 应用和集成 → Webhooks → 添加 Webhook，然后复制地址。"
+    },
+    "module": {
+      "description": "通过 Webhook 通知 Google Chat 的聊天室。",
+      "name": "Google Chat"
+    },
+    "webhook": {
+      "description": "把每条通知发到 Webhook 所在的聊天室，附上 JEC 里对应页面的链接。",
+      "name": "Google Chat Webhook"
+    }
+  },
   "gotify": {
     "app": {
       "description": "作为 Gotify 服务器上的一个应用推送通知，Gotify 的 App 和网页都能收到。",
@@ -2465,6 +2484,35 @@
       "name": "手动 DNS 记录"
     }
   },
+  "matrix": {
+    "error": {
+      "api": "服务器拒绝了这条消息：{message}（HTTP {status}）",
+      "forbidden": "这个账号不能在 {room} 里发言，请先让它加入房间：{message}",
+      "network": "连不上 {host}。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "room": "找不到房间 {room}。请填写房间 ID（!开头）或别名（#开头），要带上 :服务器。",
+      "server": "服务器地址不对：{server}",
+      "token": "服务器不认这个访问令牌，它可能已随退出登录失效。"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "默认只连公网地址。服务器在本机或内网里时打开。",
+      "room": "房间",
+      "room_help": "房间 ID（!开头）或别名（#开头），比如 #certs:matrix.org。在 Element 里：房间设置 → 高级 → 内部房间 ID。这个账号要先加入房间。",
+      "server": "服务器",
+      "server_help": "账号所在服务器的客户端地址，比如 https://matrix-client.matrix.org，或者自建的 https://matrix.example.com。",
+      "token": "访问令牌",
+      "token_help": "建议给 JEC 单独注册一个账号。在 Element 里：设置 → 帮助与关于 → 访问令牌（高级）。退出这次登录会让令牌失效。"
+    },
+    "module": {
+      "description": "以 Matrix 账号把通知发到房间里，Element 等客户端都能收到。",
+      "name": "Matrix"
+    },
+    "room": {
+      "description": "以一个账号把每条通知发到房间里，附上 JEC 里对应页面的链接。可以用 matrix.org，也可以用自建的服务器。",
+      "name": "Matrix 房间"
+    }
+  },
   "metrics": {
     "module": {
       "description": "以 Prometheus 指标提供证书的到期和续期时间、状态、部署失败和线上检查结果。",
@@ -2867,6 +2915,39 @@
       "title": "单点登录（OIDC）"
     }
   },
+  "onebot": {
+    "error": {
+      "api": "没能发出消息：{message}",
+      "network": "连不上 {host}，请确认 OneBot 实现在运行并开启了 HTTP 服务器。",
+      "private": "{host} 是内网地址。要连内网，请打开“允许内网地址”。",
+      "server": "接口地址不对：{server}",
+      "target": "群号或 QQ 号要填数字。",
+      "token": "OneBot 实现不认这个访问令牌。"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "OneBot 实现通常在本机或内网里，这时要打开。",
+      "server": "HTTP 接口地址",
+      "server_help": "OneBot 实现的 HTTP 服务器地址，比如 http://127.0.0.1:3000。JEC 在容器里时，填宿主机的地址，比如 http://172.17.0.1:3000。",
+      "target": "群号或 QQ 号",
+      "target_help": "发到群里时填群号，发给个人时填对方的 QQ 号。机器人要在群里，或者和对方是好友。",
+      "to": "发给",
+      "token": "访问令牌",
+      "token_help": "OneBot 设置里的 access_token；没有设置就留空。"
+    },
+    "module": {
+      "description": "通过 NapCat、Lagrange 等 OneBot v11 实现，用 QQ 把通知发给群或个人。",
+      "name": "QQ 机器人（OneBot）"
+    },
+    "qq": {
+      "description": "通过自己运行的 OneBot v11 实现（如 NapCat、Lagrange）的 HTTP 接口，用机器人的 QQ 号把通知发到群里或发给一个人。",
+      "name": "QQ（OneBot v11）"
+    },
+    "to": {
+      "group": "群",
+      "private": "个人"
+    }
+  },
   "onepanel": {
     "api": {
       "v1": "1Panel v1",
@@ -3064,6 +3145,34 @@
     "user": {
       "description": "把每条通知推送到用户或群组的设备上，需要处理的用高优先级；点开就是 JEC 里对应的页面。",
       "name": "Pushover"
+    }
+  },
+  "pushplus": {
+    "channel": {
+      "app": "PushPlus App",
+      "cp": "企业微信应用",
+      "mail": "邮件",
+      "wechat": "微信公众号"
+    },
+    "error": {
+      "api": "PushPlus 拒绝了消息：{message}（代码 {code}）",
+      "network": "连不上 PushPlus。",
+      "token": "PushPlus 不认这个令牌。请在 PushPlus 网站上复制“一对一推送”的令牌。"
+    },
+    "field": {
+      "channel": "发送渠道",
+      "token": "用户令牌",
+      "token_help": "在 www.pushplus.plus 用微信登录后，在“一对一推送”页面复制令牌（token）。",
+      "topic": "群组编码",
+      "topic_help": "推送给一个群组时填写，群组里的人都会收到；留空只推送给自己。"
+    },
+    "module": {
+      "description": "通过 PushPlus（推送加）把通知推送到微信。",
+      "name": "PushPlus"
+    },
+    "token": {
+      "description": "把通知推送到 PushPlus 账号绑定的微信，也可以推送给一个群组，或者改用企业微信、邮件、App。",
+      "name": "PushPlus"
     }
   },
   "qiniu": {
@@ -3273,6 +3382,25 @@
       "found": "找到了证书 {certificate}。",
       "list": "登录成功。JEC 会在第一次部署时添加一张证书；要改为替换 NAS 上已有的一张，填它的描述：{certificates}",
       "new": "登录成功。NAS 上没有描述为“{description}”的证书：JEC 会在第一次部署时添加。"
+    }
+  },
+  "teams": {
+    "error": {
+      "api": "Workflows 拒绝了消息：{message}（HTTP {status}）",
+      "network": "连不上 Microsoft Teams 的 Workflows。",
+      "url": "不是 Workflows 的 Webhook 地址：它以 https:// 开头，在 logic.azure.com 或 powerplatform.com 下。"
+    },
+    "field": {
+      "url": "Webhook 地址",
+      "url_help": "在 Teams 频道或群聊里：⋯ → Workflows → “Post to a channel when a webhook request is received”（收到 Webhook 请求时发布到频道），建好后复制它给的地址。旧的“传入 Webhook”连接器已停用。"
+    },
+    "module": {
+      "description": "通过 Workflows 的 Webhook 通知 Teams 的频道或群聊。",
+      "name": "Microsoft Teams"
+    },
+    "workflow": {
+      "description": "把每条通知作为卡片发到 Teams，按事件着色，标题链接到 JEC 里对应的页面。",
+      "name": "Teams Workflows Webhook"
     }
   },
   "telegram": {

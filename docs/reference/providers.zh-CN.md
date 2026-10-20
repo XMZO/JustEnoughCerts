@@ -94,6 +94,11 @@
 | `discord.webhook` | Discord | 替身 |
 | `slack.webhook` | Slack、Mattermost、Rocket.Chat | 替身 |
 | `pushover.user` | Pushover | 替身 |
+| `teams.workflow` | Microsoft Teams（Workflows） | 替身 |
+| `googlechat.webhook` | Google Chat | 替身 |
+| `matrix.room` | Matrix | 真实软件：Conduit |
+| `pushplus.token` | PushPlus | 替身 |
+| `onebot.qq` | QQ（OneBot v11） | 替身 |
 | `hooks.script` | 自定义脚本，由内置 shell 运行 | 真实脚本 |
 | `plugins.*` | 插件 | 真实程序 |
 

@@ -1757,6 +1757,25 @@
       "ok": "Found the CDN resources {names}."
     }
   },
+  "googlechat": {
+    "error": {
+      "api": "Google Chat refused the message: {message} (HTTP {status})",
+      "network": "Could not reach Google Chat.",
+      "url": "Not the URL of a Google Chat webhook: it starts with https://chat.googleapis.com/v1/spaces/."
+    },
+    "field": {
+      "url": "Webhook URL",
+      "url_help": "In the space: its name → Apps & integrations → Webhooks → Add webhook, then copy the URL."
+    },
+    "module": {
+      "description": "Notifies a Google Chat space through a webhook.",
+      "name": "Google Chat"
+    },
+    "webhook": {
+      "description": "Posts each note to the space of a webhook, with a link to the page in JEC.",
+      "name": "Google Chat webhook"
+    }
+  },
   "gotify": {
     "app": {
       "description": "Pushes notes as an application of your Gotify server, to its apps and web UI.",
@@ -2465,6 +2484,35 @@
       "name": "Manual DNS records"
     }
   },
+  "matrix": {
+    "error": {
+      "api": "The homeserver refused the message: {message} (HTTP {status})",
+      "forbidden": "The account cannot post in {room}; have it join the room first: {message}",
+      "network": "Could not reach {host}.",
+      "private": "{host} is a private address. To reach it, turn on “Allow private addresses” in the advanced settings.",
+      "room": "No room {room}. Give a room ID (starting with !) or alias (starting with #), with its :server.",
+      "server": "Not a valid homeserver address: {server}",
+      "token": "The homeserver does not accept the access token, which signing out may have ended."
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "By default only public addresses are reached. Turn it on when the homeserver is on this machine or on your network.",
+      "room": "Room",
+      "room_help": "A room ID (starting with !) or alias (starting with #), such as #certs:matrix.org. In Element: Room settings → Advanced → Internal room ID. The account has to join the room first.",
+      "server": "Homeserver",
+      "server_help": "The client address of the account's homeserver, such as https://matrix-client.matrix.org, or https://matrix.example.com of your own.",
+      "token": "Access token",
+      "token_help": "Best register an account for JEC alone. In Element: Settings → Help & About → Access Token (advanced). Signing out of that session ends the token."
+    },
+    "module": {
+      "description": "Sends notes to a room as a Matrix account, for Element and the other clients.",
+      "name": "Matrix"
+    },
+    "room": {
+      "description": "Sends each note to a room as an account, with a link to the page in JEC; on matrix.org or a homeserver of your own.",
+      "name": "Matrix room"
+    }
+  },
   "metrics": {
     "module": {
       "description": "Serves the certificates as metrics for Prometheus: when each ends and renews, its state, failed deployments and online checks.",
@@ -2867,6 +2915,39 @@
       "title": "Single sign-on (OIDC)"
     }
   },
+  "onebot": {
+    "error": {
+      "api": "The message was not sent: {message}",
+      "network": "Could not reach {host}. Check that the implementation runs with its HTTP server on.",
+      "private": "{host} is a private address. To reach it, turn on “Allow private addresses”.",
+      "server": "Not a valid API address: {server}",
+      "target": "The group or QQ number is a number.",
+      "token": "The implementation does not accept the access token."
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "The implementation is usually on this machine or on your network; turn it on then.",
+      "server": "HTTP API address",
+      "server_help": "The address of the implementation's HTTP server, such as http://127.0.0.1:3000. With JEC in a container, the host's, such as http://172.17.0.1:3000.",
+      "target": "Group or QQ number",
+      "target_help": "The group's number for a group, the person's QQ number for a person. The bot has to be in the group, or a friend of the person.",
+      "to": "Send to",
+      "token": "Access token",
+      "token_help": "The access_token of the OneBot settings; empty if none is set."
+    },
+    "module": {
+      "description": "Sends notes to a QQ group or person through a OneBot v11 implementation, such as NapCat or Lagrange.",
+      "name": "QQ bot (OneBot)"
+    },
+    "qq": {
+      "description": "Through the HTTP API of a OneBot v11 implementation you run, such as NapCat or Lagrange, the bot's QQ account sends each note to a group or a person.",
+      "name": "QQ (OneBot v11)"
+    },
+    "to": {
+      "group": "Group",
+      "private": "Person"
+    }
+  },
   "onepanel": {
     "api": {
       "v1": "1Panel v1",
@@ -3064,6 +3145,34 @@
     "user": {
       "description": "Pushes each note to the devices of a user or a group, with high priority for what needs attention; tapping it opens the page in JEC.",
       "name": "Pushover"
+    }
+  },
+  "pushplus": {
+    "channel": {
+      "app": "PushPlus app",
+      "cp": "WeCom app",
+      "mail": "Mail",
+      "wechat": "WeChat official account"
+    },
+    "error": {
+      "api": "PushPlus refused the message: {message} (code {code})",
+      "network": "Could not reach PushPlus.",
+      "token": "PushPlus does not know the token. Copy the one of the one-to-one push page on the PushPlus site."
+    },
+    "field": {
+      "channel": "Channel",
+      "token": "User token",
+      "token_help": "Sign in to www.pushplus.plus with WeChat and copy the token on the one-to-one push page.",
+      "topic": "Group code",
+      "topic_help": "To push to a group, whose members all receive it; empty for yourself alone."
+    },
+    "module": {
+      "description": "Pushes notes to WeChat through PushPlus.",
+      "name": "PushPlus"
+    },
+    "token": {
+      "description": "Pushes notes to the WeChat of a PushPlus account, or to a group of it, or through WeCom, mail or its app instead.",
+      "name": "PushPlus"
     }
   },
   "qiniu": {
@@ -3273,6 +3382,25 @@
       "found": "Found the certificate {certificate}.",
       "list": "Signed in. JEC adds a certificate at the first deployment; to replace one of the NAS instead, enter its description: {certificates}",
       "new": "Signed in. The NAS has no certificate described “{description}”: JEC adds it at the first deployment."
+    }
+  },
+  "teams": {
+    "error": {
+      "api": "Workflows refused the message: {message} (HTTP {status})",
+      "network": "Could not reach the Workflows of Microsoft Teams.",
+      "url": "Not the URL of a Workflows webhook: it starts with https:// and is under logic.azure.com or powerplatform.com."
+    },
+    "field": {
+      "url": "Webhook URL",
+      "url_help": "In the Teams channel or chat: ⋯ → Workflows → “Post to a channel when a webhook request is received”, then copy the URL it gives. The old Incoming Webhook connectors are retired."
+    },
+    "module": {
+      "description": "Notifies a Teams channel or chat through a webhook of Workflows.",
+      "name": "Microsoft Teams"
+    },
+    "workflow": {
+      "description": "Posts each note to Teams as a card, colored by what happened, its title linking to the page in JEC.",
+      "name": "Teams Workflows webhook"
     }
   },
   "telegram": {

@@ -101,6 +101,11 @@ accounts are welcome.
 | `discord.webhook` | Discord | Fake |
 | `slack.webhook` | Slack, Mattermost, Rocket.Chat | Fake |
 | `pushover.user` | Pushover | Fake |
+| `teams.workflow` | Microsoft Teams (Workflows) | Fake |
+| `googlechat.webhook` | Google Chat | Fake |
+| `matrix.room` | Matrix | Real software: Conduit |
+| `pushplus.token` | PushPlus | Fake |
+| `onebot.qq` | QQ (OneBot v11) | Fake |
 | `hooks.script` | A custom script, run by the built-in shell | Real scripts |
 | `plugins.*` | Plugins | Real programs |
 

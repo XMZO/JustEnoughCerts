@@ -44,10 +44,15 @@
 | Discord | 频道的 Webhook 地址 |
 | Slack | Incoming Webhook，兼容 Mattermost 与 Rocket.Chat |
 | Pushover | 用户密钥与应用令牌 |
+| Microsoft Teams | Workflows 的 Webhook 地址，以卡片发送 |
+| Google Chat | 聊天室的 Webhook 地址 |
+| Matrix | 服务器、访问令牌与房间（ID 或别名）；可使用自建服务器 |
+| PushPlus（推送加） | 用户令牌；可推送到群组，或改用企业微信、邮件 |
+| QQ（OneBot v11） | 经自行运行的 NapCat、Lagrange 等的 HTTP 接口，发到群或个人 |
 | Webhook | 以 JSON 或自定义模板发送；可设置签名密钥、请求头、请求方法与 Content-Type |
 | 运行脚本 | 由内置 shell 运行数据目录 `hooks/` 中的脚本，参见下文 |
 
-可自建服务端的渠道（Bark、ntfy、Gotify、Slack、Webhook）提供“允许内网地址”开关，默认只连接公网地址。连接境外服务的渠道（Telegram、Discord、Slack、Pushover、ntfy、Gotify、Bark、Webhook）可在高级设置中单独设置代理。
+可自建服务端的渠道（Bark、ntfy、Gotify、Matrix、QQ、Slack、Webhook）提供“允许内网地址”开关，默认只连接公网地址。连接境外服务的渠道（Telegram、Discord、Slack、Teams、Google Chat、Matrix、Pushover、ntfy、Gotify、Bark、Webhook）可在高级设置中单独设置代理。
 
 ## Telegram 机器人的指令与菜单
 
