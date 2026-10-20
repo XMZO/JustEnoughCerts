@@ -775,6 +775,8 @@ export type MessageKey =
   | "certs.info.title"
   | "certs.issuance.background"
   | "certs.issuance.check_now"
+  | "certs.issuance.copy_name"
+  | "certs.issuance.copy_value"
   | "certs.issuance.deploy_step"
   | "certs.issuance.done"
   | "certs.issuance.done_deployed"

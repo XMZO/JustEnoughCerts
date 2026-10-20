@@ -5,6 +5,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { saveFile, type LogLine } from '../api/certs'
 import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
+import CopyButton from './CopyButton.vue'
 import JecButton from './JecButton.vue'
 
 // The log of an issuance or a deployment (docs/design/system/components/
@@ -23,6 +24,12 @@ const { t } = useT()
 const intl = useIntl()
 
 const message = (l: LogLine) => t(l.key as MessageKey, (l.params ?? {}) as Params)
+// A record to add to the DNS, as a validation by hand needs: its name and
+// value, each to copy.
+const record = (l: LogLine) => {
+  const p = (l.params ?? {}) as Record<string, unknown>
+  return l.key.endsWith('.log.record') && typeof p.name === 'string' && typeof p.value === 'string' ? { name: p.name, value: p.value } : undefined
+}
 const levelInk = { info: 'text-ink', ok: 'text-ok-ink', warn: 'text-warn-ink', error: 'text-danger-ink' } as const
 
 const box = ref<HTMLElement>()
@@ -79,6 +86,16 @@ function download() {
       <div v-for="l in lines" :key="l.seq" class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 py-0.5">
         <time :datetime="l.at" class="text-ink-muted tabular-nums">{{ intl.time(l.at) }}</time>
         <span :class="['[overflow-wrap:anywhere]', levelInk[l.level], l.level === 'info' ? '' : 'font-semibold']">{{ message(l) }}</span>
+        <span v-if="record(l)" class="col-start-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span class="inline-flex min-w-0 items-center gap-1">
+            <code class="[overflow-wrap:anywhere]" translate="no">{{ record(l)!.name }}</code>
+            <CopyButton :value="record(l)!.name" label="certs.issuance.copy_name" />
+          </span>
+          <span class="inline-flex min-w-0 items-center gap-1">
+            <code class="[overflow-wrap:anywhere]" translate="no">{{ record(l)!.value }}</code>
+            <CopyButton :value="record(l)!.value" label="certs.issuance.copy_value" />
+          </span>
+        </span>
         <pre
           v-if="showDetail && l.detail"
           translate="no"
