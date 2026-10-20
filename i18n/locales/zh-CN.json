@@ -2328,6 +2328,7 @@
       "hsts": "只用 HTTPS（HSTS）",
       "hsts_off": "未开启",
       "hsts_on": "已开启",
+      "http_listen": "另应答 HTTP（跳转到 HTTPS）：",
       "intro": "改动会立即保存。",
       "language": "语言",
       "language_help": "界面文字的语言，记在这个浏览器里",

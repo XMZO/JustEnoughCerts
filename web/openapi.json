@@ -3196,6 +3196,10 @@
             "description": "Answers send Strict-Transport-Security, as JEC_HSTS asks",
             "type": "boolean"
           },
+          "httpListen": {
+            "description": "Where plain HTTP is answered beside HTTPS, from JEC_HTTP_LISTEN: /.well-known/, and the rest sent to HTTPS",
+            "type": "string"
+          },
           "listen": {
             "description": "The address the HTTP server binds to, from JEC_LISTEN",
             "type": "string"

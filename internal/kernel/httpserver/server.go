@@ -10,6 +10,8 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -31,6 +33,9 @@ type Server struct {
 	handler http.Handler
 	log     *slog.Logger
 	tls     *tls.Config // HTTPS, when set
+	// plain answers HTTP beside HTTPS: /.well-known/ and the health check
+	// as handler does, the rest sent to HTTPS.
+	plain http.Handler
 }
 
 // New builds the server for cfg; app serves every request but the health
@@ -51,8 +56,41 @@ func New(cfg config.Config, log *slog.Logger, app http.Handler) (*Server, error)
 		if s.tls, err = TLSConfig(cfg.TLSCert, cfg.TLSKey, log); err != nil {
 			return nil, err
 		}
+		s.plain = toHTTPS(s.handler, cfg.BaseURL)
 	}
 	return s, nil
+}
+
+// toHTTPS answers plain HTTP: the requests under /.well-known/, which CAs
+// make over HTTP, and the health check go to next; the rest is sent to the
+// same place over HTTPS, at the host of baseURL when it is set.
+func toHTTPS(next http.Handler, baseURL string) http.Handler {
+	host := ""
+	if u, err := url.Parse(baseURL); err == nil && u.Scheme == "https" {
+		host = u.Host
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/.well-known/") || r.URL.Path == HealthPath {
+			next.ServeHTTP(w, r)
+			return
+		}
+		to := host
+		if to == "" {
+			to = r.Host
+			if h, _, err := net.SplitHostPort(r.Host); err == nil {
+				to = h
+				if strings.Contains(h, ":") {
+					to = "[" + h + "]"
+				}
+			}
+		}
+		if to == "" {
+			http.Error(w, "use HTTPS", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		http.Redirect(w, r, "https://"+to+r.URL.RequestURI(), http.StatusPermanentRedirect) //nolint:gosec // G710: to the host the client asked for, or the base URL's
+	})
 }
 
 // headers are the security headers of every answer (PLAN.md 10): the UI
@@ -91,15 +129,29 @@ func (s *Server) Handler() http.Handler { return s.handler }
 // Serve accepts connections on ln until ctx is done, then shuts down
 // gracefully.
 func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
+	return s.serve(ctx, ln, s.handler, s.tls)
+}
+
+// ServePlain answers plain HTTP on ln beside HTTPS, as Serve does: the
+// requests under /.well-known/ and the health check, and the rest sent to
+// HTTPS. It is for a server that serves HTTPS only.
+func (s *Server) ServePlain(ctx context.Context, ln net.Listener) error {
+	if s.plain == nil {
+		return errors.New("http: plain HTTP is only beside HTTPS")
+	}
+	return s.serve(ctx, ln, s.plain, nil)
+}
+
+func (s *Server) serve(ctx context.Context, ln net.Listener, handler http.Handler, tlsConfig *tls.Config) error {
 	srv := &http.Server{
-		Handler:           s.handler,
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       2 * time.Minute,
 		ErrorLog:          slog.NewLogLogger(s.log.Handler(), slog.LevelWarn),
 	}
 	served := make(chan error, 1)
-	if s.tls != nil {
-		srv.TLSConfig = s.tls
+	if tlsConfig != nil {
+		srv.TLSConfig = tlsConfig
 		go func() { served <- srv.ServeTLS(ln, "", "") }()
 	} else {
 		go func() { served <- srv.Serve(ln) }()

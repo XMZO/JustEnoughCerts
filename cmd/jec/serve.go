@@ -66,6 +66,13 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		return errors.Join(err, app.Close())
 	}
 	log.Info("listening", "addr", ln.Addr().String(), "base_url", cfg.BaseURL, "https", cfg.TLS())
+	var plain net.Listener
+	if cfg.HTTPListen != "" {
+		if plain, err = net.Listen("tcp", cfg.HTTPListen); err != nil {
+			return errors.Join(err, ln.Close(), app.Close())
+		}
+		log.Info("answering plain HTTP", "addr", plain.Addr().String())
+	}
 	app.Start()
 	// A restored backup stops the server for the process to start again.
 	ctx, stop := context.WithCancel(ctx)
@@ -79,7 +86,18 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		case <-ctx.Done():
 		}
 	}()
+	plainDone := make(chan error, 1)
+	if plain != nil {
+		go func() {
+			plainDone <- srv.ServePlain(ctx, plain)
+			stop() // either server down stops the other
+		}()
+	} else {
+		plainDone <- nil
+	}
 	err = srv.Serve(ctx, ln)
+	stop()
+	err = errors.Join(err, <-plainDone)
 	// The HTTP server is down, so no request publishes events any more;
 	// Close then waits for the event handlers and jobs still running.
 	err = errors.Join(err, app.Close())

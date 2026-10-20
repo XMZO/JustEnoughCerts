@@ -2328,6 +2328,7 @@
       "hsts": "HTTPS only (HSTS)",
       "hsts_off": "Off",
       "hsts_on": "On",
+      "http_listen": "Plain HTTP, sent to HTTPS:",
       "intro": "Changes are saved at once.",
       "language": "Language",
       "language_help": "The language of the interface, remembered by this browser",

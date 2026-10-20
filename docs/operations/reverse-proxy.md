@@ -358,6 +358,12 @@ and `trusted_proxies_strict` in Caddy.
    no restart.
 4. Once the browser no longer warns, set `JEC_HSTS: "true"` if you wish.
 
+For plain HTTP as well, as for JEC to answer a CA's file validation
+itself, add `JEC_HTTP_LISTEN: ":8081"` and publish `"80:8081"`: JEC
+answers the requests under `/.well-known/`, and sends the rest to HTTPS.
+The validation of step 3 can then be JEC answering itself, with no DNS
+provider's API.
+
 Without containers it is the same: name the files with `-tls-cert` and
 `-tls-key`, or `tls_cert` and `tls_key` in the configuration file, in a
 directory JEC can write to. `jec healthcheck` turns to HTTPS by itself.

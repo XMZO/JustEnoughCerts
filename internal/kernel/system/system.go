@@ -36,8 +36,9 @@ type Options struct {
 	TrustedProxies string
 	HSTS           bool
 	// TLSCert is the file of the certificate JEC serves HTTPS with; empty
-	// when it serves plain HTTP.
-	TLSCert string
+	// when it serves plain HTTP. HTTPListen is where it answers plain HTTP
+	// beside, if anywhere.
+	TLSCert, HTTPListen string
 	// VerifyKey tells whether a database's check value is the master
 	// key's; Versions are the last migration of each owner in this
 	// program. A backup is restored only when both agree with it.
@@ -79,11 +80,13 @@ type Options struct {
 
 // RuntimeBody is how this JEC runs: where its data is and how it is reached.
 type RuntimeBody struct {
-	DataDir   string `json:"dataDir" doc:"Where the database and the key file are"`
-	Listen    string `json:"listen" doc:"The address the HTTP server binds to, from JEC_LISTEN"`
-	BaseURL   string `json:"baseURL,omitempty" doc:"The URL people open, from JEC_BASE_URL; links in notifications need it"`
-	SecretKey string `json:"secretKey" enum:"env,file" doc:"Where the master key comes from: JEC_SECRET_KEY, or the key file in dataDir"`
-	Database  string `json:"database" enum:"sqlite,postgres" doc:"Where the data is: SQLite in dataDir, or the PostgreSQL that JEC_DATABASE_URL names"`
+	DataDir string `json:"dataDir" doc:"Where the database and the key file are"`
+	Listen  string `json:"listen" doc:"The address the HTTP server binds to, from JEC_LISTEN"`
+	// HTTPListen is an address to show as it is.
+	HTTPListen string `json:"httpListen,omitempty" doc:"Where plain HTTP is answered beside HTTPS, from JEC_HTTP_LISTEN: /.well-known/, and the rest sent to HTTPS"`
+	BaseURL    string `json:"baseURL,omitempty" doc:"The URL people open, from JEC_BASE_URL; links in notifications need it"`
+	SecretKey  string `json:"secretKey" enum:"env,file" doc:"Where the master key comes from: JEC_SECRET_KEY, or the key file in dataDir"`
+	Database   string `json:"database" enum:"sqlite,postgres" doc:"Where the data is: SQLite in dataDir, or the PostgreSQL that JEC_DATABASE_URL names"`
 	// The proxies are addresses and ranges, data to show as they are.
 	TrustedProxies string         `json:"trustedProxies,omitempty" doc:"The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES"`
 	HSTS           bool           `json:"hsts" doc:"Answers send Strict-Transport-Security, as JEC_HSTS asks"`
@@ -194,7 +197,7 @@ func Register(a huma.API, o Options) {
 // runtime is what GET /system tells.
 func (o Options) runtime(ctx context.Context) RuntimeBody {
 	info := RuntimeBody{
-		DataDir: o.DataDir, Listen: o.Listen, BaseURL: o.BaseURL, SecretKey: "file", TrustedProxies: o.TrustedProxies, HSTS: o.HSTS,
+		DataDir: o.DataDir, Listen: o.Listen, HTTPListen: o.HTTPListen, BaseURL: o.BaseURL, SecretKey: "file", TrustedProxies: o.TrustedProxies, HSTS: o.HSTS,
 		Database:       o.Database,
 		ServerTimeZone: o.Zone.Server().String(),
 		AutoBackup:     o.autoBackupState(ctx),

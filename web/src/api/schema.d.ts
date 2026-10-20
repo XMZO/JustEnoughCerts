@@ -2859,6 +2859,8 @@ export interface components {
             heartbeat: components["schemas"]["HeartbeatBody"];
             /** @description Answers send Strict-Transport-Security, as JEC_HSTS asks */
             hsts: boolean;
+            /** @description Where plain HTTP is answered beside HTTPS, from JEC_HTTP_LISTEN: /.well-known/, and the rest sent to HTTPS */
+            httpListen?: string;
             /** @description The address the HTTP server binds to, from JEC_LISTEN */
             listen: string;
             /**

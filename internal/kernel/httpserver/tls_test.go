@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -133,5 +134,27 @@ func TestServeTLS(t *testing.T) {
 	}
 	if resp.ProtoMajor != 2 {
 		t.Errorf("over %s, want HTTP/2", resp.Proto)
+	}
+}
+
+func TestToHTTPS(t *testing.T) {
+	for _, c := range []struct {
+		base, host, path string
+		status           int
+		location         string
+	}{
+		{"", "panel.example:8080", "/certificates?x=1", http.StatusPermanentRedirect, "https://panel.example/certificates?x=1"},
+		{"", "[2001:db8::1]:80", "/", http.StatusPermanentRedirect, "https://[2001:db8::1]/"},
+		{"https://jec.example.com:8443/jec", "10.0.0.1", "/jec/settings", http.StatusPermanentRedirect, "https://jec.example.com:8443/jec/settings"},
+		{"", "panel.example", "/.well-known/acme-challenge/token", http.StatusTeapot, ""},
+		{"", "panel.example", HealthPath, http.StatusTeapot, ""},
+	} {
+		h := toHTTPS(teapot, c.base)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "http://"+c.host+c.path, http.NoBody)
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != c.status || rec.Header().Get("Location") != c.location {
+			t.Errorf("%s%s with base %q: %d %q", c.host, c.path, c.base, rec.Code, rec.Header().Get("Location"))
+		}
 	}
 }

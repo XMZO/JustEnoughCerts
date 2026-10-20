@@ -915,7 +915,12 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
             <span class="block font-semibold">{{ t('kernel.settings.listen') }}</span>
             <code class="block text-caption text-ink-muted" translate="no">{{ variables.listen }}</code>
           </dt>
-          <dd :class="[fact, 'font-mono']" translate="no">{{ system.data.value.listen }}</dd>
+          <dd :class="[fact, 'flex flex-col items-end']">
+            <span class="font-mono" translate="no">{{ system.data.value.listen }}</span>
+            <span v-if="system.data.value.httpListen" class="text-caption text-ink-muted">
+              {{ t('kernel.settings.http_listen') }} <span class="font-mono" translate="no">{{ system.data.value.httpListen }}</span>
+            </span>
+          </dd>
           <dt>
             <span class="block font-semibold">{{ t('kernel.settings.trusted_proxies') }}</span>
             <code class="block text-caption text-ink-muted" translate="no">{{ variables.trustedProxies }}</code>

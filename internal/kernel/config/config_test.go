@@ -161,6 +161,8 @@ func TestInvalidValues(t *testing.T) {
 		"empty data dir":        {"--data-dir", ""},
 		"TLS without a key":     {"--tls-cert", "cert.pem"},
 		"TLS without a cert":    {"--tls-key", "key.pem"},
+		"HTTP without TLS":      {"--http-listen", ":80"},
+		"HTTP without port":     {"--tls-cert", "c.pem", "--tls-key", "k.pem", "--http-listen", "80"},
 	}
 	for name, args := range tests {
 		t.Run(name, func(t *testing.T) {

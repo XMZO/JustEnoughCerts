@@ -1756,6 +1756,7 @@ const (
 	KernelSettingsHsts                       Key = "kernel.settings.hsts"
 	KernelSettingsHstsOff                    Key = "kernel.settings.hsts_off"
 	KernelSettingsHstsOn                     Key = "kernel.settings.hsts_on"
+	KernelSettingsHttpListen                 Key = "kernel.settings.http_listen"
 	KernelSettingsIntro                      Key = "kernel.settings.intro"
 	KernelSettingsLanguage                   Key = "kernel.settings.language"
 	KernelSettingsLanguageHelp               Key = "kernel.settings.language_help"

@@ -1764,6 +1764,7 @@ export type MessageKey =
   | "kernel.settings.hsts"
   | "kernel.settings.hsts_off"
   | "kernel.settings.hsts_on"
+  | "kernel.settings.http_listen"
   | "kernel.settings.intro"
   | "kernel.settings.language"
   | "kernel.settings.language_help"
