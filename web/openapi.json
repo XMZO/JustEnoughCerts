@@ -1607,6 +1607,39 @@
         ],
         "type": "object"
       },
+      "HeartbeatBody": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "description": "What went wrong the last time, as the HTTP client said; empty when it answered",
+            "type": "string"
+          },
+          "last": {
+            "description": "When it was last asked for",
+            "format": "date-time",
+            "type": "string"
+          },
+          "url": {
+            "description": "Asked for with GET every five minutes while JEC runs; empty for none",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "HeartbeatInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "description": "An http or https address; empty for none",
+            "maxLength": 2000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
       "ImportInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -2795,6 +2828,10 @@
             ],
             "type": "string"
           },
+          "heartbeat": {
+            "$ref": "#/components/schemas/HeartbeatBody",
+            "description": "The address JEC asks for while it runs, for a monitoring service"
+          },
           "hsts": {
             "description": "Answers send Strict-Transport-Security, as JEC_HSTS asks",
             "type": "boolean"
@@ -2831,7 +2868,8 @@
           "database",
           "hsts",
           "serverTimeZone",
-          "autoBackup"
+          "autoBackup",
+          "heartbeat"
         ],
         "type": "object"
       },
@@ -7113,6 +7151,47 @@
           }
         },
         "summary": "Tell how the background jobs went last, and the space left in the data directory",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/system/heartbeat": {
+      "put": {
+        "operationId": "set-heartbeat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeartbeatInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuntimeBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Choose the address JEC asks for every five minutes while it runs, for a monitoring service to tell when it stopped",
         "tags": [
           "system"
         ]

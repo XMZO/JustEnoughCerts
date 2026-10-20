@@ -61,6 +61,15 @@ An alert for certificates that end within 14 days:
     summary: "{{ $labels.domain }} ends in under 14 days"
 ```
 
+## Heartbeat
+
+With the address a monitoring service gives, such as healthchecks.io or a
+push monitor of Uptime Kuma, under Heartbeat in Data and backups on the
+Settings page, JEC asks for it with GET every five minutes while it runs;
+when JEC stops, or cannot reach it, the service alerts as it is set to. A
+failed request counts as a failure of the background job
+`kernel.heartbeat`, which marks the Settings link.
+
 ## Health
 
 Without Prometheus, Background jobs and Free space for data under About

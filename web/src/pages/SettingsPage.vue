@@ -37,7 +37,7 @@ import { saveFile, useCertSettings, useSaveCertSettings, type CertSettingsInput,
 import { useExportConfig, useImportConfig, type ConfigItem, type ConfigReport } from '../api/config'
 import { useApiError } from '../api/errors'
 import { useManifest } from '../api/manifest'
-import { lowDisk, useBackup, useHealth, useReleaseCheck, useRestore, useSetAutoBackup, useSetTimeZone, useSystem, waitForRestart, type Health } from '../api/system'
+import { lowDisk, useBackup, useHealth, useSetHeartbeat, useReleaseCheck, useRestore, useSetAutoBackup, useSetTimeZone, useSystem, waitForRestart, type Health } from '../api/system'
 import { keyText } from '../certs/life'
 import CopyButton from '../components/CopyButton.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -278,6 +278,20 @@ const setAutoBackup = useSetAutoBackup()
 const autoBackupError = useApiError(computed(() => setAutoBackup.error.value))
 function pickKeep(e: Event) {
   setAutoBackup.mutate(Number((e.target as HTMLSelectElement).value))
+}
+
+// The heartbeat: saved when the field is left, if changed.
+const setHeartbeat = useSetHeartbeat()
+const heartbeatError = useApiError(computed(() => setHeartbeat.error.value))
+const heartbeat = ref('')
+watch(
+  () => system.data.value?.heartbeat.url,
+  (url) => (heartbeat.value = url ?? ''),
+  { immediate: true },
+)
+function saveHeartbeat() {
+  const url = heartbeat.value.trim()
+  if (url !== (system.data.value?.heartbeat.url ?? '')) setHeartbeat.mutate(url)
 }
 
 const setTimeZone = useSetTimeZone()
@@ -696,6 +710,36 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
             {{ k ? t('kernel.settings.auto_backup_keep', { count: k }) : t('kernel.settings.auto_backup_off') }}
           </option>
         </select>
+      </div>
+      <div :class="[row, 'flex-wrap']">
+        <div class="min-w-0 flex-[1_1_12rem]">
+          <label for="heartbeat" class="block font-semibold">{{ t('kernel.settings.heartbeat') }}</label>
+          <span id="heartbeat-help" class="block text-caption leading-[18px] text-ink-muted">
+            <template v-if="heartbeatError.fields.value.url">{{ t(heartbeatError.fields.value.url) }}</template>
+            <template v-else-if="system.data.value.heartbeat.last && system.data.value.heartbeat.error">
+              <span class="font-semibold text-warn-ink">{{ t('kernel.settings.heartbeat_failed') }}</span>
+              <time :datetime="system.data.value.heartbeat.last">{{ intl.dateTime(system.data.value.heartbeat.last) }}</time>
+              <span translate="no">{{ system.data.value.heartbeat.error }}</span>
+            </template>
+            <template v-else-if="system.data.value.heartbeat.last">
+              {{ t('kernel.settings.heartbeat_ok') }}
+              <time :datetime="system.data.value.heartbeat.last">{{ intl.dateTime(system.data.value.heartbeat.last) }}</time>
+            </template>
+            <template v-else>{{ t('kernel.settings.heartbeat_help') }}</template>
+          </span>
+        </div>
+        <input
+          id="heartbeat"
+          v-model="heartbeat"
+          type="url"
+          inputmode="url"
+          autocomplete="off"
+          spellcheck="false"
+          aria-describedby="heartbeat-help"
+          :aria-invalid="!!heartbeatError.fields.value.url || undefined"
+          :class="[control, 'w-full min-w-0 flex-[1_1_14rem]']"
+          @change="saveHeartbeat"
+        />
       </div>
       <div :class="[row, 'flex-wrap']">
         <!-- Three buttons leave the words too little room beside them: they go below. -->

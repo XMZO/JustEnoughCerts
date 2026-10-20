@@ -35,6 +35,15 @@ export function useSetAutoBackup() {
   })
 }
 
+/** Sets the address JEC asks for while it runs, for a monitoring service; "" for none. */
+export function useSetHeartbeat() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (url: string) => unwrap(api.PUT('/system/heartbeat', { body: { url } })),
+    onSuccess: (info) => client.setQueryData(['system'], info),
+  })
+}
+
 export type ReleaseInfo = components['schemas']['ReleaseBody']
 
 /** Asks whether a newer release of JEC is out: only when someone asks, as JEC never calls home on its own. */

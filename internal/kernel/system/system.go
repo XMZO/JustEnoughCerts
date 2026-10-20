@@ -51,6 +51,8 @@ type Options struct {
 	// JobStatus tells the jobs of the modules that are on, with their last
 	// runs.
 	JobStatus func(ctx context.Context) ([]jobs.Status, error)
+	// beats keeps how the heartbeat went, once Register made it.
+	beats *beats
 	// Confirm checks the password of the signed-in account, as
 	// auth.Service.ConfirmPassword does.
 	Confirm func(ctx context.Context, password string) error
@@ -77,6 +79,7 @@ type RuntimeBody struct {
 	TimeZone       string         `json:"timeZone,omitempty" doc:"The time zone chosen for JEC, an IANA name: the panel shows times in it, messages tell times in it, and renewals start at the check time in it; empty while it is the server's"`
 	ServerTimeZone string         `json:"serverTimeZone" doc:"The server's time zone, which TZ sets: an IANA name, or Local when the server tells none"`
 	AutoBackup     AutoBackupBody `json:"autoBackup" doc:"The backups JEC makes by itself, one a day"`
+	Heartbeat      HeartbeatBody  `json:"heartbeat" doc:"The address JEC asks for while it runs, for a monitoring service"`
 }
 
 type timeZoneInput struct {
@@ -108,6 +111,10 @@ func Register(a huma.API, o Options) {
 	if client == nil {
 		client = &http.Client{Timeout: 30 * time.Second}
 	}
+	o.beats = &beats{}
+	if o.Now == nil {
+		o.Now = time.Now
+	}
 	registerRelease(a, client, o.Version, tags)
 	huma.Register(a, huma.Operation{
 		OperationID: "get-system", Method: http.MethodGet, Path: "/system", Tags: tags,
@@ -133,6 +140,7 @@ func Register(a huma.API, o Options) {
 	registerAutoBackup(a, o, tags)
 	registerRestore(a, o, tags)
 	registerHealth(a, o, tags)
+	registerHeartbeat(a, o, client, tags)
 	huma.Register(a, huma.Operation{
 		OperationID: "backup", Method: http.MethodPost, Path: "/system/backup", Tags: tags,
 		Summary: "Download a copy of the database, once the password is confirmed",
@@ -168,6 +176,7 @@ func (o Options) runtime(ctx context.Context) RuntimeBody {
 		Database:       o.Database,
 		ServerTimeZone: o.Zone.Server().String(),
 		AutoBackup:     o.autoBackupState(ctx),
+		Heartbeat:      o.heartbeatState(ctx),
 	}
 	if o.KeyFromEnv {
 		info.SecretKey = "env"

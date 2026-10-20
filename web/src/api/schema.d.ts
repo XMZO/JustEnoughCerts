@@ -1109,6 +1109,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Choose the address JEC asks for every five minutes while it runs, for a monitoring service to tell when it stopped */
+        put: operations["set-heartbeat"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/release": {
         parameters: {
             query?: never;
@@ -1863,6 +1880,21 @@ export interface components {
             /** @description The jobs of the modules that are on, by name */
             jobs: components["schemas"]["JobBody"][];
         };
+        HeartbeatBody: {
+            /** @description What went wrong the last time, as the HTTP client said; empty when it answered */
+            error?: string;
+            /**
+             * Format: date-time
+             * @description When it was last asked for
+             */
+            last?: string;
+            /** @description Asked for with GET every five minutes while JEC runs; empty for none */
+            url?: string;
+        };
+        HeartbeatInputBody: {
+            /** @description An http or https address; empty for none */
+            url: string;
+        };
         ImportInputBody: {
             /** @description Certificates and private keys in any mix, as another tool exported them */
             files: components["schemas"]["Item1"][];
@@ -2301,6 +2333,8 @@ export interface components {
              * @enum {string}
              */
             database: "sqlite" | "postgres";
+            /** @description The address JEC asks for while it runs, for a monitoring service */
+            heartbeat: components["schemas"]["HeartbeatBody"];
             /** @description Answers send Strict-Transport-Security, as JEC_HSTS asks */
             hsts: boolean;
             /** @description The address the HTTP server binds to, from JEC_LISTEN */
@@ -5075,6 +5109,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "set-heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HeartbeatInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeBody"];
                 };
             };
             /** @description Error */

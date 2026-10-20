@@ -906,6 +906,14 @@ test('every page is translated and fits', async ({ page }, info) => {
   await days.fill('30')
   await days.blur()
   await expect(days).not.toHaveAttribute('aria-invalid')
+  // A heartbeat address the server refuses, then none again.
+  const heartbeat = page.locator('#heartbeat')
+  await heartbeat.fill('ftp://monitor.example')
+  await heartbeat.blur()
+  await expect(heartbeat).toHaveAttribute('aria-invalid', 'true')
+  expect.soft(await problems(page), 'a heartbeat refused').toEqual([])
+  await heartbeat.fill('')
+  await heartbeat.blur()
   // More retries than the server allows, then the default again.
   const retries = page.locator('#retries')
   await retries.fill('25')

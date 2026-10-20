@@ -132,6 +132,7 @@
 - 又加了：ZeroSSL 不填 EAB 时注册前用邮箱向 `api.zerossl.com` 领取（经账号的代理，`acme.Module.zeroSSL` 可替换）；“以此为模板添加”（添加页 `?from=<id>`，没有时用浏览器记住的上次选择）；多文件导入（`POST /api/v1/certs/certificates/import`，`cryptox.FindPairs` 按公钥配对、补链，界面在“手动上传”的“多个文件”）；“下载全部证书”（`POST /api/v1/certs/certificates/export`，要密码，每张发一次 `certificate.key_downloaded`）；设置入口在后台任务失败或磁盘空间不足时显示警告（`healthTrouble`）。vue-tsc 不报模板里没导入的组件，新用到 `JecField` 之类要自己检查导入。
 - 上传（含多文件导入）的证书没有中间证书时按 AIA 补链（`cryptox.CompleteChain`，DER、PEM、PKCS #7 的 `.p7c` 都能读，补不全就保留已取到的；证书模块的 `issuers` 客户端，测试里为空就不补）。
 - 续期时沿用私钥（`certs_certificates.reuse_key`，`PATCH` 的 `reuseKey`，配置文件 `reuse_key`）：签发取私钥时（`kept` → `reusedKey`）用当前版本的私钥，类型不同或当前版本被吊销就照常生成；日志 `certs.log.key_reused`。
+- 心跳监控（内核 `system/heartbeat.go`，`kernel_meta` 的 `heartbeat`，`PUT /api/v1/system/heartbeat`，任务 `kernel.heartbeat` 每 5 分钟 GET 一次，结果只在内存里；失败算任务失败）：设置页“数据和备份”填地址，离开输入框时保存。输入框的 `placeholder` 也算界面文字，要么翻译要么不写。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定
