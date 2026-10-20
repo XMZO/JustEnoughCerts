@@ -130,3 +130,13 @@ export function useZones(id: MaybeRefOrGetter<number | undefined>, domains: Mayb
     retry: false,
   })
 }
+
+export type TryResult = components['schemas']['TryBody']
+
+/** Tries a solver of DNS on a domain: adds the record of a challenge, waits for it, and removes it. */
+export function useTryProvider() {
+  return useMutation({
+    mutationFn: ({ id, domain }: { id: number; domain: string }) =>
+      unwrap(api.POST('/providers/{id}/try', { params: { path: { id } }, body: { domain } })),
+  })
+}

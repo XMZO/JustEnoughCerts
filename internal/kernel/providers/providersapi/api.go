@@ -35,6 +35,7 @@ type TypeSummary struct {
 	Challenges   []string       `json:"challenges,omitempty" enum:"dns,http,record" doc:"For a source that needs a solver: the challenges of the solvers it can use; record takes a solver of DNS that adds records of any type"`
 	Challenge    string         `json:"challenge,omitempty" enum:"dns,http" doc:"For a solver: how it proves control of a domain, through DNS records or files on the web server"`
 	Records      bool           `json:"records,omitempty" doc:"For a solver of DNS: it adds records of any type too, as some sources ask"`
+	Manual       bool           `json:"manual,omitempty" doc:"For a solver of DNS: people add the records, so it cannot be tried"`
 	Testable     bool           `json:"testable,omitempty" doc:"Its instances can be tested"`
 	Zones        bool           `json:"zones,omitempty" doc:"For a solver of DNS: its instances tell whether their account holds the zone of a domain"`
 	Experimental bool           `json:"experimental,omitempty"`
@@ -154,7 +155,7 @@ func Register(a huma.API, r *providers.Registry) {
 			sum := TypeSummary{
 				ID: t.ID, Kind: t.Kind, Module: t.Module, Name: t.Name, Description: t.Description,
 				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, OwnKey: t.OwnKey, Revocable: t.Revocable, Testable: t.Testable, Zones: t.Zones, Experimental: t.Experimental, Untested: t.Untested,
-				CredentialKind: t.CredentialKind, Texts: t.Texts,
+				CredentialKind: t.CredentialKind, Texts: t.Texts, Manual: t.Manual,
 			}
 			switch {
 			case t.Kind == providers.Solver:
@@ -256,6 +257,7 @@ func Register(a huma.API, r *providers.Registry) {
 	})
 
 	registerCredentials(a, r)
+	registerTry(a, r)
 }
 
 // testTimeout bounds a test, which may reach a server across the world.

@@ -109,11 +109,28 @@ func lookupCAA(ctx context.Context, name string) ([]*dns.CAA, error) {
 	if err != nil {
 		return nil, err
 	}
+	rrs, err := ask(ctx, servers, name, dns.TypeCAA)
+	if err != nil {
+		return nil, err
+	}
+	var out []*dns.CAA
+	for _, rr := range rrs {
+		if caa, ok := rr.(*dns.CAA); ok {
+			out = append(out, caa)
+		}
+	}
+	return out, nil
+}
+
+// ask asks the recursive resolvers servers, in turn, for the records of
+// qtype at name, and returns the answer of the first that gives one: none
+// when the name has none.
+func ask(ctx context.Context, servers []string, name string, qtype uint16) ([]dns.RR, error) {
 	m := new(dns.Msg)
-	m.SetQuestion(dns.Fqdn(name), dns.TypeCAA)
+	m.SetQuestion(dns.Fqdn(name), qtype)
 	m.RecursionDesired = true
 	c := &dns.Client{Timeout: 5 * time.Second}
-	var last error
+	last := errors.New("dnscheck: no recursive resolver to ask")
 	for _, s := range servers {
 		in, _, err := c.ExchangeContext(ctx, m, s)
 		if err == nil && in.Truncated {
@@ -125,16 +142,10 @@ func lookupCAA(ctx context.Context, name string) ([]*dns.CAA, error) {
 			last = fmt.Errorf("dnscheck: ask %s: %w", s, err)
 			continue
 		case in.Rcode != dns.RcodeSuccess && in.Rcode != dns.RcodeNameError:
-			last = fmt.Errorf("dnscheck: %s answers %s for the CAA of %s", s, dns.RcodeToString[in.Rcode], name)
+			last = fmt.Errorf("dnscheck: %s answers %s for the %s of %s", s, dns.RcodeToString[in.Rcode], dns.TypeToString[qtype], name)
 			continue
 		}
-		var out []*dns.CAA
-		for _, rr := range in.Answer {
-			if caa, ok := rr.(*dns.CAA); ok {
-				out = append(out, caa)
-			}
-		}
-		return out, nil
+		return in.Answer, nil
 	}
 	return nil, last
 }

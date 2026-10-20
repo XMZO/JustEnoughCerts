@@ -27,6 +27,12 @@ account manages), and can add records of any type.
   permanently, through a CNAME, into another zone hosted at a supported
   provider; the validation record is then added under the name the CNAME
   points to.
+- **Try**: Try, on each provider's card on the DNS page, does what an
+  issuance would: it adds a TXT record at `_acme-challenge` under the
+  domain given, waits up to 40 seconds for the authoritative DNS to answer
+  it, and removes it, without a CA, to make sure of the keys and the
+  domain's access before issuing. A provider's error shows as it gave it.
+  Tried against RFC 2136 dynamic updates (BIND).
 - **Propagation check**: JEC queries the domain's authoritative DNS
   servers directly, and asks the certificate authority to validate only
   once the record is visible. If the machine's own resolver answers

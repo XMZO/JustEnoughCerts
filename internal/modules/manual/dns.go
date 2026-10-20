@@ -21,7 +21,7 @@ const (
 
 func dnsType() providers.Type {
 	return providers.Type{
-		ID: "manual.dns", Kind: providers.Solver, Challenge: providers.ChallengeDNS, Records: true,
+		ID: "manual.dns", Kind: providers.Solver, Challenge: providers.ChallengeDNS, Records: true, Manual: true,
 		Name: i18n.ManualDnsName, Description: i18n.ManualDnsDescription,
 		Fields: []providers.Field{
 			{Key: "minutes", Label: i18n.ManualFieldMinutes, Help: i18n.ManualFieldMinutesHelp, Kind: providers.Number, Default: strconv.Itoa(defaultMinutes)},

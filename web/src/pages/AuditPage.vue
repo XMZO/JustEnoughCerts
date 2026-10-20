@@ -60,6 +60,7 @@ const operations: Partial<Record<string, MessageKey>> = {
   'providers-update': 'audit.op.providers_update',
   'providers-delete': 'audit.op.providers_delete',
   'providers-test': 'audit.op.providers_test',
+  'providers-try': 'audit.op.providers_try',
   'credentials-create': 'audit.op.credentials_create',
   'credentials-update': 'audit.op.credentials_update',
   'credentials-delete': 'audit.op.credentials_delete',

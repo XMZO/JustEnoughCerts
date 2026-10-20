@@ -3749,6 +3749,55 @@
         ],
         "type": "object"
       },
+      "TryBody": {
+        "additionalProperties": false,
+        "properties": {
+          "record": {
+            "description": "The record's name, as _acme-challenge.example.com",
+            "type": "string"
+          },
+          "removed": {
+            "description": "It was removed again; if not, remove it by hand",
+            "type": "boolean"
+          },
+          "seconds": {
+            "description": "How long it took to be added and become visible, or the time waited",
+            "format": "int64",
+            "type": "integer"
+          },
+          "value": {
+            "description": "The TXT value added",
+            "type": "string"
+          },
+          "visible": {
+            "description": "The domain's authoritative servers answered it within the time a trial waits",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "record",
+          "value",
+          "visible",
+          "seconds",
+          "removed"
+        ],
+        "type": "object"
+      },
+      "TryInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "description": "A domain whose DNS the provider manages, as example.com; the record goes to _acme-challenge under it",
+            "maxLength": 253,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain"
+        ],
+        "type": "object"
+      },
       "TwoFactorSetup": {
         "additionalProperties": false,
         "properties": {
@@ -3831,6 +3880,9 @@
               "notifier"
             ],
             "type": "string"
+          },
+          "manual": {
+            "type": "boolean"
           },
           "module": {
             "type": "string"
@@ -3934,6 +3986,10 @@
               "notifier"
             ],
             "type": "string"
+          },
+          "manual": {
+            "description": "For a solver of DNS: people add the records, so it cannot be tried",
+            "type": "boolean"
           },
           "module": {
             "type": "string"
@@ -7531,6 +7587,56 @@
           }
         },
         "summary": "Test a configured provider"
+      }
+    },
+    "/providers/{id}/try": {
+      "post": {
+        "description": "For solvers whose challenge is dns, but those whose records people add. The record is a TXT record at _acme-challenge under the domain, with a random value. A provider that fails to add it answers 502 with its own message.",
+        "operationId": "providers-try",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TryInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TryBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Try a solver of DNS on a domain: add the record of a challenge, wait for it, and remove it"
       }
     },
     "/providers/{id}/zones": {

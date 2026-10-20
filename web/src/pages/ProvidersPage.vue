@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleCheck, Pencil, PlugZap, Plus, Send, Trash2, TriangleAlert } from '@lucide/vue'
+import { CircleCheck, FlaskConical, Pencil, PlugZap, Plus, Send, Trash2, TriangleAlert } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
@@ -16,6 +16,7 @@ import JecDialog from '../components/JecDialog.vue'
 import PageHeader from '../components/PageHeader.vue'
 import CalendarFeed from '../components/CalendarFeed.vue'
 import ProviderDialog from '../components/ProviderDialog.vue'
+import TryDnsDialog from '../components/TryDnsDialog.vue'
 import TypeTags from '../components/TypeTags.vue'
 import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
@@ -163,11 +164,27 @@ const cards = computed(() =>
       events: notifiers.value ? events(p) : '',
       send: sends.data.value?.find((s) => s.notifier === p.id),
       testable: notifiers.value ? !dispatchOff.value : !!summaryType?.testable,
+      // A solver of DNS that adds records itself can be tried on a domain.
+      triable: props.kind === 'solver' && (summaryType?.challenge ?? 'dns') === 'dns' && !summaryType?.manual && !!summaryType,
     }
   }),
 )
 
 const adding = ref(false)
+// A solver of DNS tried on a domain: one of a certificate that uses it,
+// to start with.
+const trying = ref<Provider>()
+const tryOpen = computed({
+  get: () => trying.value !== undefined,
+  set: (open) => {
+    if (!open) trying.value = undefined
+  },
+})
+const tryDomain = (id: number) => {
+  const d = certificates.data.value?.find((c) => c.solverProvider === id)?.domains[0] ?? ''
+  return d.replace(/^\*\./, '')
+}
+
 const editing = ref<Provider>()
 const editOpen = computed({
   get: () => editing.value !== undefined,
@@ -304,6 +321,9 @@ async function confirmDelete() {
           <JecButton v-if="c.testable" size="sm" :busy="testing === c.provider.id" @click="test(c.provider.id)">
             <component :is="notifiers ? Send : PlugZap" class="size-4" aria-hidden="true" />{{ t(notifiers ? 'notify.action.test' : 'kernel.providers.test') }}
           </JecButton>
+          <JecButton v-if="c.triable" size="sm" @click="trying = c.provider">
+            <FlaskConical class="size-4" aria-hidden="true" />{{ t('kernel.providers.try') }}
+          </JecButton>
           <JecButton size="sm" @click="editing = c.provider"><Pencil class="size-4" aria-hidden="true" />{{ t('kernel.action.edit') }}</JecButton>
           <JecButton size="sm" variant="ghost" @click="startDelete(c.provider)"><Trash2 class="size-4" aria-hidden="true" />{{ t('kernel.action.delete') }}</JecButton>
         </div>
@@ -326,6 +346,7 @@ async function confirmDelete() {
   </div>
 
   <ProviderDialog v-model:open="adding" :kind="kind" :title="t(page.add)" />
+  <TryDnsDialog v-if="trying" v-model:open="tryOpen" :id="trying.id" :name="trying.name" :suggested="tryDomain(trying.id)" />
   <ProviderDialog v-if="editing" v-model:open="editOpen" :kind="kind" :instance="editing" :title="t('kernel.providers.edit', { name: editing.name })" />
 
   <JecDialog v-model:open="deleteOpen" :title="t('kernel.providers.delete.title', { name: deleting?.name ?? '' })" small>

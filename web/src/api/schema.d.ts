@@ -1110,6 +1110,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/providers/{id}/try": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Try a solver of DNS on a domain: add the record of a challenge, wait for it, and remove it
+         * @description For solvers whose challenge is dns, but those whose records people add. The record is a TXT record at _acme-challenge under the domain, with a random value. A provider that fails to add it answers 502 with its own message.
+         */
+        post: operations["providers-try"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/providers/{id}/zones": {
         parameters: {
             query?: never;
@@ -2888,6 +2908,25 @@ export interface components {
             issuer: string;
             names: string[];
         };
+        TryBody: {
+            /** @description The record's name, as _acme-challenge.example.com */
+            record: string;
+            /** @description It was removed again; if not, remove it by hand */
+            removed: boolean;
+            /**
+             * Format: int64
+             * @description How long it took to be added and become visible, or the time waited
+             */
+            seconds: number;
+            /** @description The TXT value added */
+            value: string;
+            /** @description The domain's authoritative servers answered it within the time a trial waits */
+            visible: boolean;
+        };
+        TryInputBody: {
+            /** @description A domain whose DNS the provider manages, as example.com; the record goes to _acme-challenge under it */
+            domain: string;
+        };
         TwoFactorSetup: {
             /** @description The QR code of the URI, as an SVG data URL */
             qr: string;
@@ -2910,6 +2949,7 @@ export interface components {
             id: string;
             /** @enum {string} */
             kind: "source" | "solver" | "target" | "notifier";
+            manual?: boolean;
             module: string;
             name?: string;
             needsSolver?: boolean;
@@ -2944,6 +2984,8 @@ export interface components {
             id: string;
             /** @enum {string} */
             kind: "source" | "solver" | "target" | "notifier";
+            /** @description For a solver of DNS: people add the records, so it cannot be tried */
+            manual?: boolean;
             module: string;
             /** @description Message key of the name, for types JEC describes */
             name?: string;
@@ -5445,6 +5487,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TestOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "providers-try": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TryInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TryBody"];
                 };
             };
             /** @description Error */

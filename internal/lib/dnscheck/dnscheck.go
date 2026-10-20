@@ -64,15 +64,65 @@ func Visible(ctx context.Context, name, typ, value string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	ns, err := net.DefaultResolver.LookupNS(ctx, zone)
+	servers, err := nameServers(ctx, zone)
 	if err != nil {
-		return false, fmt.Errorf("dnscheck: the name servers of %s: %w", zone, err)
-	}
-	var servers []string
-	for _, n := range ns {
-		servers = append(servers, net.JoinHostPort(strings.TrimSuffix(n.Host, "."), "53"))
+		return false, err
 	}
 	return visibleAt(ctx, record{name, typ, value}, servers)
+}
+
+// nameServers returns the authoritative servers of zone, as host:port to
+// ask. With resolvers set (UseResolvers), those tell the servers and their
+// addresses, as they told the zone: the system's may not know them, as on
+// a network whose DNS answers otherwise inside. Else the system's do.
+func nameServers(ctx context.Context, zone string) ([]string, error) {
+	caaMu.Lock()
+	custom := slices.Clone(caaServers)
+	caaMu.Unlock()
+	var out []string
+	if len(custom) == 0 {
+		ns, err := net.DefaultResolver.LookupNS(ctx, zone)
+		if err != nil {
+			return nil, fmt.Errorf("dnscheck: the name servers of %s: %w", zone, err)
+		}
+		for _, n := range ns {
+			out = append(out, net.JoinHostPort(strings.TrimSuffix(n.Host, "."), "53"))
+		}
+		return out, nil
+	}
+	rrs, err := ask(ctx, custom, zone, dns.TypeNS)
+	if err != nil {
+		return nil, fmt.Errorf("dnscheck: the name servers of %s: %w", zone, err)
+	}
+	for _, rr := range rrs {
+		ns, ok := rr.(*dns.NS)
+		if !ok {
+			continue
+		}
+		host := strings.TrimSuffix(ns.Ns, ".")
+		var addrs []string
+		for _, qtype := range []uint16{dns.TypeA, dns.TypeAAAA} {
+			found, _ := ask(ctx, custom, host, qtype)
+			for _, a := range found {
+				switch v := a.(type) {
+				case *dns.A:
+					addrs = append(addrs, v.A.String())
+				case *dns.AAAA:
+					addrs = append(addrs, v.AAAA.String())
+				}
+			}
+		}
+		if len(addrs) == 0 {
+			addrs = []string{host} // left to the system to find
+		}
+		for _, a := range addrs {
+			out = append(out, net.JoinHostPort(a, "53"))
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("dnscheck: no name server of %s", zone)
+	}
+	return out, nil
 }
 
 type record struct{ name, typ, value string }
@@ -152,13 +202,13 @@ func Target(ctx context.Context, name string, subnet netip.Prefix) (string, erro
 	if err != nil {
 		return "", err
 	}
-	ns, err := net.DefaultResolver.LookupNS(ctx, zone)
+	servers, err := nameServers(ctx, zone)
 	if err != nil {
-		return "", fmt.Errorf("dnscheck: the name servers of %s: %w", zone, err)
+		return "", err
 	}
 	last := errors.New("dnscheck: no name server to ask")
-	for _, n := range ns {
-		target, err := targetAt(ctx, name, subnet, net.JoinHostPort(strings.TrimSuffix(n.Host, "."), "53"))
+	for _, addr := range servers {
+		target, err := targetAt(ctx, name, subnet, addr)
 		if err == nil {
 			return target, nil
 		}

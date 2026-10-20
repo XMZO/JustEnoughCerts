@@ -135,6 +135,9 @@ type Type struct {
 	// of any type too (contracts.RecordSolver), as vendors' validations
 	// ask for.
 	Records bool `json:"records,omitempty"`
+	// Manual is set on a solver type of DNS whose providers add nothing
+	// themselves: people add the records, so there is nothing to try.
+	Manual bool `json:"manual,omitempty"`
 	// Testable types make providers that can check their settings
 	// (contracts.Tester), through POST /api/v1/providers/{id}/test.
 	Testable bool `json:"testable,omitempty"`
