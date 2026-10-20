@@ -60,6 +60,8 @@
       "eab_kid_help": "ZeroSSL、Google Trust Services 和多数付费 CA 需要，在它们的账户页面里获取。ZeroSSL 也可以留空，JEC 用上面的邮箱自动领取（尚未用真实账号验证）。",
       "email": "联系邮箱（可选）",
       "email_help": "CA 会把账号相关的通知发到这里。使用这个账号即表示接受该 CA 的服务条款。",
+      "preferred_chain": "首选证书链",
+      "preferred_chain_help": "证书颁发机构提供多条证书链时，选用最顶端证书的颁发者名称（Common Name）与此相同的一条，如 ISRG Root X2。没有这样的链时用默认的。留空用默认的链。",
       "profile": "证书配置",
       "profile_help": "证书颁发机构提供的证书配置（ACME profile），如 Let's Encrypt 的 shortlived（6 天短期证书）或 tlsserver。留空用默认配置；测试连接会列出可用的配置。"
     },

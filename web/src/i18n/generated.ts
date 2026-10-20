@@ -60,6 +60,8 @@ export type MessageKey =
   | "acme.field.eab_kid_help"
   | "acme.field.email"
   | "acme.field.email_help"
+  | "acme.field.preferred_chain"
+  | "acme.field.preferred_chain_help"
   | "acme.field.profile"
   | "acme.field.profile_help"
   | "acme.log.caa_unknown"

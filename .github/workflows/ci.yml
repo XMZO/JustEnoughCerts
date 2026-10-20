@@ -137,11 +137,17 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
       - name: Start Pebble, the test CA of Let's Encrypt
         run: |
-          docker run -d --name pebble -p 14000:14000 -e PEBBLE_VA_ALWAYS_VALID=1 -e PEBBLE_AUTHZREUSE=0 \
+          docker run -d --name pebble -p 14000:14000 -p 15000:15000 -e PEBBLE_VA_ALWAYS_VALID=1 -e PEBBLE_AUTHZREUSE=0 \
+            -e PEBBLE_ALTERNATE_ROOTS=1 \
             ghcr.io/letsencrypt/pebble:2.10.1@sha256:ddf230642b1a584f519f32e347de1b05a6e4c1f6c35c1863b33effeab5f78199
           docker cp pebble:/test/certs/pebble.minica.pem "$RUNNER_TEMP/pebble-root.pem"
           for _ in $(seq 30); do
-            curl -fs --cacert "$RUNNER_TEMP/pebble-root.pem" https://localhost:14000/dir >/dev/null && exit 0
+            if curl -fs --cacert "$RUNNER_TEMP/pebble-root.pem" https://localhost:14000/dir >/dev/null; then
+              # The alternate root, for a preferred chain to pick.
+              alt=$(curl -fsk https://localhost:15000/roots/1 | openssl x509 -noout -subject -nameopt multiline | sed -n 's/^ *commonName *= *//p')
+              echo "JEC_TEST_PEBBLE_PREFER=$alt" >> "$GITHUB_ENV"
+              exit 0
+            fi
             sleep 1
           done
           docker logs pebble

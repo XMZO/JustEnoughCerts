@@ -60,6 +60,8 @@
       "eab_kid_help": "ZeroSSL, Google Trust Services and most paid CAs need it; their account page gives it. For ZeroSSL it may stay empty: JEC asks for it with the email address above (not yet tried with a real account).",
       "email": "Contact email (optional)",
       "email_help": "The CA sends notices about the account here. Using the account means accepting the CA's terms of service.",
+      "preferred_chain": "Preferred chain",
+      "preferred_chain_help": "When the CA offers several chains, the one whose top certificate's issuer has this Common Name, as ISRG Root X2. Without such a chain, the default one. Empty for the default chain.",
       "profile": "Profile",
       "profile_help": "A certificate profile the CA offers (ACME profiles), such as Let's Encrypt's shortlived (six-day certificates) or tlsserver. Empty for the default; a test lists those offered."
     },

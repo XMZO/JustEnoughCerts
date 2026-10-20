@@ -122,6 +122,26 @@ func TestPebble(t *testing.T) {
 		}
 	}
 
+	// A preferred chain: the one whose top is issued by the root
+	// JEC_TEST_PEBBLE_PREFER names, an alternate root Pebble offers with
+	// PEBBLE_ALTERNATE_ROOTS; one that Pebble does not offer leaves the
+	// default chain.
+	for _, name := range []string{os.Getenv("JEC_TEST_PEBBLE_PREFER"), "No Such Root"} {
+		if name == "" {
+			continue
+		}
+		pref := &source{m: m, in: providers.Instance{ID: 1, Config: map[string]string{"ca": custom, "directory": directory, "preferred_chain": name}}}
+		chain, err := pref.Issue(t.Context(), contracts.IssueRequest{Domains: []string{"chain.jec.example.com"}, Key: cryptoxtest.NewKey(t), Solver: &fakeSolver{}, Log: func(contracts.LogLine) {}})
+		if err != nil || len(chain) < 2 {
+			t.Fatalf("preferring %q: %v", name, err)
+		}
+		top := chain[len(chain)-1].Issuer.CommonName
+		if name != "No Such Root" && top != name {
+			t.Errorf("preferring %q: a chain up to %q", name, top)
+		}
+		t.Logf("preferring %q: a chain up to %q", name, top)
+	}
+
 	// The first certificate, replaced, is revoked; asking again is no
 	// error, as Pebble says it has been revoked already.
 	for range 2 {

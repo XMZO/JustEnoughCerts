@@ -19,6 +19,7 @@ ACME protocol (RFC 8555).
 | Contact email | Optional, for notices from the certificate authority |
 | EAB Key ID / EAB HMAC key | Required by certificate authorities that use External Account Binding, such as Google Trust Services; for ZeroSSL they may stay empty, as JEC asks ZeroSSL for them with the email address when it registers (not yet tried with a real account) |
 | Profile (advanced) | An ACME profile the certificate authority offers, such as Let's Encrypt's `shortlived` (six-day certificates) or `tlsserver`; empty for the default. A test lists those offered |
+| Preferred chain (advanced) | When the certificate authority offers several chains, the one whose top certificate's issuer has this name, such as `ISRG Root X2`; without a match, the default chain |
 | Proxy | Optional, for networks that cannot reach the certificate authority directly |
 
 - The account is registered at the first issuance or test, and its private

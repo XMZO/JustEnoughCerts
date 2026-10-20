@@ -14,6 +14,7 @@
 | 联系邮箱 | 可选，用于接收证书颁发机构的通知 |
 | EAB Key ID / EAB HMAC Key | 证书颁发机构要求 External Account Binding 时填写，例如 Google Trust Services；ZeroSSL 可以留空，JEC 注册时用填写的邮箱向 ZeroSSL 领取（尚未用真实账号验证） |
 | 证书配置（高级设置） | 证书颁发机构提供的 ACME profile，例如 Let's Encrypt 的 `shortlived`（6 天短期证书）、`tlsserver`；留空使用默认配置。测试连接会列出可用的配置 |
+| 首选证书链（高级设置） | 证书颁发机构提供多条证书链时，按最顶端证书的颁发者名称选用其中一条，例如 `ISRG Root X2`；没有匹配的链时使用默认链 |
 | 代理 | 可选，所在网络无法直接访问证书颁发机构时填写 |
 
 - 账号在首次签发或测试连接时注册，账号私钥加密保存在 JEC 中。

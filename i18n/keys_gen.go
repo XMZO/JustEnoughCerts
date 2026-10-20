@@ -52,6 +52,8 @@ const (
 	AcmeFieldEabKidHelp                      Key = "acme.field.eab_kid_help"
 	AcmeFieldEmail                           Key = "acme.field.email"
 	AcmeFieldEmailHelp                       Key = "acme.field.email_help"
+	AcmeFieldPreferredChain                  Key = "acme.field.preferred_chain"
+	AcmeFieldPreferredChainHelp              Key = "acme.field.preferred_chain_help"
 	AcmeFieldProfile                         Key = "acme.field.profile"
 	AcmeFieldProfileHelp                     Key = "acme.field.profile_help"
 	AcmeLogCaaUnknown                        Key = "acme.log.caa_unknown"

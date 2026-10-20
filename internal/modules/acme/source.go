@@ -92,7 +92,8 @@ func (s *source) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509
 		return nil, err
 	}
 	log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.AcmeLogOrder, Params: map[string]any{"domains": strings.Join(req.Domains, ", ")}})
-	order := certificate.ObtainRequest{Domains: req.Domains, PrivateKey: req.Key, Bundle: true, Profile: strings.TrimSpace(s.in.Config["profile"])}
+	order := certificate.ObtainRequest{Domains: req.Domains, PrivateKey: req.Key, Bundle: true, Profile: strings.TrimSpace(s.in.Config["profile"]),
+		PreferredChain: strings.TrimSpace(s.in.Config["preferred_chain"])}
 	if req.Replaces != nil {
 		// The order renews the current version (RFC 9773), which lego says
 		// to a CA with ARI only.
