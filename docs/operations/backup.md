@@ -46,13 +46,14 @@ of the disk.
 ## Offsite backups
 
 The module "Offsite backups" copies each daily backup to S3 compatible
-object storage: AWS S3, Cloudflare R2, MinIO, the S3 interfaces of Alibaba
-Cloud OSS, Tencent Cloud COS and others. It needs the daily backups turned
+object storage (AWS S3, Cloudflare R2, MinIO, the S3 interfaces of Alibaba
+Cloud OSS, Tencent Cloud COS and others) or to a WebDAV folder (Nextcloud,
+Synology, Alist, Jianguoyun and others). It needs the daily backups turned
 on.
 
 1. Create a bucket and an access key that may write to it.
-2. Under Settings, Data and backups, choose "Set up a bucket" next to
-   "Offsite backups", then fill in:
+2. Under Settings, Data and backups, choose "Set up the copies" next to
+   "Offsite backups", choose "S3 compatible", then fill in:
 
    | Field | Value |
    |---|---|
@@ -66,13 +67,20 @@ on.
 3. Save. JEC first writes and removes a small file, `jec-write-test.txt`,
    and refuses settings that cannot write.
 
+For WebDAV, choose "WebDAV" and give the address of the folder for the
+backups (such as `https://<host>/remote.php/dav/files/<user>/jec/` for
+Nextcloud, or `https://dav.jianguoyun.com/dav/jec/` for Jianguoyun), an
+optional subfolder, the user name and the password (an app password for
+Jianguoyun); JEC makes subfolders that are not there.
+
 JEC looks for new backups every 15 minutes and copies each once, under
 its own name; the row in the settings shows how many were copied, when,
-and the last error. JEC removes nothing from the bucket: prune old copies
-with the bucket's lifecycle rules. The copies are like the backups
+and the last error. JEC removes nothing from the bucket or folder: prune
+old copies with the bucket's lifecycle rules, or by hand. The copies are like the backups
 themselves, without the master key; keep the key somewhere else.
 
-The module was tried against the S3 interface of SeaweedFS only.
+The module was tried against the S3 interface of SeaweedFS and the WebDAV
+server of rclone only.
 
 ## Restoring
 

@@ -997,7 +997,7 @@ export interface paths {
         get: operations["offsite-settings"];
         /**
          * Save where the daily backups are copied to
-         * @description Switched on, the bucket is tried first: a small file is written there and deleted again.
+         * @description Switched on, the bucket or folder is tried first: a small file is written there and deleted again.
          */
         put: operations["offsite-save"];
         post?: never;
@@ -2608,10 +2608,15 @@ export interface components {
              */
             copied: number;
             enabled: boolean;
-            /** @description The address of the S3 interface, as https://s3.us-east-1.amazonaws.com or https://<account>.r2.cloudflarestorage.com */
+            /** @description The address of the S3 interface, as https://s3.us-east-1.amazonaws.com or https://<account>.r2.cloudflarestorage.com; or of the WebDAV folder */
             endpoint: string;
             /** @description A secret key is set; it is never shown */
             hasSecret: boolean;
+            /**
+             * @description s3: an S3 compatible bucket; webdav: a folder of a WebDAV server, with accessKey and secretKey as the user name and password
+             * @enum {string}
+             */
+            kind: "s3" | "webdav";
             /**
              * Format: date-time
              * @description When a backup was last copied, or tried to be
@@ -2948,6 +2953,11 @@ export interface components {
             bucket: string;
             enabled: boolean;
             endpoint: string;
+            /**
+             * @description s3 if left out
+             * @enum {string}
+             */
+            kind?: "s3" | "webdav";
             pathStyle: boolean;
             prefix: string;
             region: string;

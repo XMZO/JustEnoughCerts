@@ -97,6 +97,10 @@ func TestOffsite(t *testing.T) {
 	if err := m.copyNew(t.Context()); err != nil || len(s3.objects) != 0 {
 		t.Fatalf("while off: %v %v", err, s3.objects)
 	}
+	var first OffsiteSettingsBody
+	if resp := a.Get("/settings"); json.Unmarshal(resp.Body.Bytes(), &first) != nil || first.Kind != kindS3 {
+		t.Errorf("before any settings: %s", resp.Body)
+	}
 	settings := map[string]any{"enabled": true, "endpoint": srv.URL, "region": "auto", "bucket": "jec-backups", "prefix": "/server-1/",
 		"pathStyle": true, "accessKey": "AKID", "secretKey": "s3cret"}
 	if resp := a.Put("/settings", map[string]any{"enabled": true, "endpoint": "ftp://x"}); resp.Code != http.StatusUnprocessableEntity {
@@ -151,5 +155,72 @@ func TestObjectURL(t *testing.T) {
 		if got, err := b.objectURL("a/jec b.db"); err != nil || got != c.want {
 			t.Errorf("objectURL on %s = %s %v, want %s", c.endpoint, got, err, c.want)
 		}
+	}
+}
+
+// fakeDAV keeps what is put, by path, checking the account of each request
+// and that a file's folders are made first.
+type fakeDAV struct {
+	t       *testing.T
+	mu      sync.Mutex
+	folders map[string]bool
+	files   map[string][]byte
+}
+
+func (f *fakeDAV) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if user, pass, ok := r.BasicAuth(); !ok || user != "me" || pass != "dav-pass" {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	parent := r.URL.Path[:strings.LastIndex(strings.TrimSuffix(r.URL.Path, "/"), "/")+1]
+	switch r.Method {
+	case "MKCOL":
+		if f.folders[r.URL.Path] {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		f.folders[r.URL.Path] = true
+		w.WriteHeader(http.StatusCreated)
+	case http.MethodPut:
+		if !f.folders[parent] {
+			w.WriteHeader(http.StatusConflict) // as WebDAV answers a PUT into no folder
+			return
+		}
+		body, _ := io.ReadAll(r.Body)
+		f.files[r.URL.Path] = body
+		w.WriteHeader(http.StatusCreated)
+	case http.MethodDelete:
+		delete(f.files, r.URL.Path)
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func TestWebDAV(t *testing.T) {
+	dav := &fakeDAV{t: t, folders: map[string]bool{"/dav/": true}, files: map[string][]byte{}}
+	srv := httptest.NewServer(dav)
+	defer srv.Close()
+	f := &folder{client: srv.Client(), endpoint: srv.URL + "/dav/", user: "me", password: "dav-pass"}
+	if err := f.put(t.Context(), "server-1/jec-20261020-020000.db", []byte("backup")); err != nil {
+		t.Fatal(err)
+	}
+	if string(dav.files["/dav/server-1/jec-20261020-020000.db"]) != "backup" || !dav.folders["/dav/server-1/"] {
+		t.Errorf("put %v in %v", dav.files, dav.folders)
+	}
+	// Into a folder that is there already.
+	if err := f.put(t.Context(), "server-1/jec-20261021-020000.db", []byte("backup 2")); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.remove(t.Context(), "server-1/jec-20261020-020000.db"); err != nil || len(dav.files) != 1 {
+		t.Errorf("remove: %v %v", err, dav.files)
+	}
+	wrong := *f
+	wrong.password = "wrong"
+	if err := wrong.put(t.Context(), "x", []byte("x")); err == nil || !strings.Contains(err.Error(), "401") {
+		t.Errorf("a wrong password: %v", err)
+	}
+	if _, err := (&folder{endpoint: "ftp://x"}).fileURL("a"); err == nil {
+		t.Error("an address of no WebDAV")
 	}
 }

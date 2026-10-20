@@ -108,7 +108,7 @@
 
 | 功能 | 连接的服务 | 测试方式 |
 |---|---|---|
-| [异地备份](../operations/backup.zh-CN.md#异地备份) | S3 兼容存储 | 真实软件：SeaweedFS 的 S3 接口；AWS S3、Cloudflare R2、阿里云 OSS、腾讯云 COS 等未实测，界面上已注明 |
+| [异地备份](../operations/backup.zh-CN.md#异地备份) | S3 兼容存储、WebDAV | 真实软件：SeaweedFS 的 S3 接口、rclone 的 WebDAV；AWS S3、Cloudflare R2、阿里云 OSS、腾讯云 COS、坚果云等未实测，界面上已注明 |
 | [证书透明度](../usage/sites.zh-CN.md#证书透明度) | Cert Spotter | 真实服务（不带 API 密钥） |
 | [域名注册](../usage/sites.zh-CN.md#域名注册) | IANA 与各注册局的 RDAP、WHOIS | 真实服务 |
 | 吊销检查、补齐证书链、缺中间证书检查 | 证书中的 OCSP、CRL 与颁发者地址（AIA） | 真实服务：Let's Encrypt、Sectigo 等的证书，以及 badssl.com 的缺中间证书站点 |

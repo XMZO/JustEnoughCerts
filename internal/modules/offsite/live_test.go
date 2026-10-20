@@ -38,3 +38,26 @@ func TestLiveS3(t *testing.T) {
 		t.Errorf("a wrong secret: %v", err)
 	}
 }
+
+// TestLiveWebDAV writes to and deletes from a real WebDAV server, as rclone
+// serving WebDAV in a container: JEC_TEST_WEBDAV is the address of a
+// folder, JEC_TEST_WEBDAV_USER a user:password.
+func TestLiveWebDAV(t *testing.T) {
+	endpoint := os.Getenv("JEC_TEST_WEBDAV")
+	if endpoint == "" {
+		t.Skip("JEC_TEST_WEBDAV is not set")
+	}
+	user, pass, _ := strings.Cut(os.Getenv("JEC_TEST_WEBDAV_USER"), ":")
+	f := &folder{client: &http.Client{Timeout: time.Minute}, endpoint: endpoint, user: user, password: pass}
+	if err := f.put(t.Context(), "jec/server-1/jec-20261020-020000.db", []byte(strings.Repeat("backup ", 1000))); err != nil {
+		t.Fatalf("put: %v", err)
+	}
+	if err := f.remove(t.Context(), "jec/server-1/jec-20261020-020000.db"); err != nil {
+		t.Errorf("remove: %v", err)
+	}
+	wrong := *f
+	wrong.password = "wrong"
+	if err := wrong.put(t.Context(), "jec/x", []byte("x")); err == nil {
+		t.Error("a wrong password was taken")
+	}
+}

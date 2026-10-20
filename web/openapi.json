@@ -2520,13 +2520,21 @@
             "type": "boolean"
           },
           "endpoint": {
-            "description": "The address of the S3 interface, as https://s3.us-east-1.amazonaws.com or https://\u003caccount\u003e.r2.cloudflarestorage.com",
+            "description": "The address of the S3 interface, as https://s3.us-east-1.amazonaws.com or https://\u003caccount\u003e.r2.cloudflarestorage.com; or of the WebDAV folder",
             "maxLength": 512,
             "type": "string"
           },
           "hasSecret": {
             "description": "A secret key is set; it is never shown",
             "type": "boolean"
+          },
+          "kind": {
+            "description": "s3: an S3 compatible bucket; webdav: a folder of a WebDAV server, with accessKey and secretKey as the user name and password",
+            "enum": [
+              "s3",
+              "webdav"
+            ],
+            "type": "string"
           },
           "lastCopy": {
             "description": "When a backup was last copied, or tried to be",
@@ -2554,6 +2562,7 @@
         },
         "required": [
           "enabled",
+          "kind",
           "endpoint",
           "region",
           "bucket",
@@ -3422,6 +3431,14 @@
           },
           "endpoint": {
             "maxLength": 512,
+            "type": "string"
+          },
+          "kind": {
+            "description": "s3 if left out",
+            "enum": [
+              "s3",
+              "webdav"
+            ],
             "type": "string"
           },
           "pathStyle": {
@@ -7593,7 +7610,7 @@
         ]
       },
       "put": {
-        "description": "Switched on, the bucket is tried first: a small file is written there and deleted again.",
+        "description": "Switched on, the bucket or folder is tried first: a small file is written there and deleted again.",
         "operationId": "offsite-save",
         "requestBody": {
           "content": {

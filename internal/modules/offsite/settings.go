@@ -19,6 +19,7 @@ import (
 // settings are those of the bucket, the secret key opened.
 type settings struct {
 	Enabled   bool
+	Kind      string // kindS3 or kindWebDAV
 	Endpoint  string
 	Region    string
 	Bucket    string
@@ -30,9 +31,34 @@ type settings struct {
 
 const secretContext = "offsite secret key"
 
-func (s settings) bucket(m *Module) *bucket {
+// Where backups go.
+const (
+	kindS3     = "s3"
+	kindWebDAV = "webdav"
+)
+
+// destination is where backups go: a bucket or a WebDAV folder.
+type destination interface {
+	put(ctx context.Context, key string, data []byte) error
+	remove(ctx context.Context, key string) error
+}
+
+func (s settings) destination(m *Module) destination {
+	if s.Kind == kindWebDAV {
+		return &folder{client: m.client, endpoint: s.Endpoint, user: s.AccessKey, password: s.SecretKey}
+	}
 	return &bucket{client: m.client, endpoint: s.Endpoint, region: s.Region, name: s.Bucket, pathStyle: s.PathStyle,
 		access: s.AccessKey, secret: s.SecretKey, now: m.now}
+}
+
+// place names where s puts backups, for the log.
+func (s settings) place() string {
+	if s.Kind == kindWebDAV {
+		if u, err := url.Parse(s.Endpoint); err == nil {
+			return u.Host
+		}
+	}
+	return s.Bucket
 }
 
 // load returns the settings, the zero value before any were saved.
@@ -41,11 +67,11 @@ func (m *Module) load(ctx context.Context) (settings, error) {
 	var enabled, pathStyle int
 	var sealed []byte
 	err := m.db.QueryRowContext(ctx,
-		"SELECT enabled, endpoint, region, bucket, prefix, path_style, access_key, secret_key FROM offsite_settings WHERE id = 1").
-		Scan(&enabled, &s.Endpoint, &s.Region, &s.Bucket, &s.Prefix, &pathStyle, &s.AccessKey, &sealed)
+		"SELECT enabled, kind, endpoint, region, bucket, prefix, path_style, access_key, secret_key FROM offsite_settings WHERE id = 1").
+		Scan(&enabled, &s.Kind, &s.Endpoint, &s.Region, &s.Bucket, &s.Prefix, &pathStyle, &s.AccessKey, &sealed)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		return settings{}, nil
+		return settings{Kind: kindS3}, nil
 	case err != nil:
 		return s, err
 	}
@@ -65,7 +91,8 @@ func (m *Module) load(ctx context.Context) (settings, error) {
 // other modules'.
 type OffsiteSettingsBody struct { //nolint:revive // the schema's name
 	Enabled    bool       `json:"enabled"`
-	Endpoint   string     `json:"endpoint" maxLength:"512" doc:"The address of the S3 interface, as https://s3.us-east-1.amazonaws.com or https://<account>.r2.cloudflarestorage.com"`
+	Kind       string     `json:"kind" enum:"s3,webdav" doc:"s3: an S3 compatible bucket; webdav: a folder of a WebDAV server, with accessKey and secretKey as the user name and password"`
+	Endpoint   string     `json:"endpoint" maxLength:"512" doc:"The address of the S3 interface, as https://s3.us-east-1.amazonaws.com or https://<account>.r2.cloudflarestorage.com; or of the WebDAV folder"`
 	Region     string     `json:"region" maxLength:"64" doc:"The region of the bucket; auto for Cloudflare R2"`
 	Bucket     string     `json:"bucket" maxLength:"255"`
 	Prefix     string     `json:"prefix" maxLength:"255" doc:"Put before the name of each backup, as jec/"`
@@ -83,6 +110,7 @@ type settingsOutput struct{ Body OffsiteSettingsBody }
 type settingsInput struct {
 	Body struct {
 		Enabled   bool    `json:"enabled"`
+		Kind      string  `json:"kind,omitempty" enum:"s3,webdav" doc:"s3 if left out"`
 		Endpoint  string  `json:"endpoint" maxLength:"512"`
 		Region    string  `json:"region" maxLength:"64"`
 		Bucket    string  `json:"bucket" maxLength:"255"`
@@ -105,7 +133,7 @@ func (m *Module) register(a huma.API) {
 	huma.Register(a, huma.Operation{
 		OperationID: "offsite-save", Method: http.MethodPut, Path: "/settings", Tags: tags, Metadata: only,
 		Summary:     "Save where the daily backups are copied to",
-		Description: "Switched on, the bucket is tried first: a small file is written there and deleted again.",
+		Description: "Switched on, the bucket or folder is tried first: a small file is written there and deleted again.",
 	}, m.save)
 }
 
@@ -115,7 +143,7 @@ func (m *Module) output(ctx context.Context) (*settingsOutput, error) {
 		return nil, err
 	}
 	b := OffsiteSettingsBody{
-		Enabled: s.Enabled, Endpoint: s.Endpoint, Region: s.Region, Bucket: s.Bucket, Prefix: s.Prefix, PathStyle: s.PathStyle,
+		Enabled: s.Enabled, Kind: s.Kind, Endpoint: s.Endpoint, Region: s.Region, Bucket: s.Bucket, Prefix: s.Prefix, PathStyle: s.PathStyle,
 		AccessKey: s.AccessKey, HasSecret: s.SecretKey != "",
 	}
 	if err := m.db.QueryRowContext(ctx, "SELECT count(*) FROM offsite_uploads").Scan(&b.Copied); err != nil {
@@ -149,9 +177,12 @@ func (m *Module) save(ctx context.Context, in *settingsInput) (*settingsOutput, 
 	}
 	b := in.Body
 	s := settings{
-		Enabled: b.Enabled, Endpoint: strings.TrimRight(strings.TrimSpace(b.Endpoint), "/"), Region: strings.TrimSpace(b.Region),
+		Enabled: b.Enabled, Kind: kindS3, Endpoint: strings.TrimRight(strings.TrimSpace(b.Endpoint), "/"), Region: strings.TrimSpace(b.Region),
 		Bucket: strings.TrimSpace(b.Bucket), Prefix: strings.TrimLeft(strings.TrimSpace(b.Prefix), "/"), PathStyle: b.PathStyle,
 		AccessKey: strings.TrimSpace(b.AccessKey), SecretKey: old.SecretKey,
+	}
+	if b.Kind == kindWebDAV {
+		s.Kind = kindWebDAV
 	}
 	if b.SecretKey != nil {
 		s.SecretKey = strings.TrimSpace(*b.SecretKey)
@@ -175,11 +206,11 @@ func (m *Module) save(ctx context.Context, in *settingsInput) (*settingsOutput, 
 	if s.PathStyle {
 		pathStyle = 1
 	}
-	_, err = m.db.ExecContext(ctx, `INSERT INTO offsite_settings (id, enabled, endpoint, region, bucket, prefix, path_style, access_key, secret_key, updated_at)
-		VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET enabled = excluded.enabled, endpoint = excluded.endpoint,
+	_, err = m.db.ExecContext(ctx, `INSERT INTO offsite_settings (id, enabled, kind, endpoint, region, bucket, prefix, path_style, access_key, secret_key, updated_at)
+		VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET enabled = excluded.enabled, kind = excluded.kind, endpoint = excluded.endpoint,
 		region = excluded.region, bucket = excluded.bucket, prefix = excluded.prefix, path_style = excluded.path_style,
 		access_key = excluded.access_key, secret_key = excluded.secret_key, updated_at = excluded.updated_at`,
-		enabled, s.Endpoint, s.Region, s.Bucket, s.Prefix, pathStyle, s.AccessKey, sealed, m.now().UnixMilli())
+		enabled, s.Kind, s.Endpoint, s.Region, s.Bucket, s.Prefix, pathStyle, s.AccessKey, sealed, m.now().UnixMilli())
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +227,11 @@ func (m *Module) check(ctx context.Context, s settings) error {
 	if u, err := url.Parse(s.Endpoint); err != nil || u.Host == "" || (u.Scheme != "https" && u.Scheme != "http") {
 		invalid = invalid.WithField("body.endpoint", i18n.OffsiteErrorEndpoint)
 	}
-	for field, v := range map[string]string{"body.bucket": s.Bucket, "body.accessKey": s.AccessKey, "body.secretKey": s.SecretKey} {
+	required := map[string]string{"body.bucket": s.Bucket, "body.accessKey": s.AccessKey, "body.secretKey": s.SecretKey}
+	if s.Kind == kindWebDAV {
+		delete(required, "body.bucket") // the address names the folder
+	}
+	for field, v := range required {
 		if v == "" {
 			invalid = invalid.WithField(field, i18n.KernelErrorFieldRequired)
 		}
@@ -204,7 +239,7 @@ func (m *Module) check(ctx context.Context, s settings) error {
 	if len(invalid.Fields) > 0 {
 		return invalid
 	}
-	b := s.bucket(m)
+	b := s.destination(m)
 	key := s.Prefix + "jec-write-test.txt"
 	if err := b.put(ctx, key, []byte("JEC can write here.\n")); err != nil {
 		return api.NewError(http.StatusUnprocessableEntity, i18n.OffsiteErrorWrite, map[string]any{"message": err.Error()})

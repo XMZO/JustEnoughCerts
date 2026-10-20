@@ -102,7 +102,7 @@ func (m *Module) copyNew(ctx context.Context) error {
 		}
 	}
 	slices.Sort(names)
-	b := s.bucket(m)
+	b := s.destination(m)
 	for _, name := range names {
 		var done int
 		if err := m.db.QueryRowContext(ctx, "SELECT count(*) FROM offsite_uploads WHERE name = ?", name).Scan(&done); err != nil {
@@ -129,7 +129,7 @@ func (m *Module) copyNew(ctx context.Context) error {
 			name, len(data), m.now().UnixMilli()); err != nil {
 			return err
 		}
-		m.log.Info("copied a backup", "name", name, "bucket", s.Bucket)
+		m.log.Info("copied a backup", "name", name, "to", s.place())
 	}
 	return nil
 }

@@ -12,9 +12,9 @@ import JecDialog from './JecDialog.vue'
 import JecField from './JecField.vue'
 import JecInput from './JecInput.vue'
 
-// Copies of the daily backups in an S3 compatible bucket (module offsite):
-// a row of the data settings, with how the last copy went, and the dialog
-// that sets the bucket up.
+// Copies of the daily backups in an S3 compatible bucket or a WebDAV
+// folder (module offsite): a row of the data settings, with how the last
+// copy went, and the dialog that sets it up.
 defineProps<{ rowClass: string }>()
 
 const { t } = useT()
@@ -24,13 +24,20 @@ const save = useSaveOffsite()
 const errors = useApiError(computed(() => save.error.value))
 const open = ref(false)
 
-const form = ref({ enabled: true, endpoint: '', region: '', bucket: '', prefix: '', pathStyle: false, accessKey: '', secretKey: '' })
+type Kind = 's3' | 'webdav'
+const kinds: { id: Kind; label: 'offsite.settings.kind_s3' | 'offsite.settings.kind_webdav' }[] = [
+  { id: 's3', label: 'offsite.settings.kind_s3' },
+  { id: 'webdav', label: 'offsite.settings.kind_webdav' },
+]
+const form = ref({ enabled: true, kind: 's3', endpoint: '', region: '', bucket: '', prefix: '', pathStyle: false, accessKey: '', secretKey: '' })
+const dav = computed(() => form.value.kind === 'webdav')
 watch(open, (now) => {
   const s = settings.data.value
   if (!now || !s) return
   save.reset()
   form.value = {
     enabled: s.enabled || !s.endpoint, // a first setup means to switch it on
+    kind: s.kind || 's3',
     endpoint: s.endpoint,
     region: s.region,
     bucket: s.bucket,
@@ -92,7 +99,24 @@ async function submit() {
       <label class="flex min-h-9 items-center gap-2.5 font-semibold max-sm:min-h-11">
         <input v-model="form.enabled" type="checkbox" class="size-4 flex-none accent-brand" />{{ t('offsite.settings.enabled') }}
       </label>
-      <JecField id="offsite-endpoint" label="offsite.settings.endpoint" hint="offsite.settings.endpoint_hint" :error="errors.fields.value.endpoint">
+      <div role="group" :aria-label="t('offsite.settings.kind')" class="inline-flex gap-0.5 self-start rounded-md border border-line bg-surface-sunken p-0.5">
+        <button
+          v-for="k in kinds"
+          :key="k.id"
+          type="button"
+          :aria-pressed="form.kind === k.id ? 'true' : 'false'"
+          class="h-[30px] cursor-pointer rounded-sm border-0 bg-transparent px-3 text-[13px] font-semibold whitespace-nowrap text-ink-muted hover:text-ink aria-pressed:bg-surface-raised aria-pressed:text-ink aria-pressed:shadow-[0_0_0_1px_var(--line-strong)] max-sm:h-auto max-sm:min-h-9"
+          @click="form.kind = k.id"
+        >
+          {{ t(k.label) }}
+        </button>
+      </div>
+      <JecField
+        id="offsite-endpoint"
+        :label="dav ? 'offsite.settings.dav_endpoint' : 'offsite.settings.endpoint'"
+        :hint="dav ? 'offsite.settings.dav_endpoint_hint' : 'offsite.settings.endpoint_hint'"
+        :error="errors.fields.value.endpoint"
+      >
         <JecInput
           id="offsite-endpoint"
           v-model="form.endpoint"
@@ -103,7 +127,7 @@ async function submit() {
           :invalid="!!errors.fields.value.endpoint"
         />
       </JecField>
-      <div class="grid gap-3 sm:grid-cols-2">
+      <div v-if="!dav" class="grid gap-3 sm:grid-cols-2">
         <JecField id="offsite-bucket" label="offsite.settings.bucket" :error="errors.fields.value.bucket">
           <JecInput id="offsite-bucket" v-model="form.bucket" autocapitalize="none" spellcheck="false" :invalid="!!errors.fields.value.bucket" />
         </JecField>
@@ -111,22 +135,22 @@ async function submit() {
           <JecInput id="offsite-region" v-model="form.region" autocapitalize="none" spellcheck="false" />
         </JecField>
       </div>
-      <JecField id="offsite-prefix" label="offsite.settings.prefix" hint="offsite.settings.prefix_hint">
+      <JecField id="offsite-prefix" :label="dav ? 'offsite.settings.dav_prefix' : 'offsite.settings.prefix'" hint="offsite.settings.prefix_hint">
         <JecInput id="offsite-prefix" v-model="form.prefix" autocapitalize="none" spellcheck="false" />
       </JecField>
-      <label class="flex cursor-pointer items-start gap-2">
+      <label v-if="!dav" class="flex cursor-pointer items-start gap-2">
         <input v-model="form.pathStyle" type="checkbox" class="mt-1 size-4 flex-none accent-brand" />
         <span class="min-w-0">
           <span class="block font-semibold">{{ t('offsite.settings.path_style') }}</span>
           <span class="block text-small text-ink-muted">{{ t('offsite.settings.path_style_hint') }}</span>
         </span>
       </label>
-      <JecField id="offsite-access" label="offsite.settings.access_key" :error="errors.fields.value.accessKey">
+      <JecField id="offsite-access" :label="dav ? 'offsite.settings.dav_user' : 'offsite.settings.access_key'" :error="errors.fields.value.accessKey">
         <JecInput id="offsite-access" v-model="form.accessKey" autocapitalize="none" spellcheck="false" :invalid="!!errors.fields.value.accessKey" />
       </JecField>
       <JecField
         id="offsite-secret"
-        label="offsite.settings.secret_key"
+        :label="dav ? 'offsite.settings.dav_password' : 'offsite.settings.secret_key'"
         :hint="settings.data.value?.hasSecret ? 'offsite.settings.secret_kept' : undefined"
         :error="errors.fields.value.secretKey"
       >

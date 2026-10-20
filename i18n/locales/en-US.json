@@ -2870,10 +2870,10 @@
   "offsite": {
     "error": {
       "endpoint": "Enter the address of the S3 interface, starting with https:// or http://.",
-      "write": "The bucket does not take a file: {message}"
+      "write": "Could not write there: {message}"
     },
     "module": {
-      "description": "Copies the daily backups to S3 compatible object storage (AWS S3, Cloudflare R2, MinIO, the S3 interfaces of Alibaba Cloud OSS and Tencent Cloud COS and others), so that they outlive the server.",
+      "description": "Copies the daily backups to S3 compatible storage or a WebDAV folder, so that a dead server loses no data.",
       "name": "Offsite backups"
     },
     "settings": {
@@ -2881,13 +2881,21 @@
       "backups_off": "Daily backups are off: there is nothing to copy.",
       "bucket": "Bucket",
       "copied": "{count, plural, one {# copied, the latest:} other {# copied, the latest:}}",
-      "edit": "Set up a bucket",
+      "dav_endpoint": "WebDAV address",
+      "dav_endpoint_hint": "The folder for the backups, as https://<host>/remote.php/dav/files/<user>/jec/ (Nextcloud) or https://dav.jianguoyun.com/dav/jec/ (Jianguoyun).",
+      "dav_password": "Password",
+      "dav_prefix": "Subfolder",
+      "dav_user": "User name",
+      "edit": "Set up the copies",
       "enabled": "Copy the backups",
       "endpoint": "Endpoint",
       "endpoint_hint": "Such as https://s3.us-east-1.amazonaws.com, https://<account>.r2.cloudflarestorage.com or https://oss-cn-hangzhou.aliyuncs.com.",
       "failed": "The last copy failed:",
-      "hint": "Copies the daily backups to S3 compatible object storage.",
-      "intro": "Once a daily backup is made, JEC copies it to this bucket (AWS S3, Cloudflare R2, MinIO, the S3 interfaces of Alibaba Cloud OSS and Tencent Cloud COS and others). The secrets in a backup are sealed, without the master key. On saving, JEC writes a small file there first. To prune old backups, use the bucket's lifecycle rules.",
+      "hint": "Copy the daily backups to S3 compatible storage or WebDAV.",
+      "intro": "Once each daily backup is made, JEC copies it to an S3 compatible bucket (AWS S3, Cloudflare R2, the S3 interfaces of Alibaba Cloud OSS and Tencent Cloud COS, and others) or a WebDAV folder (Nextcloud, Synology, Alist, Jianguoyun and others). The secrets in a backup are encrypted, and the master key is not in it. Saving writes a small file there first. Old backups go by the bucket's lifecycle rules, or by hand.",
+      "kind": "Where they go",
+      "kind_s3": "S3 compatible",
+      "kind_webdav": "WebDAV",
       "path_style": "Path-style addresses",
       "path_style_hint": "The bucket in the path of the address rather than in its host name, as MinIO and other self-hosted services usually need.",
       "prefix": "Path prefix",
@@ -2899,7 +2907,7 @@
       "state_failed": "Copy failed",
       "state_off": "Off",
       "state_on": "On",
-      "tested": "Untested: tried against the S3 interface of SeaweedFS only; AWS S3, R2, OSS, COS and others may need their settings adjusted.",
+      "tested": "Untested: S3 was tried only against SeaweedFS's S3 interface and WebDAV against rclone; AWS S3, R2, OSS, COS, Jianguoyun and others may need other settings. Jianguoyun wants an app password.",
       "title": "Offsite backups"
     }
   },
