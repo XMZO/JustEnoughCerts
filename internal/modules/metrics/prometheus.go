@@ -147,6 +147,26 @@ func (m *Module) render(ctx context.Context) ([]byte, error) {
 	for _, j := range health.Jobs {
 		fmt.Fprintf(&b, "jec_job_failed{job=%s} %d\n", quote(j.Name), bit(j.Error != ""))
 	}
+	// The providers, as their last test went: the daily check's, or a click's.
+	var providers struct {
+		Providers []struct {
+			ID       int64  `json:"id"`
+			Name     string `json:"name"`
+			Kind     string `json:"kind"`
+			LastTest *struct {
+				OK bool `json:"ok"`
+			} `json:"lastTest"`
+		} `json:"providers"`
+	}
+	if err := m.call(ctx, via, http.MethodGet, "/providers", nil, &providers); err != nil {
+		return nil, fmt.Errorf("metrics: the providers: %w", err)
+	}
+	family("jec_provider_test_ok", "gauge", "1 when the last test of a provider passed, 0 when it failed; providers not tested since their settings changed are left out.")
+	for _, p := range providers.Providers {
+		if p.LastTest != nil && p.Kind != "notifier" {
+			fmt.Fprintf(&b, "jec_provider_test_ok{id=%s,name=%s,kind=%s} %d\n", quote(strconv.FormatInt(p.ID, 10)), quote(p.Name), quote(p.Kind), bit(p.LastTest.OK))
+		}
+	}
 	if health.Disk != nil {
 		family("jec_data_free_bytes", "gauge", "The bytes free on the file system of the data directory.")
 		fmt.Fprintf(&b, "jec_data_free_bytes %d\n", health.Disk.Free)

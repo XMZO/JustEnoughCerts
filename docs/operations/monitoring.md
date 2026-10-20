@@ -40,6 +40,7 @@ domain.
 | `jec_certificate_deployments_failed` | The targets whose latest deployment failed |
 | `jec_certificate_served_old` | The domains that still serve an older certificate (with the online check module) |
 | `jec_certificate_unreachable` | The domains that answer nothing over TLS on port 443 (likewise) |
+| `jec_provider_test_ok` | 1 when the last test of a provider (the daily check, or a click) passed, 0 when it failed; those not tested since their settings changed are left out; labels `id`, `name`, `kind` |
 | `jec_certificate_chain_incomplete` | The domains that serve the current version without its intermediates (likewise) |
 | `jec_certificates` | Certificates by state |
 | `jec_build_info` | The version of JEC, in the label `version` |

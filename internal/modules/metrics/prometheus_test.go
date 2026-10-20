@@ -25,6 +25,8 @@ func fakeAPI(monitor bool) func(context.Context, string, string, string, any, an
 		"/watch/domains":  `{"domains": [{"name": "shop.com", "state": "expiring", "expiresAt": "2027-01-01T00:00:00Z"}, {"name": "shop.de", "state": "unknown"}]}`,
 		"/watch/transparency": `{"enabled": true, "domains": [{"name": "shop.com"}, {"name": "shop.org"}],
 			"certificates": [{"domain": "shop.com", "state": "unknown"}, {"domain": "shop.com", "state": "baseline"}]}`,
+		"/providers": `{"providers": [{"id": 3, "name": "ESA", "kind": "target", "lastTest": {"ok": false}}, {"id": 4, "name": "DNS", "kind": "solver"},
+			{"id": 5, "name": "Mail", "kind": "notifier", "lastTest": {"ok": true}}]}`,
 		"/system/health": `{"jobs": [{"name": "certs.renew"}, {"name": "watch.domains", "error": "timeout"}], "disk": {"free": 1000, "total": 4000}}`,
 	}
 	return func(_ context.Context, via, method, path string, _, out any) error {
@@ -65,6 +67,7 @@ func TestRender(t *testing.T) {
 		`jec_domain_state{domain="shop.com",state="expiring"} 1`,
 		`jec_domain_state{domain="shop.de",state="unknown"} 1`,
 		`jec_ct_unknown_certificates{domain="shop.com"} 1`,
+		`jec_provider_test_ok{id="3",name="ESA",kind="target"} 0`,
 		`jec_ct_unknown_certificates{domain="shop.org"} 0`,
 		`jec_job_failed{job="certs.renew"} 0`,
 		`jec_job_failed{job="watch.domains"} 1`,
