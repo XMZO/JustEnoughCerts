@@ -68,6 +68,13 @@ A note, under the certificate's information on its page, says what the
 certificate is for or whose it is; the list shows it, searches it and
 exports it.
 
+A reminder, in the same place, takes a day and what of, such as "Renew
+the PositiveSSL subscription": on that day at 9:00, in the panel's time
+zone, the notification channels remind you once (the event "When a
+reminder set on a certificate comes due"), and the calendar feed shows it;
+`reminder` (`day`, `note`) in the configuration file. It suits a
+certificate bought, which cannot be reissued once its subscription ends.
+
 On wider screens, certificates checked in the list (the box in the header
 checks all those shown) can be renewed, deployed again or deleted
 together, after a confirmation, their renewal paused or resumed, and a

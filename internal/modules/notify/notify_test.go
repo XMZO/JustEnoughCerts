@@ -508,6 +508,21 @@ func TestRevokedNote(t *testing.T) {
 	}
 }
 
+func TestReminderNote(t *testing.T) {
+	f := newFixture(t)
+	en := f.notifier("ops", map[string]string{"locale": "en-US"}) // on by default
+	d := contracts.CertificateEvent{CertificateID: 3, Domains: []string{"example.com"}, VersionID: 9, NotAfter: start.Add(60 * 24 * time.Hour),
+		Reminder: "Renew the PositiveSSL subscription", RemindOn: "2026-10-17"}
+	raw, _ := json.Marshal(d)
+	if err := f.svc.handle(t.Context(), events.Event{ID: 1, Type: contracts.CertificateReminder, Source: "certs", Subject: "3", Data: raw, Time: start}); err != nil {
+		t.Fatal(err)
+	}
+	notes := f.notes(en)
+	if len(notes) != 1 || notes[0].Title != "Reminder: example.com" || !strings.HasPrefix(notes[0].Text, "Renew the PositiveSSL subscription\n") {
+		t.Errorf("notes %+v", notes)
+	}
+}
+
 func TestNotifyTo(t *testing.T) {
 	f := newFixture(t)
 	a := f.notifier("team a", map[string]string{"locale": "en-US"})

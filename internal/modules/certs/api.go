@@ -27,6 +27,7 @@ type CertificateBody struct {
 	SolverProvider  int64            `json:"solverProvider,omitempty" doc:"The solver provider instance that proves control of the domains"`
 	KeyType         string           `json:"keyType" doc:"Type and size of the key, such as rsa-2048 or ecdsa-p256"`
 	Note            string           `json:"note,omitempty" doc:"What people wrote about it"`
+	Reminder        *ReminderBody    `json:"reminder,omitempty" doc:"A day someone set to be reminded on, as to renew a subscription bought"`
 	ReuseKey        bool             `json:"reuseKey,omitempty" doc:"Renewals keep the private key of the version in use"`
 	Paused          bool             `json:"paused,omitempty" doc:"The renewal is paused: the certificate is issued only when someone asks"`
 	DeployWindow    string           `json:"deployWindow,omitempty" doc:"The hours, in the panel's time zone, new versions are deployed in, as 1-5"`
@@ -111,6 +112,13 @@ func detailsBody(d cryptox.Details) DetailsBody {
 	}
 }
 
+// ReminderBody is a day to be reminded on, and what of.
+type ReminderBody struct {
+	On   string `json:"on" maxLength:"10" doc:"The day, as 2027-05-01, in the panel's time zone; the reminder goes out at 9:00. Empty for none"`
+	Note string `json:"note,omitempty" maxLength:"200" doc:"What to be reminded of"`
+	Sent bool   `json:"sent,omitempty" readOnly:"true" doc:"It went out"`
+}
+
 // CSRBody is a certificate request of a version's key for its names.
 type CSRBody struct {
 	CSR                string   `json:"csr" doc:"The request, in PEM form"`
@@ -125,6 +133,9 @@ func certificateBody(c *Certificate, now time.Time, sch schedule) CertificateBod
 		ID: c.ID, Domains: c.Domains, Source: c.Source, SourceProvider: c.SourceProvider, SolverProvider: c.SolverProvider,
 		KeyType: c.KeyType, RenewBeforeDays: c.RenewBeforeDays, State: c.state(now), CreatedAt: c.CreatedAt, Note: c.Note, ReuseKey: c.ReuseKey, NotifyTo: c.NotifyTo,
 		Paused: c.Paused, DeployWindow: c.DeployWindow,
+	}
+	if c.ReminderOn != "" {
+		b.Reminder = &ReminderBody{On: c.ReminderOn, Note: c.ReminderNote, Sent: c.ReminderSent}
 	}
 	if c.Current != nil {
 		v := versionBody(c.Current)
@@ -259,15 +270,16 @@ type downloadOutput struct {
 type updateInput struct {
 	ID   int64 `path:"id"`
 	Body struct {
-		RenewBeforeDays int      `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Unchanged if left out"`
-		Targets         []int64  `json:"targets,omitempty" maxItems:"50" doc:"Replaces the targets when given; an empty list removes them all"`
-		Note            *string  `json:"note,omitempty" maxLength:"500" doc:"Replaces the note when given; empty removes it"`
-		ReuseKey        *bool    `json:"reuseKey,omitempty" doc:"Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out"`
-		NotifyTo        *[]int64 `json:"notifyTo,omitempty" maxItems:"50" doc:"The notifiers the certificate's notes go to; empty for all; unchanged if left out"`
-		Paused          *bool    `json:"paused,omitempty" doc:"Pause the renewal: the certificate is issued only when someone asks; unchanged if left out"`
-		SolverProvider  *int64   `json:"solverProvider,omitempty" doc:"Another solver for a certificate with a source that needs one, from its next issuance; unchanged if left out"`
-		KeyType         *string  `json:"keyType,omitempty" enum:"ecdsa-p256,ecdsa-p384,rsa-2048,rsa-3072,rsa-4096" doc:"Another key type for a certificate with a source whose keys JEC makes, from its next issuance; unchanged if left out"`
-		DeployWindow    *string  `json:"deployWindow,omitempty" enum:",0-6,1-5,2-6,22-6" doc:"The hours, in the panel's time zone, new versions are deployed in, as 1-5; empty for any time; unchanged if left out. Deploying by hand starts at once."`
+		RenewBeforeDays int           `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Unchanged if left out"`
+		Targets         []int64       `json:"targets,omitempty" maxItems:"50" doc:"Replaces the targets when given; an empty list removes them all"`
+		Note            *string       `json:"note,omitempty" maxLength:"500" doc:"Replaces the note when given; empty removes it"`
+		Reminder        *ReminderBody `json:"reminder,omitempty" doc:"Replaces the reminder when given; an empty day removes it"`
+		ReuseKey        *bool         `json:"reuseKey,omitempty" doc:"Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out"`
+		NotifyTo        *[]int64      `json:"notifyTo,omitempty" maxItems:"50" doc:"The notifiers the certificate's notes go to; empty for all; unchanged if left out"`
+		Paused          *bool         `json:"paused,omitempty" doc:"Pause the renewal: the certificate is issued only when someone asks; unchanged if left out"`
+		SolverProvider  *int64        `json:"solverProvider,omitempty" doc:"Another solver for a certificate with a source that needs one, from its next issuance; unchanged if left out"`
+		KeyType         *string       `json:"keyType,omitempty" enum:"ecdsa-p256,ecdsa-p384,rsa-2048,rsa-3072,rsa-4096" doc:"Another key type for a certificate with a source whose keys JEC makes, from its next issuance; unchanged if left out"`
+		DeployWindow    *string       `json:"deployWindow,omitempty" enum:",0-6,1-5,2-6,22-6" doc:"The hours, in the panel's time zone, new versions are deployed in, as 1-5; empty for any time; unchanged if left out. Deploying by hand starts at once."`
 	}
 }
 
@@ -427,7 +439,14 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 		if err := s.checkIssuing(ctx, in.ID, in.Body.SolverProvider, in.Body.KeyType); err != nil {
 			return nil, err
 		}
-		ch := changes{days: in.Body.RenewBeforeDays, targets: targets, note: in.Body.Note, reuseKey: in.Body.ReuseKey, paused: in.Body.Paused, notifyTo: notifyTo,
+		var rem *reminder
+		if r := in.Body.Reminder; r != nil {
+			if _, err := time.Parse(time.DateOnly, r.On); r.On != "" && err != nil {
+				return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil).WithField("body.reminder.on", i18n.KernelErrorInvalidField)
+			}
+			rem = &reminder{on: r.On, note: r.Note}
+		}
+		ch := changes{days: in.Body.RenewBeforeDays, targets: targets, note: in.Body.Note, reuseKey: in.Body.ReuseKey, paused: in.Body.Paused, notifyTo: notifyTo, reminder: rem,
 			solver: in.Body.SolverProvider, keyType: in.Body.KeyType, deployWindow: in.Body.DeployWindow}
 		if err := s.update(ctx, in.ID, ch); err != nil {
 			return nil, serviceError(err)

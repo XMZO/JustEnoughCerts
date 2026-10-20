@@ -151,6 +151,11 @@ type Certificate struct {
 	// CSRAt is when the CSR waiting for its certificate was made; zero for
 	// none.
 	CSRAt time.Time
+	// ReminderOn is the day of a reminder someone set, as 2027-05-01 in
+	// the panel's time zone, "" for none; ReminderNote what it is about;
+	// ReminderSent tells that it went out.
+	ReminderOn, ReminderNote string
+	ReminderSent             bool
 }
 
 // Version is a certificate issued or uploaded for a Certificate.
@@ -425,6 +430,7 @@ type querier interface {
 
 const selectCertificates = `SELECT c.id, c.domains, c.source, c.source_provider, c.solver_provider, c.key_type,
 	c.renew_before_days, c.created_at, c.note, c.reuse_key, c.notify_to, c.paused, c.deploy_window,
+	c.reminder_on, c.reminder_note, c.reminder_sent,
 	v.id, v.origin, v.names, v.serial, v.fingerprint, v.issuer, v.key_type, v.not_before, v.not_after, v.chain, v.created_at,
 	v.source_provider, v.renewal_start, v.renewal_end, v.renewal_at, v.renewal_explanation, v.renewal_check,
 	v.ca_revoked_at, v.ca_revoke_reason, v.status_check,
@@ -482,15 +488,16 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 		}
 		var csrAt sql.NullInt64
 		var is issuanceRow
-		var reuseKey, paused int64
+		var reuseKey, paused, reminderSent int64
 		var notifyTo string
 		dest := []any{&c.ID, &domains, &c.Source, &sourceProvider, &solverProvider, &c.KeyType, &c.RenewBeforeDays, &created, &c.Note, &reuseKey, &notifyTo, &paused, &c.DeployWindow,
+			&c.ReminderOn, &c.ReminderNote, &reminderSent,
 			&v.id, &v.origin, &v.names, &v.serial, &v.fingerprint, &v.issuer, &v.keyType, &v.notBefore, &v.notAfter, &v.chain, &v.created,
 			&v.source, &v.start, &v.end, &v.at, &v.explanation, &v.check, &v.caRevoked, &v.caReason, &v.statusCheck, &csrAt}
 		if err := rows.Scan(append(dest, is.dest()...)...); err != nil {
 			return nil, err
 		}
-		c.ReuseKey, c.Paused = reuseKey == 1, paused == 1
+		c.ReuseKey, c.Paused, c.ReminderSent = reuseKey == 1, paused == 1, reminderSent == 1
 		if csrAt.Valid {
 			c.CSRAt = time.UnixMilli(csrAt.Int64).UTC()
 		}
@@ -586,7 +593,11 @@ type changes struct {
 	solver           *int64
 	keyType          *string
 	deployWindow     *string
+	reminder         *reminder
 }
+
+// reminder is a day to be reminded on, "" for none, and what of.
+type reminder struct{ on, note string }
 
 // update makes the changes ch to certificate id.
 func (s *service) update(ctx context.Context, id int64, ch changes) error {
@@ -608,6 +619,17 @@ func (s *service) update(ctx context.Context, id int64, ch changes) error {
 	}
 	if targets != nil {
 		if err := s.setTargets(ctx, tx, c, targets); err != nil {
+			return err
+		}
+	}
+	if r := ch.reminder; r != nil {
+		note := strings.TrimSpace(r.note)
+		if r.on == "" {
+			note = ""
+		}
+		// A day changed is to be sent again.
+		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET reminder_on = ?, reminder_note = ?, reminder_sent = 0, updated_at = ? WHERE id = ?",
+			r.on, note, s.now().UnixMilli(), id); err != nil {
 			return err
 		}
 	}

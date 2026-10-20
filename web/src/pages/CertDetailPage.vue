@@ -233,7 +233,7 @@ const targets = useProviders('target')
 // What the settings show: when renewals look, and who hears of them.
 const certSettings = useCertSettings()
 const notifiers = useProviders('notifier')
-const noteEvents = ['on_issue_failed', 'on_deploy_failed', 'on_expiring', 'on_issued', 'on_deployed']
+const noteEvents = ['on_issue_failed', 'on_deploy_failed', 'on_expiring', 'on_reminder', 'on_issued', 'on_deployed']
 // The channels its notes go to: those it names, or else all, each that
 // takes some of its events.
 const notifying = computed(() =>
@@ -408,6 +408,26 @@ async function saveNote() {
     return
   }
   noting.value = false
+}
+// The reminder: a day to be told of something, as to renew a subscription
+// bought. A day alone, at noon UTC, shows as that day in any time zone.
+const reminding = ref(false)
+const reminderOn = ref('')
+const reminderNote = ref('')
+const reminderDay = (on: string) => intl.date(`${on}T12:00:00Z`)
+function editReminder() {
+  reminderOn.value = cert.value?.reminder?.on ?? ''
+  reminderNote.value = cert.value?.reminder?.note ?? ''
+  update.reset()
+  reminding.value = true
+}
+async function saveReminder(remove = false) {
+  try {
+    await update.mutateAsync({ reminder: remove ? { on: '' } : { on: reminderOn.value, note: reminderNote.value } })
+  } catch {
+    return
+  }
+  reminding.value = false
 }
 
 // The domains of a certificate with a source: changed, it is issued again
@@ -896,6 +916,24 @@ async function confirmDelete() {
                   <Pencil class="size-3.5" aria-hidden="true" />
                 </button>
               </dd>
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.reminder.title') }}</dt>
+              <dd class="m-0 flex min-w-0 items-start gap-1">
+                <span v-if="cert.reminder" class="flex min-w-0 flex-1 flex-wrap gap-x-1.5 [overflow-wrap:anywhere]">
+                  <time :datetime="cert.reminder.on">{{ reminderDay(cert.reminder.on) }}</time>
+                  <span v-if="cert.reminder.note" translate="no">{{ cert.reminder.note }}</span>
+                  <span v-if="cert.reminder.sent" class="text-ink-muted">{{ t('certs.reminder.sent') }}</span>
+                </span>
+                <span v-else class="min-w-0 flex-1 text-ink-muted">{{ t('certs.reminder.none') }}</span>
+                <button
+                  type="button"
+                  :aria-label="t('certs.reminder.edit')"
+                  :title="t('certs.reminder.edit')"
+                  class="-my-1 grid size-7 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
+                  @click="editReminder"
+                >
+                  <Pencil class="size-3.5" aria-hidden="true" />
+                </button>
+              </dd>
               <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.domains') }}</dt>
               <dd class="m-0 flex min-w-0 items-start gap-1">
                 <span class="min-w-0 flex-1 [overflow-wrap:anywhere]" translate="no">
@@ -1108,6 +1146,24 @@ async function confirmDelete() {
     <template #footer>
       <JecButton @click="noting = false">{{ t('kernel.action.cancel') }}</JecButton>
       <JecButton type="submit" form="note-form" variant="primary" :busy="update.isPending.value">{{ t('kernel.action.save') }}</JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-if="cert" v-model:open="reminding" :title="t('certs.reminder.title')" small>
+    <form id="reminder-form" class="flex flex-col gap-3" novalidate @submit.prevent="saveReminder()">
+      <p class="m-0 text-small text-ink-muted">{{ t('certs.reminder.intro') }}</p>
+      <JecField id="reminder-on" label="certs.reminder.on" :error="updateError.fields.value['reminder.on']">
+        <JecInput id="reminder-on" v-model="reminderOn" type="date" required :invalid="!!updateError.fields.value['reminder.on']" />
+      </JecField>
+      <JecField id="reminder-note" label="certs.reminder.note" hint="certs.reminder.note_hint">
+        <JecInput id="reminder-note" v-model="reminderNote" maxlength="200" />
+      </JecField>
+      <JecAlert v-if="updateError.alert.value" :code="updateError.alert.value.code" :params="updateError.alert.value.params" />
+    </form>
+    <template #footer>
+      <JecButton v-if="cert.reminder" variant="ghost" class="mr-auto" :disabled="update.isPending.value" @click="saveReminder(true)">{{ t('certs.reminder.remove') }}</JecButton>
+      <JecButton @click="reminding = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton type="submit" form="reminder-form" variant="primary" :busy="update.isPending.value" :disabled="!reminderOn">{{ t('kernel.action.save') }}</JecButton>
     </template>
   </JecDialog>
 

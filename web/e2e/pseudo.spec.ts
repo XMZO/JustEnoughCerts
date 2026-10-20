@@ -485,6 +485,16 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page.locator('dialog[open]')).toHaveCount(0)
   await expect(page.getByText('e2e note')).toBeVisible()
   expect.soft(await problems(page), 'a certificate with a note').toEqual([])
+  // A reminder on it.
+  await page.getByRole('button', { name: label('certs.reminder.edit') }).click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'the reminder of a certificate').toEqual([])
+  await dialog.locator('#reminder-on').fill('2027-05-01')
+  await dialog.locator('#reminder-note').fill('e2e reminder')
+  await dialog.locator('button[type=submit]').click()
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  await expect(page.getByText('e2e reminder')).toBeVisible()
+  expect.soft(await problems(page), 'a certificate with a reminder').toEqual([])
 
   // An uploaded certificate deployed there.
   await page.goto('./certificates/1')

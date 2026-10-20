@@ -538,6 +538,7 @@
       "domain_ends": "域名 {domain} 的注册到期",
       "domains": "域名：{domains}",
       "ends": "{domain} 的证书到期",
+      "reminder": "提醒：{domain}",
       "renews": "{domain} 开始续期",
       "site_ends": "{site} 的证书到期"
     },
@@ -1161,6 +1162,17 @@
       "first": "首次签发",
       "manual": "手动签发",
       "renewal": "自动续期"
+    },
+    "reminder": {
+      "edit": "设置提醒",
+      "intro": "到这一天 9:00（面板时区）经通知渠道提醒你一次，日历订阅里也会出现。适合买来的证书：订阅到期前提醒续费。",
+      "none": "无",
+      "note": "事项",
+      "note_hint": "可选，例如“续费 PositiveSSL 订阅”。",
+      "on": "日期",
+      "remove": "移除提醒",
+      "sent": "已提醒",
+      "title": "提醒"
     },
     "renewal": {
       "suggested": "CA 建议 {start} 至 {end}",
@@ -2130,6 +2142,7 @@
         "locked": "有人连续登录失败、被暂时锁定时通知",
         "provider_failing": "每日自检发现部署目标、DNS 服务商或证书来源测试失败时通知",
         "release": "JEC 有新版本时通知（须在设置页开启自动检查更新）",
+        "reminder": "证书上设置的提醒到期时通知（例如续费订阅）",
         "revoked": "证书被 CA 吊销时通知",
         "served_old": "网站上还是旧证书",
         "sign_in": "有人登录面板时通知",
@@ -2761,6 +2774,7 @@
         "title": "JEC {version} 已发布",
         "view": "发布说明：{url}"
       },
+      "reminder_title": "提醒：{domain}",
       "retry": "JEC 会在 {time} 再试一次。",
       "revoked": {
         "manual": "这张证书没有来源，JEC 无法自动重新签发，请尽快换上新证书。",

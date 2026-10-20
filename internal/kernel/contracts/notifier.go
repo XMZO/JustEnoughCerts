@@ -56,6 +56,7 @@ var NotifyEvents = []NotifyEvent{
 	{Type: CertificateIssueFailed, Key: "on_issue_failed", Label: i18n.KernelNotifyEventIssueFailed, Default: true},
 	{Type: CertificateDeployFailed, Key: "on_deploy_failed", Label: i18n.KernelNotifyEventDeployFailed, Default: true},
 	{Type: CertificateExpiring, Key: "on_expiring", Label: i18n.KernelNotifyEventExpiring, Default: true},
+	{Type: CertificateReminder, Key: "on_reminder", Label: i18n.KernelNotifyEventReminder, Default: true},
 	{Type: CertificateServedOld, Key: "on_served_old", Label: i18n.KernelNotifyEventServedOld, Default: true},
 	{Type: CertificateChainIncomplete, Key: "on_chain_incomplete", Label: i18n.KernelNotifyEventChainIncomplete, Default: true},
 	{Type: CertificateRevoked, Key: "on_revoked", Label: i18n.KernelNotifyEventRevoked, Default: true},

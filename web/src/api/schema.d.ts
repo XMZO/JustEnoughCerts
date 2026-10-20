@@ -1844,6 +1844,8 @@ export interface components {
             notifyTo: number[];
             /** @description The renewal is paused: the certificate is issued only when someone asks */
             paused?: boolean;
+            /** @description A day someone set to be reminded on, as to renew a subscription bought */
+            reminder?: components["schemas"]["ReminderBody"];
             /**
              * Format: date-time
              * @description When the renewal of the current version starts, or started: for a certificate with a source
@@ -2755,6 +2757,14 @@ export interface components {
             /** @description The page of the latest release */
             url?: string;
         };
+        ReminderBody: {
+            /** @description What to be reminded of */
+            note?: string;
+            /** @description The day, as 2027-05-01, in the panel's time zone; the reminder goes out at 9:00. Empty for none */
+            on: string;
+            /** @description It went out */
+            readonly sent?: boolean;
+        };
         RenewalBody: {
             /** Format: date-time */
             end: string;
@@ -3340,6 +3350,8 @@ export interface components {
             notifyTo?: number[];
             /** @description Pause the renewal: the certificate is issued only when someone asks; unchanged if left out */
             paused?: boolean;
+            /** @description Replaces the reminder when given; an empty day removes it */
+            reminder?: components["schemas"]["ReminderBody"];
             /**
              * Format: int64
              * @description Unchanged if left out

@@ -1,6 +1,7 @@
 package certs
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -198,6 +199,19 @@ certificates:
 	if data, err := f.configFile().Export(t.Context(), configfile.Export{}); err != nil || !strings.Contains(string(data), "note: the shop") {
 		t.Errorf("export %s: %v", data, err)
 	}
+	// A reminder too, which an export writes again; a day that is none is
+	// a problem.
+	rep = f.importConfig("version: 1\ncertificates:\n  - {domains: [example.com], source: LE, solver: DNS 2, reminder: {day: 2027-05-01, note: renew it}}\n", true)
+	if c, err := f.svc.load(t.Context(), f.db, 1); err != nil || c.ReminderOn != "2027-05-01" || c.ReminderNote != "renew it" {
+		t.Errorf("reminded %+v, %v: %+v", c, err, rep)
+	}
+	if data, err := f.configFile().Export(t.Context(), configfile.Export{}); err != nil || !strings.Contains(string(data), "day: \"2027-05-01\"") {
+		t.Errorf("exported %s, %v", data, err)
+	}
+	if rep := f.importConfig("version: 1\ncertificates:\n  - {domains: [example.com], source: LE, solver: DNS 2, reminder: {day: soon}}\n", false); !strings.Contains(fmt.Sprint(rep), "reminder") {
+		t.Errorf("a day that is none: %+v", rep)
+	}
+
 	// And the channels its notes go to, by name.
 	f.named("fake.chat", "Ops")
 	f.importConfig("version: 1\ncertificates:\n  - {domains: [example.com], source: LE, solver: DNS 2, notify_to: [Ops]}\n", true)

@@ -538,6 +538,7 @@
       "domain_ends": "Registration of {domain} ends",
       "domains": "Domains: {domains}",
       "ends": "Certificate of {domain} ends",
+      "reminder": "Reminder: {domain}",
       "renews": "Renewal of {domain} starts",
       "site_ends": "Certificate of {site} ends"
     },
@@ -1161,6 +1162,17 @@
       "first": "First issuance",
       "manual": "Issued by hand",
       "renewal": "Renewal"
+    },
+    "reminder": {
+      "edit": "Set a reminder",
+      "intro": "On this day at 9:00, in the panel's time zone, the notification channels remind you once; the calendar feed shows it too. Good for a certificate bought: renew the subscription before it ends.",
+      "none": "None",
+      "note": "What of",
+      "note_hint": "Optional, such as “Renew the PositiveSSL subscription”.",
+      "on": "Day",
+      "remove": "Remove the reminder",
+      "sent": "sent",
+      "title": "Reminder"
     },
     "renewal": {
       "suggested": "The CA suggests {start} to {end}",
@@ -2130,6 +2142,7 @@
         "locked": "Someone failed to sign in too many times and is locked out for a while",
         "provider_failing": "The daily check finds that a deploy target, DNS provider or source fails its test",
         "release": "A new release of JEC is out (once checking for updates is on in the settings)",
+        "reminder": "When a reminder set on a certificate comes due, as to renew a subscription",
         "revoked": "The CA revoked a certificate",
         "served_old": "A website still serves the old certificate",
         "sign_in": "Someone signs in to the panel",
@@ -2761,6 +2774,7 @@
         "title": "JEC {version} is out",
         "view": "Release notes: {url}"
       },
+      "reminder_title": "Reminder: {domain}",
       "retry": "JEC tries again at {time}.",
       "revoked": {
         "manual": "The certificate has no source for JEC to issue a new one from: replace it soon.",

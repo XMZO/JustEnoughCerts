@@ -14,6 +14,7 @@ message at once.
 | Issuance failed | On |
 | Deployment failed | On |
 | Certificate expiring or expired | On |
+| A reminder set on a certificate comes due (see [Certificates](certificates.md)) | On |
 | Old certificate still served (found by the online check) | On |
 | Certificate served without its intermediates (likewise) | On |
 | The CA revoked a certificate (see [Revocation checks](renewal.md#revocation-checks)) | On |

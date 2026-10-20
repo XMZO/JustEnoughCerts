@@ -37,6 +37,10 @@ type certificate struct {
 	Current *struct {
 		NotAfter time.Time `json:"notAfter"`
 	} `json:"current"`
+	Reminder *struct {
+		On   string `json:"on"`
+		Note string `json:"note"`
+	} `json:"reminder"`
 }
 
 // FeedBody tells whether the feed is on, and the path of its URL, under
@@ -220,6 +224,29 @@ func (m *Module) render(ctx context.Context, lang string) ([]byte, error) {
 			w.prop("DESCRIPTION", summary)
 			w.line("END:VALARM")
 			w.line("END:VEVENT")
+		}
+		// A reminder set on it: a day, with an alarm on it.
+		if r := c.Reminder; r != nil {
+			if day, err := time.Parse(time.DateOnly, r.On); err == nil {
+				summary := text(i18n.CalendarEventReminder, i18n.Args{"domain": domain})
+				w.line("BEGIN:VEVENT")
+				w.prop("UID", "jec-"+id+"-reminder-"+day.Format("20060102"))
+				w.line("DTSTAMP:" + stamp)
+				w.line("DTSTART;VALUE=DATE:" + day.Format("20060102"))
+				w.line("DTEND;VALUE=DATE:" + day.AddDate(0, 0, 1).Format("20060102"))
+				w.prop("SUMMARY", summary)
+				w.prop("DESCRIPTION", strings.TrimSpace(r.Note+"\n"+detail))
+				if link != "" {
+					w.prop("URL", link)
+				}
+				w.line("TRANSP:TRANSPARENT")
+				w.line("BEGIN:VALARM")
+				w.line("ACTION:DISPLAY")
+				w.line("TRIGGER:PT9H")
+				w.prop("DESCRIPTION", summary)
+				w.line("END:VALARM")
+				w.line("END:VEVENT")
+			}
 		}
 		if c.RenewAt != nil {
 			w.line("BEGIN:VEVENT")

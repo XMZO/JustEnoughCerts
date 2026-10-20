@@ -361,6 +361,14 @@ func (s *service) note(ctx context.Context, tag language.Tag, ev events.Event, d
 				lines = append(lines, w.text(i18n.NotifyNoteRevokedManual, nil))
 			}
 		}
+	case contracts.CertificateReminder:
+		n.Title = w.text(i18n.NotifyNoteReminderTitle, i18n.Args{"domain": domain})
+		if d.Reminder != "" {
+			lines = append(lines, d.Reminder)
+		}
+		if !d.NotAfter.IsZero() {
+			lines = append(lines, w.text(i18n.NotifyNoteEnds, i18n.Args{"date": w.day(d.NotAfter)}))
+		}
 	case contracts.CertificateExpiring:
 		if d.Expiry == contracts.ExpiryExpired {
 			n.Title = w.text(i18n.NotifyNoteExpiredTitle, i18n.Args{"domain": domain})

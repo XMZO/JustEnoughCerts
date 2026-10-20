@@ -51,7 +51,7 @@ func newModule(t *testing.T) (*Module, humatest.TestAPI) {
 		}
 		return json.Unmarshal([]byte(`{"certificates": [
 			{"id": 3, "domains": ["example.com", "*.example.com", "`+long+`"], "renewAt": "2026-12-01T18:00:00Z",
-			 "current": {"notAfter": "2026-12-31T20:00:00Z"}},
+			 "current": {"notAfter": "2026-12-31T20:00:00Z"}, "reminder": {"on": "2027-05-01", "note": "Renew the subscription"}},
 			{"id": 4, "domains": ["new.example.com"]}]}`), out)
 	}
 	_, a := humatest.New(t)
@@ -111,6 +111,7 @@ func TestFeed(t *testing.T) {
 		"UID:jec-3-end-1798747200\r\n",
 		"UID:jec-site-7-end-1801440000\r\n", "DTSTART;VALUE=DATE:20270201\r\n",
 		"UID:jec-domain-shop.com-end-1803859200\r\n", "DTSTART;VALUE=DATE:20270301\r\n",
+		"UID:jec-3-reminder-20270501\r\n", "DTSTART;VALUE=DATE:20270501\r\n", "TRIGGER:PT9H\r\n",
 	} {
 		if !strings.Contains(ics, want) {
 			t.Errorf("no %q in:\n%s", want, ics)
@@ -130,6 +131,9 @@ func TestFeed(t *testing.T) {
 	ends, _ := m.cat.Format(language.MustParse("zh-CN"), i18n.CalendarEventEnds, i18n.Args{"domain": "example.com"})
 	if ends == "" || !strings.Contains(unfolded, "SUMMARY:"+ends) {
 		t.Errorf("no %q in:\n%s", ends, unfolded)
+	}
+	if !strings.Contains(unfolded, `DESCRIPTION:Renew the subscription\n`) {
+		t.Errorf("no reminder in:\n%s", unfolded)
 	}
 	if strings.Contains(unfolded, "new.example.com") {
 		t.Error("a certificate without a version or a renewal has events")

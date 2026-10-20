@@ -76,3 +76,55 @@ func (s *service) notify(ctx context.Context, c *Certificate, level contracts.Ex
 	}
 	return tx.Commit()
 }
+
+// remindAt is the hour of the day reminders go out, in the panel's time
+// zone, as the weekly digest does.
+const remindAt = 9
+
+// checkReminders publishes certificate.reminder for each reminder whose
+// day came, once.
+func (s *service) checkReminders(ctx context.Context) error {
+	certs, err := s.list(ctx)
+	if err != nil {
+		return err
+	}
+	now := s.now()
+	for _, c := range certs {
+		if c.ReminderOn == "" || c.ReminderSent {
+			continue
+		}
+		day, err := time.ParseInLocation(time.DateOnly, c.ReminderOn, s.zone())
+		if err != nil || now.Before(day.Add(remindAt*time.Hour)) {
+			continue
+		}
+		if err := s.remind(ctx, c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// remind marks the reminder of c sent and publishes it, unless it changed
+// or went out meanwhile.
+func (s *service) remind(ctx context.Context, c *Certificate) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET reminder_sent = 1 WHERE id = ? AND reminder_on = ? AND reminder_sent = 0", c.ID, c.ReminderOn)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil
+	}
+	d := contracts.CertificateEvent{CertificateID: c.ID, Domains: c.Domains, Reminder: c.ReminderNote, RemindOn: c.ReminderOn}
+	if c.Current != nil {
+		d.VersionID, d.NotAfter = c.Current.ID, c.Current.NotAfter
+	}
+	if err := s.events.PublishTx(ctx, tx, contracts.CertificateReminder, strconv.FormatInt(c.ID, 10), d); err != nil {
+		return err
+	}
+	return tx.Commit()
+}

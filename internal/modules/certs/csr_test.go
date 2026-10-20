@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox/cryptoxtest"
 )
 
@@ -117,4 +118,59 @@ func TestRequest(t *testing.T) {
 	if len(e.Fields) != 1 || e.Fields[0].Location != "body.domains[0]" {
 		t.Errorf("a bad domain: %+v", e)
 	}
+}
+
+func TestReminder(t *testing.T) {
+	f := newFixture(t)
+	c := f.add(f.leaf(90, "shop.example.com"))
+	path := "/certificates/" + strconv.FormatInt(c.ID, 10)
+	day := f.now.UTC().AddDate(0, 0, 2).Format(time.DateOnly)
+	var got CertificateBody
+	f.call(f.api.Patch(path, map[string]any{"reminder": map[string]any{"on": day, "note": "Renew the subscription"}}), http.StatusOK, &got)
+	if got.Reminder == nil || got.Reminder.On != day || got.Reminder.Note != "Renew the subscription" || got.Reminder.Sent {
+		t.Fatalf("set %+v", got.Reminder)
+	}
+	reminders := func() int {
+		n := 0
+		for _, e := range f.events() {
+			if e.typ == contracts.CertificateReminder {
+				n++
+			}
+		}
+		return n
+	}
+	// Before 9:00 of the day, nothing; after, once.
+	due, _ := time.ParseInLocation(time.DateOnly, day, time.UTC)
+	f.now = due.Add(8 * time.Hour)
+	if err := f.svc.checkReminders(t.Context()); err != nil || reminders() != 0 {
+		t.Fatalf("before 9:00: %v, %d", err, reminders())
+	}
+	f.now = due.Add(9 * time.Hour)
+	for range 2 {
+		if err := f.svc.checkReminders(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if reminders() != 1 {
+		t.Errorf("%d reminders sent", reminders())
+	}
+	f.call(f.api.Get(path), http.StatusOK, &struct {
+		Certificate *CertificateBody `json:"certificate"`
+	}{&got})
+	if got.Reminder == nil || !got.Reminder.Sent {
+		t.Errorf("after: %+v", got.Reminder)
+	}
+	// Another day is to be sent again; an empty one removes it; a day that
+	// is none is refused.
+	got = CertificateBody{} // fields left out of an answer are not reset
+	f.call(f.api.Patch(path, map[string]any{"reminder": map[string]any{"on": "2030-01-01", "note": "Again"}}), http.StatusOK, &got)
+	if got.Reminder == nil || got.Reminder.Sent {
+		t.Errorf("moved %+v", got.Reminder)
+	}
+	got = CertificateBody{}
+	f.call(f.api.Patch(path, map[string]any{"reminder": map[string]any{"on": ""}}), http.StatusOK, &got)
+	if got.Reminder != nil {
+		t.Errorf("removed %+v", got.Reminder)
+	}
+	f.apiError(f.api.Patch(path, map[string]any{"reminder": map[string]any{"on": "next week"}}), http.StatusUnprocessableEntity)
 }

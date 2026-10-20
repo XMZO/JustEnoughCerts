@@ -366,6 +366,10 @@
             "description": "The renewal is paused: the certificate is issued only when someone asks",
             "type": "boolean"
           },
+          "reminder": {
+            "$ref": "#/components/schemas/ReminderBody",
+            "description": "A day someone set to be reminded on, as to renew a subscription bought"
+          },
           "renewAt": {
             "description": "When the renewal of the current version starts, or started: for a certificate with a source",
             "format": "date-time",
@@ -2902,6 +2906,30 @@
         ],
         "type": "object"
       },
+      "ReminderBody": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "description": "What to be reminded of",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "on": {
+            "description": "The day, as 2027-05-01, in the panel's time zone; the reminder goes out at 9:00. Empty for none",
+            "maxLength": 10,
+            "type": "string"
+          },
+          "sent": {
+            "description": "It went out",
+            "readOnly": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "on"
+        ],
+        "type": "object"
+      },
       "RenewalBody": {
         "additionalProperties": false,
         "properties": {
@@ -4488,6 +4516,10 @@
           "paused": {
             "description": "Pause the renewal: the certificate is issued only when someone asks; unchanged if left out",
             "type": "boolean"
+          },
+          "reminder": {
+            "$ref": "#/components/schemas/ReminderBody",
+            "description": "Replaces the reminder when given; an empty day removes it"
           },
           "renewBeforeDays": {
             "description": "Unchanged if left out",

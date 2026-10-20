@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/configfile"
@@ -58,6 +59,41 @@ type certificateEntry struct {
 	// NotifyTo names the notifiers its notes go to, all when empty; left
 	// out, they stay as they are.
 	NotifyTo []string `yaml:"notify_to,omitempty"`
+	// Reminder is a day to be reminded on, and what of; one with no day
+	// removes it, and left out, it stays as it is.
+	Reminder *reminderEntry `yaml:"reminder,omitempty"`
+}
+
+// reminderEntry is a reminder in the configuration file.
+type reminderEntry struct {
+	// On is the day, as 2027-05-01: "day" in the file, as YAML 1.1 reads
+	// on as true.
+	On   string `yaml:"day"`
+	Note string `yaml:"note,omitempty"`
+}
+
+// valid tells whether the day of r is one, or none.
+func (r *reminderEntry) valid() bool {
+	if r == nil || r.On == "" {
+		return true
+	}
+	_, err := time.Parse(time.DateOnly, r.On)
+	return err == nil
+}
+
+// setReminder gives certificate id the reminder r in tx, unless it has
+// it already; a day changed is to be sent again.
+func (s *service) setReminder(ctx context.Context, tx *sql.Tx, id int64, c *Certificate, r *reminderEntry) (bool, error) {
+	note := strings.TrimSpace(r.Note)
+	if r.On == "" {
+		note = ""
+	}
+	if c != nil && r.On == c.ReminderOn && note == c.ReminderNote {
+		return false, nil
+	}
+	_, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET reminder_on = ?, reminder_note = ?, reminder_sent = 0, updated_at = ? WHERE id = ?",
+		r.On, note, s.now().UnixMilli(), id)
+	return err == nil, err
 }
 
 // configSections are the module's sections: the renewal defaults first,
@@ -155,6 +191,9 @@ func (s *service) exportCertificates(ctx context.Context, _ configfile.Export) (
 		}
 		if c.DeployWindow != "" {
 			e.DeployWindow = &c.DeployWindow
+		}
+		if c.ReminderOn != "" {
+			e.Reminder = &reminderEntry{On: c.ReminderOn, Note: c.ReminderNote}
 		}
 		if c.Source == sourceProvider {
 			if e.Source, err = s.providerName(ctx, c.SourceProvider); err != nil {
@@ -371,12 +410,21 @@ func (s *service) addCertificate(ctx context.Context, ci *certImport, e certific
 	if c.Targets == nil {
 		c.Targets = []int64{}
 	}
+	if !e.Reminder.valid() {
+		it.Problems = append(it.Problems, configfile.Problem{Field: "reminder", Key: i18n.KernelErrorInvalidField})
+	}
 	it.Problems = append(it.Problems, targetProblems...)
 	if len(it.Problems) > 0 {
 		return it, nil
 	}
-	if _, err := s.insertIssued(ctx, ci.tx, c); err != nil {
+	id, err := s.insertIssued(ctx, ci.tx, c)
+	if err != nil {
 		return it, err
+	}
+	if e.Reminder != nil {
+		if _, err := s.setReminder(ctx, ci.tx, id, nil, e.Reminder); err != nil {
+			return it, err
+		}
 	}
 	ci.added = true
 	it.Action = configfile.Add
@@ -448,6 +496,9 @@ func (s *service) changeCertificate(ctx context.Context, ci *certImport, e certi
 			it.Problems = append(it.Problems, configfile.Problem{Field: "renew_before_days", Key: i18n.KernelErrorInvalidField})
 		}
 	}
+	if !e.Reminder.valid() {
+		it.Problems = append(it.Problems, configfile.Problem{Field: "reminder", Key: i18n.KernelErrorInvalidField})
+	}
 	it.Problems = append(it.Problems, targetProblems...)
 	if slices.ContainsFunc(it.Problems, func(p configfile.Problem) bool { return !p.Warning }) {
 		return it, nil
@@ -468,6 +519,13 @@ func (s *service) changeCertificate(ctx context.Context, ci *certImport, e certi
 			return it, err
 		}
 		ci.deployed = true
+	}
+	if e.Reminder != nil {
+		did, err := s.setReminder(ctx, ci.tx, c.ID, c, e.Reminder)
+		if err != nil {
+			return it, err
+		}
+		changed = changed || did
 	}
 	if e.Note != nil && strings.TrimSpace(*e.Note) != c.Note {
 		changed = true

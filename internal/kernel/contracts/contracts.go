@@ -25,6 +25,10 @@ const (
 	// has a week or less left, or expired; see Expiry. Payload
 	// CertificateEvent with Expiry set.
 	CertificateExpiring = "certificate.expiring"
+	// CertificateReminder: the day someone set on a certificate came, as
+	// to renew a subscription bought. Payload CertificateEvent with
+	// Reminder set.
+	CertificateReminder = "certificate.reminder"
 	// CertificateRevoked: the CA of the current version revoked it, as its
 	// OCSP responder or CRL told; one with a source is renewed at once.
 	// Payload CertificateEvent with VersionID, Fingerprint, NotAfter and
@@ -218,6 +222,10 @@ type CertificateEvent struct {
 	// DeployAt is when a new version goes to its targets, when that is
 	// later than the event, as a deploy window makes it.
 	DeployAt time.Time `json:"deployAt,omitzero"`
+	// Reminder is what someone wrote to be reminded of, and RemindOn the
+	// day, as 2027-05-01.
+	Reminder string `json:"reminder,omitempty"`
+	RemindOn string `json:"remindOn,omitempty"`
 }
 
 // RevocationReasonText names a reason code of RFC 5280.

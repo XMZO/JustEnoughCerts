@@ -85,6 +85,7 @@ func (m *Module) Register(r *module.Registry) error {
 		// Often enough to start renewals near the check time.
 		{Name: "renew", Every: 5 * time.Minute, Timeout: 5 * time.Minute, Run: s.renew},
 		{Name: "check_expiry", Every: time.Hour, Timeout: 5 * time.Minute, Run: s.checkExpiry},
+		{Name: "reminders", Every: 15 * time.Minute, Timeout: 5 * time.Minute, Run: s.checkReminders},
 		{Name: "renewal_info", Every: time.Hour, Timeout: 10 * time.Minute, Run: s.checkRenewalInfo},
 		{Name: "revocation", Every: 30 * time.Minute, Timeout: 10 * time.Minute, Run: s.checkRevocation},
 		{Name: "digest", Every: time.Hour, Timeout: 5 * time.Minute, Run: s.digest},
