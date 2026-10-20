@@ -2686,6 +2686,40 @@
         ],
         "type": "object"
       },
+      "PreflightBody": {
+        "additionalProperties": false,
+        "properties": {
+          "problems": {
+            "description": "What would make the CA refuse some of the domains, as their CAA records; empty when nothing is seen",
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "problems"
+        ],
+        "type": "object"
+      },
+      "PreflightInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "domains": {
+            "description": "The domains of a certificate to be, a wildcard as *.example.com",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "domains"
+        ],
+        "type": "object"
+      },
       "Problem": {
         "additionalProperties": false,
         "properties": {
@@ -7914,6 +7948,56 @@
           }
         },
         "summary": "List the domains the account of a solver of DNS manages"
+      }
+    },
+    "/providers/{id}/preflight": {
+      "post": {
+        "description": "For sources that can tell, as ACME accounts through CAA records; others see nothing. It changes nothing.",
+        "operationId": "providers-preflight",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreflightInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreflightBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Tell what a source sees wrong with domains before issuing them"
       }
     },
     "/providers/{id}/test": {

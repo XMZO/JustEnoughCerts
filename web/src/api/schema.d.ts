@@ -1149,6 +1149,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/providers/{id}/preflight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tell what a source sees wrong with domains before issuing them
+         * @description For sources that can tell, as ACME accounts through CAA records; others see nothing. It changes nothing.
+         */
+        post: operations["providers-preflight"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/providers/{id}/test": {
         parameters: {
             query?: never;
@@ -2594,6 +2614,14 @@ export interface components {
             /** @description Where JEC looks for plugins when it starts */
             dir: string;
             plugins: components["schemas"]["PluginBody"][];
+        };
+        PreflightBody: {
+            /** @description What would make the CA refuse some of the domains, as their CAA records; empty when nothing is seen */
+            problems: components["schemas"]["Message"][];
+        };
+        PreflightInputBody: {
+            /** @description The domains of a certificate to be, a wildcard as *.example.com */
+            domains: string[];
         };
         Problem: {
             field?: string;
@@ -5748,6 +5776,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DomainsBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "providers-preflight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreflightInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreflightBody"];
                 };
             };
             /** @description Error */

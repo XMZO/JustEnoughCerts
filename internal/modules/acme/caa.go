@@ -43,6 +43,50 @@ func caaOf(directory string) []string {
 	return nil
 }
 
+// caaProblem tells why the CAA records p of domain d keep the CA known by
+// ids from issuing, or nil when they let it.
+func caaProblem(p dnscheck.CAAPolicy, ids []string, d string) *contracts.Problem {
+	wildcard := strings.HasPrefix(d, "*.")
+	if p.Allows(ids, wildcard) {
+		return nil
+	}
+	allowed := p.Issue
+	if wildcard && p.Wild {
+		allowed = p.IssueWild
+	}
+	var names []string
+	for _, a := range allowed {
+		if a != "" {
+			names = append(names, a)
+		}
+	}
+	if len(names) == 0 {
+		return &contracts.Problem{Key: i18n.AcmeErrorCaaNone, Params: map[string]any{"domain": d, "ca": ids[0]}}
+	}
+	return &contracts.Problem{Key: i18n.AcmeErrorCaa, Params: map[string]any{"domain": d, "allowed": strings.Join(names, ", "), "ca": ids[0]}}
+}
+
+// preflightCAA tells, of each of domains, why its CAA records keep the CA
+// at directory from issuing; a domain whose records cannot be read is left
+// to the CA.
+func preflightCAA(ctx context.Context, lookup func(context.Context, string) (dnscheck.CAAPolicy, error), directory string, domains []string) []contracts.Message {
+	ids := caaOf(directory)
+	out := []contracts.Message{}
+	if ids == nil {
+		return out
+	}
+	for _, d := range domains {
+		p, err := lookup(ctx, d)
+		if err != nil {
+			continue
+		}
+		if problem := caaProblem(p, ids, d); problem != nil {
+			out = append(out, contracts.Message{Key: problem.Key, Params: problem.Params})
+		}
+	}
+	return out
+}
+
 // checkCAA makes sure the CAA records of each domain let the CA at
 // directory issue, before an order the CA would refuse for them: a policy
 // JEC cannot tell, as when DNS does not answer, is left to the CA.
@@ -57,26 +101,9 @@ func checkCAA(ctx context.Context, lookup func(context.Context, string) (dnschec
 			log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.AcmeLogCaaUnknown, Params: map[string]any{"domain": d}, Detail: err.Error()})
 			continue
 		}
-		wildcard := strings.HasPrefix(d, "*.")
-		if p.Allows(ids, wildcard) {
-			continue
+		if problem := caaProblem(p, ids, d); problem != nil {
+			return retry.Permanent(problem)
 		}
-		allowed := p.Issue
-		if wildcard && p.Wild {
-			allowed = p.IssueWild
-		}
-		var names []string
-		for _, a := range allowed {
-			if a != "" {
-				names = append(names, a)
-			}
-		}
-		if len(names) == 0 {
-			return retry.Permanent(&contracts.Problem{Key: i18n.AcmeErrorCaaNone, Params: map[string]any{"domain": d, "ca": ids[0]}})
-		}
-		return retry.Permanent(&contracts.Problem{Key: i18n.AcmeErrorCaa, Params: map[string]any{
-			"domain": d, "allowed": strings.Join(names, ", "), "ca": ids[0],
-		}})
 	}
 	return nil
 }

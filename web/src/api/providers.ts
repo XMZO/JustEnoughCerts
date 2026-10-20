@@ -142,6 +142,18 @@ export function useAccountDomains(id: MaybeRefOrGetter<number | undefined>, enab
   })
 }
 
+/** What source id sees wrong with domains before issuing, as their CAA records; only while enabled. */
+export function usePreflight(id: MaybeRefOrGetter<number | undefined>, domains: MaybeRefOrGetter<string[]>, enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: computed(() => [...all, 'preflight', toValue(id), [...toValue(domains)].sort()] as const),
+    queryFn: async () =>
+      (await unwrap(api.POST('/providers/{id}/preflight', { params: { path: { id: toValue(id) ?? 0 } }, body: { domains: toValue(domains) } }))).problems,
+    enabled: computed(() => toValue(enabled) && toValue(id) !== undefined && toValue(domains).length > 0),
+    staleTime: 5 * 60_000,
+    retry: false,
+  })
+}
+
 export type TryResult = components['schemas']['TryBody']
 
 /** Tries a solver of DNS on a domain: adds the record of a challenge, waits for it, and removes it. */

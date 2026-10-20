@@ -42,7 +42,9 @@ certificates. Before ordering from a well-known CA, such as Let's
 Encrypt, ZeroSSL, Google Trust Services, SSL.com, Sectigo or DigiCert,
 JEC reads them and stops with the record to add, such as
 `0 issue "letsencrypt.org"`, when they leave the CA out. The records of a
-parent domain count for its subdomains that have none.
+parent domain count for its subdomains that have none. When adding a
+certificate, the page tells of the domains whose CAA records leave out the
+CA of the ACME account chosen, before any issuance fails.
 
 ## A site still serves the old certificate after the deployment
 

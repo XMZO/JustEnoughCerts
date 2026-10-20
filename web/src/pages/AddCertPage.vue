@@ -6,7 +6,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiError, networkError } from '../api/client'
 import { useAddCertificate, useCertificates, useCertSettings, useImportCertificates, useIssueCertificate, type Imported, type KeyType } from '../api/certs'
 import { revealError, useApiError } from '../api/errors'
-import { useAccountDomains, useProviders, useProviderTypes, useZones, type Provider } from '../api/providers'
+import { useAccountDomains, usePreflight, useProviders, useProviderTypes, useZones, type Provider } from '../api/providers'
 import { loadLastChoice, saveLastChoice, type LastChoice } from '../certs/lastChoice'
 import { keyText } from '../certs/life'
 import DomainInput from '../components/DomainInput.vue'
@@ -245,6 +245,13 @@ const badDomains = computed(() =>
     .map((f) => /^domains\[(\d+)\]$/.exec(f)?.[1])
     .filter((i): i is string => i !== undefined)
     .map(Number),
+)
+// What the source sees wrong with the domains before issuing, as CAA
+// records that leave its CA out.
+const preflight = usePreflight(
+  computed(() => (typeof source.value === 'number' ? source.value : undefined)),
+  zoneDomains,
+  () => typeof source.value === 'number' && !badDomains.value.length,
 )
 
 const deploySteps = computed(() =>
@@ -509,6 +516,14 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
             <p v-if="badDomains.length" id="domains-help" class="m-0 text-small text-danger-ink">{{ t('certs.error.bad_domain') }}</p>
             <p v-else-if="fieldError('domains')" id="domains-help" class="m-0 text-small text-danger-ink">{{ t(fieldError('domains')!) }}</p>
             <p v-else id="domains-help" class="m-0 text-small text-ink-muted">{{ t('certs.add.domains_help') }}</p>
+            <p
+              v-for="(p, i) in preflight.data.value ?? []"
+              :key="i"
+              role="status"
+              class="m-0 flex items-start gap-1.5 text-small text-warn-ink [overflow-wrap:anywhere]"
+            >
+              <TriangleAlert class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ t(p.key as MessageKey, (p.params ?? {}) as Params) }}
+            </p>
             <p v-if="missingApex.length" role="status" class="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 text-small">
               <span class="[overflow-wrap:anywhere]">{{ t('certs.add.apex_hint', { names: intl.list(missingApex) }) }}</span>
               <JecButton size="sm" @click="addApex"><Plus class="size-4" aria-hidden="true" />{{ t('certs.add.apex_add') }}</JecButton>

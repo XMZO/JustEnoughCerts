@@ -25,3 +25,10 @@ type ZoneHolder interface {
 type DomainLister interface {
 	Domains(ctx context.Context) (names []string, total int, err error)
 }
+
+// Preflighter is a source that can tell, before an issuance, what would
+// make its CA refuse some of the domains, as their CAA records: a message
+// for each, for people to fix first; none when it sees nothing wrong.
+type Preflighter interface {
+	Preflight(ctx context.Context, domains []string) ([]Message, error)
+}

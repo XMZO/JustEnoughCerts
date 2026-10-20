@@ -134,6 +134,16 @@ func refusedReplaces(err error) bool {
 // RenewalInfo asks the CA what it suggests about renewing leaf, which
 // this account issued (RFC 9773). A CA without ARI, or one that does not
 // know leaf, makes no suggestions.
+// Preflight tells the domains whose CAA records keep the CA from issuing,
+// before an order it would refuse.
+func (s *source) Preflight(ctx context.Context, domains []string) ([]contracts.Message, error) {
+	dir, err := directoryOf(s.in)
+	if err != nil {
+		return []contracts.Message{}, nil
+	}
+	return preflightCAA(ctx, s.m.caa, dir, domains), nil
+}
+
 func (s *source) RenewalInfo(ctx context.Context, leaf *x509.Certificate) (contracts.RenewalInfo, error) {
 	client, _, err := s.connect(ctx, func(contracts.LogLine) {})
 	if err != nil {

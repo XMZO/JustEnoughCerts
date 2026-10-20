@@ -20,7 +20,7 @@ JEC 向域名的权威 DNS 服务器查询记录是否生效。证书所选的 D
 
 ## CA 因 CAA 记录拒绝签发
 
-域名 DNS 中的 CAA 记录指定允许为其签发证书的 CA。向 Let's Encrypt、ZeroSSL、Google Trust Services、SSL.com、Sectigo、DigiCert 等常见 CA 下单前，JEC 会先读取这些记录；不包括该 CA 时停止签发，并给出应添加的记录，如 `0 issue "letsencrypt.org"`。子域名没有 CAA 记录时，以上级域名的为准。
+域名 DNS 中的 CAA 记录指定允许为其签发证书的 CA。向 Let's Encrypt、ZeroSSL、Google Trust Services、SSL.com、Sectigo、DigiCert 等常见 CA 下单前，JEC 会先读取这些记录；不包括该 CA 时停止签发，并给出应添加的记录，如 `0 issue "letsencrypt.org"`。子域名没有 CAA 记录时，以上级域名的为准。添加证书时，选好 ACME 账号并填写域名后，页面就会提示 CAA 不允许的域名，无需等到签发失败。
 
 ## 部署后网站仍在使用旧证书
 

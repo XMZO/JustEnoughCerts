@@ -203,3 +203,54 @@ func registerDomains(a huma.API, r *providers.Registry) {
 		return &domainsOutput{Body: DomainsBody{Domains: names, Total: total}}, nil
 	})
 }
+
+type preflightInput struct {
+	ID   int64 `path:"id"`
+	Body struct {
+		Domains []string `json:"domains" minItems:"1" maxItems:"100" doc:"The domains of a certificate to be, a wildcard as *.example.com"`
+	}
+}
+
+// PreflightBody is what a source sees wrong with domains before issuing.
+type PreflightBody struct {
+	Problems []contracts.Message `json:"problems" doc:"What would make the CA refuse some of the domains, as their CAA records; empty when nothing is seen"`
+}
+
+type preflightOutput struct{ Body PreflightBody }
+
+func registerPreflight(a huma.API, r *providers.Registry) {
+	huma.Register(a, huma.Operation{
+		OperationID: "providers-preflight", Method: http.MethodPost, Path: "/providers/{id}/preflight",
+		Summary:     "Tell what a source sees wrong with domains before issuing them",
+		Description: "For sources that can tell, as ACME accounts through CAA records; others see nothing. It changes nothing.",
+	}, func(ctx context.Context, in *preflightInput) (*preflightOutput, error) {
+		scope := r.Scope("kernel")
+		t, err := scope.Type(ctx, in.ID)
+		if err != nil {
+			return nil, apiError(err)
+		}
+		out := &preflightOutput{Body: PreflightBody{Problems: []contracts.Message{}}}
+		if t.Kind != providers.Source {
+			return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil)
+		}
+		p, _, err := scope.Open(ctx, in.ID)
+		if err != nil {
+			return nil, testError(err)
+		}
+		if c, ok := p.(interface{ Close() error }); ok {
+			defer func() { _ = c.Close() }()
+		}
+		pf, ok := p.(contracts.Preflighter)
+		if !ok {
+			return out, nil
+		}
+		pctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+		defer cancel()
+		problems, err := pf.Preflight(pctx, in.Body.Domains)
+		if err != nil {
+			return out, nil // nothing told: the issuance finds out
+		}
+		out.Body.Problems = append(out.Body.Problems, problems...)
+		return out, nil
+	})
+}

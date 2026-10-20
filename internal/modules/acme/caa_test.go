@@ -50,3 +50,26 @@ func TestCheckCAA(t *testing.T) {
 		t.Errorf("unknown CA: %v", err)
 	}
 }
+
+func TestPreflightCAA(t *testing.T) {
+	policies := map[string]dnscheck.CAAPolicy{
+		"le.example.com":     {Found: true, Issue: []string{"letsencrypt.org"}},
+		"google.example.com": {Found: true, Issue: []string{"pki.goog"}},
+		"none.example.com":   {Found: true, Issue: []string{""}},
+	}
+	lookup := func(_ context.Context, d string) (dnscheck.CAAPolicy, error) {
+		if d == "broken.example.com" {
+			return dnscheck.CAAPolicy{}, errors.New("SERVFAIL")
+		}
+		return policies[d], nil
+	}
+	const le = "https://acme-v02.api.letsencrypt.org/directory"
+	got := preflightCAA(t.Context(), lookup, le, []string{"le.example.com", "google.example.com", "broken.example.com", "none.example.com", "free.example.com"})
+	if len(got) != 2 || got[0].Key != i18n.AcmeErrorCaa || got[0].Params["domain"] != "google.example.com" || got[1].Key != i18n.AcmeErrorCaaNone {
+		t.Errorf("problems %+v", got)
+	}
+	// A CA JEC does not know: nothing to say.
+	if got := preflightCAA(t.Context(), lookup, "https://pebble:14000/dir", []string{"google.example.com"}); len(got) != 0 {
+		t.Errorf("an unknown CA: %+v", got)
+	}
+}
