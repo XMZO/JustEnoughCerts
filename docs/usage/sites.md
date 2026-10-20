@@ -21,7 +21,8 @@ JEC did not ask for:
 
 1. On the Expiry watch page, choose Watch a site.
 2. Enter a host name, with a port when it is not 443, or a URL, such as
-   `https://example.com`. A name is optional.
+   `https://example.com`. A name is optional. To watch several at once,
+   enter one a line; those that cannot be added stay, each with why.
 3. JEC checks the site at once, then every 6 hours, or an hour after it did
    not answer. Check now on a row checks it again.
 
@@ -88,6 +89,8 @@ for JEC to store its own) is told of and listed as "To look at". For each:
 |---|---|
 | Trust such | The certificates the same issuer makes for the same names are not told of, as those a CDN such as Cloudflare makes for itself. Listed under Trusted, where "Stop trusting" takes it back |
 | Ignore | Only this certificate goes from the list |
+| Watch the site | Watches one of its names among the sites |
+| Hand to JEC | Adds a certificate for its names that JEC issues and renews |
 | View | Opens the certificate on crt.sh |
 
 A certificate that nobody you know asked for may mean someone else

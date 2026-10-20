@@ -608,6 +608,13 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page.locator('dialog[open]')).toHaveCount(0)
   await expect(page.getByText(label('watch.state.unreachable')).filter({ visible: true }).first()).toBeVisible()
   expect.soft(await problems(page), 'a site that does not answer').toEqual([])
+  // Several at once, which are not hosts: kept, each with why.
+  await page.getByRole('button', { name: label('watch.page.add') }).filter({ visible: true }).first().click()
+  await dialog.getByLabel(label('watch.field.host')).fill('not a host\nnodot')
+  await dialog.locator('button[type=submit]').click()
+  await expect(dialog.getByRole('alert')).toBeVisible()
+  expect.soft(await problems(page), 'watch several sites, refused').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
   await page.getByRole('button', { name: message('watch.page.delete', { site: '127.0.0.1:9' }) }).filter({ visible: true }).first().click()
   await expect(dialog).toBeVisible()
   expect.soft(await problems(page), 'stop watching a site').toEqual([])

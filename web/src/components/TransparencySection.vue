@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { CircleCheck, Clock, EyeOff, ExternalLink, KeyRound, Plus, RefreshCw, ScanSearch, ShieldCheck, ShieldQuestion, Undo2 } from '@lucide/vue'
+import { CircleCheck, Clock, EyeOff, ExternalLink, KeyRound, Plus, Radar, RefreshCw, ScanSearch, ShieldCheck, ShieldQuestion, Undo2 } from '@lucide/vue'
 import { computed, ref } from 'vue'
 
 import { useApiError } from '../api/errors'
 import {
+  useAddSite,
   useJudgeSpotted,
   useSaveTransparency,
   useSearchTransparency,
@@ -34,6 +35,22 @@ const search = useSearchTransparency()
 const judge = useJudgeSpotted()
 const judgeError = useApiError(computed(() => judge.error.value))
 const untrust = useUntrust()
+// Watched as a site: the first of its names that is not a wildcard.
+const watchSite = useAddSite()
+const watchError = useApiError(computed(() => watchSite.error.value))
+const siteOf = (s: Spotted) => s.names.find((n) => !n.startsWith('*.'))
+async function watchIt(s: Spotted) {
+  const host = siteOf(s)
+  if (!host) return
+  busy.value = s.id + 'watch'
+  try {
+    await watchSite.mutateAsync({ host })
+  } catch {
+    // the alert shows why
+  } finally {
+    busy.value = undefined
+  }
+}
 
 async function toggle() {
   const on = ct.data.value?.enabled ?? false
@@ -129,6 +146,7 @@ async function saveKey(clear = false) {
 
   <template v-if="ct.data.value?.enabled">
     <JecAlert v-if="judgeError.error.value" :code="judgeError.error.value.code" :params="judgeError.error.value.params" />
+    <JecAlert v-if="watchError.alert.value" :code="watchError.alert.value.code" :params="watchError.alert.value.params" />
     <p v-if="!ct.data.value.certificates.length" class="m-0 text-ink-muted">{{ t('watch.ct.none') }}</p>
     <ul v-else class="m-0 list-none overflow-hidden rounded-lg border border-line bg-surface-raised p-0">
       <li
@@ -153,6 +171,9 @@ async function saveKey(clear = false) {
           </JecButton>
           <JecButton size="sm" variant="ghost" :busy="busy === s.id + 'ignore'" @click="act(s, 'ignore')">
             <EyeOff class="size-4" aria-hidden="true" />{{ t('watch.ct.ignore') }}
+          </JecButton>
+          <JecButton v-if="siteOf(s)" size="sm" variant="ghost" :busy="busy === s.id + 'watch'" :title="t('watch.ct.watch_help')" @click="watchIt(s)">
+            <Radar class="size-4" aria-hidden="true" />{{ t('watch.ct.watch') }}
           </JecButton>
           <JecButton size="sm" variant="ghost" :to="{ path: '/certificates/new', query: { domains: s.names.join(',') } }" :title="t('watch.ct.manage_help')">
             <Plus class="size-4" aria-hidden="true" />{{ t('watch.ct.manage') }}

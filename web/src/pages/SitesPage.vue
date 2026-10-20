@@ -22,8 +22,10 @@ import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
 import JecField from '../components/JecField.vue'
 import JecInput from '../components/JecInput.vue'
+import JecTextarea from '../components/JecTextarea.vue'
 import PageHeader from '../components/PageHeader.vue'
 import TransparencySection from '../components/TransparencySection.vue'
+import { ApiError, networkError } from '../api/client'
 import { useT, type MessageKey } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import { fromMore } from '../shell'
@@ -55,25 +57,46 @@ const until = (iso?: string) => {
 }
 const left = (s: Site) => until(s.notAfter)
 
-// Adding: a host or a URL, and a name.
+// Adding: a host or a URL, and a name; or several, a line each, without
+// names, those refused kept with why.
 const adding = ref(false)
 const host = ref('')
 const name = ref('')
 const add = useAddSite()
 const addError = useApiError(computed(() => add.error.value))
+const refused = ref<{ host: string; why: string }[]>([])
+const hosts = computed(() => host.value.split('\n').map((h) => h.trim()).filter(Boolean))
 function openAdd() {
   host.value = ''
   name.value = ''
+  refused.value = []
   add.reset()
   adding.value = true
 }
 async function submitAdd() {
-  try {
-    await add.mutateAsync({ host: host.value, name: name.value || undefined })
-  } catch {
-    return // the dialog shows why
+  if (hosts.value.length <= 1) {
+    try {
+      await add.mutateAsync({ host: hosts.value[0] ?? '', name: name.value || undefined })
+    } catch {
+      return // the dialog shows why
+    }
+    adding.value = false
+    return
   }
-  adding.value = false
+  const failed: { host: string; why: string }[] = []
+  for (const h of hosts.value) {
+    try {
+      await add.mutateAsync({ host: h })
+    } catch (err) {
+      const e = err instanceof ApiError ? err : networkError
+      const field = e.fields.find((f) => f.location === 'body.host')
+      failed.push({ host: h, why: t(field?.code ?? e.code, e.params) })
+    }
+  }
+  add.reset()
+  refused.value = failed
+  host.value = failed.map((f) => f.host).join('\n')
+  if (!failed.length) adding.value = false
 }
 
 const check = useCheckSite()
@@ -405,9 +428,14 @@ async function confirmDrop() {
     <form id="site-form" class="flex flex-col gap-3" novalidate @submit.prevent="submitAdd">
       <JecAlert v-if="addError.alert.value" :code="addError.alert.value.code" :params="addError.alert.value.params" />
       <JecField id="site-host" label="watch.field.host" hint="watch.field.host_help" :error="addError.fields.value.host">
-        <JecInput id="site-host" v-model="host" :invalid="!!addError.fields.value.host" autocomplete="off" required />
+        <JecTextarea id="site-host" v-model="host" :rows="2" :invalid="!!addError.fields.value.host" required />
       </JecField>
-      <JecField id="site-name" label="watch.field.name" hint="watch.field.name_help">
+      <div v-if="refused.length" role="alert">
+        <ul class="m-0 list-none p-0 text-small text-danger-ink">
+          <li v-for="r in refused" :key="r.host" class="[overflow-wrap:anywhere]"><span translate="no">{{ r.host }}</span>{{ t('watch.page.refused') }}{{ r.why }}</li>
+        </ul>
+      </div>
+      <JecField v-if="hosts.length <= 1" id="site-name" label="watch.field.name" hint="watch.field.name_help">
         <JecInput id="site-name" v-model="name" autocomplete="off" />
       </JecField>
     </form>

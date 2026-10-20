@@ -3628,7 +3628,9 @@
       "trusted": "Trusted",
       "trusted_count": "{count, plural, one {# certificate} other {# certificates}}",
       "untrust": "Stop trusting",
-      "view": "View"
+      "view": "View",
+      "watch": "Watch the site",
+      "watch_help": "Watch this name among the sites above: the certificate it serves and its end."
     },
     "domain": {
       "add": "Add a domain",
@@ -3670,7 +3672,7 @@
     },
     "field": {
       "host": "Site",
-      "host_help": "A host name, with a port when it is not 443, or a URL, such as https://example.com.",
+      "host_help": "A host name, with the port when it is not 443, or a URL, as https://example.com; several, a line each.",
       "name": "Name",
       "name_help": "Optional, to tell it apart."
     },
@@ -3695,6 +3697,7 @@
       "empty": "No site watched yet. Add a partner's or another team's site to hear before its certificate ends.",
       "foot": "Checked every 6 hours, an hour after a site did not answer. Notes come three weeks and a week before an end, through the channels set for it.",
       "intro": "Watch the certificates of sites JEC does not manage, and when the registrations of the domains of your certificates and sites end.",
+      "refused": ": ",
       "sites": "Site certificates",
       "title": "Expiry watch",
       "unknown": "Unknown"
