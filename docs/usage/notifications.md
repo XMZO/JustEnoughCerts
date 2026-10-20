@@ -18,6 +18,7 @@ message at once.
 | The CA revoked a certificate (see [Revocation checks](renewal.md#revocation-checks)) | On |
 | A watched site's certificate ends soon or ended (see [Expiry watch](sites.md)) | On |
 | A domain registration ends soon or ended (likewise) | On |
+| A certificate JEC does not hold shows up in certificate transparency logs (likewise, when switched on) | On |
 | New certificate (issued or uploaded) | Off |
 | Deployment succeeded | Off |
 | Weekly digest, on Monday from 9:00 in the panel's time zone: certificates needing attention and renewals of the coming week | Off |
@@ -74,7 +75,7 @@ chat:
 | `/todo` | The certificates that need attention, and why |
 | `/recent` | The issuances, renewals and deployments of the last 7 days |
 | `/online` | What the online checks found wrong |
-| `/sites` | The [watched sites and domain registrations](sites.md), those to look at first |
+| `/sites` | The [watched sites and domain registrations](sites.md), those to look at first, and the certificates from transparency logs to look at |
 | `/help` | How to use it |
 
 A certificate's page shows its state, the days it has left, its renewal,

@@ -481,6 +481,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certs/public-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the public keys of every version of every certificate
+         * @description For telling the certificates JEC holds from others for the same names, as found in certificate transparency logs.
+         */
+        get: operations["certs-public-keys"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/certs/runs": {
         parameters: {
             query?: never;
@@ -1311,6 +1331,104 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/watch/transparency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tell the search of certificate transparency logs and what it found */
+        get: operations["watch-transparency"];
+        /**
+         * Switch the search of certificate transparency logs, and set its API key
+         * @description The search sends the registered domains JEC holds certificates under to Cert Spotter, of SSLMate.
+         */
+        put: operations["watch-transparency-save"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watch/transparency/certificates/{id}/ignore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ignore a certificate found */
+        post: operations["watch-transparency-ignore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watch/transparency/certificates/{id}/trust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trust the certificates for the names of a certificate found, by its issuer
+         * @description As those a CDN makes: the certificates found and found later for the same names by the same issuer are not told of.
+         */
+        post: operations["watch-transparency-trust"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watch/transparency/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search every domain soon
+         * @description The search runs in the background, as far as Cert Spotter allows.
+         */
+        post: operations["watch-transparency-check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watch/transparency/untrust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop trusting the certificates for some names by an issuer
+         * @description The certificates found that it covered are listed again, without being told of.
+         */
+        post: operations["watch-transparency-untrust"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2084,6 +2202,17 @@ export interface components {
              */
             startedAt?: string;
         };
+        KeyBody: {
+            /** Format: int64 */
+            certificateId: number;
+            /** @description SHA-256 of the version's SubjectPublicKeyInfo, lowercase hex, as certificate transparency search tells it */
+            sha256: string;
+            /** Format: int64 */
+            versionId: number;
+        };
+        KeysOutputBody: {
+            keys: components["schemas"]["KeyBody"][];
+        };
         KindsOutputBody: {
             kinds: components["schemas"]["CredentialKind"][];
         };
@@ -2491,6 +2620,27 @@ export interface components {
              */
             state: "pending" | "ok" | "expiring" | "expired" | "invalid" | "unreachable";
         };
+        SpottedBody: {
+            domain: string;
+            /** Format: date-time */
+            foundAt: string;
+            /** @description Cert Spotter's ID of the certificate */
+            id: string;
+            issuer: string;
+            issuerDn: string;
+            names: string[];
+            /** Format: date-time */
+            notAfter: string;
+            /** Format: date-time */
+            notBefore: string;
+            /** @description SHA-256 of the certificate, lowercase hex */
+            sha256: string;
+            /**
+             * @description new: found lately, told of soon unless it turns out to be JEC's; baseline: found by the first search, not told of; unknown: told of
+             * @enum {string}
+             */
+            state: "new" | "baseline" | "unknown";
+        };
         StatesOutputBody: {
             certificates: components["schemas"]["CheckTallyBody"][];
         };
@@ -2546,6 +2696,46 @@ export interface components {
         TokensOutputBody: {
             /** @description The newest first */
             tokens: components["schemas"]["TokenBody"][];
+        };
+        TransparencyBody: {
+            /** @description The certificates found that are not JEC's, not trusted and not ignored, the newest first */
+            certificates: components["schemas"]["SpottedBody"][];
+            /** @description The registered domains searched: those JEC holds certificates under */
+            domains: components["schemas"]["TransparencyDomain"][];
+            enabled: boolean;
+            /** @description A Cert Spotter API key is saved */
+            hasKey: boolean;
+            /** Format: int64 */
+            ignored: number;
+            /**
+             * Format: int64
+             * @description How many of the certificates found are JEC's
+             */
+            own: number;
+            /** @description The names and issuers trusted, with how many certificates found each covers */
+            trusted: components["schemas"]["TransparencyTrustBody"][];
+        };
+        TransparencyDomain: {
+            /** Format: date-time */
+            checkAt: string;
+            /** Format: date-time */
+            checkedAt?: string;
+            /** @description Why the last search failed, as the search said it */
+            error?: string;
+            name: string;
+            /** @description A search went to the end once; before, what is found is listed but not told of */
+            scanned: boolean;
+        };
+        TransparencyInputBody: {
+            /** @description A Cert Spotter API key; left out, the saved one stays; empty, it goes */
+            apiKey?: string;
+            enabled: boolean;
+        };
+        TransparencyTrustBody: {
+            /** Format: int64 */
+            readonly count?: number;
+            issuer: string;
+            names: string[];
         };
         TwoFactorSetup: {
             /** @description The QR code of the URI, as an SVG data URL */
@@ -3753,6 +3943,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IssuanceDetailOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-public-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeysOutputBody"];
                 };
             };
             /** @description Error */
@@ -5615,6 +5834,184 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SiteBody"];
                 };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "watch-transparency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransparencyBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "watch-transparency-save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransparencyInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransparencyBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "watch-transparency-ignore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "watch-transparency-trust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "watch-transparency-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "watch-transparency-untrust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransparencyTrustBody"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Error */
             default: {

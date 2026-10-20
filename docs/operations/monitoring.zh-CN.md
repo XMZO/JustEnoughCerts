@@ -41,6 +41,7 @@ scrape_configs:
 | `jec_site_state` | 监控站点所处状态（标签 `state`）为 1，其余为 0 |
 | `jec_domain_expiry_timestamp_seconds` | [域名注册](../usage/sites.zh-CN.md#域名注册)的到期时间，标签为 `domain` |
 | `jec_domain_state` | 域名所处状态（标签 `state`）为 1，其余为 0 |
+| `jec_ct_unknown_certificates` | 开启[证书透明度](../usage/sites.zh-CN.md#证书透明度)时：某域名下发现的、不是 JEC 管理且未被信任或忽略的证书数，标签为 `domain` |
 | `jec_job_failed` | 后台任务（标签 `job`）上次运行失败为 1，否则为 0 |
 | `jec_data_free_bytes` | 数据目录所在文件系统的可用空间（字节） |
 | `jec_data_size_bytes` | 数据目录所在文件系统的总大小（字节） |

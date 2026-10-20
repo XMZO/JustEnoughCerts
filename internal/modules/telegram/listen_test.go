@@ -168,6 +168,11 @@ func (j *jecAPI) call(_ context.Context, via, method, path string, _, out any) e
 			{Name: "shop.de", State: "unknown"},
 			{Name: "ending.org", State: "expiring", ExpiresAt: &soon},
 		}}
+	case "/watch/transparency":
+		body = map[string]any{"enabled": true, "certificates": []map[string]any{
+			{"names": []string{"www.fine.org"}, "issuer": "Some <CA>", "state": "unknown"},
+			{"names": []string{"cdn.fine.org"}, "issuer": "Sectigo", "state": "baseline"},
+		}}
 	default:
 		return &module.CallError{Status: http.StatusNotFound, Code: i18n.KernelErrorNotFound}
 	}
@@ -262,7 +267,8 @@ func TestMenu(t *testing.T) {
 	if s := text(t, a.wait("sendMessage")); !strings.Contains(s, "Expiry watch") ||
 		strings.Index(s, "Partner (partner.example.org:8443)") > strings.Index(s, "ok.example.org") || !strings.Contains(s, "Not trusted") ||
 		!strings.Contains(s, "Domain registrations") || strings.Index(s, "ending.org") > strings.Index(s, "fine.org") ||
-		strings.Index(s, "fine.org") > strings.Index(s, "shop.de") || !strings.Contains(s, "ending.org</b> · Ends soon") {
+		strings.Index(s, "fine.org") > strings.Index(s, "shop.de") || !strings.Contains(s, "ending.org</b> · Ends soon") ||
+		!strings.Contains(s, "<b>Certificate transparency</b>") || !strings.Contains(s, "www.fine.org</b> · Some &lt;CA&gt;") || strings.Contains(s, "cdn.fine.org") {
 		t.Errorf("sites %q", s)
 	}
 

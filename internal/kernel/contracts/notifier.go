@@ -60,6 +60,7 @@ var NotifyEvents = []NotifyEvent{
 	{Type: CertificateRevoked, Key: "on_revoked", Label: i18n.KernelNotifyEventRevoked, Default: true},
 	{Type: SiteExpiring, Key: "on_site_expiring", Label: i18n.KernelNotifyEventSiteExpiring, Default: true},
 	{Type: DomainExpiring, Key: "on_domain_expiring", Label: i18n.KernelNotifyEventDomainExpiring, Default: true},
+	{Type: CertificateSpotted, Key: "on_spotted", Label: i18n.KernelNotifyEventSpotted, Default: true},
 	{Type: CertificateIssued, Key: "on_issued", Label: i18n.KernelNotifyEventIssued},
 	{Type: CertificateDeployed, Key: "on_deployed", Label: i18n.KernelNotifyEventDeployed},
 	{Type: CertificatesDigest, Key: "on_digest", Label: i18n.KernelNotifyEventDigest},

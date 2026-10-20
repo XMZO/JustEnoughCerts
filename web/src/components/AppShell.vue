@@ -5,7 +5,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import { useSession, useSignOut } from '../api/account'
 import { useCertificates } from '../api/certs'
-import { domainNeedsLook, needsLook, useDomains, useSites } from '../api/watch'
+import { domainNeedsLook, needsLook, spottedNeedsLook, useDomains, useSites, useTransparency } from '../api/watch'
 import { needsAttention } from '../certs/life'
 import { useManifest } from '../api/manifest'
 import { healthTrouble, useHealth } from '../api/system'
@@ -55,11 +55,16 @@ const watching = computed(() => manifest.data.value?.modules.some((m) => m.id ==
 const main = computed<Link[]>(() => [...links.value, ...(watching.value ? [{ to: '/sites', label: 'watch.page.title', icon: Radar } satisfies Link] : [])])
 const sites = useSites(watching)
 const domains = useDomains(watching)
+const ct = useTransparency(watching)
 // The tab's title leads with how many need someone: certificates, and the
-// watched sites and domain registrations to look at.
+// watched sites, domain registrations and certificates found in
+// transparency logs to look at.
 watchEffect(() => {
   const certs = (certificates.data.value ?? []).filter(needsAttention).length
-  const watched = (sites.data.value ?? []).filter(needsLook).length + (domains.data.value ?? []).filter(domainNeedsLook).length
+  const watched =
+    (sites.data.value ?? []).filter(needsLook).length +
+    (domains.data.value ?? []).filter(domainNeedsLook).length +
+    (ct.data.value?.certificates ?? []).filter(spottedNeedsLook).length
   attention.value = certs + (watching.value ? watched : 0)
 })
 // Where providers are configured, with the credentials they share; on

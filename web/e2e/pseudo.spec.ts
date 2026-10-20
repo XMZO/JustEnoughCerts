@@ -636,6 +636,40 @@ test('every page is translated and fits', async ({ page }, info) => {
   await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
   await page.unroute('**/api/v1/watch/domains')
 
+  // Certificate transparency: off here, as it would ask Cert Spotter; the
+  // key dialog, then a made-up search with each kind of row.
+  await page.getByRole('button', { name: label('watch.ct.key') }).click()
+  await expect(dialog).toBeVisible()
+  expect.soft(await problems(page), 'certificate transparency key').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
+  const spotted = (id: string, state: string, names: string[], issuer: string) => ({
+    id, domain: 'e2e-shop.com', names, issuer, issuerDn: `C=US, O=${issuer}, CN=R1`, sha256: id.repeat(64).slice(0, 64),
+    notBefore: later(-3), notAfter: later(87), state, foundAt: later(-1),
+  })
+  await page.route('**/api/v1/watch/transparency', (route) =>
+    route.request().method() !== 'GET'
+      ? route.continue()
+      : route.fulfill({
+          json: {
+            enabled: true, hasKey: true, own: 3, ignored: 1,
+            domains: [
+              { name: 'e2e-shop.com', scanned: true, checkedAt: later(0), checkAt: later(0.25) },
+              { name: 'e2e-shop.de', scanned: false, checkedAt: later(0), checkAt: later(0.05), error: 'certificate transparency search: too many requests' },
+            ],
+            certificates: [
+              spotted('1', 'unknown', ['www.e2e-shop.com'], 'Some CA'),
+              spotted('2', 'new', ['e2e-shop.com'], 'Sectigo'),
+              spotted('3', 'baseline', ['*.e2e-shop.com', 'e2e-shop.com'], 'Google Trust Services'),
+            ],
+            trusted: [{ names: ['*.e2e-shop.com', 'e2e-shop.com'], issuer: 'SSL.com', count: 2 }],
+          },
+        }),
+  )
+  await page.reload()
+  await expect(page.getByText('www.e2e-shop.com').filter({ visible: true })).toBeVisible()
+  expect.soft(await problems(page), 'certificate transparency').toEqual([])
+  await page.unroute('**/api/v1/watch/transparency')
+
   // Credentials: the page, a new one, and a provider that takes its keys
   // from it, whose fields for them then go.
   await page.goto('./credentials')

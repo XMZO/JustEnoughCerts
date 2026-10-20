@@ -53,7 +53,8 @@ and servers, and renews them before they expire.
   ACME Renewal Information (ARI), automatic retries, online checks and
   revocation checks.
 - [Expiry watch](../usage/sites.md): the certificates of sites JEC does not
-  manage, and when domain registrations end.
+  manage, when domain registrations end, and certificates issued to
+  someone else, from certificate transparency logs.
 - [Notifications](../usage/notifications.md): 14 notification channels,
   each with its own language and events, and a weekly digest; a calendar
   feed of the ends and renewals; [Prometheus metrics and a

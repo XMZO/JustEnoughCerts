@@ -23,14 +23,15 @@ import JecDialog from '../components/JecDialog.vue'
 import JecField from '../components/JecField.vue'
 import JecInput from '../components/JecInput.vue'
 import PageHeader from '../components/PageHeader.vue'
+import TransparencySection from '../components/TransparencySection.vue'
 import { useT, type MessageKey } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import { fromMore } from '../shell'
 
 // What ends outside JEC's hands (module watch): the sites JEC watches but
 // does not manage, with what each serves, whether it is trusted and when it
-// ends; and the registrations of the domains. On phones lists, from 640px
-// tables.
+// ends; the registrations of the domains; and the certificates of those
+// domains in transparency logs. On phones lists, from 640px tables.
 const { t } = useT()
 const intl = useIntl()
 const sites = useSites()
@@ -394,6 +395,8 @@ async function confirmDrop() {
 
     <JecButton v-if="domains.data.value?.length" class="sm:hidden" @click="openAddDomain"><Globe class="size-4" aria-hidden="true" />{{ t('watch.domain.add') }}</JecButton>
     <p class="m-0 text-small text-ink-muted">{{ t('watch.domain.foot') }}</p>
+
+    <TransparencySection />
   </div>
 
   <JecDialog v-model:open="adding" :title="t('watch.page.add')" small>

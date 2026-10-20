@@ -396,6 +396,28 @@ func TestDomainNote(t *testing.T) {
 	}
 }
 
+func TestSpottedNote(t *testing.T) {
+	f := newFixture(t)
+	en := f.notifier("ops", map[string]string{"locale": "en-US"}) // on by default
+	off := f.notifier("quiet", map[string]string{"locale": "en-US", "on_spotted": "false"})
+	d := contracts.SpottedEvent{Domain: "example.com", Names: []string{"example.com", "www.example.com"}, Issuer: "Some CA",
+		NotBefore: start, NotAfter: start.Add(90 * 24 * time.Hour), SHA256: "ab12"}
+	raw, _ := json.Marshal(d)
+	ev := events.Event{ID: 1, Type: contracts.CertificateSpotted, Source: "watch", Subject: "17", Data: raw, Time: start}
+	if err := f.svc.handle(t.Context(), ev); err != nil {
+		t.Fatal(err)
+	}
+	notes := f.notes(en)
+	if len(notes) != 1 || len(f.notes(off)) != 0 {
+		t.Fatalf("notes %v, quiet %v", notes, f.notes(off))
+	}
+	if n := notes[0]; n.Title != "A certificate JEC does not hold, for example.com" ||
+		!strings.HasPrefix(n.Text, "Names: example.com, www.example.com\nIssued by Some CA, valid from 2026-10-17 to 2027-01-15.\n") ||
+		!strings.Contains(n.Text, "The certificate: https://crt.sh/?sha256=ab12\nDetails: https://jec.example.com/sites") {
+		t.Errorf("note %q\n%s", n.Title, n.Text)
+	}
+}
+
 func TestRevokedNote(t *testing.T) {
 	f := newFixture(t)
 	en := f.notifier("ops", map[string]string{"locale": "en-US"}) // on by default

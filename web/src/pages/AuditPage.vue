@@ -81,6 +81,11 @@ const operations: Partial<Record<string, MessageKey>> = {
   'oidc-save': 'audit.op.oidc_save',
   'oidc-callback': 'audit.op.oidc_callback',
   'offsite-save': 'audit.op.offsite_save',
+  'watch-transparency-save': 'audit.op.watch_ct_save',
+  'watch-transparency-check': 'audit.op.watch_ct_check',
+  'watch-transparency-trust': 'audit.op.watch_ct_trust',
+  'watch-transparency-ignore': 'audit.op.watch_ct_ignore',
+  'watch-transparency-untrust': 'audit.op.watch_ct_untrust',
 }
 // The operations that hand out secrets: private keys, backups and the
 // configuration with its secrets.

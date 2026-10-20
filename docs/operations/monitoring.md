@@ -46,6 +46,7 @@ domain.
 | `jec_site_state` | 1 for the state a watched site is in (label `state`), 0 for the others |
 | `jec_domain_expiry_timestamp_seconds` | When a [domain registration](../usage/sites.md#domain-registrations) ends; label `domain` |
 | `jec_domain_state` | 1 for the state a domain is in (label `state`), 0 for the others |
+| `jec_ct_unknown_certificates` | While [certificate transparency](../usage/sites.md#certificate-transparency) is on: the certificates found for a domain that JEC does not hold and nobody trusted or ignored; label `domain` |
 | `jec_job_failed` | 1 when the last run of a background job (label `job`) failed, else 0 |
 | `jec_data_free_bytes` | The bytes free on the file system of the data directory |
 | `jec_data_size_bytes` | The size of that file system, in bytes |

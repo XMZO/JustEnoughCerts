@@ -23,7 +23,9 @@ func fakeAPI(monitor bool) func(context.Context, string, string, string, any, an
 		"/monitor/states": `{"certificates": [{"certificateId": 2, "old": 1, "unreachable": 2}]}`,
 		"/watch/sites":    `{"sites": [{"id": 1, "host": "partner.example.com", "port": 8443, "state": "ok", "notAfter": "2027-01-01T00:00:00Z"}]}`,
 		"/watch/domains":  `{"domains": [{"name": "shop.com", "state": "expiring", "expiresAt": "2027-01-01T00:00:00Z"}, {"name": "shop.de", "state": "unknown"}]}`,
-		"/system/health":  `{"jobs": [{"name": "certs.renew"}, {"name": "watch.domains", "error": "timeout"}], "disk": {"free": 1000, "total": 4000}}`,
+		"/watch/transparency": `{"enabled": true, "domains": [{"name": "shop.com"}, {"name": "shop.org"}],
+			"certificates": [{"domain": "shop.com", "state": "unknown"}, {"domain": "shop.com", "state": "baseline"}]}`,
+		"/system/health": `{"jobs": [{"name": "certs.renew"}, {"name": "watch.domains", "error": "timeout"}], "disk": {"free": 1000, "total": 4000}}`,
 	}
 	return func(_ context.Context, via, method, path string, _, out any) error {
 		if via != "Prometheus" || method != http.MethodGet {
@@ -61,6 +63,8 @@ func TestRender(t *testing.T) {
 		`jec_domain_expiry_timestamp_seconds{domain="shop.com"} 1798761600`,
 		`jec_domain_state{domain="shop.com",state="expiring"} 1`,
 		`jec_domain_state{domain="shop.de",state="unknown"} 1`,
+		`jec_ct_unknown_certificates{domain="shop.com"} 1`,
+		`jec_ct_unknown_certificates{domain="shop.org"} 0`,
 		`jec_job_failed{job="certs.renew"} 0`,
 		`jec_job_failed{job="watch.domains"} 1`,
 		`jec_data_free_bytes 1000`,

@@ -78,6 +78,12 @@ func (s *service) handle(ctx context.Context, ev events.Event) error {
 			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
 		}
 		write = func(tag language.Tag) contracts.Note { return s.domainNote(tag, ev, d) }
+	case contracts.CertificateSpotted:
+		var d contracts.SpottedEvent
+		if err := ev.Decode(&d); err != nil {
+			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
+		}
+		write = func(tag language.Tag) contracts.Note { return s.spottedNote(tag, ev, d) }
 	default:
 		var data contracts.CertificateEvent
 		if err := ev.Decode(&data); err != nil {
@@ -434,6 +440,28 @@ func (s *service) domainNote(tag language.Tag, ev events.Event, d contracts.Doma
 	lines := []string{ends}
 	if len(d.Certificates) > 0 {
 		lines = append(lines, w.text(i18n.NotifyNoteDomainCertificates, i18n.Args{"count": len(d.Certificates)}))
+	}
+	if n.Link != "" {
+		lines = append(lines, w.text(i18n.NotifyNoteLink, i18n.Args{"url": n.Link}))
+	}
+	n.Text = strings.Join(lines, "\n")
+	n.Subject = w.subject(n.Title)
+	return n
+}
+
+// spottedNote writes the note about a certificate found in certificate
+// transparency logs that JEC does not hold.
+func (s *service) spottedNote(tag language.Tag, ev events.Event, d contracts.SpottedEvent) contracts.Note {
+	w := writer{s: s, tag: tag}
+	n := contracts.Note{Event: ev.Type, Time: ev.Time, Data: ev.Data, Link: s.link("/sites")}
+	n.Title = w.text(i18n.NotifyNoteSpottedTitle, i18n.Args{"domain": d.Domain})
+	lines := []string{
+		w.text(i18n.NotifyNoteSpottedNames, i18n.Args{"names": strings.Join(d.Names, ", ")}),
+		w.text(i18n.NotifyNoteSpottedIssued, i18n.Args{"issuer": d.Issuer, "from": w.day(d.NotBefore), "to": w.day(d.NotAfter)}),
+		w.text(i18n.NotifyNoteSpottedHint, nil),
+	}
+	if d.SHA256 != "" {
+		lines = append(lines, w.text(i18n.NotifyNoteSpottedView, i18n.Args{"url": "https://crt.sh/?sha256=" + d.SHA256}))
 	}
 	if n.Link != "" {
 		lines = append(lines, w.text(i18n.NotifyNoteLink, i18n.Args{"url": n.Link}))

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"slices"
 	"strconv"
@@ -245,6 +246,35 @@ func (m *Module) render(ctx context.Context) ([]byte, error) {
 		for _, d := range registrations.Domains {
 			for _, st := range domainStates {
 				fmt.Fprintf(&b, "jec_domain_state{domain=%s,state=%s} %d\n", quote(d.Name), quote(st), bit(d.State == st))
+			}
+		}
+		// And the certificates found in transparency logs, while searched.
+		var ct struct {
+			Enabled bool `json:"enabled"`
+			Domains []struct {
+				Name string `json:"name"`
+			} `json:"domains"`
+			Certificates []struct {
+				Domain string `json:"domain"`
+				State  string `json:"state"`
+			} `json:"certificates"`
+		}
+		if err := m.call(ctx, via, http.MethodGet, "/watch/transparency", nil, &ct); err != nil {
+			return nil, fmt.Errorf("metrics: certificate transparency: %w", err)
+		}
+		if ct.Enabled {
+			unknown := map[string]int{}
+			for _, d := range ct.Domains {
+				unknown[d.Name] = 0
+			}
+			for _, c := range ct.Certificates {
+				if c.State == "unknown" {
+					unknown[c.Domain]++
+				}
+			}
+			family("jec_ct_unknown_certificates", "gauge", "How many certificates found in transparency logs for a domain JEC does not hold and nobody trusted or ignored.")
+			for _, name := range slices.Sorted(maps.Keys(unknown)) {
+				fmt.Fprintf(&b, "jec_ct_unknown_certificates{domain=%s} %d\n", quote(name), unknown[name])
 			}
 		}
 	}

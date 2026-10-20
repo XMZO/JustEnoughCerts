@@ -100,7 +100,22 @@ const (
 	// within a week, or ended, as its registry tells through RDAP; see
 	// Expiry. The subject is the domain. Payload DomainEvent.
 	DomainExpiring = "domain.expiring"
+	// CertificateSpotted: a certificate transparency log has a certificate
+	// for names under a domain JEC holds certificates under, with a key
+	// JEC does not hold, as one issued to someone else. The subject is the
+	// log search's ID of the certificate. Payload SpottedEvent.
+	CertificateSpotted = "domain.certificate_spotted"
 )
+
+// SpottedEvent is the payload of CertificateSpotted.
+type SpottedEvent struct {
+	Domain    string    `json:"domain"` // the registered domain, as example.com
+	Names     []string  `json:"names"`
+	Issuer    string    `json:"issuer"`
+	NotBefore time.Time `json:"notBefore"`
+	NotAfter  time.Time `json:"notAfter"`
+	SHA256    string    `json:"sha256"` // of the certificate, lowercase hex
+}
 
 // SiteEvent is the payload of the events of the sites module.
 type SiteEvent struct {

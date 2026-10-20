@@ -98,3 +98,61 @@ export function useDeleteDomain() {
     onSuccess: () => client.invalidateQueries({ queryKey: domainsKey }),
   })
 }
+
+export type Transparency = components['schemas']['TransparencyBody']
+export type Spotted = components['schemas']['SpottedBody']
+export type TransparencyTrust = components['schemas']['TransparencyTrustBody']
+
+const ctKey = ['watch', 'transparency'] as const
+
+/** The search of certificate transparency logs and what it found; only while enabled, as while the module is on. */
+export function useTransparency(enabled: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: ctKey,
+    queryFn: () => unwrap(api.GET('/watch/transparency')),
+    refetchInterval: 5 * 60_000,
+    enabled: computed(() => toValue(enabled)),
+  })
+}
+
+/** spottedNeedsLook tells a certificate found that was told of: someone should see who asked for it. */
+export const spottedNeedsLook = (s: Spotted) => s.state === 'unknown'
+
+/** Switches the search, and sets its API key: left out, the saved one stays; empty, it goes. */
+export function useSaveTransparency() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { enabled: boolean; apiKey?: string }) => unwrap(api.PUT('/watch/transparency', { body })),
+    onSuccess: (data) => client.setQueryData(ctKey, data),
+  })
+}
+
+/** Has every domain searched soon, in the background. */
+export function useSearchTransparency() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: () => unwrap(api.POST('/watch/transparency/check')),
+    onSuccess: () => client.invalidateQueries({ queryKey: ctKey }),
+  })
+}
+
+/** Trusts the certificates for the names of one found, by its issuer, or ignores that one. */
+export function useJudgeSpotted() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, how }: { id: string; how: 'trust' | 'ignore' }) =>
+      how === 'trust'
+        ? unwrap(api.POST('/watch/transparency/certificates/{id}/trust', { params: { path: { id } } }))
+        : unwrap(api.POST('/watch/transparency/certificates/{id}/ignore', { params: { path: { id } } })),
+    onSuccess: () => client.invalidateQueries({ queryKey: ctKey }),
+  })
+}
+
+/** Stops trusting the certificates for some names by an issuer. */
+export function useUntrust() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { names: string[]; issuer: string }) => unwrap(api.POST('/watch/transparency/untrust', { body })),
+    onSuccess: () => client.invalidateQueries({ queryKey: ctKey }),
+  })
+}

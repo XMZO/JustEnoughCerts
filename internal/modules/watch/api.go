@@ -131,6 +131,7 @@ func registerAPI(a huma.API, m *Module) {
 		return m.one(ctx, in.ID)
 	})
 	registerDomainsAPI(a, m)
+	registerTransparencyAPI(a, m)
 }
 
 func (m *Module) one(ctx context.Context, id int64) (*siteOutput, error) {

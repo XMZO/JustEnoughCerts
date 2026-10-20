@@ -2,8 +2,9 @@
 
 [中文](sites.zh-CN.md)
 
-The Expiry watch page follows two things JEC does not renew, but whose end
-breaks a website all the same:
+The Expiry watch page follows what JEC does not renew, but whose end
+breaks a website all the same, and the certificates of your domains that
+JEC did not ask for:
 
 - **Site certificates**: the certificates of sites that JEC does not
   manage, such as a partner's or another team's: when each ends, and
@@ -12,6 +13,9 @@ breaks a website all the same:
 - **Domain registrations**: when the registrations of the domains of your
   certificates and watched sites end, as their registries tell through
   RDAP, or WHOIS where there is none.
+- **Certificate transparency**: the certificates CAs issued for the
+  domains of your certificates, as public logs tell them, to catch one
+  issued to someone else. Off by default.
 
 ## Watching a site
 
@@ -55,14 +59,45 @@ such as `example.com`, do not count. Add a domain adds any other.
 Lookups go only to IANA and to the public RDAP and WHOIS servers of the
 registries, and carry only the domain.
 
+## Certificate transparency
+
+CAs log every certificate they issue in public certificate transparency
+logs. JEC searches them through [Cert Spotter](https://sslmate.com/certspotter/)
+for the registered domains it holds certificates under, with the names
+under them, and tells which certificates JEC does not hold: those with a
+public key that none of JEC's certificates has.
+
+1. On the Expiry watch page, under Certificate transparency, choose
+   "Switch on". This sends those domains to Cert Spotter, of SSLMate.
+2. Optionally, under "API key", enter a Cert Spotter API key. Without
+   one, Cert Spotter answers few searches an hour, and JEC searches the
+   rest later.
+
+JEC searches each domain every 6 hours. What the first search finds was
+there before: it is listed as "There before" and not told of. A
+certificate found later that JEC still does not recognize 2 hours on (time
+for JEC to store its own) is told of and listed as "To look at". For each:
+
+| Action | Effect |
+|---|---|
+| Trust such | The certificates the same issuer makes for the same names are not told of, as those a CDN such as Cloudflare makes for itself. Listed under Trusted, where "Stop trusting" takes it back |
+| Ignore | Only this certificate goes from the list |
+| View | Opens the certificate on crt.sh |
+
+A certificate that nobody you know asked for may mean someone else
+controls the domain's DNS or website: find out how, and have the CA revoke
+the certificate. Certificate transparency was tried against the real Cert
+Spotter, without an API key.
+
 ## Notes
 
 | Event (in a channel's settings) | Default | When |
 |---|---|---|
 | A watched site's certificate ends soon or ended | On | Three weeks before the end, a week before, and when it has ended; a new certificate on the site starts over |
 | A domain registration ends soon or ended | On | 30 days before the end, 7 days before, and when it has ended; a renewal starts over |
+| A certificate JEC does not hold shows up in certificate transparency logs | On | Once for each certificate, 2 hours after it is found |
 
-The sites and domains to look at show in the overview, and in the number
+The sites, domains and certificates to look at show in the overview, and in the number
 that leads the browser tab's title. Their ends are also in the
 [Prometheus metrics](../operations/monitoring.md), the calendar feed and the
 Telegram bot's `/sites`. The module "Expiry watch" provides the page and

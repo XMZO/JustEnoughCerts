@@ -452,6 +452,28 @@ func (l *listener) sitesView(ctx context.Context) (screen, error) {
 		}
 		lines = append(lines, line)
 	}
+	// The certificates found in transparency logs that someone should look at.
+	var ct struct {
+		Certificates []struct {
+			Names  []string `json:"names"`
+			Issuer string   `json:"issuer"`
+			State  string   `json:"state"`
+		} `json:"certificates"`
+	}
+	if err := l.get(ctx, "/watch/transparency", &ct); err != nil {
+		return screen{}, err
+	}
+	header := false
+	for _, c := range ct.Certificates {
+		if c.State != "unknown" {
+			continue
+		}
+		if !header {
+			lines = append(lines, "", "<b>"+l.text(i18n.WatchCtTitle, nil)+"</b>")
+			header = true
+		}
+		lines = append(lines, iconWarn+" <b>"+html.EscapeString(strings.Join(c.Names, ", "))+"</b> · "+html.EscapeString(c.Issuer))
+	}
 	rows := [][]button{append([]button{l.button(iconRefresh, i18n.TelegramButtonRefresh, nil, viewSites), l.home()}, l.open("/sites")...)}
 	return screen{text: strings.Join(lines, "\n"), rows: rows}, nil
 }

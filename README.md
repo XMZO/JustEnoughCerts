@@ -48,7 +48,8 @@ Minecraft mod JEI.
   it; the private key can be kept across renewals.
 - **Expiry watch**: the certificates of sites JEC does not manage, and
   the registrations of the domains of your certificates and sites (RDAP,
-  WHOIS).
+  WHOIS), and certificate transparency logs for certificates issued to
+  someone else.
 - **Notifications**: 14 channels, such as email, Telegram, DingTalk,
   Feishu, WeCom, Discord, Slack, Bark, ntfy, webhooks and scripts, each
   with its own events and language, and a weekly digest; a calendar feed

@@ -306,6 +306,11 @@
       "update_account": "Change the account settings",
       "watch_add": "Watch a site",
       "watch_check": "Check a site",
+      "watch_ct_check": "Searched certificate transparency logs",
+      "watch_ct_ignore": "Ignored a certificate found in transparency logs",
+      "watch_ct_save": "Set up the certificate transparency search",
+      "watch_ct_trust": "Trusted certificates found in transparency logs",
+      "watch_ct_untrust": "Stopped trusting certificates found in transparency logs",
       "watch_delete": "Stop watching a site"
     },
     "page": {
@@ -2000,7 +2005,8 @@
         "issued": "When a new certificate is issued or uploaded",
         "revoked": "The CA revoked a certificate",
         "served_old": "A website still serves the old certificate",
-        "site_expiring": "A watched site's certificate ends soon or ended"
+        "site_expiring": "A watched site's certificate ends soon or ended",
+        "spotted": "A certificate JEC does not hold shows up in certificate transparency logs"
       },
       "field": {
         "locale": "Language of the notes"
@@ -2502,6 +2508,13 @@
         "ends": "It ends on {date}; issued by {issuer}.",
         "expired_title": "The certificate of {site} has ended",
         "expiring_title": "The certificate of {site} ends in {days, plural, =0 {less than a day} one {# day} other {# days}}"
+      },
+      "spotted": {
+        "hint": "If a CDN or another service made it, trust it on the Sites page; otherwise find out who asked for it, and have the CA revoke it if need be.",
+        "issued": "Issued by {issuer}, valid from {from} to {to}.",
+        "names": "Names: {names}",
+        "title": "A certificate JEC does not hold, for {domain}",
+        "view": "The certificate: {url}"
       },
       "subject": "[JEC] {title}",
       "target_gone": "a deleted target",
@@ -3450,6 +3463,39 @@
       "site": "Site",
       "state": "State"
     },
+    "ct": {
+      "failed": ": the search failed:",
+      "foot": "Searched every 6 hours. What the first search finds is listed only; a certificate found later that JEC still does not recognize 2 hours on is told of through the notification channels set for it.",
+      "ignore": "Ignore",
+      "ignored": "{count, plural, one {# ignored.} other {# ignored.}}",
+      "intro": "Every certificate a CA issues is logged in public certificate transparency logs. Switched on, JEC searches them through Cert Spotter, of SSLMate, for the certificates of the domains JEC holds certificates under, and tells of those JEC does not hold, as one issued to someone else. Switching it on sends those domains to Cert Spotter.",
+      "key": "API key",
+      "key_clear": "Remove the key",
+      "key_field": "Cert Spotter API key",
+      "key_intro": "Optional. Without one, only a few domains can be searched an hour; a Cert Spotter account at sslmate.com comes with an API key.",
+      "key_kept": "Saved; a new key replaces it.",
+      "last": "Last search:",
+      "none": "No certificates found beyond those JEC holds.",
+      "off": "Off",
+      "on": "On",
+      "search": "Search now",
+      "state": {
+        "baseline": "There before",
+        "new": "Found lately",
+        "unknown": "To look at"
+      },
+      "status": "Searching {domains, plural, one {# domain} other {# domains}}; {own, plural, one {# certificate found is} other {# certificates found are}} JEC's.",
+      "switch_off": "Switch off",
+      "switch_on": "Switch on",
+      "title": "Certificate transparency",
+      "to": " to ",
+      "trust": "Trust such",
+      "trust_help": "The certificates the same issuer makes for the same names are not told of either, as those a CDN makes.",
+      "trusted": "Trusted",
+      "trusted_count": "{count, plural, one {# certificate} other {# certificates}}",
+      "untrust": "Stop trusting",
+      "view": "View"
+    },
     "domain": {
       "add": "Add a domain",
       "cert_row": "Domain registration",
@@ -3502,6 +3548,7 @@
       "domains": "{count, plural, one {# domain registration ends soon} other {# domain registrations end soon}}",
       "more": "{names} and {count} more",
       "open": "Expiry watch",
+      "spotted": "{count, plural, one {# certificate JEC does not hold} other {# certificates JEC does not hold}}",
       "title": "{count, plural, one {# watched site to look at} other {# watched sites to look at}}"
     },
     "page": {

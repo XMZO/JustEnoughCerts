@@ -214,7 +214,7 @@ func (b *bot) noteButton(n contracts.Note) (button, bool) {
 		return icon + " " + s
 	}
 	switch n.Event {
-	case contracts.SiteExpiring, contracts.DomainExpiring:
+	case contracts.SiteExpiring, contracts.DomainExpiring, contracts.CertificateSpotted:
 		return button{Text: label(iconSites, i18n.TelegramButtonSites), Data: viewNew + ":" + viewSites}, true
 	case contracts.CertificatesDigest:
 		return button{Text: label(iconHome, i18n.TelegramButtonMenu), Data: viewNew + ":" + viewMain}, true

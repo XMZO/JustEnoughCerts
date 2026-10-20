@@ -306,6 +306,11 @@
       "update_account": "修改账户设置",
       "watch_add": "添加监控站点",
       "watch_check": "检查监控站点",
+      "watch_ct_check": "立即查找证书透明度日志",
+      "watch_ct_ignore": "忽略证书透明度中的证书",
+      "watch_ct_save": "设置证书透明度监控",
+      "watch_ct_trust": "信任证书透明度中的同类证书",
+      "watch_ct_untrust": "取消信任证书透明度中的证书",
       "watch_delete": "停止监控站点"
     },
     "page": {
@@ -2000,7 +2005,8 @@
         "issued": "有新证书（签发或上传）时通知",
         "revoked": "证书被 CA 吊销时通知",
         "served_old": "网站上还是旧证书",
-        "site_expiring": "监控的站点证书快到期或已经过期时通知"
+        "site_expiring": "监控的站点证书快到期或已经过期时通知",
+        "spotted": "证书透明度日志里出现不是 JEC 管理的证书时通知"
       },
       "field": {
         "locale": "消息语言"
@@ -2502,6 +2508,13 @@
         "ends": "到期日 {date}，颁发者 {issuer}。",
         "expired_title": "{site} 的证书已经过期",
         "expiring_title": "{site} 的证书{days, plural, =0 {不到一天} other {# 天}}后到期"
+      },
+      "spotted": {
+        "hint": "如果它由 CDN 等服务签发，请在站点监控页信任它；否则请查明申请者，必要时联系 CA 吊销。",
+        "issued": "颁发者 {issuer}，有效期 {from} 至 {to}。",
+        "names": "域名：{names}",
+        "title": "{domain} 下出现了一张不是 JEC 管理的证书",
+        "view": "证书详情：{url}"
       },
       "subject": "【JEC】{title}",
       "target_gone": "已删除的部署目标",
@@ -3450,6 +3463,39 @@
       "site": "站点",
       "state": "状态"
     },
+    "ct": {
+      "failed": " 查找失败：",
+      "foot": "每 6 小时查找一次。第一次查找发现的证书只列出、不提醒；之后发现的证书在 2 小时后仍认不出时，经设置了此事件的通知渠道提醒。",
+      "ignore": "忽略",
+      "ignored": "已忽略 {count, plural, other {# 张}}。",
+      "intro": "CA 签发的每张证书都会公开记录在证书透明度日志中。开启后，JEC 经 SSLMate 的 Cert Spotter 查找证书所在域名下的全部证书，发现不是 JEC 管理的证书时提醒，以便及时发现冒签。开启即表示同意把这些域名发送给 Cert Spotter。",
+      "key": "API 密钥",
+      "key_clear": "删除密钥",
+      "key_field": "Cert Spotter API 密钥",
+      "key_intro": "可选。不填时每小时只能查找少量域名；在 sslmate.com 注册 Cert Spotter 可获得 API 密钥。",
+      "key_kept": "已保存；填写新密钥将替换它。",
+      "last": "最近一次：",
+      "none": "没有发现 JEC 管理以外的证书。",
+      "off": "未开启",
+      "on": "已开启",
+      "search": "立即查找",
+      "state": {
+        "baseline": "开启前已有",
+        "new": "刚发现",
+        "unknown": "需要查看"
+      },
+      "status": "查找 {domains, plural, other {# 个域名}}，其中 {own, plural, other {# 张}}是 JEC 管理的证书。",
+      "switch_off": "关闭",
+      "switch_on": "开启",
+      "title": "证书透明度",
+      "to": " 至 ",
+      "trust": "信任同类",
+      "trust_help": "以后由同一颁发者为相同域名签发的证书也不再提醒，适用于 CDN 等自动签发的证书。",
+      "trusted": "已信任",
+      "trusted_count": "{count, plural, other {# 张}}",
+      "untrust": "取消信任",
+      "view": "查看"
+    },
     "domain": {
       "add": "添加域名",
       "cert_row": "域名注册",
@@ -3502,6 +3548,7 @@
       "domains": "{count, plural, other {# 个域名的注册快到期}}",
       "more": "{names} 等 {count} 个",
       "open": "到期监控",
+      "spotted": "{count, plural, other {# 张不是 JEC 管理的证书}}",
       "title": "{count, plural, other {# 个监控的站点需要留意}}"
     },
     "page": {
