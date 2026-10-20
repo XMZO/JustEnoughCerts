@@ -68,6 +68,8 @@ type Digest struct {
 	Attention []DigestItem `json:"attention"`
 	// Renewals lists those whose renewal starts within a week.
 	Renewals []DigestItem `json:"renewals"`
+	// Reminders lists the reminders set on them that come within a week.
+	Reminders []DigestItem `json:"reminders,omitempty"`
 }
 
 // DigestItem is a certificate in a Digest.
@@ -77,6 +79,10 @@ type DigestItem struct {
 	State         string    `json:"state"`  // as the API of the certs module tells it
 	NotAfter      time.Time `json:"notAfter,omitzero"`
 	RenewAt       time.Time `json:"renewAt,omitzero"`
+	// RemindOn is the day of its reminder, as 2027-05-01, and Reminder what
+	// it is about, in Reminders.
+	RemindOn string `json:"remindOn,omitempty"`
+	Reminder string `json:"reminder,omitempty"`
 }
 
 // CertificatesAnnounce asks the certs module to publish CertificateCurrent

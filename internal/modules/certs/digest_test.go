@@ -15,7 +15,11 @@ func TestDigestOf(t *testing.T) {
 		return &Version{CreatedAt: now.AddDate(0, 0, -60), NotBefore: now.AddDate(0, 0, days-90), NotAfter: now.AddDate(0, 0, days)}
 	}
 	certs := []*Certificate{
-		{ID: 1, Domains: []string{"ok.example.com"}, Source: sourceUpload, RenewBeforeDays: 30, Current: version(90)},
+		// With a reminder in three days, and one sent already.
+		{ID: 1, Domains: []string{"ok.example.com"}, Source: sourceUpload, RenewBeforeDays: 30, Current: version(90),
+			ReminderOn: "2026-10-22", ReminderNote: "Renew it"},
+		{ID: 6, Domains: []string{"told.example.com"}, Source: sourceUpload, RenewBeforeDays: 30, Current: version(90),
+			ReminderOn: "2026-10-20", ReminderSent: true},
 		// Uploaded, ending soon: no source renews it.
 		{ID: 2, Domains: []string{"upload.example.com"}, Source: sourceUpload, RenewBeforeDays: 30, Current: version(10)},
 		// Renewed by its source within the week, which ends in 35 days.
@@ -32,7 +36,10 @@ func TestDigestOf(t *testing.T) {
 	for _, it := range d.Renewals {
 		renewals = append(renewals, it.Domain)
 	}
-	if d.Total != 5 || d.OK != 2 ||
+	if len(d.Reminders) != 1 || d.Reminders[0].Domain != "ok.example.com" || d.Reminders[0].RemindOn != "2026-10-22" || d.Reminders[0].Reminder != "Renew it" {
+		t.Errorf("reminders %+v", d.Reminders)
+	}
+	if d.Total != 6 || d.OK != 3 ||
 		!slices.Equal(attention, []string{"failed.example.com failed", "gone.example.com expired", "upload.example.com expiring"}) ||
 		!slices.Equal(renewals, []string{"auto.example.com"}) || d.Renewals[0].RenewAt.IsZero() {
 		t.Errorf("digest %+v: attention %v, renewals %v", d, attention, renewals)

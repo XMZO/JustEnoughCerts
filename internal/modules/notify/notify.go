@@ -428,6 +428,12 @@ func (s *service) digestNote(tag language.Tag, ev events.Event, d contracts.Dige
 	} else {
 		lines = append(lines, w.text(i18n.NotifyNoteDigestNoRenewals, nil))
 	}
+	if len(d.Reminders) > 0 {
+		lines = append(lines, w.text(i18n.NotifyNoteDigestReminders, nil))
+		for _, it := range d.Reminders {
+			lines = append(lines, w.text(i18n.NotifyNoteDigestReminder, i18n.Args{"domain": it.Domain, "date": it.RemindOn, "note": it.Reminder}))
+		}
+	}
 	// What else needs someone, beyond the certificates.
 	for _, it := range []struct {
 		key   i18n.Key

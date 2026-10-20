@@ -2734,6 +2734,8 @@
         "item": "· {domain}: {state}",
         "no_renewals": "No renewals in the next 7 days.",
         "providers": "Providers failing their test: {names}",
+        "reminder": "· {date} {domain}: {note}",
+        "reminders": "Reminders in the next 7 days:",
         "renewal": "· {domain}: {time}",
         "renewals": "Renewals in the next 7 days:",
         "sites": "Sites to look at: {names}",

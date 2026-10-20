@@ -78,7 +78,7 @@ func digestOf(certs []*Certificate, now time.Time, sch schedule) contracts.Diges
 		switch {
 		case state == stateOK:
 			d.OK++
-		case state == stateFailed, state == stateDeployFailed, state == stateExpired, state == stateRevoked,
+		case state == stateFailed, state == stateDeployFailed, state == stateExpired, state == stateRevoked, state == stateAwaiting,
 			state == stateExpiring && c.Source != sourceProvider:
 			d.Attention = append(d.Attention, item)
 		}
@@ -88,7 +88,14 @@ func digestOf(certs []*Certificate, now time.Time, sch schedule) contracts.Diges
 				d.Renewals = append(d.Renewals, item)
 			}
 		}
+		// A reminder of the week to come, not sent yet.
+		if day, err := time.ParseInLocation(time.DateOnly, c.ReminderOn, sch.loc); err == nil && !c.ReminderSent && day.Before(now.Add(digestSoon)) {
+			r := item
+			r.RenewAt, r.RemindOn, r.Reminder = time.Time{}, c.ReminderOn, c.ReminderNote
+			d.Reminders = append(d.Reminders, r)
+		}
 	}
+	slices.SortFunc(d.Reminders, func(a, b contracts.DigestItem) int { return cmp.Compare(a.RemindOn, b.RemindOn) })
 	slices.SortFunc(d.Renewals, func(a, b contracts.DigestItem) int { return a.RenewAt.Compare(b.RenewAt) })
 	slices.SortFunc(d.Attention, func(a, b contracts.DigestItem) int { return cmp.Compare(a.Domain, b.Domain) })
 	return d

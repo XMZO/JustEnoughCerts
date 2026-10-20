@@ -320,6 +320,7 @@ func TestDigestNote(t *testing.T) {
 	d := contracts.Digest{Total: 3, OK: 1,
 		Attention: []contracts.DigestItem{{CertificateID: 2, Domain: "b.example.com", State: "deploy_failed"}},
 		Renewals:  []contracts.DigestItem{{CertificateID: 1, Domain: "a.example.com", State: "ok", RenewAt: start.Add(48 * time.Hour)}},
+		Reminders: []contracts.DigestItem{{CertificateID: 1, Domain: "a.example.com", RemindOn: "2026-10-20", Reminder: "Renew it"}},
 	}
 	raw, err := json.Marshal(d)
 	if err != nil {
@@ -334,6 +335,7 @@ func TestDigestNote(t *testing.T) {
 	}
 	n := notes[0]
 	want := "Needing attention:\n· b.example.com: Deployment failed\nRenewals in the next 7 days:\n· a.example.com: 2026-10-19 08:00\n" +
+		"Reminders in the next 7 days:\n· 2026-10-20 a.example.com: Renew it\n" +
 		"Details: https://jec.example.com/"
 	if n.Title != "This week: 3 certificates, 1 needs attention" || n.Text != want || n.Link != "https://jec.example.com/" {
 		t.Errorf("note %q\n%s", n.Title, n.Text)

@@ -2061,6 +2061,8 @@ export type MessageKey =
   | "notify.note.digest.item"
   | "notify.note.digest.no_renewals"
   | "notify.note.digest.providers"
+  | "notify.note.digest.reminder"
+  | "notify.note.digest.reminders"
   | "notify.note.digest.renewal"
   | "notify.note.digest.renewals"
   | "notify.note.digest.sites"

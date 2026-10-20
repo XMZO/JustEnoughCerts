@@ -2053,6 +2053,8 @@ const (
 	NotifyNoteDigestItem                     Key = "notify.note.digest.item"
 	NotifyNoteDigestNoRenewals               Key = "notify.note.digest.no_renewals"
 	NotifyNoteDigestProviders                Key = "notify.note.digest.providers"
+	NotifyNoteDigestReminder                 Key = "notify.note.digest.reminder"
+	NotifyNoteDigestReminders                Key = "notify.note.digest.reminders"
 	NotifyNoteDigestRenewal                  Key = "notify.note.digest.renewal"
 	NotifyNoteDigestRenewals                 Key = "notify.note.digest.renewals"
 	NotifyNoteDigestSites                    Key = "notify.note.digest.sites"
