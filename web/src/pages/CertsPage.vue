@@ -32,7 +32,7 @@ import { useApiError } from '../api/errors'
 import { useMonitorStates } from '../api/monitor'
 import { useProviders } from '../api/providers'
 import { useCertActions } from '../certs/actions'
-import { useDeployNote } from '../certs/deployment'
+import { scheduledAt, useDeployNote } from '../certs/deployment'
 import { barPercent, caReasonText, certLife, lifeText, needsAttention, stateText, windowStart } from '../certs/life'
 import { matches, searchTerm } from '../certs/search'
 import CertActionDialog, { type CertAsk } from '../components/CertActionDialog.vue'
@@ -184,6 +184,9 @@ function issueNote(c: Certificate): string {
 function next(c: Certificate): string {
   if (c.state === 'deploy_failed') return deployNote(c)
   if (c.state === 'revoked') return revokedNote(c)
+  // A new version waiting for its deploy window.
+  const scheduled = c.deployments.map(scheduledAt).filter((at): at is string => !!at).sort()[0]
+  if (scheduled) return t('certs.next.scheduled', { time: intl.dateTime(scheduled) })
   if (c.source !== 'provider') return t('certs.next.manual')
   if (c.state === 'issuing') return t('certs.next.issuing')
   if (c.state === 'failed') return issueNote(c)

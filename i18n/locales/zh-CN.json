@@ -1094,7 +1094,8 @@
       "issuing": "正在签发",
       "manual": "需手动更换",
       "paused": "自动续期已暂停",
-      "retry": "将于 {time} 自动重试（第 {attempt} 次）。"
+      "retry": "将于 {time} 自动重试（第 {attempt} 次）。",
+      "scheduled": "新版本将于 {time} 部署（部署时段）"
     },
     "note": {
       "deploy_failed": "{target}：{error}",
@@ -3328,6 +3329,7 @@
       "paused": "自动续期已暂停",
       "pending": "还没有签发",
       "renew_at": "自动续期：{time}",
+      "scheduled": "新版本将于 {time} 部署",
       "solver": "验证：{name}",
       "source": "来源：{name}",
       "upload": "来源：手动上传"

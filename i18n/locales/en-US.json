@@ -1094,7 +1094,8 @@
       "issuing": "Issuing now",
       "manual": "Replace by hand",
       "paused": "Renewal paused",
-      "retry": "Retries by itself at {time} (attempt {attempt})."
+      "retry": "Retries by itself at {time} (attempt {attempt}).",
+      "scheduled": "The new version deploys at {time}, in its window"
     },
     "note": {
       "deploy_failed": "{target}: {error}",
@@ -3328,6 +3329,7 @@
       "paused": "Renewal paused",
       "pending": "Not issued yet",
       "renew_at": "Renews on its own: {time}",
+      "scheduled": "The new version deploys at {time}",
       "solver": "Validation: {name}",
       "source": "Source: {name}",
       "upload": "Source: uploads"

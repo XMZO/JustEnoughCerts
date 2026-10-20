@@ -38,6 +38,7 @@ type deployment struct {
 	Target     int64       `json:"target"`
 	VersionID  int64       `json:"versionId"`
 	State      string      `json:"state"`
+	Attempts   int         `json:"attempts"`
 	NextAt     *time.Time  `json:"nextAt"`
 	FinishedAt *time.Time  `json:"finishedAt"`
 	Error      *apiMessage `json:"error"`

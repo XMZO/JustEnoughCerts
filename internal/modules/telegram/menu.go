@@ -558,6 +558,8 @@ func (l *listener) certView(ctx context.Context, id int64, notice string) (scree
 		lines = append(lines, iconBusy+" "+l.text(i18n.TelegramCertNextLook, i18n.Args{"time": l.clock(*c.Issuance.NextAt)}))
 	case c.State == "issuing" && c.Issuance != nil && c.Issuance.NextAt != nil && c.Issuance.Error != nil:
 		lines = append(lines, iconBusy+" "+l.text(i18n.TelegramCertNextTry, i18n.Args{"time": l.clock(*c.Issuance.NextAt)}))
+	case scheduled(&c, l.m.now()) != nil:
+		lines = append(lines, iconClock+" "+l.text(i18n.TelegramCertScheduled, i18n.Args{"time": l.clock(*scheduled(&c, l.m.now()))}))
 	case c.Source == "provider" && c.Paused:
 		lines = append(lines, iconOff+" "+l.text(i18n.TelegramCertPaused, nil))
 	case c.Source == "provider" && c.RenewAt != nil:
@@ -687,6 +689,18 @@ func (l *listener) checks(results []check) []string {
 		lines = append(lines, checkIcon(r.State)+" "+where+" · "+what)
 	}
 	return lines
+}
+
+// scheduled is when the first deployment of c that waits for its deploy
+// window starts, or nil.
+func scheduled(c *certificate, now time.Time) *time.Time {
+	var first *time.Time
+	for _, d := range c.Deployments {
+		if d.State == "pending" && d.Error == nil && d.Attempts == 0 && d.NextAt != nil && d.NextAt.After(now) && (first == nil || d.NextAt.Before(*first)) {
+			first = d.NextAt
+		}
+	}
+	return first
 }
 
 // askView asks before renewing or deploying again, saying what it does.
