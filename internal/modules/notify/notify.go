@@ -59,6 +59,7 @@ type service struct {
 func (s *service) handle(ctx context.Context, ev events.Event) error {
 	var write func(language.Tag) contracts.Note
 	var only []int64 // the notifiers the certificate's notes go to, if not all
+	retried := false // a failed attempt between the first and the last
 	switch ev.Type {
 	case contracts.CertificatesDigest:
 		var d contracts.Digest
@@ -113,6 +114,8 @@ func (s *service) handle(ctx context.Context, ev events.Event) error {
 		if only, err = s.notifyTo(ctx, data.CertificateID); err != nil {
 			return err
 		}
+		failed := ev.Type == contracts.CertificateIssueFailed || ev.Type == contracts.CertificateDeployFailed
+		retried = failed && data.Retried()
 	}
 	list, err := s.prov.List(ctx, providers.Notifier)
 	if err != nil {
@@ -120,7 +123,7 @@ func (s *service) handle(ctx context.Context, ev events.Event) error {
 	}
 	var again []error
 	for _, p := range list {
-		if !wants(p.Config, ev.Type) || len(only) > 0 && !slices.Contains(only, p.ID) {
+		if !wants(p.Config, ev.Type) || len(only) > 0 && !slices.Contains(only, p.ID) || retried && p.Config[contracts.NoteRetries] != "true" {
 			continue
 		}
 		done, err := s.done(ctx, ev.ID, p.ID)

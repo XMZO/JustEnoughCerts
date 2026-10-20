@@ -41,6 +41,10 @@ set, messages link to the pages they concern. An event is never sent twice
 to the same channel, and messages not delivered within three days are
 dropped.
 
+A failed issuance or deployment is told of at its first failure and when
+no retry follows; "Tell of every failed retry" adds the retries in
+between.
+
 Each channel may also have quiet hours, in the panel's time zone: 22:00 to
 07:00, 23:00 to 08:00, or 00:00 to 08:00. Messages that come then are kept
 and sent when they end, tried again every 10 minutes, six times at most,

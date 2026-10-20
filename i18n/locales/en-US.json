@@ -2165,6 +2165,8 @@
         "spotted": "A certificate JEC does not hold shows up in certificate transparency logs"
       },
       "field": {
+        "every_retry": "Tell of every failed retry",
+        "every_retry_help": "Off, a failed issuance or deployment is told of at its first failure and when no retry follows.",
         "locale": "Language of the notes",
         "quiet": "Quiet hours",
         "quiet_help": "In the panel's time zone. Notes that come then wait for their end; tests do not."

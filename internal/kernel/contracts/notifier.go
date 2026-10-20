@@ -76,6 +76,11 @@ var NotifyEvents = []NotifyEvent{
 // notes.
 const NoteLocale = "locale"
 
+// NoteRetries is the switch of a notifier that tells of every failed
+// attempt to issue or deploy; off, it tells of the first and of the last,
+// which no attempt follows (CertificateEvent.Retried).
+const NoteRetries = "every_retry"
+
 // NoteQuiet is the setting of a notifier that holds its quiet hours, in
 // the panel's time zone, as "22-7": a note that comes then waits for their
 // end. QuietOff is none.
@@ -93,8 +98,8 @@ var quietHours = []providers.Option{
 }
 
 // NotifierFields are the settings every notifier type ends with: the
-// language of its notes, a switch for each of NotifyEvents, and the quiet
-// hours.
+// language of its notes, a switch for each of NotifyEvents, one for every
+// failed attempt, and the quiet hours.
 func NotifierFields() []providers.Field {
 	out := []providers.Field{{Key: NoteLocale, Label: i18n.KernelNotifyFieldLocale, Kind: providers.Locale, Required: true, Default: i18n.BaseLocale.String()}}
 	for _, e := range NotifyEvents {
@@ -104,6 +109,9 @@ func NotifierFields() []providers.Field {
 		}
 		out = append(out, providers.Field{Key: e.Key, Label: e.Label, Kind: providers.Switch, Default: def})
 	}
+	out = append(out, providers.Field{
+		Key: NoteRetries, Label: i18n.KernelNotifyFieldEveryRetry, Help: i18n.KernelNotifyFieldEveryRetryHelp, Kind: providers.Switch, Default: "false",
+	})
 	return append(out, providers.Field{
 		Key: NoteQuiet, Label: i18n.KernelNotifyFieldQuiet, Help: i18n.KernelNotifyFieldQuietHelp, Kind: providers.Select,
 		Default: QuietOff, Options: quietHours,

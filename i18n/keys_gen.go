@@ -1624,6 +1624,8 @@ const (
 	KernelNotifyEventSignIn                  Key = "kernel.notify.event.sign_in"
 	KernelNotifyEventSiteExpiring            Key = "kernel.notify.event.site_expiring"
 	KernelNotifyEventSpotted                 Key = "kernel.notify.event.spotted"
+	KernelNotifyFieldEveryRetry              Key = "kernel.notify.field.every_retry"
+	KernelNotifyFieldEveryRetryHelp          Key = "kernel.notify.field.every_retry_help"
 	KernelNotifyFieldLocale                  Key = "kernel.notify.field.locale"
 	KernelNotifyFieldQuiet                   Key = "kernel.notify.field.quiet"
 	KernelNotifyFieldQuietHelp               Key = "kernel.notify.field.quiet_help"

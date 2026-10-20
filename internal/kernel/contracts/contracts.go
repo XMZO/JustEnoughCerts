@@ -234,6 +234,19 @@ type CertificateEvent struct {
 	RemindOn string `json:"remindOn,omitempty"`
 }
 
+// Retried reports whether e tells of a failed attempt to issue or deploy
+// that is neither the first nor the last, after which none follows: one
+// that a notifier tells of only when set to (NoteRetries).
+func (e CertificateEvent) Retried() bool {
+	switch {
+	case e.Issuance != nil:
+		return e.Issuance.Attempt > 1 && !e.Issuance.Retry.IsZero()
+	case e.Deployment != nil:
+		return e.Deployment.Attempt > 1 && !e.Deployment.Retry.IsZero()
+	}
+	return false
+}
+
 // RevocationReasonText names a reason code of RFC 5280.
 func RevocationReasonText(code int) i18n.Key {
 	switch code {

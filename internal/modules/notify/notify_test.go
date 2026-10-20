@@ -134,7 +134,7 @@ func TestNotes(t *testing.T) {
 	zh := f.notifier("team", map[string]string{"locale": "zh-CN", "on_issued": "true", "on_issue_failed": "false"})
 
 	failed := contracts.CertificateEvent{CertificateID: 3, Domains: []string{"example.com", "www.example.com"},
-		Issuance: &contracts.Issuance{ID: 9, Attempt: 2, Error: contracts.Message{Key: i18n.CertsErrorIssueFailed}, Retry: start.Add(20 * time.Minute)}}
+		Issuance: &contracts.Issuance{ID: 9, Attempt: 1, Error: contracts.Message{Key: i18n.CertsErrorIssueFailed}, Retry: start.Add(20 * time.Minute)}}
 	if err := f.deliver(1, contracts.CertificateIssueFailed, failed); err != nil {
 		t.Fatal(err)
 	}
@@ -551,5 +551,34 @@ func TestNotifyTo(t *testing.T) {
 	// Certificate 3 tells team b only; 4 and 5, gone, everyone.
 	if na, nb := len(f.notes(a)), len(f.notes(b)); na != 2 || nb != 3 {
 		t.Errorf("team a %d notes, team b %d", na, nb)
+	}
+}
+
+func TestEveryRetry(t *testing.T) {
+	f := newFixture(t)
+	quiet := f.notifier("first and last", map[string]string{"locale": "en-US"})
+	every := f.notifier("every one", map[string]string{"locale": "en-US", contracts.NoteRetries: "true"})
+	f.svc.call = func(context.Context, string, string, string, any, any) error {
+		return &module.CallError{Status: http.StatusNotFound}
+	}
+	later := start.Add(time.Hour)
+	for i, e := range []struct {
+		typ  string
+		data contracts.CertificateEvent
+	}{
+		{contracts.CertificateIssueFailed, contracts.CertificateEvent{Issuance: &contracts.Issuance{ID: 1, Attempt: 1, Retry: later}}},
+		{contracts.CertificateIssueFailed, contracts.CertificateEvent{Issuance: &contracts.Issuance{ID: 1, Attempt: 2, Retry: later}}},
+		{contracts.CertificateIssueFailed, contracts.CertificateEvent{Issuance: &contracts.Issuance{ID: 1, Attempt: 3}}},
+		{contracts.CertificateDeployFailed, contracts.CertificateEvent{Deployment: &contracts.Deployment{ID: 1, Attempt: 2, Retry: later}}},
+		{contracts.CertificateDeployFailed, contracts.CertificateEvent{Deployment: &contracts.Deployment{ID: 1, Attempt: 3}}},
+	} {
+		e.data.CertificateID, e.data.Domains = 1, []string{"example.com"}
+		if err := f.deliver(int64(i+1), e.typ, e.data); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The retries in between go only where every one is wanted.
+	if nq, ne := len(f.notes(quiet)), len(f.notes(every)); nq != 3 || ne != 5 {
+		t.Errorf("%d notes where the first and the last are wanted, %d where every one is", nq, ne)
 	}
 }

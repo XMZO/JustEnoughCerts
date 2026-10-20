@@ -150,6 +150,7 @@
 - 总览的“开始使用”（`web/src/components/GettingStarted.vue`，还没有证书时代替空状态）：证书来源、域名验证、部署目标（可选）、通知（可选）各一行，显示已添加几个，点进对应页面；下面是添加证书和导入已有证书。
 - 备用来源（`certs_certificates.backup_provider`，`PLAN.md` 4.3）：证书可另选一个来源（类型标 `providers.Type.Backup`，目前只有 ACME 账号：一次尝试内签完、不等待、不留状态）；签发的第偶数次尝试改用它（`claimed.backup`，日志 `certs.log.backup_source`），有备用来源时永久错误也接着试另一个，直到重试次数用完；来源的状态不交给备用来源；版本记下实际签发的来源，ARI 和 `replaces` 按它；校验 `checkBackup`/`backupProblem`（须能用证书的验证方式，换验证方式时也查）；接口 `backupProvider`（签发、`PATCH`，0 为去掉），配置文件 `backup_source`；界面在添加页“证书来源”和续期设置里。对 Pebble 实测过（主来源连不上，第二次由备用账号签出）。
 - DNS 服务器预检：验证类型可声明 `providers.Type.NameServers`（名称或其结尾，以 `-` 结尾的匹配标签开头，如 `awsdns-`；lego 的约 37 家在 `lego/catalog.go` 的 `nameServers`），`GET /api/v1/providers/{id}/zones` 对这类类型用 `dnscheck.NameServers`（跟随 `_acme-challenge` 的 CNAME）和 `ServedBy` 给出 `nameServers`、`served`；添加证书页在不属于该服务商时提示（`certs.add.ns_other`）。对真实域名试过（getjec.dev、github.com 的 CNAME 委派）。
+- 失败通知只发首尾：签发、部署失败的事件在中间的重试（`contracts.CertificateEvent.Retried`：第 2 次起且还会重试）默认不通知，渠道打开 `every_retry`（“每次重试失败都通知”，`contracts.NoteRetries`）才发。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

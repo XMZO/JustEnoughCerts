@@ -1632,6 +1632,8 @@ export type MessageKey =
   | "kernel.notify.event.sign_in"
   | "kernel.notify.event.site_expiring"
   | "kernel.notify.event.spotted"
+  | "kernel.notify.field.every_retry"
+  | "kernel.notify.field.every_retry_help"
   | "kernel.notify.field.locale"
   | "kernel.notify.field.quiet"
   | "kernel.notify.field.quiet_help"
