@@ -2844,6 +2844,8 @@ export interface components {
             total: number;
         };
         RuntimeBody: {
+            /** @description The clients that may reach the panel and its API, from JEC_ALLOWED_CLIENTS; any when absent */
+            allowedClients?: string;
             /** @description The backups JEC makes by itself, one a day */
             autoBackup: components["schemas"]["AutoBackupBody"];
             /** @description The URL people open, from JEC_BASE_URL; links in notifications need it */

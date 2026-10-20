@@ -97,6 +97,7 @@ func register(a huma.API, m *Module) {
 	})
 	huma.Register(a, huma.Operation{
 		OperationID: "calendar-ics", Method: http.MethodGet, Path: "/ics/{key}", Tags: tags, Security: api.Public,
+		Metadata:    map[string]any{api.AnyClient: true},
 		Summary:     "The calendar feed, for calendar apps to subscribe to",
 		Description: "When each certificate ends, with a reminder a week before, and when its next renewal starts, in iCalendar.",
 		Responses:   map[string]*huma.Response{"200": {Content: map[string]*huma.MediaType{"text/calendar": {}}}},

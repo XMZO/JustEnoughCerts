@@ -482,7 +482,7 @@ function pickLocale(e: Event) {
 const repository = { name: 'XMZO/JustEnoughCerts', url: 'https://github.com/XMZO/JustEnoughCerts' }
 // The databases, by their own names.
 const databases = { sqlite: 'SQLite', postgres: 'PostgreSQL' } as const
-const variables = { database: 'JEC_DATABASE_URL', baseURL: 'JEC_BASE_URL', listen: 'JEC_LISTEN', trustedProxies: 'JEC_TRUSTED_PROXIES', tls: 'JEC_TLS_CERT', hsts: 'JEC_HSTS' }
+const variables = { database: 'JEC_DATABASE_URL', baseURL: 'JEC_BASE_URL', listen: 'JEC_LISTEN', trustedProxies: 'JEC_TRUSTED_PROXIES', allowedClients: 'JEC_ALLOWED_CLIENTS', tls: 'JEC_TLS_CERT', hsts: 'JEC_HSTS' }
 
 // The cards flow into as many columns as fit, each packed from the top, so
 // that short ones leave no gaps.
@@ -927,6 +927,12 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           </dt>
           <dd v-if="system.data.value.trustedProxies" :class="[fact, 'font-mono']" translate="no">{{ system.data.value.trustedProxies }}</dd>
           <dd v-else :class="[fact, 'text-ink-muted']">{{ t('kernel.settings.not_set') }}</dd>
+          <dt>
+            <span class="block font-semibold">{{ t('kernel.settings.allowed_clients') }}</span>
+            <code class="block text-caption text-ink-muted" translate="no">{{ variables.allowedClients }}</code>
+          </dt>
+          <dd v-if="system.data.value.allowedClients" :class="[fact, 'font-mono']" translate="no">{{ system.data.value.allowedClients }}</dd>
+          <dd v-else :class="[fact, 'text-ink-muted']">{{ t('kernel.settings.allowed_any') }}</dd>
           <dt>
             <span class="block font-semibold">{{ t('kernel.settings.tls') }}</span>
             <code class="block text-caption text-ink-muted" translate="no">{{ variables.tls }}</code>

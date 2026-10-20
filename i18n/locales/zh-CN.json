@@ -2013,6 +2013,7 @@
       "used_by": "用于 {names}"
     },
     "error": {
+      "client_not_allowed": "这个地址不能访问 JEC。请从允许的网络访问，或者请管理员修改 JEC_ALLOWED_CLIENTS。",
       "credential_in_use": "{names} 还在用这个凭据，所以不能删除。先让它们改用别的凭据。",
       "credential_kind": "没有能用这种凭据的服务商类型：用它的模块都没有启用。",
       "credential_name": "已经有一个凭据叫这个名字了。",
@@ -2296,6 +2297,8 @@
       "accent_purple": "紫色",
       "accent_teal": "青色",
       "account": "账号和安全",
+      "allowed_any": "不限",
+      "allowed_clients": "允许访问的地址",
       "appearance": "外观",
       "auto_backup": "每日自动备份",
       "auto_backup_help": "每天在数据目录的 backups/ 里存一份备份，不含主密钥。",

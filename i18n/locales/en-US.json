@@ -2013,6 +2013,7 @@
       "used_by": "Used by {names}"
     },
     "error": {
+      "client_not_allowed": "JEC is not open to this address. Reach it from an allowed network, or have JEC_ALLOWED_CLIENTS changed.",
       "credential_in_use": "{names} still use this credential, so it cannot be deleted. Have them use another first.",
       "credential_kind": "No provider type takes this kind of credential: the modules that would are off.",
       "credential_name": "Another credential has this name.",
@@ -2296,6 +2297,8 @@
       "accent_purple": "Purple",
       "accent_teal": "Teal",
       "account": "Account and security",
+      "allowed_any": "Any",
+      "allowed_clients": "Clients let in",
       "appearance": "Appearance",
       "auto_backup": "Daily backups",
       "auto_backup_help": "JEC keeps a backup a day in backups/ of the data directory, without the master key.",

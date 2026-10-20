@@ -3168,6 +3168,10 @@
       "RuntimeBody": {
         "additionalProperties": false,
         "properties": {
+          "allowedClients": {
+            "description": "The clients that may reach the panel and its API, from JEC_ALLOWED_CLIENTS; any when absent",
+            "type": "string"
+          },
           "autoBackup": {
             "$ref": "#/components/schemas/AutoBackupBody",
             "description": "The backups JEC makes by itself, one a day"

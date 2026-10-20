@@ -20,6 +20,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"net/netip"
 	"strconv"
 	"strings"
 	"sync"
@@ -65,6 +66,9 @@ type Options struct {
 	// Clients finds the client of a request, behind trusted proxies too,
 	// which sign-in lockouts go by. Nil means the peer.
 	Clients *clientip.Resolver
+	// Allowed are the clients the API answers, but for operations marked
+	// api.AnyClient and calls from inside; empty for any.
+	Allowed []netip.Prefix
 	// Events tells of sign-ins and lockouts (contracts.AccountSignedIn,
 	// contracts.AccountLocked); nil tells nobody.
 	Events *events.Scope
@@ -166,9 +170,16 @@ func clientFrom(ctx context.Context) string {
 // Middleware loads the session of every request and turns away a request
 // without one unless its operation is api.Public.
 func (s *Service) Middleware(ctx huma.Context, next func(huma.Context)) {
-	ctx = huma.WithValue(ctx, clientKey{}, s.client(ctx))
+	client := s.client(ctx)
+	ctx = huma.WithValue(ctx, clientKey{}, client)
 	ctx = huma.WithValue(ctx, agentKey{}, ctx.Header("User-Agent"))
 	ctx = huma.WithValue(ctx, actorKey{}, &actor{})
+	_, local := ctx.Context().Value(localKey{}).(string)
+	if op := ctx.Operation(); len(s.opts.Allowed) > 0 && !local && (op == nil || op.Metadata[api.AnyClient] != true) &&
+		!clientip.Within(s.opts.Allowed, client) {
+		api.WriteError(ctx, api.NewError(http.StatusForbidden, i18n.KernelErrorClientNotAllowed, nil))
+		return
+	}
 	if via, ok := ctx.Context().Value(localKey{}).(string); ok {
 		if sess, ok := s.authorizeLocal(ctx, via); ok {
 			next(huma.WithValue(ctx, sessionKey{}, sess))

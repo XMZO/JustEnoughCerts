@@ -54,6 +54,12 @@ type Config struct {
 	// serves HTTPS on Listen: it answers under /.well-known/, as CAs ask
 	// there, and sends everything else to HTTPS. Empty for none.
 	HTTPListen string `yaml:"http_listen"`
+	// AllowedClients are the clients that may reach the panel and its API:
+	// addresses and CIDR ranges, separated by commas, found behind
+	// TrustedProxies. Empty allows any. Requests under /.well-known/, the
+	// health check and the operations machines use with a key of their own
+	// are answered to anyone.
+	AllowedClients string `yaml:"allowed_clients"`
 	// DNSResolvers are the recursive resolvers that find the zones of DNS
 	// records when they are checked: addresses with a port or not,
 	// separated by commas. Empty uses the system's.
@@ -128,6 +134,7 @@ var settings = []setting{
 	{"tls-cert", "JEC_TLS_CERT", "PEM file of a certificate and its chain, to serve HTTPS rather than HTTP", func(c *Config) *string { return &c.TLSCert }},
 	{"tls-key", "JEC_TLS_KEY", "PEM file of the private key of the certificate in tls-cert", func(c *Config) *string { return &c.TLSKey }},
 	{"http-listen", "JEC_HTTP_LISTEN", "TCP address to answer plain HTTP on, with HTTPS on listen: /.well-known/ is answered, the rest sent to HTTPS", func(c *Config) *string { return &c.HTTPListen }},
+	{"allowed-clients", "JEC_ALLOWED_CLIENTS", "addresses or CIDR ranges of the clients that may reach the panel and its API; any if empty", func(c *Config) *string { return &c.AllowedClients }},
 	{"dns-resolvers", "JEC_DNS_RESOLVERS", "DNS resolvers that find the zones of records being checked, separated by commas; the system's by default", func(c *Config) *string { return &c.DNSResolvers }},
 	{"log-level", "JEC_LOG_LEVEL", "log level: debug, info, warn or error", func(c *Config) *string { return &c.Log.Level }},
 	{"log-format", "JEC_LOG_FORMAT", "log format: text or json", func(c *Config) *string { return &c.Log.Format }},
@@ -259,6 +266,9 @@ func (c *Config) normalize() error {
 
 	if _, err := clientip.New(c.TrustedProxies); err != nil {
 		return err
+	}
+	if _, err := clientip.Prefixes(c.AllowedClients); err != nil {
+		return fmt.Errorf("allowed client %w", err)
 	}
 
 	if (c.TLSCert == "") != (c.TLSKey == "") {

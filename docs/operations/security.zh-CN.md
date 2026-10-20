@@ -47,5 +47,6 @@ docker exec -it jec /jec reset-password
 
 - 私钥与凭据以 AES-256-GCM 加密存储，界面不回显已保存的密钥；下载私钥须再次输入密码。
 - 每个响应均带有安全响应头，包括内容安全策略（CSP）；`JEC_HSTS=true` 时另发送 HSTS。
+- 可用 `JEC_ALLOWED_CLIENTS` 只允许指定的网络访问面板（参见[配置参考](configuration.zh-CN.md)）。
 - 会话 Cookie 具备 CSRF 防护；`JEC_BASE_URL` 为 `https` 地址或设置了 `JEC_TLS_CERT` 时，Cookie 仅经 HTTPS 发送。
 - 由用户填写地址的通知渠道与部署目标默认只连接公网地址，防止被用于访问内网。

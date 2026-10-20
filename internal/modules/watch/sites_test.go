@@ -51,7 +51,8 @@ func newFixture(t *testing.T) *fixture {
 	}
 	bus := events.New(st.DB(), slog.New(slog.DiscardHandler), func(string) bool { return true })
 	bus.Seal()
-	f := &fixture{t: t, m: m, ca: cryptoxtest.NewCA(t), now: start, served: map[string][]*x509.Certificate{}}
+	// The CA is valid from before the test's clock, whatever the real time.
+	f := &fixture{t: t, m: m, ca: cryptoxtest.NewCAFrom(t, start.AddDate(0, -1, 0)), now: start, served: map[string][]*x509.Certificate{}}
 	m.db, m.events = st.DB(), bus.Scope("watch")
 	m.now = func() time.Time { return f.now }
 	m.roots = x509.NewCertPool()

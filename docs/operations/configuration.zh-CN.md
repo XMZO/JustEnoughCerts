@@ -13,6 +13,7 @@
 | `-base-url` | `JEC_BASE_URL` | `base_url` | 服务端看到的地址 |
 | `-hsts` | `JEC_HSTS` | `hsts` | `false` |
 | `-trusted-proxies` | `JEC_TRUSTED_PROXIES` | `trusted_proxies` | 无 |
+| `-allowed-clients` | `JEC_ALLOWED_CLIENTS` | `allowed_clients` | 不限 |
 | `-tls-cert` | `JEC_TLS_CERT` | `tls_cert` | 无（提供 HTTP） |
 | `-tls-key` | `JEC_TLS_KEY` | `tls_key` | 无 |
 | `-http-listen` | `JEC_HTTP_LISTEN` | `http_listen` | 无 |
@@ -41,6 +42,7 @@ Caddy 与 nginx 的完整配置（含前置 CDN 的情形）见[反向代理与 
 
 - `JEC_BASE_URL`：设为用户访问的地址，例如 `https://certs.example.com`，或子路径 `https://example.com/certs/`。使用 `https` 地址时，会话 Cookie 仅经 HTTPS 发送；设置后，通知中会附带对应页面的链接。
 - `JEC_TRUSTED_PROXIES`：设为反向代理的地址或 CIDR 网段，多个以逗号分隔，例如 `127.0.0.1`，或容器网段 `172.16.0.0/12`（`docker-compose.yml` 的默认设置）。来自这些地址的请求，JEC 从 `X-Forwarded-For` 读取客户端地址；未设置时，代理之后的全部用户共用代理的地址，一人连续输错密码将导致所有人被锁定。
+- `JEC_ALLOWED_CLIENTS`：只允许这些地址或 CIDR 网段访问面板和接口，多个以逗号分隔，例如 `192.168.0.0/16,10.0.0.0/8`；客户端地址按 `JEC_TRUSTED_PROXIES` 的规则认定。其他地址得到 403。`/.well-known/` 下的请求（证书颁发机构的文件验证）、健康检查，以及机器用自己的密钥访问的接口（拉取地址、日历订阅、Prometheus 指标）不受限制。
 - `JEC_HSTS`：仅当面板始终经 HTTPS 访问时设为 `true`；启用后，浏览器在一年内拒绝以 HTTP 访问该地址。
 - `JEC_TLS_CERT`、`JEC_TLS_KEY`：证书（含证书链）和私钥的 PEM 文件，两项须同时设置。设置后 JEC 在 `JEC_LISTEN` 上直接提供 HTTPS，不再需要反向代理，会话 Cookie 仅经 HTTPS 发送；文件变化后约 10 秒内自动换用新证书，无需重启。文件尚不存在时暂用自签名证书；文件存在但无法读取时 JEC 拒绝启动。此时可再设置 `JEC_HTTP_LISTEN`（例如 `:80`）另行应答普通 HTTP：`/.well-known/` 下的请求（证书颁发机构的文件验证）照常应答，其余请求跳转到 HTTPS。用法见[不使用反向代理](reverse-proxy.zh-CN.md#不使用反向代理)。
 

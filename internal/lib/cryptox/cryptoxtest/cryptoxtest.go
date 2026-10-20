@@ -34,12 +34,18 @@ func NewKey(t testing.TB) *ecdsa.PrivateKey {
 // NewCA returns a root and an intermediate valid for ten years.
 func NewCA(t testing.TB) *CA {
 	t.Helper()
+	return NewCAFrom(t, time.Now().Add(-time.Hour))
+}
+
+// NewCAFrom returns a root and an intermediate valid from notBefore, for
+// ten years: for a test whose clock is not the real one.
+func NewCAFrom(t testing.TB, notBefore time.Time) *CA {
+	t.Helper()
 	rootKey, interKey := NewKey(t), NewKey(t)
-	now := time.Now()
 	ca := func(cn string) *x509.Certificate {
 		return &x509.Certificate{
 			Subject: pkix.Name{CommonName: cn}, IsCA: true, BasicConstraintsValid: true,
-			KeyUsage: x509.KeyUsageCertSign | x509.KeyUsageCRLSign, NotBefore: now.Add(-time.Hour), NotAfter: now.AddDate(10, 0, 0),
+			KeyUsage: x509.KeyUsageCertSign | x509.KeyUsageCRLSign, NotBefore: notBefore, NotAfter: notBefore.AddDate(10, 0, 0),
 		}
 	}
 	root := sign(t, ca("Test Root"), rootKey, nil, nil)

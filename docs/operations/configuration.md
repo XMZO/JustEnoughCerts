@@ -17,6 +17,7 @@ are managed in the interface and are not covered here.
 | `-base-url` | `JEC_BASE_URL` | `base_url` | the address the server sees |
 | `-hsts` | `JEC_HSTS` | `hsts` | `false` |
 | `-trusted-proxies` | `JEC_TRUSTED_PROXIES` | `trusted_proxies` | none |
+| `-allowed-clients` | `JEC_ALLOWED_CLIENTS` | `allowed_clients` | any |
 | `-tls-cert` | `JEC_TLS_CERT` | `tls_cert` | none (serves HTTP) |
 | `-tls-key` | `JEC_TLS_KEY` | `tls_key` | none |
 | `-http-listen` | `JEC_HTTP_LISTEN` | `http_listen` | none |
@@ -56,6 +57,13 @@ Caddy and nginx, also behind a CDN.
   address from `X-Forwarded-For`; without it, everyone behind the proxy
   shares the proxy's address, and one person's failed sign-ins lock out
   everyone.
+- `JEC_ALLOWED_CLIENTS`: only these addresses or CIDR ranges, separated
+  by commas, reach the panel and its API, such as
+  `192.168.0.0/16,10.0.0.0/8`; the client is found as `JEC_TRUSTED_PROXIES`
+  says. Others get 403. Requests under `/.well-known/`, as a CA's file
+  validation makes, the health check, and the operations machines use
+  with a key of their own (pull addresses, the calendar feed, Prometheus
+  metrics) are answered to anyone.
 - `JEC_HSTS`: set it to `true` only when the panel is always reached over
   HTTPS; browsers then refuse plain HTTP to it for a year.
 - `JEC_TLS_CERT`, `JEC_TLS_KEY`: PEM files of a certificate (with its

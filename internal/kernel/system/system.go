@@ -39,6 +39,8 @@ type Options struct {
 	// when it serves plain HTTP. HTTPListen is where it answers plain HTTP
 	// beside, if anywhere.
 	TLSCert, HTTPListen string
+	// AllowedClients is that setting, as config has it.
+	AllowedClients string
 	// VerifyKey tells whether a database's check value is the master
 	// key's; Versions are the last migration of each owner in this
 	// program. A backup is restored only when both agree with it.
@@ -89,6 +91,7 @@ type RuntimeBody struct {
 	Database   string `json:"database" enum:"sqlite,postgres" doc:"Where the data is: SQLite in dataDir, or the PostgreSQL that JEC_DATABASE_URL names"`
 	// The proxies are addresses and ranges, data to show as they are.
 	TrustedProxies string         `json:"trustedProxies,omitempty" doc:"The reverse proxies whose X-Forwarded-For JEC believes, from JEC_TRUSTED_PROXIES"`
+	AllowedClients string         `json:"allowedClients,omitempty" doc:"The clients that may reach the panel and its API, from JEC_ALLOWED_CLIENTS; any when absent"`
 	HSTS           bool           `json:"hsts" doc:"Answers send Strict-Transport-Security, as JEC_HSTS asks"`
 	TimeZone       string         `json:"timeZone,omitempty" doc:"The time zone chosen for JEC, an IANA name: the panel shows times in it, messages tell times in it, and renewals start at the check time in it; empty while it is the server's"`
 	ServerTimeZone string         `json:"serverTimeZone" doc:"The server's time zone, which TZ sets: an IANA name, or Local when the server tells none"`
@@ -197,7 +200,7 @@ func Register(a huma.API, o Options) {
 // runtime is what GET /system tells.
 func (o Options) runtime(ctx context.Context) RuntimeBody {
 	info := RuntimeBody{
-		DataDir: o.DataDir, Listen: o.Listen, HTTPListen: o.HTTPListen, BaseURL: o.BaseURL, SecretKey: "file", TrustedProxies: o.TrustedProxies, HSTS: o.HSTS,
+		DataDir: o.DataDir, Listen: o.Listen, HTTPListen: o.HTTPListen, BaseURL: o.BaseURL, SecretKey: "file", TrustedProxies: o.TrustedProxies, AllowedClients: o.AllowedClients, HSTS: o.HSTS,
 		Database:       o.Database,
 		ServerTimeZone: o.Zone.Server().String(),
 		AutoBackup:     o.autoBackupState(ctx),

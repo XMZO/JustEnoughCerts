@@ -84,6 +84,8 @@ Entries are kept for one year, and can be filtered and exported as CSV.
   password again.
 - Every response carries security headers, including a Content Security
   Policy; with `JEC_HSTS=true`, HSTS as well.
+- `JEC_ALLOWED_CLIENTS` lets only the networks given reach the panel (see
+  [Configuration](configuration.md)).
 - The session cookie is protected against CSRF; with an `https`
   `JEC_BASE_URL` or `JEC_TLS_CERT` set, it is sent over HTTPS only.
 - Notification channels and deploy targets whose address the user enters

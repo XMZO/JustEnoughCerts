@@ -15,6 +15,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -138,11 +139,16 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	if err != nil {
 		return nil, err
 	}
+	allowed, err := clientip.Prefixes(cfg.AllowedClients)
+	if err != nil {
+		return nil, err
+	}
 	accounts, err := auth.New(ctx, st.DB(), log, auth.Options{
 		CookiePath: cookiePath,
 		Secure:     strings.HasPrefix(cfg.BaseURL, "https://") || cfg.TLS(),
 		Secrets:    box.Scope(owner),
 		Clients:    clients,
+		Allowed:    allowed,
 		Events:     bus.Scope(owner),
 	})
 	if err != nil {
@@ -174,7 +180,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	}
 	system.Register(a.Kernel(), system.Options{
 		DataDir: cfg.DataDir, Listen: cfg.Listen, BaseURL: cfg.BaseURL, KeyFromEnv: cfg.SecretKey != "",
-		TrustedProxies: cfg.TrustedProxies, HSTS: cfg.HSTS == "true", TLSCert: cfg.TLSCert, HTTPListen: cfg.HTTPListen,
+		TrustedProxies: cfg.TrustedProxies, HSTS: cfg.HSTS == "true", TLSCert: cfg.TLSCert, HTTPListen: cfg.HTTPListen, AllowedClients: cfg.AllowedClients,
 		VerifyKey: box.Verify, Versions: versions, Restart: func() { restartOnce.Do(func() { close(restart) }) },
 		Database: string(st.Dialect()), Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log,
 		Backup: func(ctx context.Context, path string) error { return st.Snapshot(ctx, path, migrateAll) },
@@ -255,8 +261,26 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 			router.Handle(cfg.BasePath(), ui)
 		}
 	}
-	handler = router
-	return &App{store: st, modules: set, api: a, handler: router, bus: bus, jobs: sched, restart: restart}, nil
+	handler = allowOnly(router, clients, allowed, cfg.BasePath()+api.Prefix)
+	return &App{store: st, modules: set, api: a, handler: handler, bus: bus, jobs: sched, restart: restart}, nil
+}
+
+// allowOnly answers the clients in allowed, and anyone under /.well-known/,
+// as CAs ask there; the API checks its own operations (auth.Middleware),
+// some of which answer anyone. Empty allowed lets everyone in.
+func allowOnly(next http.Handler, clients *clientip.Resolver, allowed []netip.Prefix, apiPrefix string) http.Handler {
+	if len(allowed) == 0 {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		if strings.HasPrefix(p, "/.well-known/") || p == apiPrefix || strings.HasPrefix(p, apiPrefix+"/") ||
+			clientip.Within(allowed, clients.Client(r.RemoteAddr, r.Header.Values("X-Forwarded-For"))) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+	})
 }
 
 // callAPI answers a module's call of the API from inside JEC

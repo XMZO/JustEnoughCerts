@@ -14,6 +14,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
 )
 
@@ -83,6 +84,7 @@ type promOutput struct {
 func register(a huma.API, m *Module) {
 	huma.Register(a, huma.Operation{
 		OperationID: "metrics-prometheus", Method: http.MethodGet, Path: "/prometheus",
+		Metadata:    map[string]any{api.AnyClient: true},
 		Summary:     "Metrics for Prometheus",
 		Description: "The certificates in Prometheus's text format: when each ends and renews, its state, its failed deployments and what the online checks found. Prometheus scrapes it with an API token that may read.",
 		Responses:   map[string]*huma.Response{"200": {Content: map[string]*huma.MediaType{"text/plain": {}}}},

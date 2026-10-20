@@ -111,7 +111,7 @@ func registerPullAPI(a huma.API, s *service, confirm func(context.Context, strin
 	})
 	huma.Register(a, huma.Operation{
 		OperationID: "certs-pull-file", Method: http.MethodGet, Path: "/pull/{file}", Tags: tags, Security: api.Public,
-		Metadata:    map[string]any{api.Audited: true},
+		Metadata:    map[string]any{api.Audited: true, api.AnyClient: true},
 		Summary:     "Fetch a file of the version in use of a certificate, with its pull key",
 		Description: "The key comes as Authorization: Bearer <key>. With If-None-Match and the ETag fetched before, an unchanged version answers 304.",
 		Responses: map[string]*huma.Response{"200": {Content: map[string]*huma.MediaType{

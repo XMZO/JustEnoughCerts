@@ -739,3 +739,70 @@ func TestConfigFile(t *testing.T) {
 		t.Errorf("export with secrets = %d %s", status, body)
 	}
 }
+
+// openOp is a module with an operation for machines, which answers any
+// client, and one that does not.
+type openOp struct{}
+
+func (openOp) Manifest() module.Manifest {
+	return module.Manifest{ID: "openop", Category: module.Feature, Name: "openop.module.name", Description: "openop.module.description"}
+}
+
+func (openOp) Migrations() fs.FS { return nil }
+
+func (openOp) Register(r *module.Registry) error {
+	type out struct{ Body string }
+	huma.Register(r.API, huma.Operation{OperationID: "openop-feed", Method: http.MethodGet, Path: "/feed", Security: api.Public,
+		Metadata: map[string]any{api.AnyClient: true}}, func(context.Context, *struct{}) (*out, error) { return &out{Body: "feed"}, nil })
+	huma.Register(r.API, huma.Operation{OperationID: "openop-closed", Method: http.MethodGet, Path: "/closed", Security: api.Public},
+		func(context.Context, *struct{}) (*out, error) { return &out{Body: "closed"}, nil })
+	return nil
+}
+
+func TestAllowedClients(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.DataDir = t.TempDir()
+	for _, c := range []struct {
+		allowed string
+		open    bool
+	}{{"192.0.2.0/24, 2001:db8::/32", false}, {"127.0.0.1", true}} {
+		cfg.AllowedClients = c.allowed
+		app, err := New(t.Context(), cfg, slog.New(slog.DiscardHandler), []module.Module{openOp{}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := app.Modules().SetEnabled(t.Context(), "openop", true); err != nil {
+			t.Fatal(err)
+		}
+		cl := &client{t: t, srv: httptest.NewServer(app.Handler())}
+		closed := http.StatusForbidden
+		if c.open {
+			closed = http.StatusOK
+		}
+		// The manifest wants a session from those let in.
+		manifest := http.StatusForbidden
+		if c.open {
+			manifest = http.StatusUnauthorized
+		}
+		if status, body := cl.call(http.MethodGet, "/api/v1/manifest", ""); status != manifest || !c.open && !strings.Contains(body, string(i18n.KernelErrorClientNotAllowed)) {
+			t.Errorf("%s: the manifest = %d %s", c.allowed, status, body)
+		}
+		if status, _ := cl.call(http.MethodGet, "/api/v1/openop/closed", ""); status != closed {
+			t.Errorf("%s: an operation for people = %d", c.allowed, status)
+		}
+		if status, body := cl.call(http.MethodGet, "/api/v1/openop/feed", ""); status != http.StatusOK || !strings.Contains(body, "feed") {
+			t.Errorf("%s: an operation for machines = %d %s", c.allowed, status, body)
+		}
+		if status, _ := cl.call(http.MethodGet, "/.well-known/acme-challenge/x", ""); status != http.StatusNotFound {
+			t.Errorf("%s: a validation = %d", c.allowed, status)
+		}
+		if status, _ := cl.call(http.MethodGet, "/settings", ""); !c.open && status != http.StatusForbidden {
+			t.Errorf("%s: the interface = %d", c.allowed, status)
+		}
+		cl.srv.Close()
+		if err := app.Close(); err != nil {
+			t.Fatal(err)
+		}
+		cfg.DataDir = t.TempDir()
+	}
+}

@@ -34,6 +34,12 @@ var Public = []map[string][]string{}
 // change something: a sign-in through another site, which lands on a GET.
 const Audited = "audited"
 
+// AnyClient is the key, in the Metadata of an operation, that has it
+// answer clients outside JEC_ALLOWED_CLIENTS too: one that machines use
+// with a key of their own, as servers fetching a certificate or calendar
+// apps fetching a feed, from wherever they are.
+const AnyClient = "anyClient"
+
 // Options configure the API.
 type Options struct {
 	// BasePath is the path the UI is served under, "" at the root.

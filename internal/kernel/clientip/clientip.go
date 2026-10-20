@@ -19,19 +19,44 @@ type Resolver struct {
 // CIDR ranges, separated by commas or spaces. An empty spec trusts none,
 // so that X-Forwarded-For, which any client can send, is never read.
 func New(spec string) (*Resolver, error) {
-	r := &Resolver{}
+	trusted, err := Prefixes(spec)
+	if err != nil {
+		return nil, fmt.Errorf("trusted proxy %w", err)
+	}
+	return &Resolver{trusted: trusted}, nil
+}
+
+// Prefixes reads addresses and CIDR ranges, separated by commas or spaces,
+// as ranges; an address is one of its own.
+func Prefixes(spec string) ([]netip.Prefix, error) {
+	var out []netip.Prefix
 	for _, field := range strings.FieldsFunc(spec, func(c rune) bool { return c == ',' || c == ' ' }) {
 		if p, err := netip.ParsePrefix(field); err == nil {
-			r.trusted = append(r.trusted, p.Masked())
+			out = append(out, p.Masked())
 			continue
 		}
 		a, err := netip.ParseAddr(field)
 		if err != nil {
-			return nil, fmt.Errorf("trusted proxy %q: want an address or a CIDR range", field)
+			return nil, fmt.Errorf("%q: want an address or a CIDR range", field)
 		}
-		r.trusted = append(r.trusted, netip.PrefixFrom(a.Unmap(), a.Unmap().BitLen()))
+		out = append(out, netip.PrefixFrom(a.Unmap(), a.Unmap().BitLen()))
 	}
-	return r, nil
+	return out, nil
+}
+
+// Within tells whether the address addr is in one of ranges.
+func Within(ranges []netip.Prefix, addr string) bool {
+	a, err := netip.ParseAddr(addr)
+	if err != nil {
+		return false
+	}
+	a = a.Unmap()
+	for _, p := range ranges {
+		if p.Contains(a) {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *Resolver) trusts(a netip.Addr) bool {
