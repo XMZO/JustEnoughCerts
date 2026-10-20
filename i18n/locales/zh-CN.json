@@ -57,7 +57,7 @@
       "eab_hmac": "EAB HMAC Key（可选）",
       "eab_hmac_help": "和 Key ID 一起给出，注册账号时使用。",
       "eab_kid": "EAB Key ID（可选）",
-      "eab_kid_help": "ZeroSSL、Google Trust Services 和多数付费 CA 需要，在它们的账户页面里获取。ZeroSSL 也可以留空，JEC 用上面的邮箱自动领取。",
+      "eab_kid_help": "ZeroSSL、Google Trust Services 和多数付费 CA 需要，在它们的账户页面里获取。ZeroSSL 也可以留空，JEC 用上面的邮箱自动领取（尚未用真实账号验证）。",
       "email": "联系邮箱（可选）",
       "email_help": "CA 会把账号相关的通知发到这里。使用这个账号即表示接受该 CA 的服务条款。",
       "profile": "证书配置",
@@ -669,7 +669,8 @@
       "targets": "部署到",
       "validation": "域名验证",
       "zone_missing": "{zone} 不在这个 DNS 服务商的账号里，{domain} 的验证会失败。请换一个 DNS 服务商，或检查它的账号和密钥。",
-      "zones_held": "这个账号管理着全部域名。"
+      "zones_held": "这个账号管理着全部域名。",
+      "zones_untested": "这项预检尚未用真实账号验证，结果仅供参考。"
     },
     "attention": {
       "deploy_failed": "{domain} 部署失败",

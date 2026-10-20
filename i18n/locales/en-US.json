@@ -57,7 +57,7 @@
       "eab_hmac": "EAB HMAC key (optional)",
       "eab_hmac_help": "Comes with the Key ID; JEC uses it to register the account.",
       "eab_kid": "EAB Key ID (optional)",
-      "eab_kid_help": "ZeroSSL, Google Trust Services and most paid CAs need it; their account page gives it. For ZeroSSL it may stay empty: JEC asks for it with the email address above.",
+      "eab_kid_help": "ZeroSSL, Google Trust Services and most paid CAs need it; their account page gives it. For ZeroSSL it may stay empty: JEC asks for it with the email address above (not yet tried with a real account).",
       "email": "Contact email (optional)",
       "email_help": "The CA sends notices about the account here. Using the account means accepting the CA's terms of service.",
       "profile": "Profile",
@@ -669,7 +669,8 @@
       "targets": "Deploy to",
       "validation": "Domain validation",
       "zone_missing": "{zone} is not in this DNS provider's account, so validating {domain} would fail. Choose another DNS provider, or check its account and keys.",
-      "zones_held": "This account holds every domain."
+      "zones_held": "This account holds every domain.",
+      "zones_untested": "This check is not yet tried with a real account: take it as a hint."
     },
     "attention": {
       "deploy_failed": "{domain} could not be deployed",

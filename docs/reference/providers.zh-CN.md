@@ -19,7 +19,7 @@
 
 | 类型 | 说明 | 测试方式 |
 |---|---|---|
-| `acme.account` | 任意 ACME CA，支持 External Account Binding；续期信息（ARI）与吊销 | 模拟器：Pebble（CI） |
+| `acme.account` | 任意 ACME CA，支持 External Account Binding；续期信息（ARI）、吊销、证书配置与 IP 地址证书 | 模拟器：Pebble（CI）；ZeroSSL 自动领取 EAB 仅替身 |
 | `namecheap.ssl_manager` | Namecheap SSL Manager（实验性） | 真实服务；替身，依据其官方客户端编写 |
 | `privateca.ca` | 私有 CA：用自己的 CA 签发的证书 | 无外部服务；用 Go 的证书校验核对证书链 |
 | `files.watch` | 本机其他客户端续期的证书 | 文件系统 |
@@ -34,7 +34,7 @@
 | 类型 | 说明 | 测试方式 |
 |---|---|---|
 | `lego.*` | lego 支持的 221 家 DNS 服务商 | 替身，测试 JEC 运行服务商的子进程；服务商实现由 lego 提供 |
-| `lego.tencentcloud`、`lego.alidns`、`lego.cloudflare`、`lego.huaweicloud`（任意记录） | 证书厂商验证所需的 TXT、CNAME 记录，经 JEC 自带的客户端添加 | 替身（华为云经其 SDK） |
+| `lego.tencentcloud`、`lego.alidns`、`lego.cloudflare`、`lego.huaweicloud`（任意记录、测试连接、区域预检） | 证书厂商验证所需的 TXT、CNAME 记录，列出账号的域名，核对账号是否管理某个域名，均经 JEC 自带的客户端 | 替身（华为云经其 SDK） |
 | `manual.dns` | 手动添加的 DNS 记录 | 模拟的 DNS 查询 |
 | `files.webroot` | 本机网站目录 | 文件系统 |
 | `ssh.webroot` | 经 SSH 访问的网站目录 | 测试内置的 SSH 服务器 |

@@ -520,6 +520,7 @@ export type MessageKey =
   | "certs.add.validation"
   | "certs.add.zone_missing"
   | "certs.add.zones_held"
+  | "certs.add.zones_untested"
   | "certs.attention.deploy_failed"
   | "certs.attention.expired"
   | "certs.attention.expired_detail"

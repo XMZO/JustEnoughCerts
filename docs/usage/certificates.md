@@ -38,7 +38,8 @@ Domains are handled as follows:
   type instead.
 - With Tencent Cloud DNSPod, Alibaba Cloud DNS, Cloudflare or Huawei Cloud
   DNS, the page checks that the account holds each domain, and says so
-  when one is missing, before an issuance fails over it.
+  when one is missing, before an issuance fails over it. The check was
+  tried only with a fake: take it as a hint.
 - The same certificate, by fingerprint, can be added only once.
 
 The key type is RSA 2048, 3072 or 4096, or ECDSA P-256 or P-384; the

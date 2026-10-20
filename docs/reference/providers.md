@@ -26,7 +26,7 @@ accounts are welcome.
 
 | Type | Description | Tested with |
 |---|---|---|
-| `acme.account` | Any ACME CA, with External Account Binding; renewal information (ARI) and revocation | Emulator: Pebble, in CI |
+| `acme.account` | Any ACME CA, with External Account Binding; renewal information (ARI), revocation, profiles and certificates of IP addresses | Emulator: Pebble, in CI; ZeroSSL's EAB fetched by itself only with a fake |
 | `namecheap.ssl_manager` | Namecheap SSL Manager (experimental) | Real service; fake, written after its official client |
 | `privateca.ca` | Private CA: certificates signed with a CA of your own | No outside service; chains checked by Go's verifier |
 | `files.watch` | Certificates another client renews on this machine | The file system |
@@ -41,7 +41,7 @@ accounts are welcome.
 | Type | Description | Tested with |
 |---|---|---|
 | `lego.*` | The 221 DNS providers of lego | Fake, for the subprocess JEC runs them in; the providers themselves are lego's |
-| `lego.tencentcloud`, `lego.alidns`, `lego.cloudflare`, `lego.huaweicloud` (any record) | The TXT and CNAME records of vendors' validations, added through JEC's own clients | Fake (Huawei Cloud's through its SDK) |
+| `lego.tencentcloud`, `lego.alidns`, `lego.cloudflare`, `lego.huaweicloud` (any record, test, zone check) | The TXT and CNAME records of vendors' validations, the list of the account's domains, and whether the account holds a domain, all through JEC's own clients | Fake (Huawei Cloud's through its SDK) |
 | `manual.dns` | DNS records added manually | Fake resolver |
 | `files.webroot` | A website directory on this machine | The file system |
 | `ssh.webroot` | A website directory over SSH | An SSH server in the test |

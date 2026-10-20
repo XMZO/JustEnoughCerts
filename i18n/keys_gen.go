@@ -512,6 +512,7 @@ const (
 	CertsAddValidation                       Key = "certs.add.validation"
 	CertsAddZoneMissing                      Key = "certs.add.zone_missing"
 	CertsAddZonesHeld                        Key = "certs.add.zones_held"
+	CertsAddZonesUntested                    Key = "certs.add.zones_untested"
 	CertsAttentionDeployFailed               Key = "certs.attention.deploy_failed"
 	CertsAttentionExpired                    Key = "certs.attention.expired"
 	CertsAttentionExpiredDetail              Key = "certs.attention.expired_detail"

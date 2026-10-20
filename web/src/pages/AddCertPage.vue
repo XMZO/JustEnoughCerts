@@ -528,6 +528,7 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
             <p v-if="allHeld" role="status" class="m-0 flex items-start gap-1.5 text-small text-ok-ink">
               <CircleCheck class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ t('certs.add.zones_held') }}
             </p>
+            <p v-if="allHeld || notHeld.length" class="m-0 text-caption text-ink-muted">{{ t('certs.add.zones_untested') }}</p>
             <RouterLink to="/dns" class="self-start text-small">{{ t('certs.add.manage_solvers') }}</RouterLink>
           </template>
           <div v-else class="flex flex-col items-start gap-2">
