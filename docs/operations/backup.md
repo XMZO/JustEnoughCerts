@@ -43,6 +43,16 @@ the same way. Turned off, JEC leaves the backups it made. Copy them off
 the machine too: a backup in the data directory does not survive the loss
 of the disk.
 
+## Backups before upgrades
+
+When a newer JEC starts on a SQLite database that its migrations are about
+to change, it first copies the database to `backups/` as
+`upgrade-<time>.db` (UTC) and keeps the latest three such copies. To go
+back to the earlier version, stop JEC, copy the file into the data
+directory as `restore.db`, and start the earlier version: it takes the
+backup in place of the database and keeps the later one beside it. With
+PostgreSQL, back the database up with `pg_dump` before upgrading.
+
 ## Offsite backups
 
 The module "Offsite backups" copies each daily backup to S3 compatible

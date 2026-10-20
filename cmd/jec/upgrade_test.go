@@ -56,6 +56,10 @@ func TestUpgradeFromAlpha5(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = app.Close() })
+	// The database of alpha.5 stays beside, for alpha.5 to take back.
+	if backups, _ := filepath.Glob(filepath.Join(data, "backups", "upgrade-*.db")); !store.TestingPostgres() && len(backups) != 1 {
+		t.Errorf("backups before migrating: %v", backups)
+	}
 	s := &session{t: t, srv: httptest.NewServer(app.Handler())}
 	t.Cleanup(s.srv.Close)
 	if status := s.call(http.MethodPost, "/api/v1/session", `{"username": "admin", "password": "correct horse"}`, nil); status != http.StatusOK {

@@ -102,6 +102,8 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 		}
 	}()
 	migrateAll := func(ctx context.Context, st *store.Store) error { return MigrateAll(ctx, st, log, set.Modules()) }
+	backup, backupErr := backupBeforeMigrating(ctx, st, cfg.DataDir, set.Modules(), time.Now())
+	logUpgradeBackup(log, backup, backupErr)
 	if err := migrateAll(ctx, st); err != nil {
 		return nil, err
 	}

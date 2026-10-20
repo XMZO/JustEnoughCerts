@@ -136,6 +136,8 @@ newer release; JEC does not check by itself unless "Check for updates by
 itself" is on, after which it checks once a day and tells of a new
 release through the notification channels, once for each.
 
-Back up before upgrading; see [Data and backups](../operations/backup.md).
+JEC copies a SQLite database to `backups/` before migrating it, so that
+the earlier version can take it back; see
+[Backups before upgrades](../operations/backup.md#backups-before-upgrades).
 To verify the signatures of a release, see
 [Verifying releases](../operations/releases.md).

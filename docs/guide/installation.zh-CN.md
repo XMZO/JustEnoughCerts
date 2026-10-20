@@ -96,4 +96,4 @@ polkit.addRule(function (action, subject) {
 
 设置页“关于”中的“检查更新”会询问 GitHub 是否有新版本；JEC 默认不会自行联网检查。开启“自动检查更新”后，JEC 每天检查一次，有新版本时经通知渠道提醒（每个版本一次）。
 
-升级前建议先备份，参见[数据与备份](../operations/backup.zh-CN.md)。发布文件的签名校验方法见[校验发布文件](../operations/releases.zh-CN.md)。
+迁移 SQLite 数据库前，JEC 会先将其复制到 `backups/`，以便退回原版本，参见[升级前的备份](../operations/backup.zh-CN.md#升级前的备份)。发布文件的签名校验方法见[校验发布文件](../operations/releases.zh-CN.md)。

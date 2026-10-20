@@ -90,6 +90,38 @@ func (s *Store) Close() error { return s.db.Close() }
 // modules come and go without touching each other's history. It returns the
 // versions it applied; a nil fsys has nothing to apply.
 func (s *Store) Migrate(ctx context.Context, owner string, fsys fs.FS) ([]int64, error) {
+	p, err := s.migrations(owner, fsys)
+	if p == nil {
+		return nil, err
+	}
+	results, err := p.Up(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("migrations of %s: %w", owner, err)
+	}
+	versions := make([]int64, 0, len(results))
+	for _, r := range results {
+		versions = append(versions, r.Source.Version)
+	}
+	return versions, nil
+}
+
+// Versions returns the latest version of owner's migrations in fsys that
+// the database has, 0 for none, and the latest in fsys.
+func (s *Store) Versions(ctx context.Context, owner string, fsys fs.FS) (current, latest int64, err error) {
+	p, err := s.migrations(owner, fsys)
+	if p == nil {
+		return 0, 0, err
+	}
+	current, latest, err = p.GetVersions(ctx)
+	if err != nil {
+		return 0, 0, fmt.Errorf("migrations of %s: %w", owner, err)
+	}
+	return current, latest, nil
+}
+
+// migrations returns the goose provider of owner's migrations in fsys;
+// nil without an error when there are none.
+func (s *Store) migrations(owner string, fsys fs.FS) (*goose.Provider, error) {
 	if fsys == nil {
 		return nil, nil
 	}
@@ -108,13 +140,5 @@ func (s *Store) Migrate(ctx context.Context, owner string, fsys fs.FS) ([]int64,
 	if err != nil {
 		return nil, fmt.Errorf("migrations of %s: %w", owner, err)
 	}
-	results, err := p.Up(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("migrations of %s: %w", owner, err)
-	}
-	versions := make([]int64, 0, len(results))
-	for _, r := range results {
-		versions = append(versions, r.Source.Version)
-	}
-	return versions, nil
+	return p, nil
 }
