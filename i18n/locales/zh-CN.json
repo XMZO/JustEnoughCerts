@@ -1047,7 +1047,8 @@
       "via_dns": "来源：{source}，用 {dns} 验证域名",
       "via_dns_targets": "来源：{source}，用 {dns} 验证域名，部署到 {targets}",
       "via_targets": "来源：{source}，部署到 {targets}",
-      "waiting": "{source} 还没处理完，JEC 会定时查看"
+      "waiting": "{source} 还没处理完，JEC 会定时查看",
+      "with_backup": "{source}（备用：{backup}）"
     },
     "key": {
       "ecdsa": "ECDSA {curve}",

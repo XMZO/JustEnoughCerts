@@ -42,12 +42,17 @@ const running = computed(() => is.value?.state === 'running' || is.value?.state 
 const retrying = computed(() => is.value?.state === 'pending' && !!is.value.error)
 
 const source = computed(() => sources.data.value?.find((p) => p.id === cert.value?.sourceProvider)?.name ?? '')
+// The source with its backup, if any, which the attempts take turns with.
+const sourceText = computed(() => {
+  const backup = sources.data.value?.find((p) => p.id === cert.value?.backupProvider)?.name
+  return backup ? t('certs.issuance.with_backup', { source: source.value, backup }) : source.value
+})
 const targetName = (id: number) => targets.data.value?.find((p) => p.id === id)?.name ?? ''
 const via = computed(() => {
   const dns = solvers.data.value?.find((p) => p.id === cert.value?.solverProvider)?.name
   const to = intl.list((cert.value?.targets ?? []).map(targetName).filter(Boolean))
-  if (to) return dns ? t('certs.issuance.via_dns_targets', { source: source.value, dns, targets: to }) : t('certs.issuance.via_targets', { source: source.value, targets: to })
-  return dns ? t('certs.issuance.via_dns', { source: source.value, dns }) : t('certs.issuance.via', { source: source.value })
+  if (to) return dns ? t('certs.issuance.via_dns_targets', { source: sourceText.value, dns, targets: to }) : t('certs.issuance.via_targets', { source: sourceText.value, targets: to })
+  return dns ? t('certs.issuance.via_dns', { source: sourceText.value, dns }) : t('certs.issuance.via', { source: sourceText.value })
 })
 
 // The deployments of the version the issuance brings, for the banner.

@@ -1047,7 +1047,8 @@
       "via_dns": "From {source}, validated through {dns}",
       "via_dns_targets": "Source: {source}, validated through {dns}; deploys to {targets}",
       "via_targets": "Source: {source}; deploys to {targets}",
-      "waiting": "{source} is not done yet; JEC checks back regularly"
+      "waiting": "{source} is not done yet; JEC checks back regularly",
+      "with_backup": "{source} (backup: {backup})"
     },
     "key": {
       "ecdsa": "ECDSA {curve}",

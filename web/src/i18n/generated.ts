@@ -838,6 +838,7 @@ export type MessageKey =
   | "certs.issuance.via_dns_targets"
   | "certs.issuance.via_targets"
   | "certs.issuance.waiting"
+  | "certs.issuance.with_backup"
   | "certs.key.ecdsa"
   | "certs.key.ed25519"
   | "certs.key.rsa"

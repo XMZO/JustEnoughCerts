@@ -830,6 +830,7 @@ const (
 	CertsIssuanceViaDnsTargets               Key = "certs.issuance.via_dns_targets"
 	CertsIssuanceViaTargets                  Key = "certs.issuance.via_targets"
 	CertsIssuanceWaiting                     Key = "certs.issuance.waiting"
+	CertsIssuanceWithBackup                  Key = "certs.issuance.with_backup"
 	CertsKeyEcdsa                            Key = "certs.key.ecdsa"
 	CertsKeyEd25519                          Key = "certs.key.ed25519"
 	CertsKeyRsa                              Key = "certs.key.rsa"
