@@ -861,6 +861,18 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'the renewal settings, with the channels').toEqual([])
   await page.keyboard.press('Escape')
   await expect(page.locator('dialog[open]')).toHaveCount(0)
+  // Its pull address: a key made, with the commands that use it, then off.
+  await page.getByRole('button', { name: label('certs.pull.set_up') }).click()
+  await expect(page.locator('dialog[open]')).toBeVisible()
+  expect.soft(await problems(page), 'the pull address').toEqual([])
+  await page.locator('#pull-password').fill('correct horse')
+  await page.locator('button[form=pull-form]').click()
+  await expect(page.getByText(label('certs.pull.shown_once'))).toBeVisible()
+  expect.soft(await problems(page), 'the pull address, with a key').toEqual([])
+  await page.locator('dialog[open]').getByRole('button', { name: label('certs.pull.off') }).click()
+  await expect(page.locator('dialog[open]').getByRole('button', { name: label('certs.pull.off') })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
 
   await page.goto('./certificates')
   expect.soft(await problems(page), 'certificates with a failed one').toEqual([])

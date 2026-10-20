@@ -55,6 +55,7 @@ import JecInput from '../components/JecInput.vue'
 import JecTextarea from '../components/JecTextarea.vue'
 import LifeBar from '../components/LifeBar.vue'
 import MonitorSection from '../components/MonitorSection.vue'
+import PullDialog from '../components/PullDialog.vue'
 import PageHeader from '../components/PageHeader.vue'
 import PemFields from '../components/PemFields.vue'
 import StatusBadge from '../components/StatusBadge.vue'
@@ -147,6 +148,8 @@ const hashes = computed(() => {
 // A request of the version's key for its names, made when asked for.
 const showingCsr = ref(false)
 const csr = useCsr(() => props.id, () => current.value?.id ?? 0, showingCsr)
+// The pull address, for servers that fetch the certificate themselves.
+const pulling = ref(false)
 const csrError = useApiError(csr.error)
 function downloadCsr() {
   const text = csr.data.value?.csr
@@ -942,6 +945,12 @@ async function confirmDelete() {
                     {{ t('certs.csr.show') }}
                   </button>
                 </dd>
+                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.pull') }}</dt>
+                <dd class="m-0 [overflow-wrap:anywhere]">
+                  <button type="button" class="cursor-pointer border-0 bg-transparent p-0 text-small text-brand underline underline-offset-2 hover:text-brand-hover" @click="pulling = true">
+                    {{ t('certs.pull.set_up') }}
+                  </button>
+                </dd>
               </template>
               <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.notify') }}</dt>
               <dd v-if="notifying.length" class="m-0 [overflow-wrap:anywhere]" translate="no">{{ intl.list(notifying) }}</dd>
@@ -1046,6 +1055,7 @@ async function confirmDelete() {
     </template>
   </JecDialog>
 
+  <PullDialog v-if="cert && current" :id="cert.id" v-model:open="pulling" />
   <JecDialog v-if="cert && current" v-model:open="showingCsr" :title="t('certs.csr.title', { domain })">
     <div class="flex flex-col gap-3">
       <p class="m-0 text-small text-ink-muted">{{ t('certs.csr.intro') }}</p>

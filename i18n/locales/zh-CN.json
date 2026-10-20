@@ -270,6 +270,9 @@
       "certs_export": "下载全部证书和私钥",
       "certs_issue": "立即签发证书",
       "certs_issue_new": "添加要签发的证书",
+      "certs_pull_file": "服务器拉取证书文件",
+      "certs_pull_key": "生成证书的拉取密钥",
+      "certs_pull_off": "关闭证书拉取",
       "certs_revoke": "吊销证书版本",
       "certs_save_settings": "修改续期默认值",
       "certs_set_domains": "修改证书的域名",
@@ -929,6 +932,7 @@
       "not_after": "到期时间",
       "not_before": "签发时间",
       "notify": "通知",
+      "pull": "拉取地址",
       "reminder": "到期提醒",
       "renewal": "自动续期",
       "revocation": "吊销查询",
@@ -1110,6 +1114,19 @@
       "upload": "手动上传的证书无法自动续期，到期前 {days, plural, other {# 天}}会提醒你上传新证书。",
       "upload_due": "请在 {date} 前上传新证书。",
       "watch": "到期前 {days, plural, other {# 天}}起，在每天 {time} 等原来的工具续期，再把新证书取进来"
+    },
+    "pull": {
+      "copy": "复制命令",
+      "files": "可拉取的文件：fullchain.pem、privkey.pem、cert.pem、chain.pem。拉取后请自行重载使用证书的程序。",
+      "intro": "JEC 连不到的服务器（如内网或 NAT 后面的机器）可以定时从 JEC 拉取这张证书当前的版本和私钥。密钥放在请求头里而不是地址里，生成新密钥后旧的立即失效；每次拉取都记入审计日志。",
+      "made": "密钥生成于",
+      "make": "生成密钥",
+      "off": "关闭拉取",
+      "renew": "生成新密钥",
+      "set_up": "设置",
+      "shown_once": "密钥只显示这一次。在服务器上定时运行（如 cron 每小时一次），文件只在证书更新后才会重新下载：",
+      "title": "由服务器拉取证书",
+      "used": "最近拉取"
     },
     "reason": {
       "first": "首次签发",

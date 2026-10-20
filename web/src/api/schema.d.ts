@@ -441,6 +441,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certs/certificates/{id}/pull": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tell whether servers can fetch a certificate themselves */
+        get: operations["certs-pull"];
+        put?: never;
+        /** Make the key servers fetch a certificate with, once the password is confirmed; the old one stops working */
+        post: operations["certs-pull-key"];
+        /** Stop servers fetching a certificate: its key stops working */
+        delete: operations["certs-pull-off"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/certs/certificates/{id}/versions": {
         parameters: {
             query?: never;
@@ -581,6 +600,26 @@ export interface paths {
          * @description For telling the certificates JEC holds from others for the same names, as found in certificate transparency logs.
          */
         get: operations["certs-public-keys"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/certs/pull/{file}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch a file of the version in use of a certificate, with its pull key
+         * @description The key comes as Authorization: Bearer <key>. With If-None-Match and the ETag fetched before, an unchanged version answers 304.
+         */
+        get: operations["certs-pull-file"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2517,6 +2556,25 @@ export interface components {
             /** @description Warnings tell of what the import leaves as it is; other problems stop it */
             warning?: boolean;
         };
+        PullBody: {
+            /**
+             * Format: date-time
+             * @description When the key was made
+             */
+            createdAt?: string;
+            enabled: boolean;
+            /** @description The key, only in the answer that made it */
+            key?: string;
+            /**
+             * Format: date-time
+             * @description When a server last fetched a file with it
+             */
+            usedAt?: string;
+        };
+        PullKeyInputBody: {
+            /** @description The password of the signed-in account, asked again: the key fetches the private key */
+            password: string;
+        };
         RecoveryOutputBody: {
             /** @description Each signs in once in place of a code of the authenticator app; shown this once */
             recoveryCodes: string[];
@@ -4071,6 +4129,101 @@ export interface operations {
             };
         };
     };
+    "certs-pull": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PullBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-pull-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PullKeyInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PullBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-pull-off": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     "certs-upload": {
         parameters: {
             query?: never;
@@ -4319,6 +4472,45 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KeysOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-pull-file": {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Bearer and the certificate's pull key */
+                Authorization?: string;
+                /** @description The ETag of what the server has, to fetch only a new version */
+                "If-None-Match"?: string;
+            };
+            path: {
+                file: "fullchain.pem" | "privkey.pem" | "cert.pem" | "chain.pem";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    "Content-Type"?: string;
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/x-pem-file": string;
                 };
             };
             /** @description Error */

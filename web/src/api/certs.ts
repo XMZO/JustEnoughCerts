@@ -364,3 +364,27 @@ export function saveFile(blob: Blob, name: string): void {
   link.click()
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
+
+/** Whether servers can fetch certificate id themselves; only while enabled, as while its dialog shows. */
+export function usePull(id: MaybeRefOrGetter<number>, enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: computed(() => ['certs', 'pull', toValue(id)] as const),
+    queryFn: () => unwrap(api.GET('/certs/certificates/{id}/pull', { params: { path: { id: toValue(id) } } })),
+    enabled: computed(() => toValue(enabled)),
+  })
+}
+
+/** Makes the key servers fetch certificate id with, once the password is confirmed, or turns pulling off. */
+export function usePullKey(id: MaybeRefOrGetter<number>) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (password: string | null) =>
+      password === null
+        ? unwrap(api.DELETE('/certs/certificates/{id}/pull', { params: { path: { id: toValue(id) } } })).then(() => undefined)
+        : unwrap(api.POST('/certs/certificates/{id}/pull', { params: { path: { id: toValue(id) } }, body: { password } })),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['certs', 'pull', toValue(id)] }),
+  })
+}
+
+/** pullBase is where servers fetch the files of a certificate. */
+export const pullBase = () => new URL('api/v1/certs/pull/', document.baseURI).href

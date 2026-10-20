@@ -273,6 +273,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 	registerSettingsAPI(a, s)
 	registerImportAPI(a, s)
 	registerKeysAPI(a, s)
+	registerPullAPI(a, s, confirm)
 
 	huma.Register(a, huma.Operation{
 		OperationID: "certs-list", Method: http.MethodGet, Path: "/certificates",

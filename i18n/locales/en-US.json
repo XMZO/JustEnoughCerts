@@ -270,6 +270,9 @@
       "certs_export": "Downloaded every certificate and key",
       "certs_issue": "Issue a certificate now",
       "certs_issue_new": "Add a certificate to issue",
+      "certs_pull_file": "A server fetched a certificate file",
+      "certs_pull_key": "Made a certificate's pull key",
+      "certs_pull_off": "Stopped a certificate being pulled",
       "certs_revoke": "Revoke a certificate version",
       "certs_save_settings": "Change the renewal defaults",
       "certs_set_domains": "Changed the domains of a certificate",
@@ -929,6 +932,7 @@
       "not_after": "Expires on",
       "not_before": "Valid from",
       "notify": "Notifications",
+      "pull": "Pull address",
       "reminder": "Reminder",
       "renewal": "Renewal",
       "revocation": "Revocation",
@@ -1110,6 +1114,19 @@
       "upload": "Uploaded certificates are not renewed automatically. JEC reminds you {days, plural, one {# day} other {# days}} before this one expires.",
       "upload_due": "Upload a new certificate before {date}.",
       "watch": "From {days, plural, one {# day} other {# days}} before the end, at {time}, wait for the other client to renew it and take the new one in"
+    },
+    "pull": {
+      "copy": "Copy the commands",
+      "files": "Files to fetch: fullchain.pem, privkey.pem, cert.pem, chain.pem. Reload what uses the certificate after fetching.",
+      "intro": "A server JEC cannot reach, as one on a LAN or behind NAT, fetches the version in use of this certificate and its private key from JEC itself, from time to time. The key goes in a header, not in the address; a new key ends the old at once, and the audit log records each fetch.",
+      "made": "Key made",
+      "make": "Make a key",
+      "off": "Stop pulling",
+      "renew": "Make a new key",
+      "set_up": "Set up",
+      "shown_once": "The key shows this once. Run this on the server from time to time, as hourly from cron: the files are fetched again only once the certificate changed.",
+      "title": "Pulled by servers",
+      "used": "last fetched"
     },
     "reason": {
       "first": "First issuance",

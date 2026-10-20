@@ -101,9 +101,33 @@ The certificate's page shows:
 | Pause the renewal | In the renewal settings: the certificate is no longer issued by itself, only when you choose Issue now, and its end is still told. For a domain whose DNS moves, or that is going away; `paused` in the configuration file |
 | Go back to an earlier version | From the version history, makes an earlier version current again, if it has not expired or been revoked and is for the same domains, and deploys it to every target: for when a new version causes trouble, as a chain some clients do not take. The renewal then goes by its end |
 | Revoke | Has an earlier version revoked at its CA, from the version history, with a reason; the password is required first. See below |
+| Pull address | Under the certificate's information: a server JEC cannot reach, as one on a LAN or behind NAT, fetches the version in use with its private key itself, with curl; see below |
 | Delete certificate | Deletes every version and private key of the certificate. Copies already deployed elsewhere are not affected |
 
 Each row of the certificate list also offers the common actions in a menu.
+
+## Pulled by servers
+
+A server JEC cannot reach can fetch the certificate itself, from time to
+time:
+
+1. Under the certificate's information on its page, choose Set up beside
+   Pull address, enter the password and make a key. The key shows once.
+2. On the server, run the commands the page gives from time to time, as
+   hourly from cron:
+
+   ```sh
+   curl -fsS -H "Authorization: Bearer jecpull_..." --etag-compare fullchain.pem.etag --etag-save fullchain.pem.etag \
+     -o fullchain.pem https://jec.example.com/api/v1/certs/pull/fullchain.pem
+   ```
+
+   While the certificate is unchanged, JEC answers 304 and the file stays
+   as it is. `fullchain.pem`, `privkey.pem`, `cert.pem` and `chain.pem` can
+   be fetched; reload what uses the certificate afterwards.
+
+The key goes in a header, not in the address, so access logs do not keep
+it. A new key ends the old at once, and pulling can be stopped at any
+time. The audit log records each fetch.
 
 ## Revoking
 
