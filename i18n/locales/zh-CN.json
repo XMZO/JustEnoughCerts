@@ -1121,6 +1121,13 @@
       "hint": "按剩余天数排列，最需要处理的在前。点一个格子查看摘要。",
       "inventory": "全部证书",
       "short_count": "{count, plural, other {# 张}}，{attention, plural, other {# 张需要处理}}",
+      "start": {
+        "added": "已添加 {count} 个",
+        "intro": "依次设置下面几项，JEC 就会自动签发、部署和续期证书。已有的证书可以直接导入，不用设置来源。",
+        "optional": "可选",
+        "title": "开始使用",
+        "todo": "未设置"
+      },
       "summary": "{count, plural, other {# 张证书。}}{attention, plural, =0 {全部正常。} other {# 张需要你处理。}}",
       "summary_renewing": "{count, plural, other {# 张证书。}}{renewing, plural, other {# 张}}将在 {time} 自动续期，{attention, plural, =0 {其余都正常。} other {# 张需要你处理。}}"
     },

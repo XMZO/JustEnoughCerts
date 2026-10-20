@@ -147,6 +147,7 @@
 - 证书提醒（`certs_certificates.reminder_on`、`reminder_note`、`reminder_sent`，`PATCH` 的 `reminder: {on, note}`，配置文件 `reminder: {day, note}`，因为 YAML 1.1 把 `on` 读成布尔值）：任务 `certs.reminders` 每 15 分钟看一次，到当天 9:00（面板时区）发一次 `certificate.reminder`（通知开关 `on_reminder` 默认开）；日历订阅里是全天事件。界面在证书详情“证书信息”的“提醒”。
 - 自检命令 `jec doctor`（`cmd/jec/doctor.go`）：逐行检查数据目录、数据库（不新建、不迁移；空库和没有库都只是说明）、主密钥（和 `kernel_meta` 的 `secret_check` 核对，不生成 `secret.key`）、等待中的 `restore.db`、到 CA 的 DNS 和 HTTPS（`-ca`，默认 Let's Encrypt；设了 `JEC_DNS_RESOLVERS` 也经它们找区域）、时钟（按 CA 回答的 `Date`，差 30 秒警告、5 分钟失败）；`-offline` 跳过网络；有失败时退出码 1。文档在 FAQ 的“检查服务器”。
 - 升级前的备份（`internal/kernel/upgrade.go`）：SQLite 数据库有待迁移的版本（内核或任一模块，`store.Versions`）且不是新库时，迁移前先 `VACUUM INTO` 到 `backups/upgrade-<UTC 时间>.db`，只留最近三份；做不成只记警告、照常启动。退回旧版：复制成 `restore.db` 再启动旧版（对 alpha.31 实测过）。PostgreSQL 不做，文档让用户 `pg_dump`。异地备份只传 `jec-*.db`，不传这些。
+- 总览的“开始使用”（`web/src/components/GettingStarted.vue`，还没有证书时代替空状态）：证书来源、域名验证、部署目标（可选）、通知（可选）各一行，显示已添加几个，点进对应页面；下面是添加证书和导入已有证书。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

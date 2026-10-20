@@ -1121,6 +1121,13 @@
       "hint": "Sorted by days left, the most urgent first. Select a slot to see its summary.",
       "inventory": "All certificates",
       "short_count": "{count, plural, one {# certificate} other {# certificates}}, {attention, plural, one {# needs attention} other {# need attention}}",
+      "start": {
+        "added": "{count} set up",
+        "intro": "Set these up in turn, and JEC issues, deploys and renews certificates by itself. Certificates you already have can be imported without a source.",
+        "optional": "Optional",
+        "title": "Getting started",
+        "todo": "Not set up"
+      },
       "summary": "{count, plural, one {# certificate.} other {# certificates.}} {attention, plural, =0 {All of them are healthy.} one {# needs your attention.} other {# need your attention.}}",
       "summary_renewing": "{count, plural, one {# certificate.} other {# certificates.}} {renewing, plural, one {# renews by itself} other {# renew by themselves}} at {time}; {attention, plural, =0 {the others are fine.} one {# needs you.} other {# need you.}}"
     },

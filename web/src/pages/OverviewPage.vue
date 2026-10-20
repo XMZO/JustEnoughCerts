@@ -16,6 +16,7 @@ import { runAt, runLink, runResult, useRunText } from '../certs/runs'
 import { caReasonText, certLife, lifeText, needsAttention, windowStart, type Life } from '../certs/life'
 import CertActionDialog, { type CertAsk } from '../components/CertActionDialog.vue'
 import CertSlot from '../components/CertSlot.vue'
+import GettingStarted from '../components/GettingStarted.vue'
 import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
 import LifeBar from '../components/LifeBar.vue'
@@ -300,13 +301,7 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
     <JecAlert v-if="error" :code="error.code" :params="error.params" />
     <JecAlert v-if="actionError.error.value" :code="actionError.error.value.code" :params="actionError.error.value.params" />
 
-    <section
-      v-if="certificates.isSuccess.value && !all.length"
-      class="flex flex-col items-start gap-3 rounded-lg border border-line bg-surface-raised p-4"
-    >
-      <p class="m-0 text-ink-muted">{{ t('certs.list.empty') }}</p>
-      <JecButton variant="primary" to="/certificates/new"><Plus class="size-4" aria-hidden="true" />{{ t('certs.action.add') }}</JecButton>
-    </section>
+    <GettingStarted v-if="certificates.isSuccess.value && !all.length" />
 
     <template v-else-if="all.length">
       <section aria-labelledby="inventory" class="flex flex-wrap gap-4 rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
