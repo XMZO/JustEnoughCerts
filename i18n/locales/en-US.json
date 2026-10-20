@@ -275,6 +275,7 @@
       "certs_set_domains": "Changed the domains of a certificate",
       "certs_update": "Change a certificate",
       "certs_upload": "Upload a new version",
+      "certs_use_version": "Went back to an earlier version of a certificate",
       "change_password": "Change the password",
       "config_check": "Check a configuration file",
       "config_export_secrets": "Export the configuration with secrets",
@@ -604,7 +605,8 @@
       "revoke_version": "Revoke the version valid {range}",
       "save": "Save certificate",
       "upload": "Upload new certificate",
-      "upload_short": "Upload"
+      "upload_short": "Upload",
+      "use_version": "Go back to the version of {range}"
     },
     "activity": {
       "all": "All of it",
@@ -900,6 +902,9 @@
       "several_keys": "More than one private key was pasted. Keep only the key of this certificate.",
       "solver_challenge": "This source cannot have the domains validated this way.",
       "unsupported_key": "This type of private key is not supported. Use an RSA, ECDSA or Ed25519 key.",
+      "use_current": "This is the version in use already.",
+      "use_ended": "This version has expired or been revoked: it cannot be used again.",
+      "use_names": "This version is for other names than the certificate now has: it cannot be used again.",
       "wildcard_http": "A wildcard certificate can only be validated through DNS.",
       "wrong_provider": "This provider cannot be used here. Choose another one."
     },
@@ -1235,6 +1240,12 @@
     "upload": {
       "intro": "The new certificate replaces the one in use. It must cover {domain} and expire later.",
       "title": "Upload a new certificate"
+    },
+    "use": {
+      "confirm": "Use and deploy",
+      "intro": "The version of {range} becomes current again and is deployed to every target of this certificate: for when a new version causes trouble, as a chain some clients do not take.",
+      "renewal": "The renewal goes by it from then on: it ends on {date}, so a renewal may come soon.",
+      "title": "Go back to an earlier version"
     },
     "validation": {
       "dv": "Domain validated (DV)",

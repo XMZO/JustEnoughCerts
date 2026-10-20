@@ -98,6 +98,7 @@ The certificate's page shows:
 | Choose targets | Adds or removes deploy targets. A new target receives the current version at once |
 | Deploy now / Deploy again | Deploys the current version again, to every target or to one |
 | Download | Downloads a ZIP file with `cert.pem`, `chain.pem`, `fullchain.pem` and `privkey.pem`, and optionally `certificate.pfx` for Windows, IIS, Azure and Java, with a password of its own and, for older systems, 3DES. As it contains the private key, the password is required first |
+| Go back to an earlier version | From the version history, makes an earlier version current again, if it has not expired or been revoked and is for the same domains, and deploys it to every target: for when a new version causes trouble, as a chain some clients do not take. The renewal then goes by its end |
 | Revoke | Has an earlier version revoked at its CA, from the version history, with a reason; the password is required first. See below |
 | Delete certificate | Deletes every version and private key of the certificate. Copies already deployed elsewhere are not affected |
 

@@ -4176,6 +4176,10 @@
           "serial": {
             "description": "Serial number, lowercase hex",
             "type": "string"
+          },
+          "usable": {
+            "description": "The version can become current again: it has not expired or been revoked, and is for the certificate's names",
+            "type": "boolean"
           }
         },
         "required": [
@@ -5693,6 +5697,51 @@
           }
         },
         "summary": "Have a version revoked at its CA, once the password is confirmed",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/certificates/{id}/versions/{version}/use": {
+      "post": {
+        "description": "Only a version that has not expired or been revoked, for the certificate's names. The renewal goes by it from then on.",
+        "operationId": "certs-use-version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Go back to an earlier version, which is deployed to every target",
         "tags": [
           "certs"
         ]

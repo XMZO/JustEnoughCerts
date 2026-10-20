@@ -275,6 +275,7 @@
       "certs_set_domains": "修改证书的域名",
       "certs_update": "修改证书设置",
       "certs_upload": "上传新版本",
+      "certs_use_version": "改用证书的较早版本",
       "change_password": "修改密码",
       "config_check": "检查配置文件",
       "config_export_secrets": "导出配置（含密钥）",
@@ -604,7 +605,8 @@
       "revoke_version": "吊销有效期为 {range} 的版本",
       "save": "保存证书",
       "upload": "上传新证书",
-      "upload_short": "上传"
+      "upload_short": "上传",
+      "use_version": "改用 {range} 的版本"
     },
     "activity": {
       "all": "全部记录",
@@ -900,6 +902,9 @@
       "several_keys": "粘贴了不止一个私钥。只保留这张证书的私钥。",
       "solver_challenge": "这个证书来源不能用这种方式验证域名。",
       "unsupported_key": "不支持这种私钥。请使用 RSA、ECDSA 或 Ed25519 私钥。",
+      "use_current": "这已经是当前使用的版本。",
+      "use_ended": "这个版本已经过期或被吊销，不能再使用。",
+      "use_names": "这个版本的域名与证书现在的域名不同，不能再使用。",
       "wildcard_http": "通配符证书只能通过 DNS 验证。",
       "wrong_provider": "这项服务不能用在这里，请换一个。"
     },
@@ -1235,6 +1240,12 @@
     "upload": {
       "intro": "新证书会替换正在使用的这张。它必须包含 {domain}，而且到期时间更晚。",
       "title": "上传新证书"
+    },
+    "use": {
+      "confirm": "改用并部署",
+      "intro": "把 {range} 的版本设为当前版本，并重新部署到这张证书的所有部署目标。适用于新版本出现问题（如部分客户端不认它的证书链）时回退。",
+      "renewal": "之后的续期按这个版本计算：它在 {date} 到期，可能很快就会续期。",
+      "title": "改用较早的版本"
     },
     "validation": {
       "dv": "域名验证（DV）",

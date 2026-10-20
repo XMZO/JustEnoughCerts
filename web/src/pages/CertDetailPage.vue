@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   ShieldX,
   Trash2,
+  Undo2,
   Upload,
 } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
@@ -28,6 +29,7 @@ import {
   useIssuances,
   useIssueNow,
   useRevoke,
+  useUseVersion,
   useSetDomains,
   useUpdateCertificate,
   useUploadVersion,
@@ -475,6 +477,31 @@ async function submitRevoke() {
   revoking.value = null
 }
 
+// Going back to an earlier version, once confirmed: it is deployed to every
+// target, and the renewal goes by it.
+const reverting = ref<{ id: number; range: string; notAfter: string } | null>(null)
+const revertOpen = computed({
+  get: () => reverting.value !== null,
+  set: (open) => {
+    if (!open) reverting.value = null
+  },
+})
+const useVersion = useUseVersion(() => props.id)
+const useVersionError = useApiError(useVersion.error)
+function startRevert(version: number, range: string, notAfter: string) {
+  useVersion.reset()
+  reverting.value = { id: version, range, notAfter }
+}
+async function submitRevert() {
+  if (!reverting.value) return
+  try {
+    await useVersion.mutateAsync(reverting.value.id)
+  } catch {
+    return // shown in the dialog
+  }
+  reverting.value = null
+}
+
 const deleting = ref(false)
 const remove = useDeleteCertificate(() => props.id)
 const removeError = useApiError(remove.error)
@@ -743,6 +770,16 @@ async function confirmDelete() {
                     {{ t('certs.history.ca_revoked', { date: intl.date(h.version.caRevokedAt), reason: t(caReasonText(h.version.caRevokeReason)) }) }}
                   </div>
                 </div>
+                <button
+                  v-if="h.version.usable"
+                  type="button"
+                  :aria-label="t('certs.action.use_version', { range: h.range })"
+                  :title="t('certs.action.use_version', { range: h.range })"
+                  class="grid size-11 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink sm:size-8"
+                  @click="startRevert(h.version.id, h.range, h.version.notAfter)"
+                >
+                  <Undo2 class="size-4" aria-hidden="true" />
+                </button>
                 <button
                   v-if="h.version.revocable"
                   type="button"
@@ -1117,6 +1154,22 @@ async function confirmDelete() {
       <JecButton @click="revokeOpen = false">{{ t('kernel.action.cancel') }}</JecButton>
       <JecButton type="submit" form="revoke-form" variant="danger" :busy="revoke.isPending.value" :disabled="!revokePassword">
         <ShieldX class="size-4" aria-hidden="true" />{{ t('certs.action.revoke') }}
+      </JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-if="cert" v-model:open="revertOpen" :title="t('certs.use.title')" small>
+    <div class="flex flex-col gap-3">
+      <p class="m-0">{{ t('certs.use.intro', { range: reverting?.range ?? '' }) }}</p>
+      <p class="m-0 text-small text-ink-muted">
+        {{ t('certs.use.renewal', { date: reverting ? intl.date(reverting.notAfter) : '' }) }}
+      </p>
+      <JecAlert v-if="useVersionError.error.value" :code="useVersionError.error.value.code" :params="useVersionError.error.value.params" />
+    </div>
+    <template #footer>
+      <JecButton @click="revertOpen = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton variant="primary" :busy="useVersion.isPending.value" @click="submitRevert">
+        <Undo2 class="size-4" aria-hidden="true" />{{ t('certs.use.confirm') }}
       </JecButton>
     </template>
   </JecDialog>

@@ -761,7 +761,7 @@ test('every page is translated and fits', async ({ page }, info) => {
     // The current one its CA revoked, as OCSP or the CRL told.
     const versions = [
       madeUp(9003, -10, 80, { caRevokedAt: at(-1), caRevokeReason: 'superseded' }),
-      madeUp(9002, -40, 50, { revocable: true }),
+      madeUp(9002, -40, 50, { revocable: true, usable: true }),
       madeUp(9001, -70, 20, { revokedAt: at(-40), revokeReason: 'key_compromise' }),
     ]
     body.certificate.current = versions[0]
@@ -789,7 +789,16 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(versionRows).toHaveCount(3)
   await expect(page.getByText(label('certs.detail.revoked_renewing'))).toBeVisible()
   expect.soft(await problems(page), 'versions, one revocable and one revoked; an online check').toEqual([])
+  // Going back to it, which the server, not knowing it, refuses.
   await versionRows.nth(1).getByRole('button').first().click()
+  await expect(page.locator('dialog[open]')).toBeVisible()
+  expect.soft(await problems(page), 'go back to a version').toEqual([])
+  await page.locator('dialog[open]').getByRole('button', { name: label('certs.use.confirm') }).click()
+  await expect(page.locator('dialog[open]').getByRole('alert')).toBeVisible()
+  expect.soft(await problems(page), 'go back to a version, refused').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  await versionRows.nth(1).getByRole('button').nth(1).click()
   await expect(page.locator('dialog[open]')).toBeVisible()
   expect.soft(await problems(page), 'revoke a version').toEqual([])
   await page.locator('#revoke-password').fill('correct horse')

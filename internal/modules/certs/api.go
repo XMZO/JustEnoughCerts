@@ -55,6 +55,7 @@ type VersionBody struct {
 	// Revocable, RevokedAt and RevokeReason are only in the versions of a
 	// certificate's details.
 	Revocable    bool       `json:"revocable,omitempty" doc:"JEC can have the version revoked at its CA now"`
+	Usable       bool       `json:"usable,omitempty" doc:"The version can become current again: it has not expired or been revoked, and is for the certificate's names"`
 	RevokedAt    *time.Time `json:"revokedAt,omitempty" doc:"When JEC had the version revoked"`
 	RevokeReason string     `json:"revokeReason,omitempty" enum:"unspecified,key_compromise,superseded,cessation_of_operation"`
 	// CARevokedAt and CARevokeReason are in every version.
@@ -331,6 +332,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 		for _, v := range versions {
 			b := versionBody(v)
 			b.Revocable = revocable(c, v, s.now(), typeOf) == nil
+			b.Usable = usable(c, v, s.now()) == nil
 			out.Body.Versions = append(out.Body.Versions, b)
 		}
 		out.Body.Chain = []ChainEntry{}
@@ -480,6 +482,25 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 		}
 		if err := s.revoke(ctx, in.ID, in.Version, in.Body.Reason); err != nil {
 			return nil, revokeError(err)
+		}
+		return nil, nil
+	})
+
+	huma.Register(a, huma.Operation{
+		OperationID: "certs-use-version", Method: http.MethodPost, Path: "/certificates/{id}/versions/{version}/use",
+		DefaultStatus: http.StatusNoContent,
+		Summary:       "Go back to an earlier version, which is deployed to every target",
+		Description:   "Only a version that has not expired or been revoked, for the certificate's names. The renewal goes by it from then on.",
+	}, func(ctx context.Context, in *versionInput) (*struct{}, error) {
+		switch err := s.useVersion(ctx, in.ID, in.Version); {
+		case errors.Is(err, errUseCurrent):
+			return nil, api.NewError(http.StatusConflict, i18n.CertsErrorUseCurrent, nil)
+		case errors.Is(err, errUseEnded):
+			return nil, api.NewError(http.StatusConflict, i18n.CertsErrorUseEnded, nil)
+		case errors.Is(err, errUseNames):
+			return nil, api.NewError(http.StatusConflict, i18n.CertsErrorUseNames, nil)
+		case err != nil:
+			return nil, serviceError(err)
 		}
 		return nil, nil
 	})

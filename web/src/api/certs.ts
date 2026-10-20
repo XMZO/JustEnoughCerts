@@ -285,6 +285,13 @@ export function useRevoke(id: MaybeRefOrGetter<number>) {
   )
 }
 
+/** useUseVersion goes back to an earlier version of certificate id, which is deployed to every target. */
+export function useUseVersion(id: MaybeRefOrGetter<number>) {
+  return useCertsMutation((version: number) =>
+    unwrap(api.POST('/certs/certificates/{id}/versions/{version}/use', { params: { path: { id: toValue(id), version } } })),
+  )
+}
+
 /**
  * useDownload fetches a version of certificate id with its private key, as
  * the ZIP the server names, once the password is confirmed.

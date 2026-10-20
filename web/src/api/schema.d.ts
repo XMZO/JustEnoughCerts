@@ -498,6 +498,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certs/certificates/{id}/versions/{version}/use": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Go back to an earlier version, which is deployed to every target
+         * @description Only a version that has not expired or been revoked, for the certificate's names. The renewal goes by it from then on.
+         */
+        post: operations["certs-use-version"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/certs/deployments/{id}": {
         parameters: {
             query?: never;
@@ -3004,6 +3024,8 @@ export interface components {
             revokedAt?: string;
             /** @description Serial number, lowercase hex */
             serial: string;
+            /** @description The version can become current again: it has not expired or been revoked, and is for the certificate's names */
+            usable?: boolean;
         };
         When: {
             key: string;
@@ -4046,6 +4068,36 @@ export interface operations {
                 "application/json": components["schemas"]["RevokeInputBody"];
             };
         };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-use-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description No Content */
             204: {

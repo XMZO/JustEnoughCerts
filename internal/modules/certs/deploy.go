@@ -186,20 +186,8 @@ func (s *service) setTargets(ctx context.Context, tx *sql.Tx, c *Certificate, ta
 // queueDeployments queues version of certificate id for each of its
 // targets, in tx.
 func (s *service) queueDeployments(ctx context.Context, tx *sql.Tx, id, version int64) error {
-	rows, err := tx.QueryContext(ctx, "SELECT provider_id FROM certs_targets WHERE certificate_id = ? ORDER BY position", id)
+	targets, err := s.targetIDs(ctx, tx, id)
 	if err != nil {
-		return err
-	}
-	var targets []int64
-	for rows.Next() {
-		var target int64
-		if err := rows.Scan(&target); err != nil {
-			_ = rows.Close()
-			return err
-		}
-		targets = append(targets, target)
-	}
-	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
 		return err
 	}
 	for _, target := range targets {
@@ -208,6 +196,24 @@ func (s *service) queueDeployments(ctx context.Context, tx *sql.Tx, id, version 
 		}
 	}
 	return nil
+}
+
+// targetIDs returns the targets of certificate id, in their order.
+func (s *service) targetIDs(ctx context.Context, tx *sql.Tx, id int64) ([]int64, error) {
+	rows, err := tx.QueryContext(ctx, "SELECT provider_id FROM certs_targets WHERE certificate_id = ? ORDER BY position", id)
+	if err != nil {
+		return nil, err
+	}
+	var targets []int64
+	for rows.Next() {
+		var target int64
+		if err := rows.Scan(&target); err != nil {
+			_ = rows.Close()
+			return nil, err
+		}
+		targets = append(targets, target)
+	}
+	return targets, errors.Join(rows.Err(), rows.Close())
 }
 
 // queueDeployment makes the deployment of version of certificate id to

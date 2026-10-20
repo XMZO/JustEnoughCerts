@@ -71,6 +71,7 @@ const operations: Partial<Record<string, MessageKey>> = {
   'certs-download': 'audit.op.certs_download',
   'certs-export': 'audit.op.certs_export',
   'certs-revoke': 'audit.op.certs_revoke',
+  'certs-use-version': 'audit.op.certs_use_version',
   'certs-issue': 'audit.op.certs_issue',
   'certs-deploy': 'audit.op.certs_deploy',
   'certs-save-settings': 'audit.op.certs_save_settings',
