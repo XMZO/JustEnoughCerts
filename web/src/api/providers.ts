@@ -140,3 +140,13 @@ export function useTryProvider() {
       unwrap(api.POST('/providers/{id}/try', { params: { path: { id } }, body: { domain } })),
   })
 }
+
+/** The sources, solvers and targets whose last test failed, as the daily check or a click found. */
+export function useFailingProviders() {
+  return useQuery({
+    queryKey: [...all, 'list', 'failing'] as const,
+    queryFn: async () =>
+      ((await unwrap(api.GET('/providers'))).providers ?? []).filter((p) => p.kind !== 'notifier' && p.lastTest && !p.lastTest.ok),
+    refetchInterval: 10 * 60_000,
+  })
+}

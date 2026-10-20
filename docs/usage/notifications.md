@@ -22,7 +22,7 @@ message at once.
 | A certificate JEC does not hold shows up in certificate transparency logs (likewise, when switched on) | On |
 | New certificate (issued or uploaded) | Off |
 | Deployment succeeded | Off |
-| A deploy target, DNS provider or source fails the daily test of its settings (each testable one is tested once a day, as its card's Test does; told once until its settings change) | On |
+| A deploy target, DNS provider or source fails the daily test of its settings (each testable one is tested once a day, as its card's Test does; told once until its settings change; those failing also show among what needs attention on the overview) | On |
 | Someone failed to sign in too many times and is locked out (see [Security](../operations/security.md)) | On |
 | Someone signs in to the panel (likewise) | Off |
 | Weekly digest, on Monday from 9:00 in the panel's time zone: certificates needing attention and renewals of the coming week | Off |

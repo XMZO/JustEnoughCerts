@@ -1556,6 +1556,8 @@ export type MessageKey =
   | "kernel.providers.delete.body"
   | "kernel.providers.delete.title"
   | "kernel.providers.edit"
+  | "kernel.providers.failing"
+  | "kernel.providers.failing_open"
   | "kernel.providers.field.name"
   | "kernel.providers.field.name_help"
   | "kernel.providers.manage_modules"

@@ -2084,6 +2084,8 @@
         "title": "Delete {name}?"
       },
       "edit": "Edit {name}",
+      "failing": "{count, plural, one {# provider fails its test} other {# providers fail their tests}}",
+      "failing_open": "Providers",
       "field": {
         "name": "Name",
         "name_help": "Tells it apart in JEC, such as “Main account”."

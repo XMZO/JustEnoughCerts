@@ -2084,6 +2084,8 @@
         "title": "删除 {name}？"
       },
       "edit": "编辑 {name}",
+      "failing": "{count, plural, other {# 个服务商测试失败}}",
+      "failing_open": "查看服务商",
       "field": {
         "name": "名称",
         "name_help": "用来在 JEC 里区分它，比如“主账号”。"

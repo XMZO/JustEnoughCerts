@@ -5,6 +5,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import { useSession, useSignOut } from '../api/account'
 import { useCertificates } from '../api/certs'
+import { useFailingProviders } from '../api/providers'
 import { domainNeedsLook, needsLook, spottedNeedsLook, useDomains, useSites, useTransparency } from '../api/watch'
 import { needsAttention } from '../certs/life'
 import { useManifest } from '../api/manifest'
@@ -56,16 +57,17 @@ const main = computed<Link[]>(() => [...links.value, ...(watching.value ? [{ to:
 const sites = useSites(watching)
 const domains = useDomains(watching)
 const ct = useTransparency(watching)
-// The tab's title leads with how many need someone: certificates, and the
-// watched sites, domain registrations and certificates found in
-// transparency logs to look at.
+const failing = useFailingProviders()
+// The tab's title leads with how many need someone: certificates, the
+// providers whose test fails, and the watched sites, domain registrations
+// and certificates found in transparency logs to look at.
 watchEffect(() => {
   const certs = (certificates.data.value ?? []).filter(needsAttention).length
   const watched =
     (sites.data.value ?? []).filter(needsLook).length +
     (domains.data.value ?? []).filter(domainNeedsLook).length +
     (ct.data.value?.certificates ?? []).filter(spottedNeedsLook).length
-  attention.value = certs + (watching.value ? watched : 0)
+  attention.value = certs + (failing.data.value?.length ?? 0) + (watching.value ? watched : 0)
 })
 // Where providers are configured, with the credentials they share; on
 // phones, the More tab lists them.

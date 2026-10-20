@@ -8,6 +8,7 @@ import { useCertificates, useRuns, type Certificate, type CertificateState } fro
 import { useApiError } from '../api/errors'
 import { useManifest } from '../api/manifest'
 import { useProviders } from '../api/providers'
+import { useFailingProviders } from '../api/providers'
 import { domainNeedsLook, needsLook, spottedNeedsLook, useDomains, useSites, useTransparency } from '../api/watch'
 import { useCertActions } from '../certs/actions'
 import { failingDeployment, useDeployNote } from '../certs/deployment'
@@ -154,6 +155,14 @@ const domainNames = computed(() => {
   const names = domainTodo.value.map((d) => d.name)
   return names.length > 3 ? t('watch.overview.more', { names: names.slice(0, 3).join(', '), count: names.length - 3 }) : names.join(', ')
 })
+// And the providers whose test fails, as the daily check finds them.
+const failing = useFailingProviders()
+const failingList = computed(() => failing.data.value ?? [])
+const failingNames = computed(() => {
+  const names = failingList.value.map((p) => p.name)
+  return names.length > 3 ? t('watch.overview.more', { names: names.slice(0, 3).join(', '), count: names.length - 3 }) : names.join(', ')
+})
+const failingPage = computed(() => ({ source: '/sources', solver: '/dns', target: '/targets' })[failingList.value[0]?.kind as 'source'] ?? '/targets')
 // And the certificates found in transparency logs that JEC does not hold.
 const ct = useTransparency(watching)
 const spottedTodo = computed(() => (watching.value ? (ct.data.value?.certificates ?? []).filter(spottedNeedsLook) : []))
@@ -391,7 +400,7 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
       <div class="flex flex-wrap items-stretch gap-3 sm:gap-4">
         <section aria-labelledby="todo" class="flex min-w-0 flex-[1_1_300px] flex-col rounded-lg border border-line bg-surface-raised px-3 pt-3 pb-1 sm:p-4">
           <h2 id="todo" class="m-0 mb-0.5 text-heading font-semibold sm:text-section-title">{{ t('certs.attention.title') }}</h2>
-          <p v-if="!todo.length && !renewing.length && !siteTodo.length && !domainTodo.length && !spottedTodo.length" class="m-0 py-2.5 text-small text-ink-muted">{{ t('certs.attention.none') }}</p>
+          <p v-if="!todo.length && !renewing.length && !siteTodo.length && !domainTodo.length && !spottedTodo.length && !failingList.length" class="m-0 py-2.5 text-small text-ink-muted">{{ t('certs.attention.none') }}</p>
           <div v-if="renewing.length" class="flex items-start gap-2.5 border-b border-line py-2.5 last:border-b-0 last:pb-1">
             <TriangleAlert class="mt-[3px] size-4 flex-none text-warn-ink" aria-hidden="true" />
             <div class="min-w-0 flex-1">
@@ -455,6 +464,17 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
             </div>
             <JecButton variant="ghost" size="sm" to="/sites" class="max-sm:hidden">{{ t('watch.overview.open') }}</JecButton>
             <RouterLink to="/sites" :aria-label="t('watch.overview.open')" class="-my-2.5 grid size-11 flex-none place-items-center text-ink-muted sm:hidden">
+              <ChevronRight class="size-4" aria-hidden="true" />
+            </RouterLink>
+          </div>
+          <div v-if="failingList.length" class="flex items-start gap-2.5 border-b border-line py-2.5 last:border-b-0 last:pb-1">
+            <TriangleAlert class="mt-[3px] size-4 flex-none text-warn-ink" aria-hidden="true" />
+            <div class="min-w-0 flex-1">
+              <div class="font-semibold [overflow-wrap:anywhere]">{{ t('kernel.providers.failing', { count: failingList.length }) }}</div>
+              <div class="text-small text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ failingNames }}</div>
+            </div>
+            <JecButton variant="ghost" size="sm" :to="failingPage" class="max-sm:hidden">{{ t('kernel.providers.failing_open') }}</JecButton>
+            <RouterLink :to="failingPage" :aria-label="t('kernel.providers.failing_open')" class="-my-2.5 grid size-11 flex-none place-items-center text-ink-muted sm:hidden">
               <ChevronRight class="size-4" aria-hidden="true" />
             </RouterLink>
           </div>

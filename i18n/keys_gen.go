@@ -1548,6 +1548,8 @@ const (
 	KernelProvidersDeleteBody                Key = "kernel.providers.delete.body"
 	KernelProvidersDeleteTitle               Key = "kernel.providers.delete.title"
 	KernelProvidersEdit                      Key = "kernel.providers.edit"
+	KernelProvidersFailing                   Key = "kernel.providers.failing"
+	KernelProvidersFailingOpen               Key = "kernel.providers.failing_open"
 	KernelProvidersFieldName                 Key = "kernel.providers.field.name"
 	KernelProvidersFieldNameHelp             Key = "kernel.providers.field.name_help"
 	KernelProvidersManageModules             Key = "kernel.providers.manage_modules"
