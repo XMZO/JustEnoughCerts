@@ -2031,7 +2031,15 @@
         "spotted": "证书透明度日志里出现不是 JEC 管理的证书时通知"
       },
       "field": {
-        "locale": "消息语言"
+        "locale": "消息语言",
+        "quiet": "免打扰时段",
+        "quiet_help": "按面板时区。这段时间里的通知先保存，结束后再发送；测试通知不受影响。"
+      },
+      "quiet": {
+        "h0_to8": "00:00 至 08:00",
+        "h22_to7": "22:00 至次日 07:00",
+        "h23_to8": "23:00 至次日 08:00",
+        "off": "不设置"
       }
     },
     "overview": {
@@ -2478,8 +2486,10 @@
     "card": {
       "events": "通知：{events}",
       "failed": "上次发送失败：{error}",
+      "held": "免打扰时段，将于以下时间发送：",
       "never": "还没有发过通知",
       "no_events": "没有选任何事件，不会发通知",
+      "quiet": "免打扰：{hours}。",
       "sent": "上次发送成功"
     },
     "error": {
@@ -2487,11 +2497,20 @@
       "unknown": "原因不明。"
     },
     "event": {
+      "chain_incomplete": "缺中间证书",
       "deploy_failed": "部署失败",
       "deployed": "部署成功",
+      "digest": "每周概况",
+      "domain_expiring": "域名到期",
       "expiring": "快到期",
       "issue_failed": "签发失败",
-      "issued": "新证书"
+      "issued": "新证书",
+      "locked": "登录锁定",
+      "revoked": "被吊销",
+      "served_old": "线上旧证书",
+      "sign_in": "登录",
+      "site_expiring": "站点证书到期",
+      "spotted": "陌生证书"
     },
     "module": {
       "description": "证书签发或部署失败、快到期时，通过你设置的通知渠道告诉你。",

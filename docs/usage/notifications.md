@@ -38,6 +38,12 @@ set, messages link to the pages they concern. An event is never sent twice
 to the same channel, and messages not delivered within three days are
 dropped.
 
+Each channel may also have quiet hours, in the panel's time zone: 22:00 to
+07:00, 23:00 to 08:00, or 00:00 to 08:00. Messages that come then are kept
+and sent when they end, tried again every 10 minutes, six times at most,
+if sending fails. The channel's card on the Notifications page tells when
+they go out. Test messages are not held.
+
 ## Channels
 
 | Channel | Description |

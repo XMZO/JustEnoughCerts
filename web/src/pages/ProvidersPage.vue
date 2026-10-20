@@ -51,16 +51,34 @@ const notifiers = computed(() => props.kind === 'notifier')
 const manifest = useManifest()
 const dispatchOff = computed(() => notifiers.value && manifest.data.value?.modules.some((m) => m.id === 'notify' && !m.enabled) === true)
 const sends = useSends(computed(() => notifiers.value && !dispatchOff.value))
+// The events a notifier is told about, as the server decides: those it
+// was set up before have their defaults.
 const noteEvents = [
-  { key: 'on_issue_failed', label: 'notify.event.issue_failed' },
-  { key: 'on_deploy_failed', label: 'notify.event.deploy_failed' },
-  { key: 'on_expiring', label: 'notify.event.expiring' },
-  { key: 'on_issued', label: 'notify.event.issued' },
-  { key: 'on_deployed', label: 'notify.event.deployed' },
+  { key: 'on_issue_failed', label: 'notify.event.issue_failed', on: true },
+  { key: 'on_deploy_failed', label: 'notify.event.deploy_failed', on: true },
+  { key: 'on_expiring', label: 'notify.event.expiring', on: true },
+  { key: 'on_served_old', label: 'notify.event.served_old', on: true },
+  { key: 'on_chain_incomplete', label: 'notify.event.chain_incomplete', on: true },
+  { key: 'on_revoked', label: 'notify.event.revoked', on: true },
+  { key: 'on_site_expiring', label: 'notify.event.site_expiring', on: true },
+  { key: 'on_domain_expiring', label: 'notify.event.domain_expiring', on: true },
+  { key: 'on_spotted', label: 'notify.event.spotted', on: true },
+  { key: 'on_locked', label: 'notify.event.locked', on: true },
+  { key: 'on_issued', label: 'notify.event.issued', on: false },
+  { key: 'on_deployed', label: 'notify.event.deployed', on: false },
+  { key: 'on_digest', label: 'notify.event.digest', on: false },
+  { key: 'on_sign_in', label: 'notify.event.sign_in', on: false },
 ] as const
+const quietText: Record<string, MessageKey> = {
+  '22-7': 'kernel.notify.quiet.h22_to7',
+  '23-8': 'kernel.notify.quiet.h23_to8',
+  '0-8': 'kernel.notify.quiet.h0_to8',
+}
 function events(p: Provider): string {
-  const on = noteEvents.filter((e) => p.config[e.key] === 'true').map((e) => t(e.label))
-  return on.length ? t('notify.card.events', { events: intl.list(on) }) : t('notify.card.no_events')
+  const on = noteEvents.filter((e) => (p.config[e.key] ?? String(e.on)) === 'true').map((e) => t(e.label))
+  const text = on.length ? t('notify.card.events', { events: intl.list(on) }) : t('notify.card.no_events')
+  const quiet = quietText[p.config.quiet_hours ?? '']
+  return quiet ? `${text} ${t('notify.card.quiet', { hours: t(quiet) })}` : text
 }
 const errorText = (e?: { key: string; params?: Record<string, unknown> }) => (e ? t(e.key as MessageKey, (e.params ?? {}) as Params) : '')
 
@@ -261,6 +279,9 @@ async function confirmDelete() {
             <p v-if="!c.send" class="m-0 text-small text-ink-muted">{{ t('notify.card.never') }}</p>
             <p v-else-if="c.send.state === 'sent'" class="m-0 text-small text-ok-ink">
               {{ t('notify.card.sent') }} <time :datetime="c.send.at">{{ intl.dateTime(c.send.at) }}</time>
+            </p>
+            <p v-else-if="c.send.state === 'held'" class="m-0 text-small text-ink-muted">
+              {{ t('notify.card.held') }} <time v-if="c.send.sendAt" :datetime="c.send.sendAt">{{ intl.dateTime(c.send.sendAt) }}</time>
             </p>
             <p v-else class="m-0 text-small text-danger-ink [overflow-wrap:anywhere]">{{ t('notify.card.failed', { error: errorText(c.send.error) }) }}</p>
           </template>

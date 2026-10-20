@@ -2637,10 +2637,15 @@ export interface components {
              */
             notifier: number;
             /**
-             * @description retrying: sent again with the next delivery of the event; failed: not sent again
+             * Format: date-time
+             * @description When a held note goes out
+             */
+            sendAt?: string;
+            /**
+             * @description retrying: sent again with the next delivery of the event; failed: not sent again; held: waiting for the end of the notifier's quiet hours
              * @enum {string}
              */
-            state: "sent" | "retrying" | "failed";
+            state: "sent" | "retrying" | "failed" | "held";
         };
         SendsOutputBody: {
             /** @description One for each notifier that sent something */

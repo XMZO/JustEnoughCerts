@@ -3058,12 +3058,18 @@
             "format": "int64",
             "type": "integer"
           },
+          "sendAt": {
+            "description": "When a held note goes out",
+            "format": "date-time",
+            "type": "string"
+          },
           "state": {
-            "description": "retrying: sent again with the next delivery of the event; failed: not sent again",
+            "description": "retrying: sent again with the next delivery of the event; failed: not sent again; held: waiting for the end of the notifier's quiet hours",
             "enum": [
               "sent",
               "retrying",
-              "failed"
+              "failed",
+              "held"
             ],
             "type": "string"
           }

@@ -117,6 +117,12 @@ func (s *service) handle(ctx context.Context, ev events.Event) error {
 		if done {
 			continue
 		}
+		if until, quiet := quietUntil(p.Config, s.now(), s.zone()); quiet {
+			if err := s.hold(ctx, ev.ID, p.ID, ev.Type, p.Config, write, until); err != nil {
+				return err
+			}
+			continue
+		}
 		sendErr := s.send(ctx, p.ID, write)
 		if err := s.record(ctx, ev.ID, p.ID, ev.Type, sendErr); err != nil {
 			return err
@@ -537,11 +543,12 @@ type Send struct {
 	Attempts int
 	Error    contracts.Message
 	At       time.Time
+	SendAt   time.Time // when a held note goes out
 }
 
 // latest returns the last send through each notifier.
 func (s *service) latest(ctx context.Context) ([]Send, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT provider_id, event, state, attempts, error_key, error_params, at FROM (
+	rows, err := s.db.QueryContext(ctx, `SELECT provider_id, event, state, attempts, error_key, error_params, at, send_at FROM (
 		SELECT *, row_number() OVER (PARTITION BY provider_id ORDER BY at DESC) AS n FROM notify_sends
 	) AS latest WHERE n = 1 ORDER BY provider_id`)
 	if err != nil {
@@ -552,10 +559,13 @@ func (s *service) latest(ctx context.Context) ([]Send, error) {
 	for rows.Next() {
 		var x Send
 		var params string
-		var at int64
+		var at, sendAt int64
 		// The key is scanned as it is: it was stored from a message.
-		if err := rows.Scan(&x.Provider, &x.Event, &x.State, &x.Attempts, &x.Error.Key, &params, &at); err != nil {
+		if err := rows.Scan(&x.Provider, &x.Event, &x.State, &x.Attempts, &x.Error.Key, &params, &at, &sendAt); err != nil {
 			return nil, err
+		}
+		if x.State == stateHeld {
+			x.SendAt = time.UnixMilli(sendAt).UTC()
 		}
 		if params != "" {
 			if err := json.Unmarshal([]byte(params), &x.Error.Params); err != nil {

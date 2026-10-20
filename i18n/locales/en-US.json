@@ -2031,7 +2031,15 @@
         "spotted": "A certificate JEC does not hold shows up in certificate transparency logs"
       },
       "field": {
-        "locale": "Language of the notes"
+        "locale": "Language of the notes",
+        "quiet": "Quiet hours",
+        "quiet_help": "In the panel's time zone. Notes that come then wait for their end; tests do not."
+      },
+      "quiet": {
+        "h0_to8": "00:00 to 08:00",
+        "h22_to7": "22:00 to 07:00",
+        "h23_to8": "23:00 to 08:00",
+        "off": "None"
       }
     },
     "overview": {
@@ -2478,8 +2486,10 @@
     "card": {
       "events": "Tells about {events}",
       "failed": "The last note failed: {error}",
+      "held": "Quiet hours: it goes out at",
       "never": "Nothing sent yet",
       "no_events": "No events chosen: it sends nothing",
+      "quiet": "Quiet hours: {hours}.",
       "sent": "Last sent"
     },
     "error": {
@@ -2487,11 +2497,20 @@
       "unknown": "The reason is unknown."
     },
     "event": {
+      "chain_incomplete": "intermediates missing",
       "deploy_failed": "failed deployments",
       "deployed": "deployments",
+      "digest": "weekly digest",
+      "domain_expiring": "domains ending",
       "expiring": "expiry",
       "issue_failed": "failed issuances",
-      "issued": "new certificates"
+      "issued": "new certificates",
+      "locked": "sign-in lockouts",
+      "revoked": "revocations",
+      "served_old": "old certificates served",
+      "sign_in": "sign-ins",
+      "site_expiring": "site certificates ending",
+      "spotted": "unknown certificates"
     },
     "module": {
       "description": "Tells you through the channels you set up when a certificate cannot be issued or deployed, or is about to expire.",

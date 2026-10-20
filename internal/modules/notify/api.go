@@ -18,10 +18,11 @@ import (
 type SendBody struct {
 	Notifier int64              `json:"notifier" doc:"The notifier provider instance"`
 	Event    string             `json:"event" doc:"The event the note was about, or notify.test for a test"`
-	State    string             `json:"state" enum:"sent,retrying,failed" doc:"retrying: sent again with the next delivery of the event; failed: not sent again"`
+	State    string             `json:"state" enum:"sent,retrying,failed,held" doc:"retrying: sent again with the next delivery of the event; failed: not sent again; held: waiting for the end of the notifier's quiet hours"`
 	Attempts int                `json:"attempts"`
 	Error    *contracts.Message `json:"error,omitempty" doc:"Why the last attempt failed"`
 	At       time.Time          `json:"at"`
+	SendAt   *time.Time         `json:"sendAt,omitempty" doc:"When a held note goes out"`
 }
 
 type sendsOutput struct {
@@ -47,6 +48,10 @@ func registerAPI(a huma.API, s *service) {
 		out.Body.Sends = make([]SendBody, 0, len(sends))
 		for _, x := range sends {
 			b := SendBody{Notifier: x.Provider, Event: x.Event, State: x.State, Attempts: x.Attempts, At: x.At}
+			if !x.SendAt.IsZero() {
+				at := x.SendAt
+				b.SendAt = &at
+			}
 			if x.Error.Key != "" {
 				b.Error = &x.Error
 			}

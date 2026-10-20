@@ -69,5 +69,8 @@ func (m *Module) Register(r *module.Registry) error {
 		return err
 	}
 	registerAPI(r.API, s)
+	if err := r.Jobs.Add(jobs.Job{Name: "release", Every: time.Minute, Timeout: 5 * time.Minute, Run: s.release}); err != nil {
+		return err
+	}
 	return r.Jobs.Add(jobs.Job{Name: "prune", Every: 24 * time.Hour, Timeout: time.Minute, Run: s.prune})
 }

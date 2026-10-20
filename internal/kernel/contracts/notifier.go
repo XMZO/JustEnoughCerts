@@ -73,8 +73,25 @@ var NotifyEvents = []NotifyEvent{
 // notes.
 const NoteLocale = "locale"
 
+// NoteQuiet is the setting of a notifier that holds its quiet hours, in
+// the panel's time zone, as "22-7": a note that comes then waits for their
+// end. QuietOff is none.
+const (
+	NoteQuiet = "quiet_hours"
+	QuietOff  = "off"
+)
+
+// quietHours are the choices of quiet hours.
+var quietHours = []providers.Option{
+	{Value: QuietOff, Label: i18n.KernelNotifyQuietOff},
+	{Value: "22-7", Label: i18n.KernelNotifyQuietH22To7},
+	{Value: "23-8", Label: i18n.KernelNotifyQuietH23To8},
+	{Value: "0-8", Label: i18n.KernelNotifyQuietH0To8},
+}
+
 // NotifierFields are the settings every notifier type ends with: the
-// language of its notes, and a switch for each of NotifyEvents.
+// language of its notes, a switch for each of NotifyEvents, and the quiet
+// hours.
 func NotifierFields() []providers.Field {
 	out := []providers.Field{{Key: NoteLocale, Label: i18n.KernelNotifyFieldLocale, Kind: providers.Locale, Required: true, Default: i18n.BaseLocale.String()}}
 	for _, e := range NotifyEvents {
@@ -84,5 +101,8 @@ func NotifierFields() []providers.Field {
 		}
 		out = append(out, providers.Field{Key: e.Key, Label: e.Label, Kind: providers.Switch, Default: def})
 	}
-	return out
+	return append(out, providers.Field{
+		Key: NoteQuiet, Label: i18n.KernelNotifyFieldQuiet, Help: i18n.KernelNotifyFieldQuietHelp, Kind: providers.Select,
+		Default: QuietOff, Options: quietHours,
+	})
 }
