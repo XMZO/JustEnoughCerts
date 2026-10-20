@@ -82,6 +82,65 @@ func Visible(ctx context.Context, name, typ, value string) (bool, error) {
 	return visibleAt(ctx, record{name, typ, value}, servers)
 }
 
+// NameServers returns the zone the validation records of domain go in,
+// following a CNAME of its _acme-challenge as Delegated does, with the
+// names of its authoritative servers, as ns1.example.net, sorted.
+func NameServers(ctx context.Context, domain string) (zone string, hosts []string, err error) {
+	name := strings.TrimPrefix(strings.TrimSuffix(domain, "."), "*.")
+	if to := Delegated(ctx, name); to != "" {
+		name = to
+	}
+	if zone, err = Zone(ctx, name); err != nil {
+		return "", nil, err
+	}
+	caaMu.Lock()
+	custom := slices.Clone(caaServers)
+	caaMu.Unlock()
+	if len(custom) == 0 {
+		ns, err := net.DefaultResolver.LookupNS(ctx, zone)
+		if err != nil {
+			return "", nil, fmt.Errorf("dnscheck: the name servers of %s: %w", zone, err)
+		}
+		for _, n := range ns {
+			hosts = append(hosts, strings.ToLower(strings.TrimSuffix(n.Host, ".")))
+		}
+	} else {
+		rrs, err := ask(ctx, custom, zone, dns.TypeNS)
+		if err != nil {
+			return "", nil, fmt.Errorf("dnscheck: the name servers of %s: %w", zone, err)
+		}
+		for _, rr := range rrs {
+			if ns, ok := rr.(*dns.NS); ok {
+				hosts = append(hosts, strings.ToLower(strings.TrimSuffix(ns.Ns, ".")))
+			}
+		}
+	}
+	if len(hosts) == 0 {
+		return "", nil, fmt.Errorf("dnscheck: no name server of %s", zone)
+	}
+	slices.Sort(hosts)
+	return zone, slices.Compact(hosts), nil
+}
+
+// ServedBy reports whether one of hosts, names of name servers, is one of
+// servers: a name or its end, as ns.cloudflare.com, or the start of one of
+// its labels when it ends in a dash, as awsdns-.
+func ServedBy(hosts, servers []string) bool {
+	for _, h := range hosts {
+		h = strings.ToLower(strings.TrimSuffix(h, "."))
+		for _, s := range servers {
+			if strings.HasSuffix(s, "-") {
+				if slices.ContainsFunc(strings.Split(h, "."), func(label string) bool { return strings.HasPrefix(label, s) }) {
+					return true
+				}
+			} else if h == s || strings.HasSuffix(h, "."+s) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // nameServers returns the authoritative servers of zone, as host:port to
 // ask. With resolvers set (UseResolvers), those tell the servers and their
 // addresses, as they told the zone: the system's may not know them, as on

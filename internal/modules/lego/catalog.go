@@ -77,9 +77,10 @@ func providerType(p catalogProvider) providers.Type {
 		Fields: []providers.Field{},
 		// JEC adds records of any type through some providers itself, and
 		// tests their keys by the domains they list.
-		Records:  slices.Contains(dnsrecord.Codes, p.Code),
-		Testable: slices.Contains(dnsrecord.Codes, p.Code),
-		Zones:    slices.Contains(dnsrecord.Codes, p.Code),
+		Records:     slices.Contains(dnsrecord.Codes, p.Code),
+		Testable:    slices.Contains(dnsrecord.Codes, p.Code),
+		Zones:       slices.Contains(dnsrecord.Codes, p.Code),
+		NameServers: nameServers[p.Code],
 	}
 	switch {
 	case slices.Contains(china, p.Code):
@@ -113,6 +114,49 @@ func cloudflareWays(t *providers.Type) {
 		t.Fields[i].When = ways[t.Fields[i].Key]
 	}
 	t.Fields = append([]providers.Field{credentials.CloudflareAuth}, t.Fields...)
+}
+
+// nameServers are the authoritative servers of the zones of the DNS
+// services whose servers are well known, as providers.Type.NameServers
+// has them, so that a domain whose zone is elsewhere is told of before
+// its issuance fails.
+var nameServers = map[string][]string{
+	"alidns":       {"alidns.com", "hichina.com", "alibabadns.com"},
+	"azuredns":     {"azure-dns.com", "azure-dns.net", "azure-dns.org", "azure-dns.info"},
+	"bunny":        {"bunny.net"},
+	"cloudflare":   {"ns.cloudflare.com"},
+	"cloudns":      {"cloudns.net"},
+	"desec":        {"desec.io", "desec.org"},
+	"digitalocean": {"digitalocean.com"},
+	"dnsimple":     {"dnsimple.com", "dnsimple-edge.net", "dnsimple-edge.org"},
+	"duckdns":      {"duckdns.org"},
+	"dynu":         {"dynu.com"},
+	"edgedns":      {"akam.net"},
+	"gandiv5":      {"gandi.net"},
+	"gcloud":       {"googledomains.com"},
+	"godaddy":      {"domaincontrol.com"},
+	"hetzner":      {"hetzner.com", "hetzner.de"},
+	"huaweicloud":  {"huaweicloud-dns.com", "huaweicloud-dns.cn", "huaweicloud-dns.net", "huaweicloud-dns.org"},
+	"hurricane":    {"he.net"},
+	"inwx":         {"inwx.de", "inwx.com", "inwx.net", "inwx.eu"},
+	"ionos":        {"ui-dns.com", "ui-dns.de", "ui-dns.org", "ui-dns.biz"},
+	"lightsail":    {"awsdns-"},
+	"linode":       {"linode.com"},
+	"luadns":       {"luadns.net"},
+	"namecheap":    {"registrar-servers.com"},
+	"namesilo":     {"dnsowl.com"},
+	"netcup":       {"netcup.net"},
+	"netlify":      {"nsone.net"},
+	"ns1":          {"nsone.net"},
+	"ovh":          {"ovh.net", "ovh.ca", "anycast.me"},
+	"porkbun":      {"porkbun.com"},
+	"route53":      {"awsdns-"},
+	"scaleway":     {"scw.cloud"},
+	"tencentcloud": {"dnspod.net", "dnspod.com", "dnsv2.com", "dnsv3.com", "dnsv4.com", "dnsv5.com"},
+	"ultradns":     {"ultradns.net", "ultradns.com", "ultradns.org", "ultradns.biz"},
+	"vercel":       {"vercel-dns.com"},
+	"vultr":        {"vultr.com"},
+	"westcn":       {"myhostadmin.net"},
 }
 
 // credentialOf is how lego's provider code takes the keys of a cloud that

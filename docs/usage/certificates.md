@@ -41,6 +41,10 @@ Domains are handled as follows:
   DNS, the page checks that the account holds each domain, and says so
   when one is missing, before an issuance fails over it. The check was
   tried only with a fake: take it as a hint.
+- With a DNS provider whose name servers are well known, such as
+  Cloudflare, DNSPod, Alibaba Cloud, Route 53, GoDaddy or Namecheap, the
+  page looks up the name servers of each domain's zone, following a CNAME
+  of `_acme-challenge`, and says so when they are not that provider's.
 - The same certificate, by fingerprint, can be added only once.
 
 The key type is RSA 2048, 3072 or 4096, or ECDSA P-256 or P-384; the

@@ -1278,8 +1278,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Tell whether the account of a solver of DNS holds the zones of domains
-         * @description For types marked zones: the zone of each domain, as its SOA says, and whether the account holds it, so that a certificate the solver cannot prove is told of before an issuance fails.
+         * Tell whether a solver of DNS can change the zones of domains
+         * @description For types marked zones or nameServers: the zone of each domain, as its SOA says, and whether the account holds it, or whether its name servers are the type's, so that a certificate the solver cannot prove is told of before an issuance fails.
          */
         get: operations["providers-zones"];
         put?: never;
@@ -3247,6 +3247,7 @@ export interface components {
             manual?: boolean;
             module: string;
             name?: string;
+            nameServers?: string[];
             needsSolver?: boolean;
             ownKey?: boolean;
             records?: boolean;
@@ -3286,6 +3287,8 @@ export interface components {
             module: string;
             /** @description Message key of the name, for types JEC describes */
             name?: string;
+            /** @description For a solver of DNS: the name servers of the zones it can change, which tell of a zone elsewhere; names or their ends, or starts of a label ending in a dash */
+            nameServers?: string[];
             /** @description For a source: issuing needs a solver */
             needsSolver?: boolean;
             /** @description For a source: its certificates come with their own private key, so there is no key type to choose */
@@ -3447,6 +3450,10 @@ export interface components {
             domain: string;
             /** @description Whether the account holds the zone; missing when it could not be told */
             held?: boolean;
+            /** @description The authoritative servers of the zone */
+            nameServers?: string[];
+            /** @description Whether the zone's name servers are those of the type; missing when it could not be told */
+            served?: boolean;
             /** @description The zone of the domain, as its SOA says; missing when the DNS does not tell */
             zone?: string;
         };

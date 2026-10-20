@@ -682,6 +682,7 @@
       "no_records": "No DNS provider that adds records of any type yet. This source needs one of them: {providers}.",
       "no_solver": "No validation methods yet. First add a DNS provider or a website directory.",
       "no_targets": "No targets yet. The certificate stays in JEC; you can choose targets later.",
+      "ns_other": "The DNS servers of {domain} are {servers}, which do not look like those of this DNS provider, so validating it may fail. Check that the domain's DNS is hosted there, or choose the provider that hosts it.",
       "pfx_file": "PFX or P12 file",
       "pfx_file_help": "A file with the certificate, its chain and its key, as Windows, IIS and some panels export them.",
       "pfx_password": "File password",

@@ -524,6 +524,7 @@ const (
 	CertsAddNoRecords                        Key = "certs.add.no_records"
 	CertsAddNoSolver                         Key = "certs.add.no_solver"
 	CertsAddNoTargets                        Key = "certs.add.no_targets"
+	CertsAddNsOther                          Key = "certs.add.ns_other"
 	CertsAddPfxFile                          Key = "certs.add.pfx_file"
 	CertsAddPfxFileHelp                      Key = "certs.add.pfx_file_help"
 	CertsAddPfxPassword                      Key = "certs.add.pfx_password"

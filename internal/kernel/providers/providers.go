@@ -148,8 +148,14 @@ type Type struct {
 	// Zones types make solvers that tell whether their account holds a
 	// domain's zone (contracts.ZoneHolder), through POST
 	// /api/v1/providers/{id}/zones.
-	Zones        bool `json:"zones,omitempty"`
-	Experimental bool `json:"experimental,omitempty"`
+	Zones bool `json:"zones,omitempty"`
+	// NameServers are, for a solver type of DNS, the authoritative servers
+	// of the zones its providers can change: names or their ends, as
+	// ns.cloudflare.com, or the start of a label, ending in a dash, as
+	// awsdns-. GET /api/v1/providers/{id}/zones tells by them whether the
+	// zone of a domain is elsewhere. Empty when they are not known.
+	NameServers  []string `json:"nameServers,omitempty"`
+	Experimental bool     `json:"experimental,omitempty"`
 	// Untested is set on a type tested only against a stand-in for the
 	// service's API, never with a real account: it may not work.
 	Untested bool `json:"untested,omitempty"`
@@ -328,6 +334,8 @@ func (s *Scope) Add(t Type, f Factory) error {
 		return fmt.Errorf("provider type %s: challenges %v are for sources that need a solver, out of %v", t.ID, t.Challenges, sourceChallenges)
 	case t.Records && (t.Kind != Solver || t.Solves() != ChallengeDNS):
 		return fmt.Errorf("provider type %s: records are for solvers of DNS", t.ID)
+	case len(t.NameServers) > 0 && (t.Kind != Solver || t.Solves() != ChallengeDNS):
+		return fmt.Errorf("provider type %s: name servers are for solvers of DNS", t.ID)
 	case t.OwnKey && (t.Kind != Source || t.NeedsSolver):
 		return fmt.Errorf("provider type %s: own keys are for sources that need no solver", t.ID)
 	case t.Revocable && t.Kind != Source:

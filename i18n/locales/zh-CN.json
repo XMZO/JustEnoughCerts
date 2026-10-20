@@ -682,6 +682,7 @@
       "no_records": "还没有能添加任意记录的 DNS 服务商。这个来源要用其中之一：{providers}。",
       "no_solver": "还没有验证方式。先添加 DNS 服务商或网站目录。",
       "no_targets": "还没有部署目标。证书只保存在 JEC 里，也可以以后再选。",
+      "ns_other": "{domain} 的 DNS 服务器是 {servers}，看起来不属于这个 DNS 服务商，验证可能失败。请确认域名的 DNS 托管在这里，或改用实际托管它的服务商。",
       "pfx_file": "PFX / P12 文件",
       "pfx_file_help": "包含证书、证书链和私钥的文件，Windows、IIS 和一些面板导出的就是这种。",
       "pfx_password": "文件密码",

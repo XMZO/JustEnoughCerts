@@ -4236,6 +4236,12 @@
           "name": {
             "type": "string"
           },
+          "nameServers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "needsSolver": {
             "type": "boolean"
           },
@@ -4347,6 +4353,13 @@
           "name": {
             "description": "Message key of the name, for types JEC describes",
             "type": "string"
+          },
+          "nameServers": {
+            "description": "For a solver of DNS: the name servers of the zones it can change, which tell of a zone elsewhere; names or their ends, or starts of a label ending in a dash",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "needsSolver": {
             "description": "For a source: issuing needs a solver",
@@ -4726,6 +4739,17 @@
           },
           "held": {
             "description": "Whether the account holds the zone; missing when it could not be told",
+            "type": "boolean"
+          },
+          "nameServers": {
+            "description": "The authoritative servers of the zone",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "served": {
+            "description": "Whether the zone's name servers are those of the type; missing when it could not be told",
             "type": "boolean"
           },
           "zone": {
@@ -8526,7 +8550,7 @@
     },
     "/providers/{id}/zones": {
       "get": {
-        "description": "For types marked zones: the zone of each domain, as its SOA says, and whether the account holds it, so that a certificate the solver cannot prove is told of before an issuance fails.",
+        "description": "For types marked zones or nameServers: the zone of each domain, as its SOA says, and whether the account holds it, or whether its name servers are the type's, so that a certificate the solver cannot prove is told of before an issuance fails.",
         "operationId": "providers-zones",
         "parameters": [
           {
@@ -8576,7 +8600,7 @@
             "description": "Error"
           }
         },
-        "summary": "Tell whether the account of a solver of DNS holds the zones of domains"
+        "summary": "Tell whether a solver of DNS can change the zones of domains"
       }
     },
     "/session": {

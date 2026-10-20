@@ -532,6 +532,7 @@ export type MessageKey =
   | "certs.add.no_records"
   | "certs.add.no_solver"
   | "certs.add.no_targets"
+  | "certs.add.ns_other"
   | "certs.add.pfx_file"
   | "certs.add.pfx_file_help"
   | "certs.add.pfx_password"

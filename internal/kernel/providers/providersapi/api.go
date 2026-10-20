@@ -17,6 +17,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/dnscheck"
 )
 
 // TypeSummary is a type as listed, without its fields.
@@ -39,6 +40,7 @@ type TypeSummary struct {
 	Manual       bool           `json:"manual,omitempty" doc:"For a solver of DNS: people add the records, so it cannot be tried"`
 	Testable     bool           `json:"testable,omitempty" doc:"Its instances can be tested"`
 	Zones        bool           `json:"zones,omitempty" doc:"For a solver of DNS: its instances tell whether their account holds the zone of a domain"`
+	NameServers  []string       `json:"nameServers,omitempty" doc:"For a solver of DNS: the name servers of the zones it can change, which tell of a zone elsewhere; names or their ends, or starts of a label ending in a dash"`
 	Experimental bool           `json:"experimental,omitempty"`
 	Untested     bool           `json:"untested,omitempty" doc:"Tested only against a stand-in for the service's API, never with a real account: it may not work"`
 	// CredentialKind is the kind of credential the type can take some of
@@ -155,7 +157,7 @@ func Register(a huma.API, r *providers.Registry) {
 		for _, t := range r.Types(providers.Kind(in.Kind)) {
 			sum := TypeSummary{
 				ID: t.ID, Kind: t.Kind, Module: t.Module, Name: t.Name, Description: t.Description,
-				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, OwnKey: t.OwnKey, Revocable: t.Revocable, Backup: t.Backup, Testable: t.Testable, Zones: t.Zones, Experimental: t.Experimental, Untested: t.Untested,
+				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, OwnKey: t.OwnKey, Revocable: t.Revocable, Backup: t.Backup, Testable: t.Testable, Zones: t.Zones, NameServers: t.NameServers, Experimental: t.Experimental, Untested: t.Untested,
 				CredentialKind: t.CredentialKind, Texts: t.Texts, Manual: t.Manual,
 			}
 			switch {
@@ -245,8 +247,8 @@ func Register(a huma.API, r *providers.Registry) {
 
 	huma.Register(a, huma.Operation{
 		OperationID: "providers-zones", Method: http.MethodGet, Path: "/providers/{id}/zones",
-		Summary:     "Tell whether the account of a solver of DNS holds the zones of domains",
-		Description: "For types marked zones: the zone of each domain, as its SOA says, and whether the account holds it, so that a certificate the solver cannot prove is told of before an issuance fails.",
+		Summary:     "Tell whether a solver of DNS can change the zones of domains",
+		Description: "For types marked zones or nameServers: the zone of each domain, as its SOA says, and whether the account holds it, or whether its name servers are the type's, so that a certificate the solver cannot prove is told of before an issuance fails.",
 	}, func(ctx context.Context, in *zonesInput) (*zonesOutput, error) {
 		return zones(ctx, r, in.ID, in.Domains)
 	})
@@ -278,6 +280,9 @@ type ZoneBody struct {
 	Domain string `json:"domain"`
 	Zone   string `json:"zone,omitempty" doc:"The zone of the domain, as its SOA says; missing when the DNS does not tell"`
 	Held   *bool  `json:"held,omitempty" doc:"Whether the account holds the zone; missing when it could not be told"`
+	// NameServers and Served, for a type whose name servers are known.
+	NameServers []string `json:"nameServers,omitempty" doc:"The authoritative servers of the zone"`
+	Served      *bool    `json:"served,omitempty" doc:"Whether the zone's name servers are those of the type; missing when it could not be told"`
 }
 
 type zonesOutput struct {
@@ -295,30 +300,42 @@ func zones(ctx context.Context, r *providers.Registry, id int64, domains []strin
 	if err != nil {
 		return nil, apiError(err)
 	}
-	if !t.Zones {
+	if !t.Zones && len(t.NameServers) == 0 {
 		return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil)
 	}
-	p, _, err := scope.Open(ctx, id)
-	if err != nil {
-		return nil, apiError(err)
-	}
-	if c, ok := p.(interface{ Close() error }); ok {
-		defer func() { _ = c.Close() }()
-	}
-	holder, ok := p.(contracts.ZoneHolder)
-	if !ok {
-		return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil)
+	var holder contracts.ZoneHolder
+	if t.Zones {
+		p, _, err := scope.Open(ctx, id)
+		if err != nil {
+			return nil, apiError(err)
+		}
+		if c, ok := p.(interface{ Close() error }); ok {
+			defer func() { _ = c.Close() }()
+		}
+		var ok bool
+		if holder, ok = p.(contracts.ZoneHolder); !ok {
+			return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil)
+		}
 	}
 	out := &zonesOutput{}
 	out.Body.Domains = make([]ZoneBody, 0, len(domains))
 	for _, d := range domains {
 		zctx, cancel := context.WithTimeout(ctx, zoneTimeout)
-		zone, held, err := holder.ZoneOf(zctx, d)
-		cancel()
-		b := ZoneBody{Domain: d, Zone: zone}
-		if err == nil {
-			b.Held = &held
+		b := ZoneBody{Domain: d}
+		if holder != nil {
+			zone, held, err := holder.ZoneOf(zctx, d)
+			b.Zone = zone
+			if err == nil {
+				b.Held = &held
+			}
 		}
+		if len(t.NameServers) > 0 {
+			if zone, hosts, err := dnscheck.NameServers(zctx, d); err == nil {
+				served := dnscheck.ServedBy(hosts, t.NameServers)
+				b.Zone, b.NameServers, b.Served = zone, hosts, &served
+			}
+		}
+		cancel()
 		out.Body.Domains = append(out.Body.Domains, b)
 	}
 	return out, nil
