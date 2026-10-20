@@ -3,7 +3,9 @@ package certs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -26,6 +28,7 @@ type CertificateBody struct {
 	KeyType         string           `json:"keyType" doc:"Type and size of the key, such as rsa-2048 or ecdsa-p256"`
 	Note            string           `json:"note,omitempty" doc:"What people wrote about it"`
 	ReuseKey        bool             `json:"reuseKey,omitempty" doc:"Renewals keep the private key of the version in use"`
+	NotifyTo        []int64          `json:"notifyTo" doc:"The notifiers its notes go to; empty for all"`
 	RenewBeforeDays int              `json:"renewBeforeDays" doc:"How many days before the end the certificate is renewed, or a reminder sent"`
 	State           string           `json:"state" enum:"ok,expiring,expired,issuing,deploying,failed,deploy_failed,revoked" doc:"issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)"`
 	Current         *VersionBody     `json:"current,omitempty" doc:"The version in use"`
@@ -117,7 +120,7 @@ type CSRBody struct {
 func certificateBody(c *Certificate, now time.Time, sch schedule) CertificateBody {
 	b := CertificateBody{
 		ID: c.ID, Domains: c.Domains, Source: c.Source, SourceProvider: c.SourceProvider, SolverProvider: c.SolverProvider,
-		KeyType: c.KeyType, RenewBeforeDays: c.RenewBeforeDays, State: c.state(now), CreatedAt: c.CreatedAt, Note: c.Note, ReuseKey: c.ReuseKey,
+		KeyType: c.KeyType, RenewBeforeDays: c.RenewBeforeDays, State: c.state(now), CreatedAt: c.CreatedAt, Note: c.Note, ReuseKey: c.ReuseKey, NotifyTo: c.NotifyTo,
 	}
 	if c.Current != nil {
 		v := versionBody(c.Current)
@@ -255,6 +258,7 @@ type updateInput struct {
 		Targets         []int64 `json:"targets,omitempty" maxItems:"50" doc:"Replaces the targets when given; an empty list removes them all"`
 		Note            *string `json:"note,omitempty" maxLength:"500" doc:"Replaces the note when given; empty removes it"`
 		ReuseKey        *bool   `json:"reuseKey,omitempty" doc:"Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out"`
+		NotifyTo        *[]int64 `json:"notifyTo,omitempty" maxItems:"50" doc:"The notifiers the certificate's notes go to; empty for all; unchanged if left out"`
 	}
 }
 
@@ -375,7 +379,23 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			}
 			targets = append([]int64{}, targets...) // not nil: an empty list removes them all
 		}
-		if err := s.update(ctx, in.ID, in.Body.RenewBeforeDays, targets, in.Body.Note, in.Body.ReuseKey); err != nil {
+		var notifyTo *[]int64
+		if in.Body.NotifyTo != nil {
+			list := []int64{}
+			invalid := api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil)
+			for i, id := range *in.Body.NotifyTo {
+				if code := s.checkProvider(ctx, id, providers.Notifier); code != "" {
+					invalid = invalid.WithField(fmt.Sprintf("body.notifyTo[%d]", i), code)
+				} else if !slices.Contains(list, id) {
+					list = append(list, id)
+				}
+			}
+			if len(invalid.Fields) > 0 {
+				return nil, invalid
+			}
+			notifyTo = &list
+		}
+		if err := s.update(ctx, in.ID, in.Body.RenewBeforeDays, targets, in.Body.Note, in.Body.ReuseKey, notifyTo); err != nil {
 			return nil, serviceError(err)
 		}
 		return s.output(ctx, in.ID)

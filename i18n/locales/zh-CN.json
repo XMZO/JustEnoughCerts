@@ -1173,6 +1173,8 @@
       "days_unit": "天",
       "edit": "编辑续期设置",
       "notify_none": "没有通知渠道",
+      "notify_to": "通知发给",
+      "notify_to_help": "只勾选的通知渠道收到这张证书的通知；都不勾选时发给全部渠道。",
       "reminder_value": "到期前 {days, plural, other {# 天}}",
       "renewal_value": "到期前 {days, plural, other {# 天}}，每天 {time} 检查",
       "reuse_key": "续期时沿用私钥",

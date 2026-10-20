@@ -134,6 +134,7 @@
 - 续期时沿用私钥（`certs_certificates.reuse_key`，`PATCH` 的 `reuseKey`，配置文件 `reuse_key`）：签发取私钥时（`kept` → `reusedKey`）用当前版本的私钥，类型不同或当前版本被吊销就照常生成；日志 `certs.log.key_reused`。
 - 心跳监控（内核 `system/heartbeat.go`，`kernel_meta` 的 `heartbeat`，`PUT /api/v1/system/heartbeat`，任务 `kernel.heartbeat` 每 5 分钟 GET 一次，结果只在内存里；失败算任务失败）：设置页“数据和备份”填地址，离开输入框时保存。输入框的 `placeholder` 也算界面文字，要么翻译要么不写。
 - 域名注册到期在后缀没有 RDAP 时改用 WHOIS（`watch/whois.go`：先问 whois.iana.org 得到服务器，`.uk` 补在 `whoisServers`；按常见写法读到期时间和注册商）；测试一律用 `fakeWhois`，不连真实服务器。
+- 单张证书的通知渠道（`certs_certificates.notify_to`，`PATCH` 的 `notifyTo`，配置文件 `notify_to` 按名称；空为全部）：通知模块收到证书事件时经 `r.Call` 读证书的 `notifyTo` 过滤渠道（证书已删或模块停用时发给全部）；详情页续期设置里勾选。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

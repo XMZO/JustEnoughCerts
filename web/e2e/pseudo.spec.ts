@@ -755,6 +755,14 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page.locator('#domain-input')).toBeVisible()
   await expect(page.getByRole('radio', { checked: true })).toHaveCount(1)
   expect.soft(await problems(page), 'add a certificate like another').toEqual([])
+  // The renewal settings of one with a version, now with the channels its
+  // notes may go to.
+  await page.goto('./certificates/1')
+  await page.getByRole('button', { name: label('certs.settings.edit') }).click()
+  await expect(page.locator('dialog[open] fieldset')).toBeVisible()
+  expect.soft(await problems(page), 'the renewal settings, with the channels').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
 
   await page.goto('./certificates')
   expect.soft(await problems(page), 'certificates with a failed one').toEqual([])

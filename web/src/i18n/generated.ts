@@ -913,6 +913,8 @@ export type MessageKey =
   | "certs.settings.days_unit"
   | "certs.settings.edit"
   | "certs.settings.notify_none"
+  | "certs.settings.notify_to"
+  | "certs.settings.notify_to_help"
   | "certs.settings.reminder_value"
   | "certs.settings.renewal_value"
   | "certs.settings.reuse_key"

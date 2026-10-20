@@ -1429,6 +1429,8 @@ export interface components {
             keyType: string;
             /** @description What people wrote about it */
             note?: string;
+            /** @description The notifiers its notes go to; empty for all */
+            notifyTo: number[];
             /**
              * Format: date-time
              * @description When the renewal of the current version starts, or started: for a certificate with a source
@@ -2602,6 +2604,8 @@ export interface components {
         UpdateInputBody1: {
             /** @description Replaces the note when given; empty removes it */
             note?: string;
+            /** @description The notifiers the certificate's notes go to; empty for all; unchanged if left out */
+            notifyTo?: number[];
             /**
              * Format: int64
              * @description Unchanged if left out

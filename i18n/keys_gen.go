@@ -905,6 +905,8 @@ const (
 	CertsSettingsDaysUnit                    Key = "certs.settings.days_unit"
 	CertsSettingsEdit                        Key = "certs.settings.edit"
 	CertsSettingsNotifyNone                  Key = "certs.settings.notify_none"
+	CertsSettingsNotifyTo                    Key = "certs.settings.notify_to"
+	CertsSettingsNotifyToHelp                Key = "certs.settings.notify_to_help"
 	CertsSettingsReminderValue               Key = "certs.settings.reminder_value"
 	CertsSettingsRenewalValue                Key = "certs.settings.renewal_value"
 	CertsSettingsReuseKey                    Key = "certs.settings.reuse_key"

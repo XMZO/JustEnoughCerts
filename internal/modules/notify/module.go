@@ -57,7 +57,7 @@ func (m *Module) Register(r *module.Registry) error {
 	if err != nil {
 		return err
 	}
-	s := &service{db: r.DB, prov: r.Providers, log: r.Log, cat: cat, base: r.BaseURL, zone: r.Zone, now: m.now}
+	s := &service{db: r.DB, prov: r.Providers, log: r.Log, cat: cat, base: r.BaseURL, zone: r.Zone, now: m.now, call: r.Call}
 	types := make([]string, 0, len(contracts.NotifyEvents))
 	for _, e := range contracts.NotifyEvents {
 		types = append(types, e.Type)

@@ -19,6 +19,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
@@ -417,5 +418,34 @@ func TestRevokedNote(t *testing.T) {
 	}
 	if n := notes[1]; !strings.Contains(n.Text, "no source for JEC") {
 		t.Errorf("note %q\n%s", n.Title, n.Text)
+	}
+}
+
+func TestNotifyTo(t *testing.T) {
+	f := newFixture(t)
+	a := f.notifier("team a", map[string]string{"locale": "en-US"})
+	b := f.notifier("team b", map[string]string{"locale": "en-US"})
+	f.svc.call = func(_ context.Context, via, method, path string, _, out any) error {
+		if via != "notify" || method != http.MethodGet {
+			t.Errorf("asked %s %s as %s", method, path, via)
+		}
+		switch path {
+		case "/certs/certificates/3":
+			return json.Unmarshal([]byte(`{"certificate":{"notifyTo":[`+strconv.FormatInt(b, 10)+`]}}`), out)
+		case "/certs/certificates/4":
+			return json.Unmarshal([]byte(`{"certificate":{"notifyTo":[]}}`), out)
+		}
+		return &module.CallError{Status: http.StatusNotFound}
+	}
+	for i, id := range []int64{3, 4, 5} {
+		raw, _ := json.Marshal(contracts.CertificateEvent{CertificateID: id, Domains: []string{"example.com"}, Issuance: &contracts.Issuance{ID: 1}})
+		ev := events.Event{ID: int64(i + 1), Type: contracts.CertificateIssueFailed, Source: "certs", Subject: strconv.FormatInt(id, 10), Data: raw, Time: start}
+		if err := f.svc.handle(t.Context(), ev); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Certificate 3 tells team b only; 4 and 5, gone, everyone.
+	if na, nb := len(f.notes(a)), len(f.notes(b)); na != 2 || nb != 3 {
+		t.Errorf("team a %d notes, team b %d", na, nb)
 	}
 }

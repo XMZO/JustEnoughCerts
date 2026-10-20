@@ -215,7 +215,14 @@ const targets = useProviders('target')
 const certSettings = useCertSettings()
 const notifiers = useProviders('notifier')
 const noteEvents = ['on_issue_failed', 'on_deploy_failed', 'on_expiring', 'on_issued', 'on_deployed']
-const notifying = computed(() => (notifiers.data.value ?? []).filter((n) => noteEvents.some((e) => n.config[e] === 'true')).map((n) => n.name))
+// The channels its notes go to: those it names, or else all, each that
+// takes some of its events.
+const notifying = computed(() =>
+  (notifiers.data.value ?? [])
+    .filter((n) => !cert.value?.notifyTo.length || cert.value.notifyTo.includes(n.id))
+    .filter((n) => noteEvents.some((e) => n.config[e] === 'true'))
+    .map((n) => n.name),
+)
 const targetTypes = useProviderTypes('target')
 // Each target with its type, and the settings its card shows, as where
 // it deploys to.
@@ -335,11 +342,14 @@ const days = ref('')
 // makes.
 const reuseKey = ref(false)
 const keyKept = computed(() => issued.value && !ownKey.value)
+// The channels its notes go to; none chosen goes to all.
+const notifyTo = ref<number[]>([])
 const update = useUpdateCertificate(() => props.id)
 const updateError = useApiError(update.error)
 function edit() {
   days.value = String(cert.value?.renewBeforeDays ?? 30)
   reuseKey.value = !!cert.value?.reuseKey
+  notifyTo.value = [...(cert.value?.notifyTo ?? [])]
   update.reset()
   editing.value = true
 }
@@ -388,7 +398,7 @@ async function saveDomains() {
 
 async function saveSettings() {
   try {
-    await update.mutateAsync({ renewBeforeDays: Number(days.value), ...(keyKept.value ? { reuseKey: reuseKey.value } : {}) })
+    await update.mutateAsync({ renewBeforeDays: Number(days.value), notifyTo: notifyTo.value, ...(keyKept.value ? { reuseKey: reuseKey.value } : {}) })
   } catch {
     return
   }
@@ -928,6 +938,14 @@ async function confirmDelete() {
           <span>{{ t('certs.settings.days_unit') }}</span>
         </span>
       </JecField>
+      <fieldset v-if="notifiers.data.value?.length" class="m-0 flex flex-col gap-1 border-0 p-0">
+        <legend class="mb-1 p-0 font-semibold">{{ t('certs.settings.notify_to') }}</legend>
+        <span class="text-small text-ink-muted">{{ t('certs.settings.notify_to_help') }}</span>
+        <label v-for="n in notifiers.data.value" :key="n.id" class="flex min-h-9 cursor-pointer items-center gap-2">
+          <input v-model="notifyTo" type="checkbox" :value="n.id" class="size-4 flex-none accent-brand" />
+          <span class="min-w-0 [overflow-wrap:anywhere]" translate="no">{{ n.name }}</span>
+        </label>
+      </fieldset>
       <label v-if="keyKept" class="flex cursor-pointer items-start gap-2">
         <input v-model="reuseKey" type="checkbox" class="mt-1 size-4 flex-none accent-brand" />
         <span class="min-w-0">

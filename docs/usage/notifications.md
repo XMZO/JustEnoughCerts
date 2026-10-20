@@ -22,6 +22,11 @@ message at once.
 | Deployment succeeded | Off |
 | Weekly digest, on Monday from 9:00 in the panel's time zone: certificates needing attention and renewals of the coming week | Off |
 
+The notes of one certificate can go to some channels only: check them
+under Notes go to in Renewal settings on the certificate's page (say, a
+team's certificates to that team's group); with none checked, all
+channels get them. In the config file it is `notify_to`.
+
 The weekly digest also tells that JEC is running: a week without one is
 worth a look. Each channel has its own events and message language. Message subjects
 start with "【JEC】", to stand out in group chats; when `JEC_BASE_URL` is

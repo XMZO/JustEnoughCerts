@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -48,6 +49,9 @@ type certificateEntry struct {
 	// ReuseKey keeps the private key for renewals; left out, it stays as
 	// it is.
 	ReuseKey *bool `yaml:"reuse_key,omitempty"`
+	// NotifyTo names the notifiers its notes go to, all when empty; left
+	// out, they stay as they are.
+	NotifyTo []string `yaml:"notify_to,omitempty"`
 }
 
 // configSections are the module's sections: the renewal defaults first,
@@ -158,6 +162,13 @@ func (s *service) exportCertificates(ctx context.Context, _ configfile.Export) (
 			}
 			e.Targets = append(e.Targets, name)
 		}
+		for _, n := range c.NotifyTo {
+			name, err := s.providerName(ctx, n)
+			if err != nil {
+				return nil, err
+			}
+			e.NotifyTo = append(e.NotifyTo, name)
+		}
 		out = append(out, e)
 	}
 	return &out, nil
@@ -263,11 +274,24 @@ func (s *service) importCertificate(ctx context.Context, ci *certImport, e certi
 			}
 		}
 	}
+	var notifyTo []int64
+	if e.NotifyTo != nil {
+		notifyTo = []int64{}
+		for i, name := range e.NotifyTo {
+			p, pr := ci.in.Provider(providers.Notifier, name)
+			if pr != nil {
+				pr.Field = fmt.Sprintf("notify_to[%d]", i)
+				targetProblems = append(targetProblems, *pr)
+			} else if !slices.Contains(notifyTo, p.ID) {
+				notifyTo = append(notifyTo, p.ID)
+			}
+		}
+	}
 	switch found := ci.have[key]; len(found) {
 	case 0:
-		return s.addCertificate(ctx, ci, e, domains, targets, targetProblems, it)
+		return s.addCertificate(ctx, ci, e, domains, targets, notifyTo, targetProblems, it)
 	case 1:
-		return s.changeCertificate(ctx, ci, e, found[0], targets, targetProblems, it)
+		return s.changeCertificate(ctx, ci, e, found[0], targets, notifyTo, targetProblems, it)
 	}
 	problem("domains", i18n.CertsConfigErrorAmbiguous, nil)
 	return it, nil
@@ -275,7 +299,7 @@ func (s *service) importCertificate(ctx context.Context, ci *certImport, e certi
 
 // addCertificate adds the certificate of e, to be issued by its source,
 // unless it has problems.
-func (s *service) addCertificate(ctx context.Context, ci *certImport, e certificateEntry, domains []string, targets []int64,
+func (s *service) addCertificate(ctx context.Context, ci *certImport, e certificateEntry, domains []string, targets, notifyTo []int64,
 	targetProblems []configfile.Problem, it configfile.Item,
 ) (configfile.Item, error) {
 	if e.Source == "" {
@@ -284,7 +308,7 @@ func (s *service) addCertificate(ctx context.Context, ci *certImport, e certific
 		it.Problems = append(it.Problems, targetProblems...)
 		return it, nil
 	}
-	c := Certificate{Domains: domains, KeyType: e.KeyType, RenewBeforeDays: e.RenewBeforeDays, Targets: targets}
+	c := Certificate{Domains: domains, KeyType: e.KeyType, RenewBeforeDays: e.RenewBeforeDays, Targets: targets, NotifyTo: notifyTo}
 	if e.Note != nil {
 		c.Note = strings.TrimSpace(*e.Note)
 	}
@@ -352,7 +376,7 @@ func solverProblems(source, solver providers.Type, domains []string) []configfil
 
 // changeCertificate gives c what e says, unless it has problems. Its
 // source stays, whatever e says.
-func (s *service) changeCertificate(ctx context.Context, ci *certImport, e certificateEntry, c *Certificate, targets []int64,
+func (s *service) changeCertificate(ctx context.Context, ci *certImport, e certificateEntry, c *Certificate, targets, notifyTo []int64,
 	targetProblems []configfile.Problem, it configfile.Item,
 ) (configfile.Item, error) {
 	solver, keyType, days := c.SolverProvider, c.KeyType, c.RenewBeforeDays
@@ -428,6 +452,14 @@ func (s *service) changeCertificate(ctx context.Context, ci *certImport, e certi
 		changed = true
 		if _, err := ci.tx.ExecContext(ctx, "UPDATE certs_certificates SET note = ?, updated_at = ? WHERE id = ?",
 			strings.TrimSpace(*e.Note), s.now().UnixMilli(), c.ID); err != nil {
+			return it, err
+		}
+	}
+	if notifyTo != nil && !slices.Equal(notifyTo, c.NotifyTo) {
+		changed = true
+		list, _ := json.Marshal(notifyTo)
+		if _, err := ci.tx.ExecContext(ctx, "UPDATE certs_certificates SET notify_to = ?, updated_at = ? WHERE id = ?",
+			string(list), s.now().UnixMilli(), c.ID); err != nil {
 			return it, err
 		}
 	}

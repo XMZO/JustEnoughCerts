@@ -352,11 +352,15 @@ func (s *service) insertIssued(ctx context.Context, tx *sql.Tx, c Certificate) (
 	if c.ReuseKey {
 		reuse = 1
 	}
+	notifyTo, _ := json.Marshal(c.NotifyTo)
+	if c.NotifyTo == nil {
+		notifyTo = []byte("[]")
+	}
 	var id int64
 	err := tx.QueryRowContext(ctx,
-		`INSERT INTO certs_certificates (domains, source, source_provider, solver_provider, key_type, renew_before_days, note, reuse_key, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-		string(domainsJSON), sourceProvider, c.SourceProvider, solver, c.KeyType, c.RenewBeforeDays, c.Note, reuse, now, now).Scan(&id)
+		`INSERT INTO certs_certificates (domains, source, source_provider, solver_provider, key_type, renew_before_days, note, reuse_key, notify_to, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+		string(domainsJSON), sourceProvider, c.SourceProvider, solver, c.KeyType, c.RenewBeforeDays, c.Note, reuse, string(notifyTo), now, now).Scan(&id)
 	if err != nil {
 		return 0, err
 	}

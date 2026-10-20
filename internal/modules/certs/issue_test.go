@@ -57,6 +57,7 @@ func (f *fixture) addFakes() {
 		{ID: "fake.hook", Kind: providers.Target, Brand: "Fake target"},
 		{ID: "fake.files", Kind: providers.Source, Brand: "Fake files of another client", OwnKey: true},
 		{ID: "fake.acme", Kind: providers.Source, Brand: "Fake CA that revokes", NeedsSolver: true, Revocable: true},
+		{ID: "fake.chat", Kind: providers.Notifier, Brand: "Fake chat"},
 	} {
 		err := scope.Add(typ, func(context.Context, providers.Instance) (any, error) {
 			f.fake.mu.Lock()
@@ -1250,5 +1251,26 @@ func TestReuseKey(t *testing.T) {
 	issueNow()
 	if spki() == first || off.ReuseKey {
 		t.Error("the key stayed")
+	}
+}
+
+func TestNotifyToChecked(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+	path := "/certificates/" + strconv.FormatInt(c.ID, 10)
+	if e := f.apiError(f.api.Patch(path, map[string]any{"notifyTo": []int64{999, f.provider("fake.dns")}}), http.StatusUnprocessableEntity); len(e.Fields) != 2 ||
+		e.Fields[0].Location != "body.notifyTo[0]" || e.Fields[1].Code != string(i18n.CertsErrorWrongProvider) {
+		t.Errorf("not notifiers: %+v", e.Fields)
+	}
+	chat := f.provider("fake.chat")
+	var got CertificateBody
+	f.call(f.api.Patch(path, map[string]any{"notifyTo": []int64{chat, chat}}), http.StatusOK, &got)
+	if !slices.Equal(got.NotifyTo, []int64{chat}) {
+		t.Errorf("one: %+v", got.NotifyTo)
+	}
+	var all CertificateBody
+	f.call(f.api.Patch(path, map[string]any{"notifyTo": []int64{}}), http.StatusOK, &all)
+	if all.NotifyTo == nil || len(all.NotifyTo) != 0 {
+		t.Errorf("all: %+v", all.NotifyTo)
 	}
 }

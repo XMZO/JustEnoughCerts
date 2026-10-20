@@ -345,6 +345,14 @@
             "description": "What people wrote about it",
             "type": "string"
           },
+          "notifyTo": {
+            "description": "The notifiers its notes go to; empty for all",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          },
           "renewAt": {
             "description": "When the renewal of the current version starts, or started: for a certificate with a source",
             "format": "date-time",
@@ -409,6 +417,7 @@
           "domains",
           "source",
           "keyType",
+          "notifyTo",
           "renewBeforeDays",
           "state",
           "targets",
@@ -3603,6 +3612,15 @@
             "description": "Replaces the note when given; empty removes it",
             "maxLength": 500,
             "type": "string"
+          },
+          "notifyTo": {
+            "description": "The notifiers the certificate's notes go to; empty for all; unchanged if left out",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "maxItems": 50,
+            "type": "array"
           },
           "renewBeforeDays": {
             "description": "Unchanged if left out",

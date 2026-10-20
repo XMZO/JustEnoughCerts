@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +19,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 )
@@ -44,6 +47,9 @@ type service struct {
 	// zone returns the time zone the times in notes are told in.
 	zone func() *time.Location
 	now  func() time.Time
+	// call asks the API, for the notifiers a certificate's notes go to;
+	// nil sends them to all.
+	call func(ctx context.Context, via, method, path string, body, out any) error
 }
 
 // handle sends a note about ev through each notifier set to want it. A
@@ -52,6 +58,7 @@ type service struct {
 // failed in a way that may pass.
 func (s *service) handle(ctx context.Context, ev events.Event) error {
 	var write func(language.Tag) contracts.Note
+	var only []int64 // the notifiers the certificate's notes go to, if not all
 	switch ev.Type {
 	case contracts.CertificatesDigest:
 		var d contracts.Digest
@@ -77,6 +84,10 @@ func (s *service) handle(ctx context.Context, ev events.Event) error {
 			return retry.Permanent(fmt.Errorf("notify: event %d: %w", ev.ID, err))
 		}
 		write = func(tag language.Tag) contracts.Note { return s.note(ctx, tag, ev, data) }
+		var err error
+		if only, err = s.notifyTo(ctx, data.CertificateID); err != nil {
+			return err
+		}
 	}
 	list, err := s.prov.List(ctx, providers.Notifier)
 	if err != nil {
@@ -84,7 +95,7 @@ func (s *service) handle(ctx context.Context, ev events.Event) error {
 	}
 	var again []error
 	for _, p := range list {
-		if !wants(p.Config, ev.Type) {
+		if !wants(p.Config, ev.Type) || len(only) > 0 && !slices.Contains(only, p.ID) {
 			continue
 		}
 		done, err := s.done(ctx, ev.ID, p.ID)
@@ -103,6 +114,25 @@ func (s *service) handle(ctx context.Context, ev events.Event) error {
 		}
 	}
 	return errors.Join(again...)
+}
+
+// notifyTo returns the notifiers the notes of certificate id go to, nil for
+// all, as the certs module tells; one it no longer knows goes to all.
+func (s *service) notifyTo(ctx context.Context, id int64) ([]int64, error) {
+	if s.call == nil || id == 0 {
+		return nil, nil
+	}
+	var out struct {
+		Certificate struct {
+			NotifyTo []int64 `json:"notifyTo"`
+		} `json:"certificate"`
+	}
+	err := s.call(ctx, "notify", http.MethodGet, "/certs/certificates/"+strconv.FormatInt(id, 10), nil, &out)
+	var ce *module.CallError
+	if errors.As(err, &ce) {
+		return nil, nil
+	}
+	return out.Certificate.NotifyTo, err
 }
 
 // wants reports whether a notifier set to config is told about events of
