@@ -254,10 +254,10 @@ type downloadOutput struct {
 type updateInput struct {
 	ID   int64 `path:"id"`
 	Body struct {
-		RenewBeforeDays int     `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Unchanged if left out"`
-		Targets         []int64 `json:"targets,omitempty" maxItems:"50" doc:"Replaces the targets when given; an empty list removes them all"`
-		Note            *string `json:"note,omitempty" maxLength:"500" doc:"Replaces the note when given; empty removes it"`
-		ReuseKey        *bool   `json:"reuseKey,omitempty" doc:"Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out"`
+		RenewBeforeDays int      `json:"renewBeforeDays,omitempty" minimum:"1" maximum:"365" doc:"Unchanged if left out"`
+		Targets         []int64  `json:"targets,omitempty" maxItems:"50" doc:"Replaces the targets when given; an empty list removes them all"`
+		Note            *string  `json:"note,omitempty" maxLength:"500" doc:"Replaces the note when given; empty removes it"`
+		ReuseKey        *bool    `json:"reuseKey,omitempty" doc:"Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out"`
 		NotifyTo        *[]int64 `json:"notifyTo,omitempty" maxItems:"50" doc:"The notifiers the certificate's notes go to; empty for all; unchanged if left out"`
 	}
 }
