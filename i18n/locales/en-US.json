@@ -3428,7 +3428,7 @@
         "name": "Domain",
         "name_help": "Such as example.com. For a subdomain or a URL, the registered domain it is under is watched."
       },
-      "foot": "The domains of your certificates and watched sites are added by themselves. Each is looked up with its registry through RDAP once a day; reminders go out 30 days and 7 days before the end through the notification channels set for this event. The registries of some TLDs, such as .de and .cn, tell no end.",
+      "foot": "The domains of your certificates and watched sites are added by themselves. Each is looked up with its registry through RDAP, or WHOIS where there is none, once a day; reminders go out 30 days and 7 days before the end through the notification channels set for this event. The registries of some TLDs, such as .de, tell no end.",
       "manual": "Added by hand",
       "sites": "{count, plural, one {# watched site} other {# watched sites}}",
       "state": {
@@ -3456,7 +3456,7 @@
       "name_help": "Optional, to tell it apart."
     },
     "module": {
-      "description": "Watches the certificates of sites JEC does not manage, and domain registrations, with reminders before they end. Domains are looked up with their registries through RDAP.",
+      "description": "Watches the certificates of sites JEC does not manage, and domain registrations, with reminders before they end. Domains are looked up with their registries through RDAP or WHOIS.",
       "name": "Expiry watch"
     },
     "overview": {

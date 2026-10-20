@@ -43,9 +43,14 @@ type rdap struct {
 	bootstrap string // the URL of the bootstrap file
 	now       func() time.Time
 
+	// whois asks a WHOIS server, for the TLDs without RDAP; tests replace
+	// it.
+	whois func(ctx context.Context, server, query string) (string, error)
+
 	mu      sync.Mutex
 	servers map[string]string // TLD to the base URL of its server
 	fetched time.Time
+	whoisOf map[string]string // TLD to its WHOIS server, "" for none
 }
 
 // server returns the base URL of the RDAP server for domain, ending in /,
@@ -127,6 +132,9 @@ type rdapDomain struct {
 // which registrar.
 func (r *rdap) lookup(ctx context.Context, domain string) (registration, error) {
 	base, err := r.server(ctx, domain)
+	if errors.Is(err, errNoRDAP) && r.whois != nil {
+		return r.whoisLookup(ctx, domain)
+	}
 	if err != nil {
 		return registration{}, err
 	}

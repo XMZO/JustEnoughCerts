@@ -46,7 +46,7 @@ type Module struct {
 // New returns the module.
 func New() *Module {
 	m := &Module{now: time.Now, fetch: fetch, trigger: func(string) {}}
-	m.rdap = &rdap{bootstrap: bootstrapURL, now: func() time.Time { return m.now() }}
+	m.rdap = &rdap{bootstrap: bootstrapURL, now: func() time.Time { return m.now() }, whois: whoisQuery}
 	return m
 }
 

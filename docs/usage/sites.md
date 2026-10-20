@@ -11,7 +11,7 @@ breaks a website all the same:
   there.
 - **Domain registrations**: when the registrations of the domains of your
   certificates and watched sites end, as their registries tell through
-  RDAP.
+  RDAP, or WHOIS where there is none.
 
 ## Watching a site
 
@@ -37,8 +37,10 @@ certificate. Addresses, names of private networks and domains for examples,
 such as `example.com`, do not count. Add a domain adds any other.
 
 1. JEC asks each registry, through the RDAP servers IANA lists, when the
-   registration ends and with which registrar: once a day, and every 12
-   hours while it ends soon, to see a renewal early.
+   registration ends and with which registrar, or through the WHOIS server
+   IANA names where the TLD has no RDAP (as `.cn`, `.io` and `.co.uk`):
+   once a day, and every 12 hours while it ends soon, to see a renewal
+   early.
 2. On a certificate's page, the row Domain registration shows when the
    domains it is under end.
 
@@ -47,11 +49,11 @@ such as `example.com`, do not count. Add a domain adds any other.
 | OK | More than 30 days left |
 | Ends soon | 30 days or less left |
 | Ended | Past the end the registry told |
-| End not told | The registry of the TLD has no RDAP service, or does not publish the end (as for `.de` and `.cn`); looked up again in 7 days |
+| End not told | The registry of the TLD has neither RDAP nor WHOIS, or does not publish the end (as for `.de`); looked up again in 7 days |
 | Lookup failed | The registry did not answer, or answered an error; the last result is kept, and the lookup tried again in 2 hours |
 
-Lookups go only to IANA and to the public RDAP servers of the registries,
-and carry only the domain.
+Lookups go only to IANA and to the public RDAP and WHOIS servers of the
+registries, and carry only the domain.
 
 ## Notes
 

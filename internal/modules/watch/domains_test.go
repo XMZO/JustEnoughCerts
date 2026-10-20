@@ -102,6 +102,7 @@ func newDomainFixture(t *testing.T) (*fixture, *registry, *[]certificate, *bool)
 	reg := &registry{ends: map[string]time.Time{}, registrar: "Example Registrar, Inc."}
 	srv := reg.serve(t)
 	f.m.rdap.client, f.m.rdap.bootstrap = srv.Client(), srv.URL+"/dns.json"
+	f.m.rdap.whois = fakeWhois
 	certs := &[]certificate{}
 	off := new(bool)
 	f.m.call = func(_ context.Context, via, method, path string, _, out any) error {
@@ -318,11 +319,50 @@ func TestDomainsByHand(t *testing.T) {
 	}
 }
 
+// fakeWhois answers as IANA's and two registries' WHOIS servers do: .cn
+// tells an end, .de none, and IANA names no server for .net.
+func fakeWhois(_ context.Context, server, query string) (string, error) {
+	switch server + " " + query {
+	case "whois.iana.org cn":
+		return "domain:       CN\nwhois:        whois.cnnic.cn\n", nil
+	case "whois.iana.org de":
+		return "whois:        whois.denic.de\nstatus:       ACTIVE\n", nil
+	case "whois.cnnic.cn shop.cn":
+		return "Domain Name: shop.cn\nSponsoring Registrar: Example Registrar\nExpiration Time: 2029-03-17 12:48:36\n", nil
+	case "whois.denic.de shop.de":
+		return "Domain: shop.de\nStatus: connect\n", nil
+	}
+	return "", nil
+}
+
 func TestNoRDAP(t *testing.T) {
 	f, _, _, _ := newDomainFixture(t)
-	for _, name := range []string{"shop.de", "shop.net"} {
-		if _, err := f.m.rdap.lookup(t.Context(), name); !errors.Is(err, errNoRDAP) {
-			t.Errorf("lookup(%s) = %v", name, err)
+	reg, err := f.m.rdap.lookup(t.Context(), "shop.cn")
+	if err != nil || !reg.expires.Equal(time.Date(2029, 3, 17, 12, 48, 36, 0, time.UTC)) || reg.registrar != "Example Registrar" {
+		t.Errorf("shop.cn = %+v %v", reg, err)
+	}
+	if _, err := f.m.rdap.lookup(t.Context(), "shop.de"); !errors.Is(err, errNoEnd) {
+		t.Errorf("shop.de = %v", err)
+	}
+	if _, err := f.m.rdap.lookup(t.Context(), "shop.net"); !errors.Is(err, errNoRDAP) {
+		t.Errorf("shop.net = %v", err)
+	}
+}
+
+func TestParseWhois(t *testing.T) {
+	for answer, want := range map[string]string{
+		"Registry Expiry Date: 2027-09-30T01:00:00Z\nRegistrar: MarkMonitor Inc.":          "2027-09-30 MarkMonitor Inc.",
+		"Expiration Time: 2029-03-17 12:48:36\nSponsoring Registrar: X":                    "2029-03-17 X",
+		"    Registrar:\n        Example Ltd\n    Expiry date:  13-Dec-2034\n":             "2034-12-13 Example Ltd",
+		"[Domain Name]  EXAMPLE.JP\n[Expires on]                    2026/09/30\n":          "2026-09-30 ",
+		"Registrar Registration Expiration Date: 2027-01-02T00:00:00.000Z\nRegistrar: R\n": "2027-01-02 R",
+	} {
+		reg, err := parseWhois(answer)
+		if got := reg.expires.Format(time.DateOnly) + " " + reg.registrar; err != nil || got != want {
+			t.Errorf("parseWhois(%q) = %q %v, want %q", answer, got, err, want)
 		}
+	}
+	if _, err := parseWhois("Status: connect"); !errors.Is(err, errNoEnd) {
+		t.Errorf("no end: %v", err)
 	}
 }
