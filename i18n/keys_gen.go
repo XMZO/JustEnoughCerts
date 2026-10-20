@@ -561,6 +561,8 @@ const (
 	CertsBulkRemoveTargetIntro               Key = "certs.bulk.remove_target_intro"
 	CertsBulkRenew                           Key = "certs.bulk.renew"
 	CertsBulkResume                          Key = "certs.bulk.resume"
+	CertsBulkSolver                          Key = "certs.bulk.solver"
+	CertsBulkSolverIntro                     Key = "certs.bulk.solver_intro"
 	CertsBulkTarget                          Key = "certs.bulk.target"
 	CertsCaRevokedReasonAffiliationChanged   Key = "certs.ca_revoked.reason.affiliation_changed"
 	CertsCaRevokedReasonCaCompromise         Key = "certs.ca_revoked.reason.ca_compromise"

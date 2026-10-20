@@ -8,6 +8,7 @@ import {
   Download,
   Eye,
   FileDown,
+  Globe,
   LoaderCircle,
   OctagonX,
   Pause,
@@ -26,7 +27,7 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
-import { saveFile, useCertificates, useDeleteCertificate, useDeleteOf, useExportAll, usePauseOf, useTargetsOf, type Certificate } from '../api/certs'
+import { saveFile, useCertificates, useDeleteCertificate, useDeleteOf, useExportAll, usePauseOf, useSolverOf, useTargetsOf, type Certificate } from '../api/certs'
 import { useApiError } from '../api/errors'
 import { useMonitorStates } from '../api/monitor'
 import { useProviders } from '../api/providers'
@@ -340,6 +341,41 @@ async function submitTargets() {
   }
   targeting.value = undefined
 }
+// Another solver for those chosen that have one, as when their DNS moves:
+// the server refuses one their source does not take, and the rest go on.
+const solvers = useProviders('solver')
+const solving = computed(() => renewable.value.filter((c) => c.solverProvider))
+const solverOpen = ref(false)
+const solverPick = ref<number>()
+const setSolver = useSolverOf()
+const solverRefused = ref<{ domain: string; why: string }[]>([])
+const settingSolver = ref(false)
+function startSolver() {
+  solverPick.value = solvers.data.value?.[0]?.id
+  solverRefused.value = []
+  setSolver.reset()
+  solverOpen.value = true
+}
+async function submitSolver() {
+  const solverProvider = solverPick.value
+  if (solverProvider === undefined || settingSolver.value) return
+  settingSolver.value = true
+  const refused: { domain: string; why: string }[] = []
+  for (const c of solving.value) {
+    if (c.solverProvider === solverProvider) continue
+    try {
+      await setSolver.mutateAsync({ id: c.id, solverProvider })
+    } catch (err) {
+      const e = err instanceof ApiError ? err : networkError
+      const field = e.fields.find((f) => f.location === 'body.solverProvider')
+      refused.push({ domain: c.domains[0] ?? '', why: t(field?.code ?? e.code, e.params) })
+    }
+  }
+  settingSolver.value = false
+  setSolver.reset()
+  solverRefused.value = refused
+  if (!refused.length) solverOpen.value = false
+}
 async function pauseChosen(paused: boolean) {
   pausing.value = true
   try {
@@ -504,6 +540,9 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
         </JecButton>
         <JecButton v-if="chosenCerts.some((c) => c.targets.length)" size="sm" @click="startTargets('remove')">
           <ServerOff class="size-4" aria-hidden="true" />{{ t('certs.bulk.remove_target') }}
+        </JecButton>
+        <JecButton v-if="solving.length && solvers.data.value?.length" size="sm" @click="startSolver">
+          <Globe class="size-4" aria-hidden="true" />{{ t('certs.bulk.solver') }}
         </JecButton>
         <JecButton size="sm" variant="danger" @click="deletingMany = chosenCerts">
           <Trash2 class="size-4" aria-hidden="true" />{{ t('certs.bulk.delete', { count: chosen.length }) }}
@@ -672,6 +711,28 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
       <JecButton @click="exportingAll = false">{{ t('kernel.action.cancel') }}</JecButton>
       <JecButton type="submit" form="export-all-form" variant="primary" :busy="exportAll.isPending.value" :disabled="!exportPassword">
         <Archive class="size-4" aria-hidden="true" />{{ t('certs.export_all.action') }}
+      </JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-model:open="solverOpen" :title="t('certs.bulk.solver')" small>
+    <form id="bulk-solver-form" class="flex flex-col gap-3" novalidate @submit.prevent="submitSolver">
+      <p class="m-0">{{ t('certs.bulk.solver_intro', { count: solving.length }) }}</p>
+      <JecField id="bulk-solver" label="certs.settings.solver">
+        <select id="bulk-solver" v-model.number="solverPick" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
+          <option v-for="p in solvers.data.value" :key="p.id" :value="p.id" translate="no">{{ p.name }}</option>
+        </select>
+      </JecField>
+      <div v-if="solverRefused.length" role="alert">
+        <ul class="m-0 list-none p-0 text-small text-danger-ink">
+          <li v-for="r in solverRefused" :key="r.domain" class="[overflow-wrap:anywhere]"><span translate="no">{{ r.domain }}</span>{{ t('watch.page.refused') }}{{ r.why }}</li>
+        </ul>
+      </div>
+    </form>
+    <template #footer>
+      <JecButton @click="solverOpen = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton type="submit" form="bulk-solver-form" variant="primary" :busy="settingSolver" :disabled="solverPick === undefined">
+        {{ t('kernel.action.save') }}
       </JecButton>
     </template>
   </JecDialog>

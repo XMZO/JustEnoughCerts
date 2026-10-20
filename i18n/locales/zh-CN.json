@@ -723,6 +723,8 @@
       "remove_target_intro": "把一个部署目标从选中的 {count} 张证书上移除；已部署的证书留在目标上。",
       "renew": "立即续期（{count}）",
       "resume": "恢复自动续期（{count}）",
+      "solver": "更换验证方式",
+      "solver_intro": "为选中的 {count} 张证书更换验证方式，从下一次签发起使用；来源不支持该方式的证书保持不变，并列出原因。",
       "target": "部署目标"
     },
     "ca_revoked": {

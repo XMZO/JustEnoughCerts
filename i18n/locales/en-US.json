@@ -723,6 +723,8 @@
       "remove_target_intro": "Takes a deploy target off the {count} certificates chosen; what was deployed there stays.",
       "renew": "Renew now ({count})",
       "resume": "Resume renewal ({count})",
+      "solver": "Change the validation",
+      "solver_intro": "Changes the validation of the {count} certificates chosen, from their next issuance; those whose source does not take it stay as they are, each with why.",
       "target": "Deploy target"
     },
     "ca_revoked": {

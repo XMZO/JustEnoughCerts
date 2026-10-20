@@ -71,7 +71,7 @@ On wider screens, certificates checked in the list (the box in the header
 checks all those shown) can be renewed, deployed again or deleted
 together, after a confirmation, their renewal paused or resumed, and a
 deploy target added to them or taken off them, as when moving to another
-CDN.
+CDN, and their validation changed, as when their DNS moves.
 
 The list's search finds certificates by domain and by note. A host name,
 or a URL pasted in, also finds the wildcard certificate that covers it:

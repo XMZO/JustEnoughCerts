@@ -569,6 +569,8 @@ export type MessageKey =
   | "certs.bulk.remove_target_intro"
   | "certs.bulk.renew"
   | "certs.bulk.resume"
+  | "certs.bulk.solver"
+  | "certs.bulk.solver_intro"
   | "certs.bulk.target"
   | "certs.ca_revoked.reason.affiliation_changed"
   | "certs.ca_revoked.reason.ca_compromise"
