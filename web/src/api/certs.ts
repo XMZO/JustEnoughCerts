@@ -14,6 +14,7 @@ export type IssueRequest = components['schemas']['IssueRequest']
 export type LogLine = components['schemas']['LogLineBody']
 export type Step = components['schemas']['StepBody']
 export type KeyType = NonNullable<IssueRequest['keyType']>
+export type DeployWindow = NonNullable<NonNullable<operations['certs-update']['requestBody']>['content']['application/json']['deployWindow']>
 export type Deployment = components['schemas']['DeploymentBody']
 export type Run = components['schemas']['RunBody']
 export type DeploymentDetail = components['schemas']['DeploymentDetailOutputBody']
@@ -249,7 +250,7 @@ export function useUploadVersion(id: MaybeRefOrGetter<number>) {
 }
 
 export function useUpdateCertificate(id: MaybeRefOrGetter<number>) {
-  return useCertsMutation((body: { renewBeforeDays?: number; targets?: number[]; note?: string; reuseKey?: boolean; notifyTo?: number[]; paused?: boolean; solverProvider?: number; keyType?: KeyType }) =>
+  return useCertsMutation((body: { renewBeforeDays?: number; targets?: number[]; note?: string; reuseKey?: boolean; notifyTo?: number[]; paused?: boolean; solverProvider?: number; keyType?: KeyType; deployWindow?: DeployWindow }) =>
     unwrap(api.PATCH('/certs/certificates/{id}', { params: { path: { id: toValue(id) } }, body })),
   )
 }

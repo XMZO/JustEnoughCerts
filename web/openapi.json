@@ -320,6 +320,10 @@
             "$ref": "#/components/schemas/VersionBody",
             "description": "The version in use"
           },
+          "deployWindow": {
+            "description": "The hours, in the panel's time zone, new versions are deployed in, as 1-5",
+            "type": "string"
+          },
           "deployments": {
             "description": "The latest deployment to each target that had one, in the order of targets",
             "items": {
@@ -4212,6 +4216,17 @@
       "UpdateInputBody1": {
         "additionalProperties": false,
         "properties": {
+          "deployWindow": {
+            "description": "The hours, in the panel's time zone, new versions are deployed in, as 1-5; empty for any time; unchanged if left out. Deploying by hand starts at once.",
+            "enum": [
+              "",
+              "0-6",
+              "1-5",
+              "2-6",
+              "22-6"
+            ],
+            "type": "string"
+          },
           "keyType": {
             "description": "Another key type for a certificate with a source whose keys JEC makes, from its next issuance; unchanged if left out",
             "enum": [

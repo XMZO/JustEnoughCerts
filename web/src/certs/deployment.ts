@@ -16,6 +16,11 @@ export function deploymentState(d: Deployment): MessageKey {
   }[d.state] as MessageKey
 }
 
+/** scheduledAt is when a deployment that waits for its certificate's deploy window starts: not tried yet, and due later. */
+export function scheduledAt(d: Deployment): string | undefined {
+  return d.state === 'pending' && !d.error && d.attempts === 0 && d.nextAt && Date.parse(d.nextAt) > Date.now() ? d.nextAt : undefined
+}
+
 /** failingDeployment is the deployment behind a certificate's deploy_failed state: the first, in the order of its targets, that failed or waits to retry. */
 export function failingDeployment(c: Certificate): Deployment | undefined {
   return c.deployments.find((d) => d.state === 'failed' || (d.state === 'pending' && !!d.error))

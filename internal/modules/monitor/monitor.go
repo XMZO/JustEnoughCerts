@@ -73,9 +73,14 @@ func (m *Module) handle(ctx context.Context, ev events.Event) error {
 		if err != nil {
 			return retry.Permanent(err)
 		}
-		// A new version is checked once it had time to be deployed; one
-		// told of again keeps its schedule.
-		check := ev.Time.Add(afterIssue)
+		// A new version is checked once it had time to be deployed, which
+		// a deploy window may put off; one told of again keeps its
+		// schedule.
+		since := ev.Time
+		if d.DeployAt.After(since) {
+			since = d.DeployAt
+		}
+		check := since.Add(afterIssue)
 		if ev.Type == contracts.CertificateCurrent {
 			check = m.now()
 		}
@@ -90,7 +95,7 @@ func (m *Module) handle(ctx context.Context, ev events.Event) error {
 			     THEN monitor_certificates.check_at ELSE excluded.check_at END,
 			   issuer = CASE WHEN monitor_certificates.version_id = excluded.version_id THEN monitor_certificates.issuer ELSE '' END,
 			   version_id = excluded.version_id, fingerprint = excluded.fingerprint, not_after = excluded.not_after`,
-			d.CertificateID, string(domains), d.VersionID, d.Fingerprint, d.NotAfter.UnixMilli(), ev.Time.UnixMilli(), check.UnixMilli())
+			d.CertificateID, string(domains), d.VersionID, d.Fingerprint, d.NotAfter.UnixMilli(), since.UnixMilli(), check.UnixMilli())
 		return err
 	case contracts.CertificateDeployed:
 		// The version in use reached a target: look soon.

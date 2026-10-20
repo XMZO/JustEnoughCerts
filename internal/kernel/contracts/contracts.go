@@ -215,6 +215,9 @@ type CertificateEvent struct {
 	Deployment    *Deployment `json:"deployment,omitempty"`
 	Check         *Check      `json:"check,omitempty"`
 	Revocation    *Revocation `json:"revocation,omitempty"`
+	// DeployAt is when a new version goes to its targets, when that is
+	// later than the event, as a deploy window makes it.
+	DeployAt time.Time `json:"deployAt,omitzero"`
 }
 
 // RevocationReasonText names a reason code of RFC 5280.

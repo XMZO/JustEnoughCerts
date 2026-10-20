@@ -33,13 +33,14 @@ import {
   useSetDomains,
   useUpdateCertificate,
   useUploadVersion,
+  type DeployWindow,
   type KeyType,
   type RevokeReason,
 } from '../api/certs'
 import { useApiError } from '../api/errors'
 import { useProviders, useProviderTypes, useProviderTypesOf } from '../api/providers'
 import { domainNeedsLook, useDomains, useWatching } from '../api/watch'
-import { deploymentState, failingDeployment } from '../certs/deployment'
+import { deploymentState, failingDeployment, scheduledAt } from '../certs/deployment'
 import { deploySteps, issuanceState, reasonText } from '../certs/issuance'
 import { caReasonText, certLife, colonHex, keyText, windowStart } from '../certs/life'
 import { useDurationText } from '../certs/runs'
@@ -353,6 +354,15 @@ const paused = ref(false)
 // Another solver, as when the DNS moves, and another key type, from the
 // next issuance; the server checks the source takes them.
 const solverChoice = ref<number>(0)
+// The hours new versions go to the targets in.
+const windowChoice = ref<DeployWindow>('')
+const windows: { value: DeployWindow; label: MessageKey }[] = [
+  { value: '', label: 'certs.settings.window_any' },
+  { value: '0-6', label: 'certs.settings.window_0_6' },
+  { value: '1-5', label: 'certs.settings.window_1_5' },
+  { value: '2-6', label: 'certs.settings.window_2_6' },
+  { value: '22-6', label: 'certs.settings.window_22_6' },
+]
 const keyChoice = ref<KeyType | ''>('')
 const keyTypes: KeyType[] = ['rsa-2048', 'ecdsa-p256', 'ecdsa-p384', 'rsa-3072', 'rsa-4096']
 const needsSolverHere = computed(() => issued.value && !!sourceType.value?.needsSolver)
@@ -365,6 +375,7 @@ function edit() {
   reuseKey.value = !!cert.value?.reuseKey
   paused.value = !!cert.value?.paused
   solverChoice.value = cert.value?.solverProvider ?? 0
+  windowChoice.value = (cert.value?.deployWindow ?? '') as DeployWindow
   keyChoice.value = (cert.value?.keyType ?? '') as KeyType | ''
   notifyTo.value = [...(cert.value?.notifyTo ?? [])]
   update.reset()
@@ -422,6 +433,7 @@ async function saveSettings() {
       ...(issued.value ? { paused: paused.value } : {}),
       ...(needsSolverHere.value && solverChoice.value && solverChoice.value !== cert.value?.solverProvider ? { solverProvider: solverChoice.value } : {}),
       ...(keyKept.value && keyChoice.value && keyChoice.value !== cert.value?.keyType ? { keyType: keyChoice.value } : {}),
+      ...(windowChoice.value !== (cert.value?.deployWindow ?? '') ? { deployWindow: windowChoice.value } : {}),
     })
   } catch {
     return
@@ -724,7 +736,10 @@ async function confirmDelete() {
                     </span>
                   </span>
                   <span class="flex flex-none items-baseline gap-x-2 @md:flex-col @md:items-end">
-                    <span v-if="r.d" :class="['font-semibold', deployInk[r.d.state]]">{{ t(deploymentState(r.d)) }}</span>
+                    <span v-if="r.d && scheduledAt(r.d)" class="text-ink-muted">
+                      {{ t('certs.deployment.scheduled') }} <time :datetime="scheduledAt(r.d)">{{ intl.dateTime(scheduledAt(r.d)!) }}</time>
+                    </span>
+                    <span v-else-if="r.d" :class="['font-semibold', deployInk[r.d.state]]">{{ t(deploymentState(r.d)) }}</span>
                     <span v-else class="text-ink-muted">{{ t('certs.deployment.state.none') }}</span>
                     <time v-if="r.d?.finishedAt" :datetime="r.d.finishedAt" class="text-caption text-ink-muted tabular-nums">{{ intl.dateTime(r.d.finishedAt) }}</time>
                   </span>
@@ -1007,6 +1022,11 @@ async function confirmDelete() {
       <JecField v-if="needsSolverHere" id="settings-solver" label="certs.settings.solver" hint="certs.settings.solver_help" :error="updateError.fields.value.solverProvider">
         <select id="settings-solver" v-model.number="solverChoice" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
           <option v-for="s in solvers.data.value" :key="s.id" :value="s.id" translate="no">{{ s.name }}</option>
+        </select>
+      </JecField>
+      <JecField id="settings-window" label="certs.settings.window" hint="certs.settings.window_help" :error="updateError.fields.value.deployWindow">
+        <select id="settings-window" v-model="windowChoice" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
+          <option v-for="w in windows" :key="w.value" :value="w.value">{{ t(w.label) }}</option>
         </select>
       </JecField>
       <JecField v-if="keyKept" id="settings-key" label="certs.settings.key_type" :error="updateError.fields.value.keyType">

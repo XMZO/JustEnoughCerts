@@ -29,6 +29,7 @@ type CertificateBody struct {
 	Note            string           `json:"note,omitempty" doc:"What people wrote about it"`
 	ReuseKey        bool             `json:"reuseKey,omitempty" doc:"Renewals keep the private key of the version in use"`
 	Paused          bool             `json:"paused,omitempty" doc:"The renewal is paused: the certificate is issued only when someone asks"`
+	DeployWindow    string           `json:"deployWindow,omitempty" doc:"The hours, in the panel's time zone, new versions are deployed in, as 1-5"`
 	NotifyTo        []int64          `json:"notifyTo" doc:"The notifiers its notes go to; empty for all"`
 	RenewBeforeDays int              `json:"renewBeforeDays" doc:"How many days before the end the certificate is renewed, or a reminder sent"`
 	State           string           `json:"state" enum:"ok,expiring,expired,issuing,deploying,failed,deploy_failed,revoked" doc:"issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)"`
@@ -123,7 +124,7 @@ func certificateBody(c *Certificate, now time.Time, sch schedule) CertificateBod
 	b := CertificateBody{
 		ID: c.ID, Domains: c.Domains, Source: c.Source, SourceProvider: c.SourceProvider, SolverProvider: c.SolverProvider,
 		KeyType: c.KeyType, RenewBeforeDays: c.RenewBeforeDays, State: c.state(now), CreatedAt: c.CreatedAt, Note: c.Note, ReuseKey: c.ReuseKey, NotifyTo: c.NotifyTo,
-		Paused: c.Paused,
+		Paused: c.Paused, DeployWindow: c.DeployWindow,
 	}
 	if c.Current != nil {
 		v := versionBody(c.Current)
@@ -265,6 +266,7 @@ type updateInput struct {
 		Paused          *bool    `json:"paused,omitempty" doc:"Pause the renewal: the certificate is issued only when someone asks; unchanged if left out"`
 		SolverProvider  *int64   `json:"solverProvider,omitempty" doc:"Another solver for a certificate with a source that needs one, from its next issuance; unchanged if left out"`
 		KeyType         *string  `json:"keyType,omitempty" enum:"ecdsa-p256,ecdsa-p384,rsa-2048,rsa-3072,rsa-4096" doc:"Another key type for a certificate with a source whose keys JEC makes, from its next issuance; unchanged if left out"`
+		DeployWindow    *string  `json:"deployWindow,omitempty" enum:",0-6,1-5,2-6,22-6" doc:"The hours, in the panel's time zone, new versions are deployed in, as 1-5; empty for any time; unchanged if left out. Deploying by hand starts at once."`
 	}
 }
 
@@ -408,7 +410,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			return nil, err
 		}
 		ch := changes{days: in.Body.RenewBeforeDays, targets: targets, note: in.Body.Note, reuseKey: in.Body.ReuseKey, paused: in.Body.Paused, notifyTo: notifyTo,
-			solver: in.Body.SolverProvider, keyType: in.Body.KeyType}
+			solver: in.Body.SolverProvider, keyType: in.Body.KeyType, deployWindow: in.Body.DeployWindow}
 		if err := s.update(ctx, in.ID, ch); err != nil {
 			return nil, serviceError(err)
 		}

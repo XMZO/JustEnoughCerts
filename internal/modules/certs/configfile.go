@@ -52,6 +52,9 @@ type certificateEntry struct {
 	// Paused stops the renewal of a certificate with a source; left out,
 	// it stays as it is.
 	Paused *bool `yaml:"paused,omitempty"`
+	// DeployWindow holds the hours new versions are deployed in, as "1-5",
+	// "" for any time; left out, it stays as it is.
+	DeployWindow *string `yaml:"deploy_window,omitempty"`
 	// NotifyTo names the notifiers its notes go to, all when empty; left
 	// out, they stay as they are.
 	NotifyTo []string `yaml:"notify_to,omitempty"`
@@ -149,6 +152,9 @@ func (s *service) exportCertificates(ctx context.Context, _ configfile.Export) (
 		}
 		if c.Paused {
 			e.Paused = &c.Paused
+		}
+		if c.DeployWindow != "" {
+			e.DeployWindow = &c.DeployWindow
 		}
 		if c.Source == sourceProvider {
 			if e.Source, err = s.providerName(ctx, c.SourceProvider); err != nil {
@@ -293,6 +299,9 @@ func (s *service) importCertificate(ctx context.Context, ci *certImport, e certi
 			}
 		}
 	}
+	if e.DeployWindow != nil && !slices.Contains(deployWindows, *e.DeployWindow) {
+		targetProblems = append(targetProblems, configfile.Problem{Field: "deploy_window", Key: i18n.KernelErrorInvalidField})
+	}
 	switch found := ci.have[key]; len(found) {
 	case 0:
 		return s.addCertificate(ctx, ci, e, domains, targets, notifyTo, targetProblems, it)
@@ -323,6 +332,9 @@ func (s *service) addCertificate(ctx context.Context, ci *certImport, e certific
 	}
 	if e.Paused != nil {
 		c.Paused = *e.Paused
+	}
+	if e.DeployWindow != nil {
+		c.DeployWindow = *e.DeployWindow
 	}
 	source, pr := ci.in.Provider(providers.Source, e.Source)
 	if pr != nil {
@@ -480,6 +492,13 @@ func (s *service) changeCertificate(ctx context.Context, ci *certImport, e certi
 		}
 		if _, err := ci.tx.ExecContext(ctx, "UPDATE certs_certificates SET reuse_key = ?, updated_at = ? WHERE id = ?",
 			reuse, s.now().UnixMilli(), c.ID); err != nil {
+			return it, err
+		}
+	}
+	if e.DeployWindow != nil && *e.DeployWindow != c.DeployWindow {
+		changed = true
+		if _, err := ci.tx.ExecContext(ctx, "UPDATE certs_certificates SET deploy_window = ?, updated_at = ? WHERE id = ?",
+			*e.DeployWindow, s.now().UnixMilli(), c.ID); err != nil {
 			return it, err
 		}
 	}

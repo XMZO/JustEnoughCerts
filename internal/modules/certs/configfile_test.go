@@ -223,6 +223,14 @@ certificates:
 	if data, err := f.configFile().Export(t.Context(), configfile.Export{}); err != nil || !strings.Contains(string(data), "paused: true") {
 		t.Errorf("export %s: %v", data, err)
 	}
+	// And its deploy window, one of those offered.
+	f.importConfig("version: 1\ncertificates:\n  - {domains: [example.com], source: LE, solver: DNS 2, deploy_window: 1-5}\n", true)
+	if c, err := f.svc.load(t.Context(), f.db, body.ID); err != nil || c.DeployWindow != "1-5" {
+		t.Errorf("window %+v, %v", c, err)
+	}
+	if r := f.importConfig("version: 1\ncertificates:\n  - {domains: [example.com], source: LE, solver: DNS 2, deploy_window: 3-4}\n", false); r.Errors == 0 {
+		t.Errorf("a window not offered taken: %+v", r)
+	}
 }
 
 func TestConfigImportProblems(t *testing.T) {

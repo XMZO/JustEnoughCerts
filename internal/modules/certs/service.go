@@ -142,6 +142,9 @@ type Certificate struct {
 	// Paused stops the renewal: the certificate is issued only when
 	// someone asks.
 	Paused bool
+	// DeployWindow holds the hours new versions are deployed in, as
+	// "1-6"; "" for any time.
+	DeployWindow string
 	// NotifyTo are the notifiers its notes go to; empty for all.
 	NotifyTo []int64
 }
@@ -204,6 +207,8 @@ func (c *Certificate) state(now time.Time) string {
 		switch {
 		case d.State == issuanceFailed, d.State == issuancePending && d.Error.Key != "":
 			return stateDeployFailed
+		case d.scheduled(now):
+			// waits for its window: the certificate is fine till then
 		case d.State == issuanceRunning, d.State == issuancePending:
 			deploying = true
 		}
@@ -351,9 +356,15 @@ func (s *service) addVersion(ctx context.Context, tx *sql.Tx, id int64, b *crypt
 	if err := s.queueDeployments(ctx, tx, id, version); err != nil {
 		return 0, err
 	}
-	err = s.events.PublishTx(ctx, tx, contracts.CertificateIssued, strconv.FormatInt(id, 10), contracts.CertificateEvent{
+	ev := contracts.CertificateEvent{
 		CertificateID: id, Domains: names, VersionID: version, Fingerprint: fingerprint, NotAfter: b.Leaf.NotAfter.UTC(),
-	})
+	}
+	if at, err := s.deployAt(ctx, tx, id); err != nil {
+		return 0, err
+	} else if at.After(now) {
+		ev.DeployAt = at.UTC()
+	}
+	err = s.events.PublishTx(ctx, tx, contracts.CertificateIssued, strconv.FormatInt(id, 10), ev)
 	return version, err
 }
 
@@ -403,7 +414,7 @@ type querier interface {
 }
 
 const selectCertificates = `SELECT c.id, c.domains, c.source, c.source_provider, c.solver_provider, c.key_type,
-	c.renew_before_days, c.created_at, c.note, c.reuse_key, c.notify_to, c.paused,
+	c.renew_before_days, c.created_at, c.note, c.reuse_key, c.notify_to, c.paused, c.deploy_window,
 	v.id, v.origin, v.names, v.serial, v.fingerprint, v.issuer, v.key_type, v.not_before, v.not_after, v.chain, v.created_at,
 	v.source_provider, v.renewal_start, v.renewal_end, v.renewal_at, v.renewal_explanation, v.renewal_check,
 	v.ca_revoked_at, v.ca_revoke_reason, v.status_check,
@@ -461,7 +472,7 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 		var is issuanceRow
 		var reuseKey, paused int64
 		var notifyTo string
-		dest := []any{&c.ID, &domains, &c.Source, &sourceProvider, &solverProvider, &c.KeyType, &c.RenewBeforeDays, &created, &c.Note, &reuseKey, &notifyTo, &paused,
+		dest := []any{&c.ID, &domains, &c.Source, &sourceProvider, &solverProvider, &c.KeyType, &c.RenewBeforeDays, &created, &c.Note, &reuseKey, &notifyTo, &paused, &c.DeployWindow,
 			&v.id, &v.origin, &v.names, &v.serial, &v.fingerprint, &v.issuer, &v.keyType, &v.notBefore, &v.notAfter, &v.chain, &v.created,
 			&v.source, &v.start, &v.end, &v.at, &v.explanation, &v.check, &v.caRevoked, &v.caReason, &v.statusCheck}
 		if err := rows.Scan(append(dest, is.dest()...)...); err != nil {
@@ -559,6 +570,7 @@ type changes struct {
 	notifyTo         *[]int64
 	solver           *int64
 	keyType          *string
+	deployWindow     *string
 }
 
 // update makes the changes ch to certificate id.
@@ -604,6 +616,12 @@ func (s *service) update(ctx context.Context, id int64, ch changes) error {
 		}
 		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET reuse_key = ?, updated_at = ? WHERE id = ?",
 			reuse, s.now().UnixMilli(), id); err != nil {
+			return err
+		}
+	}
+	if ch.deployWindow != nil {
+		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET deploy_window = ?, updated_at = ? WHERE id = ?",
+			*ch.deployWindow, s.now().UnixMilli(), id); err != nil {
 			return err
 		}
 	}

@@ -458,3 +458,20 @@ func TestViews(t *testing.T) {
 		t.Errorf("results %+v", b.Results)
 	}
 }
+
+// A version a deploy window holds back is checked, and its grace counted,
+// from when it goes out.
+func TestDeployWindowDefers(t *testing.T) {
+	f := newFixture(t)
+	v1 := f.leaf(90, "example.com")
+	later := start.Add(17 * time.Hour)
+	d := contracts.CertificateEvent{CertificateID: 1, Domains: []string{"example.com"}, VersionID: 1, Fingerprint: cryptox.Fingerprint(v1),
+		NotAfter: v1.NotAfter, DeployAt: later}
+	data, _ := json.Marshal(d)
+	if err := f.m.handle(t.Context(), events.Event{Type: contracts.CertificateIssued, Subject: "1", Data: data, Time: start}); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.checkAt(); !got.Equal(later.Add(afterIssue)) {
+		t.Errorf("checked at %s, want %s", got, later.Add(afterIssue))
+	}
+}

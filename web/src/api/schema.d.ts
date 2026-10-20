@@ -1745,6 +1745,8 @@ export interface components {
             createdAt: string;
             /** @description The version in use */
             current?: components["schemas"]["VersionBody"];
+            /** @description The hours, in the panel's time zone, new versions are deployed in, as 1-5 */
+            deployWindow?: string;
             /** @description The latest deployment to each target that had one, in the order of targets */
             deployments: components["schemas"]["DeploymentBody"][];
             /** @description The domains, the primary first */
@@ -3156,6 +3158,11 @@ export interface components {
             };
         };
         UpdateInputBody1: {
+            /**
+             * @description The hours, in the panel's time zone, new versions are deployed in, as 1-5; empty for any time; unchanged if left out. Deploying by hand starts at once.
+             * @enum {string}
+             */
+            deployWindow?: "" | "0-6" | "1-5" | "2-6" | "22-6";
             /**
              * @description Another key type for a certificate with a source whose keys JEC makes, from its next issuance; unchanged if left out
              * @enum {string}

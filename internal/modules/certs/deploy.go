@@ -222,9 +222,17 @@ func (s *service) targetIDs(ctx context.Context, tx *sql.Tx, id int64) ([]int64,
 // added.
 func (s *service) queueDeployment(ctx context.Context, tx *sql.Tx, id, version, target int64, reason string) error {
 	now := s.now().UnixMilli()
+	due := now
+	if reason != deployManual {
+		at, err := s.deployAt(ctx, tx, id)
+		if err != nil {
+			return err
+		}
+		due = at.UnixMilli()
+	}
 	res, err := tx.ExecContext(ctx,
 		`UPDATE certs_deployments SET version_id = ?, reason = ?, attempts = 0, next_at = ?, error_key = '', error_params = '', created_at = ?
-		 WHERE certificate_id = ? AND provider_id = ? AND state = 'pending'`, version, reason, now, now, id, target)
+		 WHERE certificate_id = ? AND provider_id = ? AND state = 'pending'`, version, reason, due, now, id, target)
 	if err != nil {
 		return err
 	}
@@ -233,8 +241,24 @@ func (s *service) queueDeployment(ctx context.Context, tx *sql.Tx, id, version, 
 	}
 	_, err = tx.ExecContext(ctx,
 		`INSERT INTO certs_deployments (certificate_id, version_id, provider_id, reason, state, attempts, next_at, ref, error_key, error_params, created_at)
-		 VALUES (?, ?, ?, ?, 'pending', 0, ?, '', '', '', ?)`, id, version, target, reason, now, now)
+		 VALUES (?, ?, ?, ?, 'pending', 0, ?, '', '', '', ?)`, id, version, target, reason, due, now)
 	return err
+}
+
+// deployAt is when a deployment of certificate id due now may start, as
+// its deploy window says.
+func (s *service) deployAt(ctx context.Context, tx *sql.Tx, id int64) (time.Time, error) {
+	var window string
+	if err := tx.QueryRowContext(ctx, "SELECT deploy_window FROM certs_certificates WHERE id = ?", id).Scan(&window); err != nil {
+		return time.Time{}, err
+	}
+	return windowStart(window, s.now(), s.zone()), nil
+}
+
+// scheduled tells a deployment that waits for its window: not tried yet,
+// and due later.
+func (d *Deployment) scheduled(now time.Time) bool {
+	return d.State == issuancePending && d.Attempts == 0 && d.Error.Key == "" && d.NextAt.After(now)
 }
 
 // deployNow queues the current version of certificate id for target, or
