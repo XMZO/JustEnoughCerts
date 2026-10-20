@@ -83,7 +83,7 @@ chat:
 |---|---|
 | `/menu` | The main menu: how many certificates are in which state, the next renewal, and the way to everything else |
 | `/certs` | Every certificate with the days it has left; each opens its own page |
-| `/todo` | The certificates that need attention, and why |
+| `/todo` | The certificates that need attention, and why, and the providers failing their test |
 | `/recent` | The issuances, renewals and deployments of the last 7 days |
 | `/online` | What the online checks found wrong |
 | `/sites` | The [watched sites and domain registrations](sites.md), those to look at first, and the certificates from transparency logs to look at |

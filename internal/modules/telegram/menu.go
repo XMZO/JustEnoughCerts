@@ -227,6 +227,35 @@ func (l *listener) todoView(ctx context.Context) (screen, error) {
 			lines = append(lines, "    "+why)
 		}
 	}
+	// The providers that fail their daily test, as their keys stopped
+	// working: before the next issuance or deployment finds out.
+	var providers struct {
+		Providers []struct {
+			Name     string `json:"name"`
+			Kind     string `json:"kind"`
+			LastTest *struct {
+				OK      bool        `json:"ok"`
+				Message *apiMessage `json:"message"`
+			} `json:"lastTest"`
+		} `json:"providers"`
+	}
+	if l.get(ctx, "/providers", &providers) == nil {
+		header := false
+		for _, p := range providers.Providers {
+			if p.Kind == "notifier" || p.LastTest == nil || p.LastTest.OK {
+				continue
+			}
+			if !header {
+				lines = append(lines, "", "<b>"+l.text(i18n.TelegramTodoProviders, nil)+"</b>")
+				header = true
+			}
+			line := iconFail + " <b>" + html.EscapeString(p.Name) + "</b>"
+			if p.LastTest.Message != nil {
+				line += " · " + l.message(p.LastTest.Message)
+			}
+			lines = append(lines, line)
+		}
+	}
 	rows := append(l.certButtons(todo), []button{l.button(iconRefresh, i18n.TelegramButtonRefresh, nil, viewTodo), l.home()})
 	return screen{text: strings.Join(lines, "\n"), rows: rows}, nil
 }

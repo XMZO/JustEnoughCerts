@@ -2562,6 +2562,7 @@ const (
 	TelegramTodoExpired                      Key = "telegram.todo.expired"
 	TelegramTodoExpiringManual               Key = "telegram.todo.expiring_manual"
 	TelegramTodoNone                         Key = "telegram.todo.none"
+	TelegramTodoProviders                    Key = "telegram.todo.providers"
 	TelegramTodoTitle                        Key = "telegram.todo.title"
 	TencentcloudCdnDescription               Key = "tencentcloud.cdn.description"
 	TencentcloudCdnName                      Key = "tencentcloud.cdn.name"

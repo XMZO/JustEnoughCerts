@@ -2570,6 +2570,7 @@ export type MessageKey =
   | "telegram.todo.expired"
   | "telegram.todo.expiring_manual"
   | "telegram.todo.none"
+  | "telegram.todo.providers"
   | "telegram.todo.title"
   | "tencentcloud.cdn.description"
   | "tencentcloud.cdn.name"

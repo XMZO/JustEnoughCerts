@@ -3456,6 +3456,7 @@
       "expired": "{date} 已过期",
       "expiring_manual": "{date} 到期，要手动上传新证书",
       "none": "没有需要处理的证书。",
+      "providers": "测试失败的服务商",
       "title": "需要处理（{count}）"
     }
   },

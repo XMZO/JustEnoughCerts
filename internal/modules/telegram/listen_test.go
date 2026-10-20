@@ -146,7 +146,8 @@ func (j *jecAPI) call(_ context.Context, via, method, path string, _, out any) e
 	case "/certs/certificates/2":
 		body = map[string]any{"certificate": failed}
 	case "/providers":
-		body = map[string]any{"providers": []instance{{ID: 10, Name: "Let's Encrypt", Kind: "source"}, {ID: 11, Name: "DNS", Kind: "solver"}, {ID: 12, Name: "<CDN>", Kind: "target"}}}
+		body = map[string]any{"providers": []map[string]any{{"id": 10, "name": "Let's Encrypt", "kind": "source"}, {"id": 11, "name": "DNS", "kind": "solver"},
+			{"id": 12, "name": "<CDN>", "kind": "target", "lastTest": map[string]any{"ok": false, "message": map[string]any{"key": "kernel.error.provider_test"}}}}}
 	case "/monitor/certificates/1":
 		body = checks{Tracked: true, Results: []check{{Domain: "example.com", State: "ok"}, {Domain: "www.example.com", State: "ok"}}}
 	case "/monitor/states":
@@ -337,6 +338,7 @@ func TestMenu(t *testing.T) {
 	// The other views.
 	for _, v := range []struct{ data, want string }{
 		{"t", "broken.example</b> · Issuance failed"},
+		{"t", "<b>Providers failing their test</b>\n❌ <b>&lt;CDN&gt;</b> · "},
 		{"r", "Deployment <b>example.com</b> → &lt;CDN&gt; · done"},
 		{"o", "1 domain still serves an older certificate"},
 		{"s", "Version: 1.2.3"},
