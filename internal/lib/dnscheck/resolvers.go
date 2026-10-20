@@ -67,3 +67,10 @@ func UseResolvers(servers []string) {
 	opts.RecursiveNameservers = servers
 	dns01.SetDefaultClient(dns01.NewClient(opts))
 }
+
+// Custom reports whether resolvers were set (UseResolvers) in this process.
+func Custom() bool {
+	caaMu.Lock()
+	defer caaMu.Unlock()
+	return len(caaServers) > 0
+}

@@ -31,6 +31,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/retry"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/dnscheck"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/httpx"
 )
 
@@ -76,6 +77,13 @@ func (s *source) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509
 	}
 
 	p := &dnsProvider{solver: req.Solver, log: log, skipCheck: s.m.skipPropagation, missed: map[string]bool{}}
+	if dnscheck.Custom() {
+		// lego asks the resolvers set for the name servers of a zone but the
+		// system's for their addresses, which those may not know.
+		p.check = func(ctx context.Context, fqdn, value string) (bool, error) {
+			return dnscheck.Visible(ctx, fqdn, "TXT", value)
+		}
+	}
 	if req.Files != nil {
 		if err := client.Challenge.SetHTTP01Provider(&fileProvider{files: req.Files, log: log}); err != nil {
 			return nil, err
@@ -335,7 +343,8 @@ func explain(err error, unseen []string) error {
 type dnsProvider struct {
 	solver    contracts.Solver
 	log       func(contracts.LogLine)
-	skipCheck bool // trust the records to show, as for tests
+	skipCheck bool               // trust the records to show, as for tests
+	check     dns01.PreCheckFunc // in place of lego's, when set
 
 	mu      sync.Mutex
 	waiting bool            // the wait was logged
@@ -392,6 +401,9 @@ func (p *dnsProvider) precheck(ctx context.Context, domain, fqdn, value string, 
 	}
 	if p.skipCheck {
 		return true, nil
+	}
+	if p.check != nil {
+		check = p.check
 	}
 	found, err := check(ctx, fqdn, value)
 	p.mu.Lock()

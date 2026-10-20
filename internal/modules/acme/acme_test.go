@@ -250,8 +250,14 @@ func TestPrecheck(t *testing.T) {
 	if ok, err := p.precheck(ctx, "b.example.com", "_acme-challenge.b.example.com.", "v", check); !ok || !errors.Is(err, context.Canceled) {
 		t.Errorf("after the stop: %v, %v", ok, err)
 	}
-	p.skipCheck = true
+	// A check of its own, as with resolvers set, comes before lego's.
+	p.check = func(context.Context, string, string) (bool, error) { return true, nil }
 	visible = false
+	if ok, err := p.precheck(t.Context(), "d.example.com", "_acme-challenge.d.example.com.", "v", check); !ok || err != nil {
+		t.Errorf("the check of its own: %v, %v", ok, err)
+	}
+	p.check = nil
+	p.skipCheck = true
 	if ok, err := p.precheck(t.Context(), "c.example.com", "_acme-challenge.c.example.com.", "v", check); !ok || err != nil {
 		t.Errorf("skipping the check: %v, %v", ok, err)
 	}
