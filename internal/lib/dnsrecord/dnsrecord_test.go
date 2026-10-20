@@ -17,14 +17,24 @@ import (
 // inZone makes every name belong to example.com, as its SOA would say.
 func inZone(t *testing.T) {
 	t.Helper()
-	old := findZone
+	old, oldDelegated := findZone, delegated
 	findZone = func(_ context.Context, name string) (string, error) {
-		if !strings.HasSuffix(name, "example.com") {
-			return "", errors.New("no zone")
+		switch {
+		case strings.HasSuffix(name, "example.com"):
+			return "example.com", nil
+		case strings.HasSuffix(name, "example.net"):
+			return "example.net", nil
 		}
-		return "example.com", nil
+		return "", errors.New("no zone")
 	}
-	t.Cleanup(func() { findZone = old })
+	// _acme-challenge.delegated.example.com is a CNAME into example.net.
+	delegated = func(_ context.Context, name string) string {
+		if name == "delegated.example.com" {
+			return "delegated.acme.example.net"
+		}
+		return ""
+	}
+	t.Cleanup(func() { findZone, delegated = old, oldDelegated })
 }
 
 var txt = Record{Name: "_dnsauth.www.example.com", Type: "TXT", Value: "2026101900000000abcdef"}
@@ -373,5 +383,8 @@ func TestHolds(t *testing.T) {
 	api, _ := Open("cloudflare", map[string]string{"CF_DNS_API_TOKEN": "dns", "CF_ZONE_API_TOKEN": "zone", "CLOUDFLARE_BASE_URL": cf.URL})
 	if zone, held, err := ZoneOf(t.Context(), api, "*.www.example.com"); err != nil || zone != "example.com" || !held {
 		t.Errorf("ZoneOf = %s %v %v", zone, held, err)
+	}
+	if zone, _, err := ZoneOf(t.Context(), api, "delegated.example.com"); err != nil || zone != "example.net" {
+		t.Errorf("ZoneOf a delegated name = %s %v", zone, err)
 	}
 }

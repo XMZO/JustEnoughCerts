@@ -1645,6 +1645,7 @@ const (
 	KernelProvidersTryNotVisible             Key = "kernel.providers.try_not_visible"
 	KernelProvidersTryRemoved                Key = "kernel.providers.try_removed"
 	KernelProvidersTryTitle                  Key = "kernel.providers.try_title"
+	KernelProvidersTryVia                    Key = "kernel.providers.try_via"
 	KernelProvidersTryVisible                Key = "kernel.providers.try_visible"
 	KernelProvidersTypeGone                  Key = "kernel.providers.type_gone"
 	KernelProvidersUntested                  Key = "kernel.providers.untested"

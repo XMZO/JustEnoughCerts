@@ -2197,6 +2197,7 @@
       "try_not_visible": "The authoritative DNS did not answer it within {seconds} s. Some providers are slow, and an issuance waits longer; if it never shows, check that the domain is in this account.",
       "try_removed": "Record removed.",
       "try_title": "Try {name}",
+      "try_via": "The name is delegated through a CNAME, so the record went to:",
       "try_visible": "The authoritative DNS answers it ({seconds} s).",
       "type_gone": "Type not available; its module may be off",
       "untested": "Untested",

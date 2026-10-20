@@ -1653,6 +1653,7 @@ export type MessageKey =
   | "kernel.providers.try_not_visible"
   | "kernel.providers.try_removed"
   | "kernel.providers.try_title"
+  | "kernel.providers.try_via"
   | "kernel.providers.try_visible"
   | "kernel.providers.type_gone"
   | "kernel.providers.untested"

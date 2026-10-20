@@ -83,12 +83,26 @@ func TestTry(t *testing.T) {
 	_, a := humatest.New(t)
 	Register(a, reg)
 	// The DNS answers what the solver added, but for late.example.com.
-	orig := visible
-	t.Cleanup(func() { visible = orig })
+	// _acme-challenge.delegated.example.com is a CNAME to
+	// delegated.acme.example.net, where the provider puts the record.
+	orig, origDelegated := visible, delegated
+	t.Cleanup(func() { visible, delegated = orig, origDelegated })
 	visible = func(_ context.Context, name, typ, _ string) (bool, error) {
 		mu.Lock()
 		defer mu.Unlock()
-		return typ == "TXT" && name != "_acme-challenge.late.example.com" && records[name] != "", nil
+		switch name {
+		case "_acme-challenge.late.example.com", "_acme-challenge.delegated.example.com":
+			return false, nil
+		case "delegated.acme.example.net":
+			name = "_acme-challenge.delegated.example.com"
+		}
+		return typ == "TXT" && records[name] != "", nil
+	}
+	delegated = func(_ context.Context, domain string) string {
+		if domain == "delegated.example.com" {
+			return "delegated.acme.example.net"
+		}
+		return ""
 	}
 	create := func(typ string, config map[string]string) string {
 		id, err := reg.Create(t.Context(), typ, typ, config, nil)
@@ -109,6 +123,13 @@ func TestTry(t *testing.T) {
 	}
 	if len(records) != 0 || len(cleaned) != 1 {
 		t.Errorf("left %v, cleaned %v", records, cleaned)
+	}
+
+	// A record delegated through a CNAME is looked for where it points.
+	resp = a.Post("/providers/"+dns+"/try", map[string]any{"domain": "delegated.example.com"})
+	out = TryBody{}
+	if resp.Code != http.StatusOK || json.Unmarshal(resp.Body.Bytes(), &out) != nil || out.Via != "delegated.acme.example.net" || !out.Visible {
+		t.Errorf("a delegated one = %d %s", resp.Code, resp.Body)
 	}
 
 	// One that refuses to add it answers with its message, and cleans up.

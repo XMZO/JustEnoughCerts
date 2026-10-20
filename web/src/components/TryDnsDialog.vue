@@ -52,6 +52,10 @@ async function submit() {
           <span class="min-w-0">
             {{ t('kernel.providers.try_added') }}
             <code class="block [overflow-wrap:anywhere]" translate="no">{{ result.record }}</code>
+            <template v-if="result.via">
+              {{ t('kernel.providers.try_via') }}
+              <code class="block [overflow-wrap:anywhere]" translate="no">{{ result.via }}</code>
+            </template>
           </span>
         </li>
         <li class="flex items-start gap-2">

@@ -2197,6 +2197,7 @@
       "try_not_visible": "{seconds} 秒内权威 DNS 还没有返回这条记录。部分服务商生效较慢，签发时会等得更久；如果一直看不到，请检查域名是否在这个账号下。",
       "try_removed": "已删除记录。",
       "try_title": "试一下 {name}",
+      "try_via": "这个名称经 CNAME 委派，记录实际添加在：",
       "try_visible": "权威 DNS 已返回这条记录（{seconds} 秒）。",
       "type_gone": "类型不可用，所属模块可能已停用",
       "untested": "未实测",

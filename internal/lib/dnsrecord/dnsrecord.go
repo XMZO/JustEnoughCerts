@@ -41,9 +41,15 @@ type API interface {
 }
 
 // ZoneOf returns the zone name belongs to, as its SOA says, and whether
-// the account of api manages it.
+// the account of api manages it. When _acme-challenge under name is a
+// CNAME elsewhere, the record of a challenge goes there, so it is the zone
+// of that name.
 func ZoneOf(ctx context.Context, api API, name string) (zone string, held bool, err error) {
-	zone, err = findZone(ctx, strings.ToLower(strings.TrimSuffix(strings.TrimPrefix(name, "*."), ".")))
+	name = strings.ToLower(strings.TrimSuffix(strings.TrimPrefix(name, "*."), "."))
+	if to := delegated(ctx, name); to != "" {
+		name = to
+	}
+	zone, err = findZone(ctx, name)
 	if err != nil {
 		return "", false, err
 	}
@@ -79,8 +85,12 @@ func Open(code string, settings map[string]string) (API, error) {
 }
 
 // findZone returns the zone name belongs to, as its SOA says, without a
-// final dot; tests replace it.
-var findZone = dnscheck.Zone
+// final dot; delegated where _acme-challenge under a domain points. Tests
+// replace them.
+var (
+	findZone  = dnscheck.Zone
+	delegated = dnscheck.Delegated
+)
 
 // split returns the zone of name and the name within it: "@" for the zone
 // itself.

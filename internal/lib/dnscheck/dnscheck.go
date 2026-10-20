@@ -55,6 +55,17 @@ func Zone(ctx context.Context, name string) (string, error) {
 	return dns01.UnFqdn(zone), nil
 }
 
+// Delegated returns the name that _acme-challenge under domain points to
+// through CNAMEs, where the record of an ACME challenge goes, as lego
+// follows them; empty when it points nowhere else.
+func Delegated(ctx context.Context, domain string) string {
+	info := dns01.GetChallengeInfo(ctx, strings.TrimPrefix(strings.TrimSuffix(domain, "."), "*."), "")
+	if info.EffectiveFQDN == info.FQDN {
+		return ""
+	}
+	return dns01.UnFqdn(info.EffectiveFQDN)
+}
+
 // Visible reports whether the authoritative servers of the zone of name
 // answer the record of typ, TXT or CNAME, with value. Each server that
 // answers must have it; one that does not answer is skipped, unless none

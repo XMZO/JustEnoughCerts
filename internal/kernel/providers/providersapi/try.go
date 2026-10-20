@@ -34,8 +34,12 @@ const (
 )
 
 // visible tells whether the authoritative servers of a name answer a
-// record; tests replace it.
-var visible = dnscheck.Visible
+// record; delegated where _acme-challenge under a domain points. Tests
+// replace them.
+var (
+	visible   = dnscheck.Visible
+	delegated = dnscheck.Delegated
+)
 
 type tryInput struct {
 	ID   int64 `path:"id"`
@@ -47,6 +51,7 @@ type tryInput struct {
 // TryBody is how a trial of a solver of DNS went.
 type TryBody struct {
 	Record  string `json:"record" doc:"The record's name, as _acme-challenge.example.com"`
+	Via     string `json:"via,omitempty" doc:"Where the record went, when _acme-challenge under the domain is a CNAME to that name"`
 	Value   string `json:"value" doc:"The TXT value added"`
 	Visible bool   `json:"visible" doc:"The domain's authoritative servers answered it within the time a trial waits"`
 	Seconds int    `json:"seconds" doc:"How long it took to be added and become visible, or the time waited"`
@@ -122,8 +127,13 @@ func try(ctx context.Context, r *providers.Registry, id int64, domain string) (*
 	}
 
 	vctx, cancel := context.WithTimeout(ctx, tryVisible)
+	// The provider follows a CNAME to put the record, as an issuance does.
+	at := out.Body.Record
+	if out.Body.Via = delegated(vctx, name); out.Body.Via != "" {
+		at = out.Body.Via
+	}
 	for {
-		if seen, err := visible(vctx, out.Body.Record, "TXT", out.Body.Value); err == nil && seen {
+		if seen, err := visible(vctx, at, "TXT", out.Body.Value); err == nil && seen {
 			out.Body.Visible = true
 			break
 		}

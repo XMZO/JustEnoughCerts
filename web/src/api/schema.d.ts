@@ -3071,6 +3071,8 @@ export interface components {
             seconds: number;
             /** @description The TXT value added */
             value: string;
+            /** @description Where the record went, when _acme-challenge under the domain is a CNAME to that name */
+            via?: string;
             /** @description The domain's authoritative servers answered it within the time a trial waits */
             visible: boolean;
         };
