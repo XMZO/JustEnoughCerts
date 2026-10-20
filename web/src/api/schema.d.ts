@@ -3156,6 +3156,11 @@ export interface components {
             };
         };
         UpdateInputBody1: {
+            /**
+             * @description Another key type for a certificate with a source whose keys JEC makes, from its next issuance; unchanged if left out
+             * @enum {string}
+             */
+            keyType?: "ecdsa-p256" | "ecdsa-p384" | "rsa-2048" | "rsa-3072" | "rsa-4096";
             /** @description Replaces the note when given; empty removes it */
             note?: string;
             /** @description The notifiers the certificate's notes go to; empty for all; unchanged if left out */
@@ -3169,6 +3174,11 @@ export interface components {
             renewBeforeDays?: number;
             /** @description Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out */
             reuseKey?: boolean;
+            /**
+             * Format: int64
+             * @description Another solver for a certificate with a source that needs one, from its next issuance; unchanged if left out
+             */
+            solverProvider?: number;
             /** @description Replaces the targets when given; an empty list removes them all */
             targets?: number[];
         };

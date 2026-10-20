@@ -1222,6 +1222,7 @@
       "days_help": "JEC warns you when the certificate has this many days left, from 1 to 365.",
       "days_unit": "days",
       "edit": "Edit the renewal settings",
+      "key_type": "Key type",
       "notify_none": "No notification channels",
       "notify_to": "Notes go to",
       "notify_to_help": "Only the channels checked get the notes of this certificate; with none checked, all of them do.",
@@ -1232,6 +1233,8 @@
       "renewal_value": "{days, plural, one {# day} other {# days}} before it ends, looked at daily at {time}",
       "reuse_key": "Keep the private key on renewal",
       "reuse_key_help": "New certificates keep the private key in use, so the public key stays: as an app that pins it, or a TLSA record (DANE), needs. Otherwise a new key each time is safer; a revoked certificate gets a new one.",
+      "solver": "Validation",
+      "solver_help": "From the next issuance on, as when the domain's DNS moves to another provider.",
       "title": "Renewal settings"
     },
     "source": {

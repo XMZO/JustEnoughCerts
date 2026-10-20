@@ -33,6 +33,7 @@ import {
   useSetDomains,
   useUpdateCertificate,
   useUploadVersion,
+  type KeyType,
   type RevokeReason,
 } from '../api/certs'
 import { useApiError } from '../api/errors'
@@ -349,6 +350,12 @@ const reuseKey = ref(false)
 const keyKept = computed(() => issued.value && !ownKey.value)
 // Pausing the renewal of a certificate with a source.
 const paused = ref(false)
+// Another solver, as when the DNS moves, and another key type, from the
+// next issuance; the server checks the source takes them.
+const solverChoice = ref<number>(0)
+const keyChoice = ref<KeyType | ''>('')
+const keyTypes: KeyType[] = ['rsa-2048', 'ecdsa-p256', 'ecdsa-p384', 'rsa-3072', 'rsa-4096']
+const needsSolverHere = computed(() => issued.value && !!sourceType.value?.needsSolver)
 // The channels its notes go to; none chosen goes to all.
 const notifyTo = ref<number[]>([])
 const update = useUpdateCertificate(() => props.id)
@@ -357,6 +364,8 @@ function edit() {
   days.value = String(cert.value?.renewBeforeDays ?? 30)
   reuseKey.value = !!cert.value?.reuseKey
   paused.value = !!cert.value?.paused
+  solverChoice.value = cert.value?.solverProvider ?? 0
+  keyChoice.value = (cert.value?.keyType ?? '') as KeyType | ''
   notifyTo.value = [...(cert.value?.notifyTo ?? [])]
   update.reset()
   editing.value = true
@@ -411,6 +420,8 @@ async function saveSettings() {
       notifyTo: notifyTo.value,
       ...(keyKept.value ? { reuseKey: reuseKey.value } : {}),
       ...(issued.value ? { paused: paused.value } : {}),
+      ...(needsSolverHere.value && solverChoice.value && solverChoice.value !== cert.value?.solverProvider ? { solverProvider: solverChoice.value } : {}),
+      ...(keyKept.value && keyChoice.value && keyChoice.value !== cert.value?.keyType ? { keyType: keyChoice.value } : {}),
     })
   } catch {
     return
@@ -992,6 +1003,16 @@ async function confirmDelete() {
           </span>
           <span>{{ t('certs.settings.days_unit') }}</span>
         </span>
+      </JecField>
+      <JecField v-if="needsSolverHere" id="settings-solver" label="certs.settings.solver" hint="certs.settings.solver_help" :error="updateError.fields.value.solverProvider">
+        <select id="settings-solver" v-model.number="solverChoice" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
+          <option v-for="s in solvers.data.value" :key="s.id" :value="s.id" translate="no">{{ s.name }}</option>
+        </select>
+      </JecField>
+      <JecField v-if="keyKept" id="settings-key" label="certs.settings.key_type" :error="updateError.fields.value.keyType">
+        <select id="settings-key" v-model="keyChoice" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
+          <option v-for="k in keyTypes" :key="k" :value="k">{{ t(keyText(k).key, keyText(k).params) }}</option>
+        </select>
       </JecField>
       <fieldset v-if="notifiers.data.value?.length" class="m-0 flex flex-col gap-1 border-0 p-0">
         <legend class="mb-1 p-0 font-semibold">{{ t('certs.settings.notify_to') }}</legend>

@@ -4212,6 +4212,17 @@
       "UpdateInputBody1": {
         "additionalProperties": false,
         "properties": {
+          "keyType": {
+            "description": "Another key type for a certificate with a source whose keys JEC makes, from its next issuance; unchanged if left out",
+            "enum": [
+              "ecdsa-p256",
+              "ecdsa-p384",
+              "rsa-2048",
+              "rsa-3072",
+              "rsa-4096"
+            ],
+            "type": "string"
+          },
           "note": {
             "description": "Replaces the note when given; empty removes it",
             "maxLength": 500,
@@ -4240,6 +4251,11 @@
           "reuseKey": {
             "description": "Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out",
             "type": "boolean"
+          },
+          "solverProvider": {
+            "description": "Another solver for a certificate with a source that needs one, from its next issuance; unchanged if left out",
+            "format": "int64",
+            "type": "integer"
           },
           "targets": {
             "description": "Replaces the targets when given; an empty list removes them all",

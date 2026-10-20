@@ -265,6 +265,49 @@ func (s *service) checkDomains(ctx context.Context, id int64, names []string) er
 	return nil
 }
 
+// checkIssuing checks another solver and key type for certificate id, as
+// its source takes them; nil changes nothing.
+func (s *service) checkIssuing(ctx context.Context, id int64, solver *int64, keyType *string) error {
+	if solver == nil && keyType == nil {
+		return nil
+	}
+	c, err := s.load(ctx, s.db, id)
+	if err != nil {
+		return serviceError(err)
+	}
+	invalid := api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil)
+	if c.Source != sourceProvider {
+		return invalid.WithField("body.solverProvider", i18n.KernelErrorInvalidField)
+	}
+	source, err := s.providers.Type(ctx, c.SourceProvider)
+	if err != nil {
+		return invalid.WithField("body.solverProvider", i18n.KernelErrorInvalidField)
+	}
+	if solver != nil {
+		if code := s.checkProvider(ctx, *solver, providers.Solver); code != "" {
+			invalid = invalid.WithField("body.solverProvider", code)
+		} else if typ, err := s.providers.Type(ctx, *solver); err == nil {
+			switch {
+			case !source.NeedsSolver:
+				invalid = invalid.WithField("body.solverProvider", i18n.KernelErrorInvalidField)
+			case !source.Takes(typ):
+				invalid = invalid.WithField("body.solverProvider", i18n.CertsErrorSolverChallenge)
+			case typ.Solves() == providers.ChallengeHTTP && slices.ContainsFunc(c.Domains, isWildcard):
+				invalid = invalid.WithField("body.solverProvider", i18n.CertsErrorWildcardHttp)
+			case typ.Solves() != providers.ChallengeHTTP && slices.ContainsFunc(c.Domains, isIP):
+				invalid = invalid.WithField("body.solverProvider", i18n.CertsErrorIpDns)
+			}
+		}
+	}
+	if keyType != nil && (source.OwnKey || !slices.Contains(cryptox.KeyTypes, *keyType)) {
+		invalid = invalid.WithField("body.keyType", i18n.KernelErrorInvalidField)
+	}
+	if len(invalid.Fields) > 0 {
+		return invalid
+	}
+	return nil
+}
+
 // addIssued checks the request and adds the certificate with its first
 // issuance, which it hands to the runner.
 func (s *service) addIssued(ctx context.Context, in *IssueRequest) (int64, error) {

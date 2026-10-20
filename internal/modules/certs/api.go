@@ -263,6 +263,8 @@ type updateInput struct {
 		ReuseKey        *bool    `json:"reuseKey,omitempty" doc:"Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out"`
 		NotifyTo        *[]int64 `json:"notifyTo,omitempty" maxItems:"50" doc:"The notifiers the certificate's notes go to; empty for all; unchanged if left out"`
 		Paused          *bool    `json:"paused,omitempty" doc:"Pause the renewal: the certificate is issued only when someone asks; unchanged if left out"`
+		SolverProvider  *int64   `json:"solverProvider,omitempty" doc:"Another solver for a certificate with a source that needs one, from its next issuance; unchanged if left out"`
+		KeyType         *string  `json:"keyType,omitempty" enum:"ecdsa-p256,ecdsa-p384,rsa-2048,rsa-3072,rsa-4096" doc:"Another key type for a certificate with a source whose keys JEC makes, from its next issuance; unchanged if left out"`
 	}
 }
 
@@ -402,7 +404,11 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			}
 			notifyTo = &list
 		}
-		ch := changes{days: in.Body.RenewBeforeDays, targets: targets, note: in.Body.Note, reuseKey: in.Body.ReuseKey, paused: in.Body.Paused, notifyTo: notifyTo}
+		if err := s.checkIssuing(ctx, in.ID, in.Body.SolverProvider, in.Body.KeyType); err != nil {
+			return nil, err
+		}
+		ch := changes{days: in.Body.RenewBeforeDays, targets: targets, note: in.Body.Note, reuseKey: in.Body.ReuseKey, paused: in.Body.Paused, notifyTo: notifyTo,
+			solver: in.Body.SolverProvider, keyType: in.Body.KeyType}
 		if err := s.update(ctx, in.ID, ch); err != nil {
 			return nil, serviceError(err)
 		}

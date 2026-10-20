@@ -557,6 +557,8 @@ type changes struct {
 	note             *string
 	reuseKey, paused *bool
 	notifyTo         *[]int64
+	solver           *int64
+	keyType          *string
 }
 
 // update makes the changes ch to certificate id.
@@ -602,6 +604,18 @@ func (s *service) update(ctx context.Context, id int64, ch changes) error {
 		}
 		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET reuse_key = ?, updated_at = ? WHERE id = ?",
 			reuse, s.now().UnixMilli(), id); err != nil {
+			return err
+		}
+	}
+	if ch.solver != nil {
+		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET solver_provider = ?, updated_at = ? WHERE id = ?",
+			*ch.solver, s.now().UnixMilli(), id); err != nil {
+			return err
+		}
+	}
+	if ch.keyType != nil {
+		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET key_type = ?, updated_at = ? WHERE id = ?",
+			*ch.keyType, s.now().UnixMilli(), id); err != nil {
 			return err
 		}
 	}

@@ -100,6 +100,7 @@ The certificate's page shows:
 | Choose targets | Adds or removes deploy targets. A new target receives the current version at once |
 | Deploy now / Deploy again | Deploys the current version again, to every target or to one |
 | Download | Downloads a ZIP file with `cert.pem`, `chain.pem`, `fullchain.pem` and `privkey.pem`, and optionally `certificate.pfx` for Windows, IIS, Azure and Java, with a password of its own and, for older systems, 3DES. As it contains the private key, the password is required first |
+| Change the validation or the key type | In the renewal settings, from the next issuance on, as when the domain's DNS moves to another provider; the source cannot change |
 | Pause the renewal | In the renewal settings: the certificate is no longer issued by itself, only when you choose Issue now, and its end is still told. For a domain whose DNS moves, or that is going away; `paused` in the configuration file |
 | Go back to an earlier version | From the version history, makes an earlier version current again, if it has not expired or been revoked and is for the same domains, and deploys it to every target: for when a new version causes trouble, as a chain some clients do not take. The renewal then goes by its end |
 | Revoke | Has an earlier version revoked at its CA, from the version history, with a reason; the password is required first. See below |

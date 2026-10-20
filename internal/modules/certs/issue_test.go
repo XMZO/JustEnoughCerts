@@ -1302,3 +1302,33 @@ func TestNotifyToChecked(t *testing.T) {
 		t.Errorf("all: %+v", all.NotifyTo)
 	}
 }
+
+func TestChangeSolverAndKeyType(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("*.example.com")
+	path := "/certificates/" + strconv.FormatInt(c.ID, 10)
+	other := f.provider("fake.records")
+	var got CertificateBody
+	f.call(f.api.Patch(path, map[string]any{"solverProvider": other, "keyType": "ecdsa-p384"}), http.StatusOK, &got)
+	if got.SolverProvider != other || got.KeyType != "ecdsa-p384" {
+		t.Fatalf("changed %+v", got)
+	}
+	for _, c := range []struct {
+		body  map[string]any
+		field string
+		code  i18n.Key
+	}{
+		{map[string]any{"solverProvider": f.provider("fake.web")}, "body.solverProvider", i18n.CertsErrorSolverChallenge},
+		{map[string]any{"solverProvider": f.provider("fake.hook")}, "body.solverProvider", ""},
+	} {
+		e := f.apiError(f.api.Patch(path, c.body), http.StatusUnprocessableEntity)
+		if len(e.Fields) != 1 || e.Fields[0].Location != c.field || c.code != "" && e.Fields[0].Code != string(c.code) {
+			t.Errorf("%v: %+v", c.body, e)
+		}
+	}
+	// An uploaded one has no solver to change.
+	up := f.add(f.leaf(30, "upload.example.com"))
+	if e := f.apiError(f.api.Patch("/certificates/"+strconv.FormatInt(up.ID, 10), map[string]any{"keyType": "rsa-2048"}), http.StatusUnprocessableEntity); len(e.Fields) != 1 {
+		t.Errorf("an uploaded one: %+v", e)
+	}
+}

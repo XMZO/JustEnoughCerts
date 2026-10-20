@@ -1222,6 +1222,7 @@
       "days_help": "证书只剩这么多天时提醒你，可以填 1 到 365。",
       "days_unit": "天",
       "edit": "编辑续期设置",
+      "key_type": "密钥类型",
       "notify_none": "没有通知渠道",
       "notify_to": "通知发给",
       "notify_to_help": "只勾选的通知渠道收到这张证书的通知；都不勾选时发给全部渠道。",
@@ -1232,6 +1233,8 @@
       "renewal_value": "到期前 {days, plural, other {# 天}}，每天 {time} 检查",
       "reuse_key": "续期时沿用私钥",
       "reuse_key_help": "新证书继续用现在的私钥，公钥不变：App 固定了公钥、或发布了 TLSA 记录（DANE）时需要。其余情况每次换新私钥更安全；证书被吊销后会换新私钥。",
+      "solver": "验证方式",
+      "solver_help": "从下一次签发起使用，例如域名的 DNS 换了服务商时。",
       "title": "续期设置"
     },
     "source": {
