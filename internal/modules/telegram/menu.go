@@ -36,6 +36,8 @@ const (
 	doRenew    = "xr"
 	doDeploy   = "xd"
 	doCheck    = "xc"
+	doPause    = "xp"
+	doResume   = "xu"
 	// viewNew shows the view after it in a message of its own, rather than
 	// in place: for the buttons under a note, which stays.
 	viewNew = "n" // n:c:<id>, and so on
@@ -101,7 +103,7 @@ func (l *listener) show(ctx context.Context, data string) screen {
 		s, err = l.certView(ctx, id, "")
 	case askRenew, askDeploy:
 		s, err = l.askView(ctx, view, id)
-	case doRenew, doDeploy, doCheck:
+	case doRenew, doDeploy, doCheck, doPause, doResume:
 		s, err = l.act(ctx, view, id)
 	default:
 		s, err = l.mainView(ctx)
@@ -556,6 +558,8 @@ func (l *listener) certView(ctx context.Context, id int64, notice string) (scree
 		lines = append(lines, iconBusy+" "+l.text(i18n.TelegramCertNextLook, i18n.Args{"time": l.clock(*c.Issuance.NextAt)}))
 	case c.State == "issuing" && c.Issuance != nil && c.Issuance.NextAt != nil && c.Issuance.Error != nil:
 		lines = append(lines, iconBusy+" "+l.text(i18n.TelegramCertNextTry, i18n.Args{"time": l.clock(*c.Issuance.NextAt)}))
+	case c.Source == "provider" && c.Paused:
+		lines = append(lines, iconOff+" "+l.text(i18n.TelegramCertPaused, nil))
 	case c.Source == "provider" && c.RenewAt != nil:
 		lines = append(lines, iconClock+" "+l.text(i18n.TelegramCertRenewAt, i18n.Args{"time": l.clock(*c.RenewAt)}))
 	case c.Source != "provider":
@@ -628,6 +632,12 @@ func (l *listener) certView(ctx context.Context, id int64, notice string) (scree
 		}
 		if len(row) > 0 {
 			rows = append(rows, row)
+		}
+		switch {
+		case c.Source == "provider" && c.Paused:
+			rows = append(rows, []button{l.button(iconRenew, i18n.TelegramButtonResume, nil, doResume+":"+strconv.FormatInt(id, 10))})
+		case c.Source == "provider":
+			rows = append(rows, []button{l.button(iconOff, i18n.TelegramButtonPause, nil, doPause+":"+strconv.FormatInt(id, 10))})
 		}
 	}
 	rows = append(rows,
@@ -713,7 +723,8 @@ func (l *listener) askView(ctx context.Context, view string, id int64) (screen, 
 	return screen{text: strings.Join(lines, "\n"), rows: rows}, nil
 }
 
-// act renews, deploys again or checks now, then shows the certificate.
+// act renews, deploys again, checks now, or pauses or resumes the renewal,
+// then shows the certificate.
 func (l *listener) act(ctx context.Context, view string, id int64) (screen, error) {
 	if !l.bot.actions {
 		return l.notAllowed(id), nil
@@ -726,6 +737,12 @@ func (l *listener) act(ctx context.Context, view string, id int64) (screen, erro
 		done, err = i18n.TelegramActionRenewStarted, l.post(ctx, "/certs/certificates/"+ref+"/issue", nil)
 	case doDeploy:
 		done, err = i18n.TelegramActionDeployStarted, l.post(ctx, "/certs/certificates/"+ref+"/deploy", map[string]any{})
+	case doPause, doResume:
+		done = i18n.TelegramActionPaused
+		if view == doResume {
+			done = i18n.TelegramActionResumed
+		}
+		err = l.patch(ctx, "/certs/certificates/"+ref, map[string]any{"paused": view == doPause})
 	default:
 		done, err = i18n.TelegramActionCheckStarted, l.post(ctx, "/monitor/certificates/"+ref+"/check", nil)
 	}

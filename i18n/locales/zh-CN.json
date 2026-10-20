@@ -3197,9 +3197,11 @@
       "deploy_detail": "会把现在这张证书再部署到 {targets}，不申请新证书；部署目标设置的重载或重启也会再执行一次。",
       "deploy_started": "已开始重新部署。",
       "not_allowed": "这个机器人没有打开“允许在 Telegram 里操作”。",
+      "paused": "已暂停自动续期",
       "renew_ask": "确认立即续期 {domain}？",
       "renew_detail": "会马上向 {source} 申请一张新证书，签好后部署；在那之前，现在这张照常使用。",
-      "renew_started": "已开始续期，签好后会收到通知。"
+      "renew_started": "已开始续期，签好后会收到通知。",
+      "resumed": "已恢复自动续期"
     },
     "answer": {
       "failed": "JEC 没能完成：{reason}",
@@ -3223,10 +3225,12 @@
       "next": "下一页",
       "online": "线上检查",
       "open": "在 JEC 中打开",
+      "pause": "暂停自动续期",
       "prev": "上一页",
       "recent": "最近动态",
       "refresh": "刷新",
       "renew": "立即续期",
+      "resume": "恢复自动续期",
       "sites": "到期监控",
       "system": "系统信息",
       "todo": "需要处理（{count}）"
@@ -3244,6 +3248,7 @@
       "no_targets": "没有部署目标",
       "online": "线上检查",
       "online_pending": "还没检查过",
+      "paused": "自动续期已暂停",
       "pending": "还没有签发",
       "renew_at": "自动续期：{time}",
       "solver": "验证：{name}",

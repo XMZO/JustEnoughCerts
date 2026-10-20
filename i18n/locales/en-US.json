@@ -3197,9 +3197,11 @@
       "deploy_detail": "JEC deploys the current certificate to {targets} again, without getting a new one; the reloads or restarts set up for the targets run again too.",
       "deploy_started": "The deployment started.",
       "not_allowed": "This bot does not allow actions from Telegram.",
+      "paused": "Renewal paused",
       "renew_ask": "Renew {domain} now?",
       "renew_detail": "JEC asks {source} for a new certificate now and deploys it once issued; until then, the current one stays in use.",
-      "renew_started": "The renewal started; a note follows once it is issued."
+      "renew_started": "The renewal started; a note follows once it is issued.",
+      "resumed": "Renewal resumed"
     },
     "answer": {
       "failed": "JEC could not do it: {reason}",
@@ -3223,10 +3225,12 @@
       "next": "Next",
       "online": "Online checks",
       "open": "Open in JEC",
+      "pause": "Pause renewal",
       "prev": "Previous",
       "recent": "Recent activity",
       "refresh": "Refresh",
       "renew": "Renew now",
+      "resume": "Resume renewal",
       "sites": "Expiry watch",
       "system": "System",
       "todo": "Need attention ({count})"
@@ -3244,6 +3248,7 @@
       "no_targets": "No deploy targets",
       "online": "Online checks",
       "online_pending": "Not checked yet",
+      "paused": "Renewal paused",
       "pending": "Not issued yet",
       "renew_at": "Renews on its own: {time}",
       "solver": "Validation: {name}",

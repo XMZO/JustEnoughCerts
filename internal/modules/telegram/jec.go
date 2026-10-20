@@ -21,6 +21,7 @@ type certificate struct {
 	SourceProvider int64        `json:"sourceProvider"`
 	SolverProvider int64        `json:"solverProvider"`
 	RenewAt        *time.Time   `json:"renewAt"`
+	Paused         bool         `json:"paused"`
 	Current        *version     `json:"current"`
 	Targets        []int64      `json:"targets"`
 	Deployments    []deployment `json:"deployments"`
@@ -114,6 +115,11 @@ func (l *listener) get(ctx context.Context, path string, out any) error {
 // post asks the API to do path, as the bot.
 func (l *listener) post(ctx context.Context, path string, body any) error {
 	return l.m.call(ctx, l.bot.name, http.MethodPost, path, body, nil)
+}
+
+// patch asks the API to change path, as the bot.
+func (l *listener) patch(ctx context.Context, path string, body any) error {
+	return l.m.call(ctx, l.bot.name, http.MethodPatch, path, body, nil)
 }
 
 func (l *listener) certificates(ctx context.Context) ([]certificate, error) {

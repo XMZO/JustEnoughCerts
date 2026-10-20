@@ -90,7 +90,8 @@ chat:
 A certificate's page shows its state, the days it has left, its renewal,
 its source and issuer, its deployments, its online checks and its last
 issuance. When actions are allowed, it also offers Renew now, Deploy again
-and Check now; renewing and deploying ask for confirmation first.
+and Check now, and pauses or resumes the renewal; renewing and deploying
+ask for confirmation first.
 
 - The bot answers only the chat set as its Chat ID. Another chat that
   sends `/start` learns only its own ID, to set up the bot with.

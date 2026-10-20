@@ -120,9 +120,9 @@ func (j *jecAPI) call(_ context.Context, via, method, path string, _, out any) e
 	if via != "Team bot" {
 		return &module.CallError{Status: http.StatusUnauthorized}
 	}
-	if method == http.MethodPost {
+	if method == http.MethodPost || method == http.MethodPatch {
 		j.mu.Lock()
-		j.done = append(j.done, path)
+		j.done = append(j.done, method+" "+path)
 		j.mu.Unlock()
 		return nil
 	}
@@ -289,7 +289,7 @@ func TestMenu(t *testing.T) {
 			t.Errorf("certificate %q lacks %q", s, want)
 		}
 	}
-	if got := strings.Join(buttons(cert), " "); got != "ar:1 ad:1 xc:1 c:1 l:0 m url:https://jec.example/certificates/1" {
+	if got := strings.Join(buttons(cert), " "); got != "ar:1 ad:1 xc:1 xp:1 c:1 l:0 m url:https://jec.example/certificates/1" {
 		t.Errorf("certificate buttons %s", got)
 	}
 
@@ -321,7 +321,16 @@ func TestMenu(t *testing.T) {
 	if s := text(t, a.wait("editMessageText")); !strings.Contains(s, "renewal started") {
 		t.Errorf("after renewing %q", s)
 	}
-	if done := j.asked(); len(done) != 1 || done[0] != "/certs/certificates/1/issue" {
+	if done := j.asked(); len(done) != 1 || done[0] != "POST /certs/certificates/1/issue" {
+		t.Errorf("did %v", done)
+	}
+	// Its renewal paused at once: nothing to confirm, as it can be resumed.
+	a.push(update{Callback: &callback{ID: "q5", Data: "xp:1", Message: &message{ID: 7, Chat: ours}}})
+	if toast := a.wait("answerCallbackQuery"); !strings.Contains(toast["text"].(string), "Renewal paused") {
+		t.Errorf("toast %v", toast)
+	}
+	a.wait("editMessageText")
+	if done := j.asked(); len(done) != 1 || done[0] != "PATCH /certs/certificates/1" {
 		t.Errorf("did %v", done)
 	}
 
