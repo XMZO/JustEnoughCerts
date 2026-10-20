@@ -64,11 +64,14 @@ func newFixture(t *testing.T) *fixture {
 	// The CA is valid from before the test's clock, whatever the real time.
 	f := &fixture{t: t, ca: cryptoxtest.NewCAFrom(t, start.AddDate(0, -1, 0)), now: start, served: map[string][]*x509.Certificate{}, targets: map[string][2]string{}}
 	f.m = &Module{now: func() time.Time { return f.now }, db: st.DB(), events: bus.Scope("monitor"), log: slog.New(slog.DiscardHandler)}
-	f.m.serve = func(_ context.Context, domain, address string) ([]*x509.Certificate, error) {
+	f.m.serve = func(_ context.Context, domain, address string, port int) ([]*x509.Certificate, error) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
 		if address == "" {
 			address = domain
+		}
+		if port != defaultPort {
+			address = target(address, port)
 		}
 		if c := f.served[address]; c != nil {
 			return c, nil
@@ -474,5 +477,42 @@ func TestDeployWindowDefers(t *testing.T) {
 	}
 	if got := f.checkAt(); !got.Equal(later.Add(afterIssue)) {
 		t.Errorf("checked at %s, want %s", got, later.Add(afterIssue))
+	}
+}
+
+// A certificate of a mail server: checked on the ports set, each a line,
+// in the order of the domains and then the ports.
+func TestPorts(t *testing.T) {
+	f := newFixture(t)
+	// The certificate tell makes is for example.com and www.example.com.
+	v1 := f.leaf(90, "example.com", "www.example.com")
+	f.tell(contracts.CertificateIssued, 1, v1)
+	f.serve("example.com:993", v1)
+	f.serve("example.com:587", v1)
+	resp := f.api.Put("/certificates/1/ports", map[string]any{"ports": []int{993, 587, 993}})
+	var b CertificateChecksBody
+	if resp.Code != http.StatusOK || json.Unmarshal(resp.Body.Bytes(), &b) != nil {
+		t.Fatalf("ports = %d %s", resp.Code, resp.Body.String())
+	}
+	if !slices.Equal(b.Ports, []int{993, 587}) || len(b.Results) != 4 || b.Results[0].Domain != "example.com:993" ||
+		b.Results[1].Domain != "example.com:587" || b.Results[0].State != stateOK || b.Results[1].State != stateOK ||
+		b.Results[2].Domain != "www.example.com:993" || b.Results[2].State != stateUnreachable {
+		t.Errorf("checked %+v on %v", b.Results, b.Ports)
+	}
+	// Back to 443 alone: the lines of the other ports go.
+	resp = f.api.Put("/certificates/1/ports", map[string]any{"ports": []int{443}})
+	if json.Unmarshal(resp.Body.Bytes(), &b) != nil || len(b.Results) != 2 || b.Results[0].Domain != "example.com" || b.Results[0].State != stateUnreachable {
+		t.Errorf("on 443 again %+v", b.Results)
+	}
+	for _, bad := range [][]int{{0}, {70000}, {}} {
+		if resp := f.api.Put("/certificates/1/ports", map[string]any{"ports": bad}); resp.Code != http.StatusUnprocessableEntity {
+			t.Errorf("ports %v = %d", bad, resp.Code)
+		}
+	}
+	if resp := f.api.Put("/certificates/9/ports", map[string]any{"ports": []int{443}}); resp.Code != http.StatusNotFound {
+		t.Errorf("an unknown certificate = %d", resp.Code)
+	}
+	if got := parsePorts(""); !slices.Equal(got, []int{443}) {
+		t.Errorf("no ports read as %v", got)
 	}
 }

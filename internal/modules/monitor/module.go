@@ -41,7 +41,7 @@ type Module struct {
 	// serve connects to an address, or to a domain when "", for the domain
 	// and returns the certificates it serves, leaf first; target says where
 	// the DNS of a name sends the visitors of a subnet. Tests replace them.
-	serve  func(ctx context.Context, domain, address string) ([]*x509.Certificate, error)
+	serve  func(ctx context.Context, domain, address string, port int) ([]*x509.Certificate, error)
 	target func(ctx context.Context, name string, subnet netip.Prefix) (string, error)
 	// roots are those a chain served has to reach, nil for the system's;
 	// issuers fetches the issuers a chain lacks, as its certificates name

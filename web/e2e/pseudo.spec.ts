@@ -827,9 +827,10 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.route(monitorRoute, (route) =>
     route.fulfill({
       json: {
-        tracked: true, checkAt: at(0.25), skipped: ['*.issued.example.com'],
+        tracked: true, checkAt: at(0.25), skipped: ['*.issued.example.com'], ports: [443, 993],
         results: [
           { domain: 'issued.example.com', state: 'ok', fingerprint: 'a'.repeat(64), notAfter: at(80), issuer: 'Fake CA', incomplete: true, checkedAt: at(0) },
+          { domain: 'issued.example.com:993', state: 'unreachable', error: 'dial tcp: connection refused', checkedAt: at(0) },
           { domain: 'www.issued.example.com', state: 'old', fingerprint: 'b'.repeat(64), notAfter: at(20), issuer: 'Fake CA', checkedAt: at(0) },
         ],
       },
@@ -841,6 +842,12 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(versionRows).toHaveCount(3)
   await expect(page.getByText(label('certs.detail.revoked_renewing'))).toBeVisible()
   expect.soft(await problems(page), 'versions, one revocable and one revoked; an online check').toEqual([])
+  // The ports the domains are checked on.
+  await page.getByRole('button', { name: label('monitor.ports.edit') }).click()
+  await expect(page.locator('dialog[open] #ports')).toHaveValue('443, 993')
+  expect.soft(await problems(page), 'the ports checked').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
   // Its renewal paused: said where the renewal goes, and in the settings.
   await expect(page.getByText(label('certs.settings.paused_state'))).toBeVisible()
   await page.getByRole('button', { name: label('certs.settings.edit') }).click()

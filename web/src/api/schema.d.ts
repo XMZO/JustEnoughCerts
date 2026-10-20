@@ -932,6 +932,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/monitor/certificates/{id}/ports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the ports the domains of a certificate are checked on, and check them now
+         * @description As 443 for a website and 993 for IMAP; on 25 and 587, TLS comes through SMTP's STARTTLS.
+         */
+        put: operations["monitor-ports"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/monitor/states": {
         parameters: {
             query?: never;
@@ -1867,6 +1887,8 @@ export interface components {
              * @description When its domains are checked next
              */
             checkAt?: string;
+            /** @description The ports its domains are checked on; on 25 and 587, through SMTP's STARTTLS */
+            ports: number[];
             /** @description What each domain served the last time it was checked, in the order of the certificate's domains, and for a domain checked apart for mainland China and elsewhere, mainland China first */
             results: components["schemas"]["DomainCheckBody"][];
             /** @description Wildcard domains, which cannot be connected to */
@@ -2163,6 +2185,7 @@ export interface components {
         DomainCheckBody: {
             /** Format: date-time */
             checkedAt: string;
+            /** @description The domain, with its port when not 443, as mail.example.com:993 */
             domain: string;
             /** @description Why the connection failed, as Go put it */
             error?: string;
@@ -2178,7 +2201,7 @@ export interface components {
              */
             notAfter?: string;
             /**
-             * @description ok: the version in use; old: an older certificate for the domain from the same CA; other: someone else's certificate, such as a CDN's own, or one for other names, or a newer one; unreachable: nothing over TLS on port 443
+             * @description ok: the version in use; old: an older certificate for the domain from the same CA; other: someone else's certificate, such as a CDN's own, or one for other names, or a newer one; unreachable: nothing over TLS on the port
              * @enum {string}
              */
             state: "ok" | "old" | "other" | "unreachable";
@@ -2671,6 +2694,10 @@ export interface components {
             /** @description Where JEC looks for plugins when it starts */
             dir: string;
             plugins: components["schemas"]["PluginBody"][];
+        };
+        PortsInputBody: {
+            /** @description Ports from 1 to 65535, as 443 and 993 */
+            ports: number[];
         };
         PreflightBody: {
             /** @description What would make the CA refuse some of the domains, as their CAA records; empty when nothing is seen */
@@ -5384,6 +5411,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateChecksBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "monitor-ports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortsInputBody"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

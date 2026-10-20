@@ -72,7 +72,8 @@ uploaded manually receive them as well.
 ## Online checks
 
 The online check module connects to port 443 of each domain as a browser
-does, and verifies the certificate actually served:
+does, or to other ports set (see below), and verifies the certificate
+actually served:
 
 - every six hours, and two minutes after each deployment;
 - if the old certificate is still served 30 minutes after the current
@@ -86,6 +87,13 @@ does, and verifies the certificate actually served:
   private CA's certificate raises nothing;
 - the Online check section of the certificate's page shows the result for
   each domain, and can run a check at once.
+
+A certificate deployed to a mail server or another service than a website
+can be checked on its ports instead: Ports checked, at the bottom of the
+Online check section, takes them separated by commas, such as `993, 465`.
+993 (IMAP), 995 (POP3) and 465 (SMTP) speak TLS at once; 25 and 587 are
+checked through SMTP's STARTTLS. Results for another port than 443 show as
+`domain:port`.
 
 Where the DNS of a domain answers by region, sending visitors from
 mainland China to Alibaba Cloud ESA and others to Cloudflare, say, JEC

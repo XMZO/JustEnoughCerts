@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { CircleCheck, Clock, Info, RefreshCw, TriangleAlert, Unplug } from '@lucide/vue'
-import { computed, type Component } from 'vue'
+import { CircleCheck, Clock, Info, Pencil, RefreshCw, TriangleAlert, Unplug } from '@lucide/vue'
+import { computed, ref, watch, type Component } from 'vue'
 
 import { useApiError } from '../api/errors'
-import { useCheckNow, useMonitor, useMonitorOn, type MonitorResult } from '../api/monitor'
+import { useCheckNow, useMonitor, useMonitorOn, useSetPorts, type MonitorResult } from '../api/monitor'
 import { useT, type MessageKey } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import JecAlert from './JecAlert.vue'
 import JecButton from './JecButton.vue'
+import JecDialog from './JecDialog.vue'
+import JecField from './JecField.vue'
+import JecInput from './JecInput.vue'
 
 // The online check of a certificate (module monitor): what each domain
 // served the last time it was connected to, and whether without its
@@ -21,6 +24,32 @@ const on = useMonitorOn()
 const monitor = useMonitor(() => props.id)
 const checkNow = useCheckNow(() => props.id)
 const checkError = useApiError(computed(() => checkNow.error.value))
+
+// The ports the domains are checked on: 443, or those of a mail server.
+const editingPorts = ref(false)
+const portsText = ref('')
+const setPorts = useSetPorts(() => props.id)
+const portsError = useApiError(computed(() => setPorts.error.value))
+const portsInvalid = ref(false)
+watch(editingPorts, (now) => {
+  if (!now) return
+  setPorts.reset()
+  portsInvalid.value = false
+  portsText.value = (monitor.data.value?.ports ?? [443]).join(', ')
+})
+async function savePorts() {
+  const ports = portsText.value.split(/[\s,\uff0c]+/).filter(Boolean).map(Number)
+  portsInvalid.value = !ports.length || ports.some((p) => !Number.isInteger(p) || p < 1 || p > 65535)
+  if (portsInvalid.value) return
+  try {
+    await setPorts.mutateAsync(ports)
+  } catch {
+    return // shown by the alert
+  }
+  editingPorts.value = false
+}
+const ports = computed(() => monitor.data.value?.ports ?? [443])
+const otherPorts = computed(() => ports.value.length !== 1 || ports.value[0] !== 443)
 
 const body = computed(() => monitor.data.value)
 const looks: Record<MonitorResult['state'], { icon: Component; tone: string }> = {
@@ -110,9 +139,35 @@ function line(r: MonitorResult): string {
         </li>
       </ul>
       <p v-if="body.skipped.length" class="m-0 text-caption text-ink-muted">{{ t('monitor.section.skipped', { domains: body.skipped.join(', ') }) }}</p>
+      <p class="m-0 flex items-center gap-1.5 text-caption text-ink-muted">
+        <span>{{ t('monitor.ports.label') }}</span>
+        <data :value="ports.join(',')" :class="otherPorts ? 'font-semibold text-ink' : ''" translate="no">{{ ports.join(', ') }}</data>
+        <button
+          type="button"
+          :aria-label="t('monitor.ports.edit')"
+          class="grid size-6 cursor-pointer place-items-center rounded-sm border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
+          @click="editingPorts = true"
+        >
+          <Pencil class="size-3.5" aria-hidden="true" />
+        </button>
+      </p>
       <p v-if="body.results.length && body.checkAt" class="m-0 text-caption text-ink-muted @md:hidden">
         {{ t('monitor.section.next_check') }} <time :datetime="body.checkAt">{{ intl.dateTime(body.checkAt) }}</time>
       </p>
     </template>
   </section>
+
+  <JecDialog v-if="on && body?.tracked" v-model:open="editingPorts" :title="t('monitor.ports.title')">
+    <form id="ports-form" class="flex flex-col gap-3" novalidate @submit.prevent="savePorts">
+      <p class="m-0 text-small text-ink-muted">{{ t('monitor.ports.intro') }}</p>
+      <JecAlert v-if="portsError.alert.value" :code="portsError.alert.value.code" :params="portsError.alert.value.params" />
+      <JecField id="ports" label="monitor.ports.label" hint="monitor.ports.hint" :error="portsInvalid ? 'kernel.error.invalid_field' : undefined">
+        <JecInput id="ports" v-model="portsText" inputmode="numeric" autocapitalize="none" spellcheck="false" :invalid="portsInvalid" translate="no" />
+      </JecField>
+    </form>
+    <template #footer>
+      <JecButton @click="editingPorts = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton type="submit" form="ports-form" variant="primary" :busy="setPorts.isPending.value">{{ t('kernel.action.save') }}</JecButton>
+    </template>
+  </JecDialog>
 </template>

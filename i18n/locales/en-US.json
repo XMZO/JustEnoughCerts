@@ -2567,6 +2567,13 @@
       "chain_incomplete": "Intermediates missing",
       "served_old": "A domain still serves the old certificate"
     },
+    "ports": {
+      "edit": "Change the ports checked",
+      "hint": "Separated by commas, at most 10.",
+      "intro": "The online check connects to each domain on these ports and compares the certificate there. Websites use 443; a mail server may add 993 (IMAP), 995 (POP3) and 465 (SMTP), and 25 and 587 are checked through STARTTLS.",
+      "label": "Ports checked",
+      "title": "Ports checked"
+    },
     "section": {
       "next_check": "Next check:",
       "pending": "Not checked yet; due at",

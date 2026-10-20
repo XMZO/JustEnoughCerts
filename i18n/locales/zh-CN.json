@@ -2567,6 +2567,13 @@
       "chain_incomplete": "缺少中间证书",
       "served_old": "线上还是旧证书"
     },
+    "ports": {
+      "edit": "修改检查端口",
+      "hint": "用逗号分隔，最多 10 个。",
+      "intro": "线上检查连接每个域名的这些端口，核对上面的证书。网站用 443；邮件服务器可以加上 993（IMAP）、995（POP3）、465（SMTP），25 和 587 会经 STARTTLS 检查。",
+      "label": "检查端口",
+      "title": "检查端口"
+    },
     "section": {
       "next_check": "下次检查：",
       "pending": "还没检查，计划在",

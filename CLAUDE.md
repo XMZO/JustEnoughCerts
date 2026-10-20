@@ -143,6 +143,7 @@
 - 生成 CSR（`certs/csr.go`，表 `certs_csr`，状态 `awaiting`“等待证书”）：向商业 CA 手动购买的证书由 JEC 生成私钥（加密，`csr:<id>`）和 CSR；`POST /api/v1/certs/certificates/request` 新建、`POST|DELETE /api/v1/certs/certificates/{id}/csr` 续费重签或放弃；上传不带私钥的证书时配上等待中的私钥或当前版本的私钥（`keyFor`），添加页直接上传也会找到对应的证书（`requestFor`）。界面：添加页来源“生成 CSR”、详情页的等待横幅和 `RequestDialog.vue`；e2e 走到了。
 - 访问白名单 `JEC_ALLOWED_CLIENTS`（按可信反向代理认定客户端）：界面和接口只对这些地址开放，其他得 403（`kernel.error.client_not_allowed`）；`/.well-known/`、健康检查、标了 `api.AnyClient` 的机器接口（拉取文件、日历订阅、Prometheus 指标）和进程内调用不受限，新加给机器用的接口照此标上。测试的时钟固定在某个日期时，测试 CA 要用 `cryptoxtest.NewCAFrom`（`NewCA` 按真实时间生效，过了那个钟点就验证不过）。
 - 异地备份也能存到 WebDAV（`offsite_settings.kind`，`offsite/webdav.go`：Basic 认证，按需 MKCOL 建子文件夹再 PUT；对着 rclone 的 WebDAV 实测过，`live_test.go` 靠 `JEC_TEST_WEBDAV` 运行）。
+- 线上检查的端口（`monitor_certificates.ports`，`PUT /api/v1/monitor/certificates/{id}/ports`，详情页“线上检查”底部改）：每个域名按设的端口逐个连，25、587 走 SMTP STARTTLS，其余直接 TLS；结果按 `域名:端口` 存（443 不带）。对 Gmail 的 993、587 实测过（`live_test.go` 靠 `JEC_TEST_PORTS`）。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

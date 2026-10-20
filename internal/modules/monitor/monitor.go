@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net"
+	"net/smtp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -152,6 +154,34 @@ type tracked struct {
 	checkAt      time.Time
 	// issuer is the CA of the version, once a domain served it.
 	issuer string
+	// ports are those its domains are checked on.
+	ports []int
+}
+
+// defaultPort is the one domains are checked on unless set otherwise.
+const defaultPort = 443
+
+// parsePorts reads ports as stored: "443,993"; 443 alone for "".
+func parsePorts(s string) []int {
+	var out []int
+	for f := range strings.SplitSeq(s, ",") {
+		if p, err := strconv.Atoi(strings.TrimSpace(f)); err == nil && p > 0 && p < 65536 && !slices.Contains(out, p) {
+			out = append(out, p)
+		}
+	}
+	if len(out) == 0 {
+		return []int{defaultPort}
+	}
+	return out
+}
+
+// target names what a result is of: the domain, or the domain and port
+// when the port is not 443.
+func target(domain string, port int) string {
+	if port == defaultPort {
+		return domain
+	}
+	return net.JoinHostPort(domain, strconv.Itoa(port))
 }
 
 func (m *Module) load(ctx context.Context, q interface {
@@ -161,9 +191,10 @@ func (m *Module) load(ctx context.Context, q interface {
 	t := tracked{id: id}
 	var domains string
 	var notAfter, since, checkAt int64
+	var ports string
 	err := q.QueryRowContext(ctx,
-		"SELECT domains, version_id, fingerprint, not_after, current_since, check_at, issuer FROM monitor_certificates WHERE certificate_id = ?", id).
-		Scan(&domains, &t.version, &t.fingerprint, &notAfter, &since, &checkAt, &t.issuer)
+		"SELECT domains, version_id, fingerprint, not_after, current_since, check_at, issuer, ports FROM monitor_certificates WHERE certificate_id = ?", id).
+		Scan(&domains, &t.version, &t.fingerprint, &notAfter, &since, &checkAt, &t.issuer, &ports)
 	if errors.Is(err, sql.ErrNoRows) {
 		return t, errUnknown
 	}
@@ -171,12 +202,14 @@ func (m *Module) load(ctx context.Context, q interface {
 		return t, err
 	}
 	t.notAfter, t.currentSince, t.checkAt = time.UnixMilli(notAfter), time.UnixMilli(since), time.UnixMilli(checkAt)
+	t.ports = parsePorts(ports)
 	return t, json.Unmarshal([]byte(domains), &t.domains)
 }
 
 // result is what a domain served, as visitors of a view reach it.
 type result struct {
 	domain      string
+	port        int
 	view        string
 	state       string
 	fingerprint string
@@ -212,12 +245,16 @@ func (m *Module) check(ctx context.Context, id int64) ([]result, error) {
 	}
 	type job struct {
 		domain string
+		port   int
 		view   view
 	}
 	var jobs []job
 	for _, d := range domains {
-		for _, v := range m.views(ctx, d) {
-			jobs = append(jobs, job{d, v})
+		views := m.views(ctx, d)
+		for _, p := range t.ports {
+			for _, v := range views {
+				jobs = append(jobs, job{d, p, v})
+			}
 		}
 	}
 	results := make([]result, len(jobs))
@@ -227,7 +264,7 @@ func (m *Module) check(ctx context.Context, id int64) ([]result, error) {
 		wg.Go(func() {
 			slots <- struct{}{}
 			defer func() { <-slots }()
-			results[i] = m.probe(ctx, j.domain, j.view, t.fingerprint)
+			results[i] = m.probe(ctx, j.domain, j.port, j.view, t.fingerprint)
 		})
 	}
 	wg.Wait()
@@ -242,6 +279,7 @@ func (m *Module) check(ctx context.Context, id int64) ([]result, error) {
 	}
 	for i := range results {
 		results[i].state = classify(results[i], t, issuer)
+		results[i].domain = target(results[i].domain, results[i].port)
 	}
 
 	now := m.now()
@@ -379,7 +417,7 @@ func merged(results []result) []result {
 	for i := 0; i < len(results); i++ {
 		r := results[i]
 		if r.view == viewChina && i+1 < len(results) {
-			if g := results[i+1]; g.domain == r.domain && g.view == viewGlobal && g.fingerprint == r.fingerprint && (g.err == "") == (r.err == "") &&
+			if g := results[i+1]; g.domain == r.domain && g.port == r.port && g.view == viewGlobal && g.fingerprint == r.fingerprint && (g.err == "") == (r.err == "") &&
 				g.incomplete == r.incomplete {
 				r.view = viewAll
 				i++
@@ -390,12 +428,12 @@ func merged(results []result) []result {
 	return out
 }
 
-// probe connects to domain as visitors of v reach it and says what it
-// served; for the version in use, by its fingerprint, whether the chain
+// probe connects to domain on port as visitors of v reach it and says what
+// it served; for the version in use, by its fingerprint, whether the chain
 // served is complete.
-func (m *Module) probe(ctx context.Context, domain string, v view, fingerprint string) result {
-	r := result{domain: domain, view: v.name}
-	certs, err := m.serve(ctx, domain, v.address)
+func (m *Module) probe(ctx context.Context, domain string, port int, v view, fingerprint string) result {
+	r := result{domain: domain, port: port, view: v.name}
+	certs, err := m.serve(ctx, domain, v.address, port)
 	if err != nil {
 		r.state, r.err = stateUnreachable, truncate(err.Error(), 500)
 		return r
@@ -461,13 +499,49 @@ func caOf(c *x509.Certificate) string {
 	return c.Issuer.CommonName
 }
 
-// served connects to address, or to domain when "", on port 443 as a
-// browser does for domain, and returns what it serves, leaf first.
-func served(ctx context.Context, domain, address string) ([]*x509.Certificate, error) {
+// served connects to address, or to domain when "", on port as a client
+// does for domain, and returns what it serves, leaf first. On 25 and 587,
+// TLS comes through SMTP's STARTTLS.
+func served(ctx context.Context, domain, address string, port int) ([]*x509.Certificate, error) {
 	if address == "" {
 		address = domain
 	}
-	return servedAt(ctx, domain, net.JoinHostPort(address, "443"))
+	at := net.JoinHostPort(address, strconv.Itoa(port))
+	if port == 25 || port == 587 {
+		return servedSMTP(ctx, domain, at)
+	}
+	return servedAt(ctx, domain, at)
+}
+
+// servedSMTP connects to the mail server at address, asks for TLS with
+// STARTTLS, and returns what it serves for domain, leaf first.
+func servedSMTP(ctx context.Context, domain, address string) ([]*x509.Certificate, error) {
+	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
+	defer cancel()
+	var d net.Dialer
+	conn, err := d.DialContext(ctx, "tcp", address)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	if deadline, ok := ctx.Deadline(); ok {
+		_ = conn.SetDeadline(deadline)
+	}
+	c, err := smtp.NewClient(conn, domain)
+	if err != nil {
+		return nil, err
+	}
+	if ok, _ := c.Extension("STARTTLS"); !ok {
+		return nil, errors.New("the mail server offers no STARTTLS")
+	}
+	if err := c.StartTLS(&tls.Config{ServerName: domain, InsecureSkipVerify: true}); err != nil { //nolint:gosec // it looks at the certificate served, valid or not
+		return nil, err
+	}
+	state, _ := c.TLSConnectionState()
+	if len(state.PeerCertificates) == 0 {
+		return nil, errors.New("the server sent no certificate")
+	}
+	return state.PeerCertificates, nil
 }
 
 // servedAt connects to address for domain and returns what it serves, leaf
