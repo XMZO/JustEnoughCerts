@@ -2,6 +2,8 @@
 import {
   CircleX,
   Download,
+  FileClock,
+  FilePlus,
   Hourglass,
   LoaderCircle,
   Pencil,
@@ -24,6 +26,7 @@ import {
   useCsr,
   useDeleteCertificate,
   useDeployNow,
+  useDropRequest,
   useDownload,
   useIssuance,
   useIssuances,
@@ -58,6 +61,7 @@ import JecTextarea from '../components/JecTextarea.vue'
 import LifeBar from '../components/LifeBar.vue'
 import MonitorSection from '../components/MonitorSection.vue'
 import PullDialog from '../components/PullDialog.vue'
+import RequestDialog from '../components/RequestDialog.vue'
 import PageHeader from '../components/PageHeader.vue'
 import PemFields from '../components/PemFields.vue'
 import StatusBadge from '../components/StatusBadge.vue'
@@ -160,6 +164,14 @@ function downloadCsr() {
 
 // Issuing, for a certificate with a source.
 const issued = computed(() => cert.value?.source === 'provider')
+// The CSR of a certificate bought by hand, waiting for the CA's certificate;
+// shown at once by ?csr=1, as when the certificate was just added.
+const request = computed(() => detail.data.value?.request ?? null)
+const requesting = ref(route.query.csr === '1')
+watch(requesting, (open) => {
+  if (!open && route.query.csr) void router.replace({ query: {} })
+})
+const dropRequest = useDropRequest(() => props.id)
 const sources = useProviders('source')
 const solvers = useProviders('solver')
 const sourceName = computed(() => sources.data.value?.find((p) => p.id === cert.value?.sourceProvider)?.name)
@@ -574,6 +586,9 @@ async function confirmDelete() {
       <JecButton v-if="current" @click="startDownload(current.id)">
         <Download class="size-4" aria-hidden="true" />{{ t('certs.action.download') }}
       </JecButton>
+      <JecButton v-if="!issued && !request" @click="requesting = true">
+        <FilePlus class="size-4" aria-hidden="true" />{{ t('certs.request.new') }}
+      </JecButton>
       <JecButton :variant="issued ? 'default' : 'primary'" @click="uploading = true">
         <Upload class="size-4" aria-hidden="true" />{{ t('certs.action.upload') }}
       </JecButton>
@@ -626,6 +641,22 @@ async function confirmDelete() {
           </span>
         </div>
         <RouterLink :to="`/certificates/${id}/deployments/${failing.id}`" class="self-center font-semibold text-danger-ink underline underline-offset-2">{{ t('certs.detail.show_log') }}</RouterLink>
+      </section>
+      <section v-else-if="request" role="status" class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line bg-warn-soft px-4 py-3">
+        <FileClock class="size-5 flex-none text-warn-ink" aria-hidden="true" />
+        <span class="flex min-w-0 flex-[1_1_240px] flex-col gap-0.5">
+          <strong class="text-warn-ink">{{ t('certs.request.waiting') }}</strong>
+          <span class="text-small">
+            {{ t('certs.request.since') }} <time :datetime="request.createdAt">{{ intl.dateTime(request.createdAt) }}</time>
+          </span>
+        </span>
+        <span class="flex flex-wrap gap-2">
+          <JecButton size="sm" @click="requesting = true">{{ t('certs.request.show') }}</JecButton>
+          <JecButton size="sm" variant="primary" @click="uploading = true">
+            <Upload class="size-4" aria-hidden="true" />{{ t('certs.request.upload') }}
+          </JecButton>
+          <JecButton size="sm" variant="ghost" :busy="dropRequest.isPending.value" @click="dropRequest.mutate(undefined)">{{ t('certs.request.drop') }}</JecButton>
+        </span>
       </section>
       <section v-else-if="current?.caRevokedAt" role="status" class="flex flex-wrap gap-x-3 gap-y-2 rounded-lg border border-line bg-danger-soft px-4 py-3">
         <ShieldX class="mt-0.5 size-5 flex-none text-danger-ink" aria-hidden="true" />
@@ -993,6 +1024,9 @@ async function confirmDelete() {
         <JecButton v-if="current" class="flex-[1_1_auto]" @click="startDownload(current.id)">
           <Download class="size-4" aria-hidden="true" />{{ t('certs.action.download') }}
         </JecButton>
+        <JecButton v-if="!issued && !request" class="flex-[1_1_auto]" @click="requesting = true">
+          <FilePlus class="size-4" aria-hidden="true" />{{ t('certs.request.new') }}
+        </JecButton>
         <JecButton class="flex-[1_1_auto]" @click="deleting = true"><Trash2 class="size-4" aria-hidden="true" />{{ t('certs.action.delete') }}</JecButton>
       </div>
     </template>
@@ -1097,6 +1131,7 @@ async function confirmDelete() {
   </JecDialog>
 
   <PullDialog v-if="cert && current" :id="cert.id" v-model:open="pulling" />
+  <RequestDialog v-if="cert && !issued" :id="cert.id" v-model:open="requesting" :domain="domain" :request="request" :key-type="cert.keyType" />
   <JecDialog v-if="cert && current" v-model:open="showingCsr" :title="t('certs.csr.title', { domain })">
     <div class="flex flex-col gap-3">
       <p class="m-0 text-small text-ink-muted">{{ t('certs.csr.intro') }}</p>

@@ -186,11 +186,17 @@ func isSelfSigned(c *x509.Certificate) bool {
 	return bytes.Equal(c.RawIssuer, c.RawSubject) && c.CheckSignatureFrom(c) == nil
 }
 
-// ParseCertificates reads every certificate in PEM data, in order.
+// ParseCertificates reads every certificate in PEM data, in order, or the
+// one in DER data; any key is left out.
 func ParseCertificates(data []byte) ([]*x509.Certificate, error) {
 	certs, _, err := parsePEM(data)
 	if err != nil {
 		return nil, err
+	}
+	if len(certs) == 0 && len(bytes.TrimSpace(data)) > 0 {
+		if c, err := x509.ParseCertificate(data); err == nil {
+			certs = append(certs, c)
+		}
 	}
 	if len(certs) == 0 {
 		return nil, ErrNoCertificate

@@ -53,7 +53,8 @@ const (
 	stateDeploying    = "deploying"
 	stateFailed       = "failed"
 	stateDeployFailed = "deploy_failed"
-	stateRevoked      = "revoked" // its CA revoked the current version
+	stateRevoked      = "revoked"  // its CA revoked the current version
+	stateAwaiting     = "awaiting" // no version yet, but a CSR waiting for its certificate
 )
 
 // Errors of the service, which the API turns into responses.
@@ -147,6 +148,9 @@ type Certificate struct {
 	DeployWindow string
 	// NotifyTo are the notifiers its notes go to; empty for all.
 	NotifyTo []int64
+	// CSRAt is when the CSR waiting for its certificate was made; zero for
+	// none.
+	CSRAt time.Time
 }
 
 // Version is a certificate issued or uploaded for a Certificate.
@@ -217,6 +221,9 @@ func (c *Certificate) state(now time.Time) string {
 		return stateDeploying
 	}
 	if c.Current == nil {
+		if !c.CSRAt.IsZero() {
+			return stateAwaiting
+		}
 		return stateExpired
 	}
 	window, _ := limits(c.Current.NotBefore, c.Current.NotAfter, c.RenewBeforeDays)
@@ -306,6 +313,9 @@ func (s *service) upload(ctx context.Context, id int64, b *cryptox.Bundle) error
 	_, err = tx.ExecContext(ctx, "UPDATE certs_certificates SET domains = ?, key_type = ?, updated_at = ? WHERE id = ?",
 		string(domains), cryptox.KeyType(b.Leaf.PublicKey), s.now().UnixMilli(), id)
 	if err != nil {
+		return err
+	}
+	if err := s.settleCSR(ctx, tx, id, b.Key); err != nil {
 		return err
 	}
 	if _, err := s.addVersion(ctx, tx, id, b, originUpload, 0); err != nil {
@@ -418,6 +428,7 @@ const selectCertificates = `SELECT c.id, c.domains, c.source, c.source_provider,
 	v.id, v.origin, v.names, v.serial, v.fingerprint, v.issuer, v.key_type, v.not_before, v.not_after, v.chain, v.created_at,
 	v.source_provider, v.renewal_start, v.renewal_end, v.renewal_at, v.renewal_explanation, v.renewal_check,
 	v.ca_revoked_at, v.ca_revoke_reason, v.status_check,
+	(SELECT created_at FROM certs_csr WHERE certificate_id = c.id),
 	` + issuanceColumns + `
 	FROM certs_certificates c LEFT JOIN certs_versions v ON v.id = c.current_version_id
 	LEFT JOIN certs_issuances i ON i.id = (SELECT max(id) FROM certs_issuances WHERE certificate_id = c.id)`
@@ -469,16 +480,20 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 			notBefore, notAfter, created, source, start, end, at, check             sql.NullInt64
 			caRevoked, caReason, statusCheck                                        sql.NullInt64
 		}
+		var csrAt sql.NullInt64
 		var is issuanceRow
 		var reuseKey, paused int64
 		var notifyTo string
 		dest := []any{&c.ID, &domains, &c.Source, &sourceProvider, &solverProvider, &c.KeyType, &c.RenewBeforeDays, &created, &c.Note, &reuseKey, &notifyTo, &paused, &c.DeployWindow,
 			&v.id, &v.origin, &v.names, &v.serial, &v.fingerprint, &v.issuer, &v.keyType, &v.notBefore, &v.notAfter, &v.chain, &v.created,
-			&v.source, &v.start, &v.end, &v.at, &v.explanation, &v.check, &v.caRevoked, &v.caReason, &v.statusCheck}
+			&v.source, &v.start, &v.end, &v.at, &v.explanation, &v.check, &v.caRevoked, &v.caReason, &v.statusCheck, &csrAt}
 		if err := rows.Scan(append(dest, is.dest()...)...); err != nil {
 			return nil, err
 		}
 		c.ReuseKey, c.Paused = reuseKey == 1, paused == 1
+		if csrAt.Valid {
+			c.CSRAt = time.UnixMilli(csrAt.Int64).UTC()
+		}
 		if json.Unmarshal([]byte(notifyTo), &c.NotifyTo) != nil || c.NotifyTo == nil {
 			c.NotifyTo = []int64{}
 		}

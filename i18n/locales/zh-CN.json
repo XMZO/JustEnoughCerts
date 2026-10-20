@@ -269,12 +269,15 @@
       "certs_delete": "删除证书",
       "certs_deploy": "立即部署证书",
       "certs_download": "下载私钥",
+      "certs_drop_csr": "放弃 CSR",
       "certs_export": "下载全部证书和私钥",
       "certs_issue": "立即签发证书",
       "certs_issue_new": "添加要签发的证书",
       "certs_pull_file": "服务器拉取证书文件",
       "certs_pull_key": "生成证书的拉取密钥",
       "certs_pull_off": "关闭证书拉取",
+      "certs_request": "添加要购买的证书（生成 CSR）",
+      "certs_request_csr": "生成新的 CSR",
       "certs_revoke": "吊销证书版本",
       "certs_save_settings": "修改续期默认值",
       "certs_set_domains": "修改证书的域名",
@@ -661,7 +664,7 @@
       "http_help": "JEC 把验证文件放到这里（/.well-known/ 下），验证后删除。证书颁发机构要能通过 HTTP 从这些域名取到它们。",
       "intro": "选好证书来源，再填写需要的内容。",
       "key": "私钥",
-      "key_help": "加密保存在 JEC 的数据目录里。如果上面已经包含私钥，这里留空。",
+      "key_help": "加密保存在 JEC 的数据目录里。如果上面已经包含私钥，或者证书是按 JEC 生成的 CSR 签发的，这里留空。",
       "key_type": "密钥类型",
       "key_type_help": "每次续期都会生成新私钥。老旧客户端多就选 RSA。",
       "manage_solvers": "管理验证方式",
@@ -695,6 +698,7 @@
       "zones_untested": "这项预检尚未用真实账号验证，结果仅供参考。"
     },
     "attention": {
+      "awaiting": "{domain} 等待证书",
       "deploy_failed": "{domain} 部署失败",
       "expired": "{domain} 已过期",
       "expired_detail": "{life}，请上传新证书替换它。",
@@ -900,6 +904,7 @@
       "bad_domain": "这不是有效的域名。通配符写成 *.example.com。",
       "bad_key": "私钥读不出来。请完整地重新粘贴。",
       "bad_pfx": "读不了这个文件：可能损坏了，或者不是 PFX / P12 格式。",
+      "csr_source": "只有手动上传的证书才用 CSR；有证书来源的证书会自动续期。",
       "deploy_failed": "部署失败。完整日志里有原因。",
       "duplicate": "这张证书已经添加过了。",
       "encrypted_key": "私钥设置了密码。请先去掉密码，例如运行 openssl pkey -in key.pem -out plain.pem，再重新粘贴。",
@@ -1101,6 +1106,7 @@
       "scheduled": "新版本将于 {time} 部署（部署时段）"
     },
     "note": {
+      "awaiting": "把 CSR 交给证书颁发机构，签好后上传证书，不用私钥。",
       "deploy_failed": "{target}：{error}",
       "expired": "请上传新证书",
       "manual": "无法自动续期，请上传新证书",
@@ -1121,6 +1127,7 @@
       "bulk": "添加 {count, plural, other {# 张证书}}，每张都按下面的步骤",
       "check": "检查证书和私钥是否匹配",
       "collect": "从 {source} 取证书和私钥",
+      "csr": "生成 CSR，由你交给证书颁发机构",
       "deploy": "部署到 {target}",
       "dns": "在 {dns} 添加验证记录，验证后删除",
       "download": "证书颁发机构验证域名后，下载证书",
@@ -1129,6 +1136,7 @@
       "key": "生成新私钥：{key}",
       "manual": "按签发日志给出的 TXT 记录，在 DNS 上手动添加（每次续期都要）",
       "order": "向 {source} 申请证书",
+      "pair": "签好后上传证书（不用私钥），JEC 配上私钥",
       "remind": "到期前 {days, plural, other {# 天}}提醒你上传新证书",
       "renew": "到期前 {days, plural, other {# 天}}，在每天 {time} 自动续期",
       "store": "加密保存私钥",
@@ -1157,6 +1165,21 @@
     "renewal": {
       "suggested": "CA 建议 {start} 至 {end}",
       "why": "原因"
+    },
+    "request": {
+      "again": "重新生成",
+      "drop": "放弃",
+      "generate": "生成 CSR",
+      "intro": "JEC 生成新的私钥和 CSR，私钥加密保存在 JEC 里，不会离开 JEC。把 CSR 交给证书颁发机构，签好后上传证书即可，不用私钥。",
+      "key_help": "商业证书一般都接受 RSA 2048。",
+      "made": "私钥（{key}）生成于",
+      "new": "生成 CSR",
+      "show": "查看 CSR",
+      "shown": "把这份 CSR 交给证书颁发机构（例如在购买证书的商家处激活或重签时粘贴进去）。签好后上传证书，不用私钥，JEC 会自动配上。",
+      "since": "CSR 生成于",
+      "title": "{domain} 的 CSR",
+      "upload": "上传证书",
+      "waiting": "等待证书颁发机构签发"
     },
     "revocation": {
       "ca": "颁发者证书",
@@ -1253,10 +1276,13 @@
       "window_help": "新版本只在这段时间（面板时区）部署到目标，例如避开白天重载服务；手动部署立即进行。"
     },
     "source": {
+      "request": "生成 CSR",
+      "request_desc": "向商业 CA 购买证书时用：JEC 生成私钥和 CSR。",
       "upload": "手动上传",
       "upload_desc": "粘贴证书和私钥，不能自动续期。"
     },
     "state": {
+      "awaiting": "等待证书",
       "deploy_failed": "部署失败",
       "deploying": "部署中",
       "expired": "已过期",
@@ -3572,6 +3598,7 @@
       "title": "到期监控"
     },
     "state": {
+      "awaiting": "等待上传证书",
       "deploy_failed": "部署失败",
       "deploying": "部署中",
       "expired": "已过期",

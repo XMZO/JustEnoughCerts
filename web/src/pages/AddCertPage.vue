@@ -1,10 +1,19 @@
 <script setup lang="ts">
-import { CircleCheck, CircleX, Plus, Save, ShieldCheck, TriangleAlert, Upload } from '@lucide/vue'
-import { computed, ref, watchEffect } from 'vue'
+import { CircleCheck, CircleX, FilePlus, Plus, Save, ShieldCheck, TriangleAlert, Upload } from '@lucide/vue'
+import { computed, ref, watch, watchEffect } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
-import { useAddCertificate, useCertificates, useCertSettings, useImportCertificates, useIssueCertificate, type Imported, type KeyType } from '../api/certs'
+import {
+  useAddCertificate,
+  useCertificates,
+  useCertSettings,
+  useImportCertificates,
+  useIssueCertificate,
+  useRequestCertificate,
+  type Imported,
+  type KeyType,
+} from '../api/certs'
 import { revealError, useApiError } from '../api/errors'
 import { useAccountDomains, usePreflight, useProviders, useProviderTypes, useZones, type Provider } from '../api/providers'
 import { loadLastChoice, saveLastChoice, type LastChoice } from '../certs/lastChoice'
@@ -65,8 +74,8 @@ watchEffect(() => {
 // The choice of source: the one of the certificate started from, or the
 // first configured one, until someone picks; or an upload when the link
 // asks for one, as importing does, or the certificate started from is one.
-const picked = ref<'upload' | number | undefined>(route.query.source === 'upload' ? 'upload' : undefined)
-const source = computed<'upload' | number | undefined>(() => {
+const picked = ref<'upload' | 'request' | number | undefined>(route.query.source === 'upload' ? 'upload' : undefined)
+const source = computed<'upload' | 'request' | number | undefined>(() => {
   if (picked.value !== undefined) return picked.value
   if (!sources.isSuccess.value || !templateReady.value) return undefined
   if (template.value?.source === 'upload') return 'upload'
@@ -113,6 +122,8 @@ const pem = ref({ certificate: '', privateKey: '', pfx: '', pfxPassword: '' })
 // Issue: for the domains the link names (?domains=a,b), as a certificate
 // found in transparency logs offers, if any.
 const issue = useIssueCertificate()
+// Or a certificate to buy by hand: JEC makes the key and the CSR for it.
+const request = useRequestCertificate()
 const domains = ref<string[]>(
   String(route.query.domains ?? '')
     .split(',')
@@ -206,6 +217,10 @@ watchEffect(() => {
 })
 
 const uploading = computed(() => source.value === 'upload')
+const requesting = computed(() => source.value === 'request')
+watch(requesting, (now) => {
+  if (now) bulk.value = false
+})
 // Or many at once, from the files another tool exported: certificates and
 // keys in any mix, which the server pairs.
 const importing = ref(false)
@@ -238,7 +253,7 @@ async function submitImport() {
     // shown above the files
   }
 }
-const mutation = computed(() => (uploading.value ? add : issue))
+const mutation = computed(() => (uploading.value ? add : requesting.value ? request : issue))
 const errors = useApiError(computed(() => mutation.value.error.value))
 const badTargets = computed(() => Object.entries(errors.fields.value).find(([f]) => f.startsWith('targets'))?.[1])
 const badDomains = computed(() =>
@@ -261,6 +276,15 @@ const deploySteps = computed(() =>
 const plan = computed(() => {
   if (uploading.value) {
     return [t('certs.plan.check'), t('certs.plan.store'), ...deploySteps.value, t('certs.plan.remind', { days: renewDays.value })]
+  }
+  if (requesting.value) {
+    return [
+      t('certs.plan.key', { key: keyLabel(keyType.value) }),
+      t('certs.plan.csr'),
+      t('certs.plan.pair'),
+      ...deploySteps.value,
+      t('certs.plan.remind', { days: renewDays.value }),
+    ]
   }
   const time = settings.data.value?.checkTime ?? '02:00'
   if (ownKey.value) {
@@ -314,6 +338,17 @@ async function submit() {
       return
     }
     await router.replace(`/certificates/${created.id}`)
+    return
+  }
+  if (requesting.value) {
+    let created
+    try {
+      created = await request.mutateAsync({ domains: domains.value, keyType: keyType.value, renewBeforeDays: Number(days.value) || undefined, targets: chosenTargets.value })
+    } catch {
+      await revealError(form.value)
+      return
+    }
+    await router.replace({ path: `/certificates/${created.id}`, query: { csr: '1' } })
     return
   }
   if (typeof source.value !== 'number') return
@@ -412,6 +447,10 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
             <span class="text-body font-semibold">{{ t('certs.source.upload') }}</span>
             <span class="text-caption leading-[18px] text-ink-muted">{{ t('certs.source.upload_desc') }}</span>
           </button>
+          <button type="button" role="radio" :aria-checked="requesting ? 'true' : 'false'" :class="cardClass(requesting)" @click="picked = 'request'">
+            <span class="text-body font-semibold">{{ t('certs.source.request') }}</span>
+            <span class="text-caption leading-[18px] text-ink-muted">{{ t('certs.source.request_desc') }}</span>
+          </button>
           <RouterLink
             to="/sources"
             class="grid min-h-16 content-start gap-0.5 rounded-md border border-dashed border-line-strong px-3 py-2.5 text-ink no-underline hover:bg-surface-sunken hover:text-ink"
@@ -477,7 +516,13 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
           :errors="errors.fields.value"
           :error-params="errors.error.value?.params"
         />
-        <JecField v-else-if="provider && !ownKey" id="keyType" label="certs.add.key_type" hint="certs.add.key_type_help" :error="fieldError('keyType')">
+        <JecField
+          v-else-if="(provider && !ownKey) || requesting"
+          id="keyType"
+          label="certs.add.key_type"
+          :hint="requesting ? 'certs.request.key_help' : 'certs.add.key_type_help'"
+          :error="fieldError('keyType')"
+        >
           <select
             id="keyType"
             v-model="keyType"
@@ -488,11 +533,11 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
         </JecField>
       </section>
 
-      <template v-if="provider">
+      <template v-if="provider || requesting">
         <section aria-labelledby="domains" class="flex flex-col gap-3 rounded-lg border border-line bg-surface-raised p-4">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <h2 id="domains" class="m-0 text-section-title font-semibold">{{ t('certs.add.domains') }}</h2>
-            <div role="group" :aria-label="t('certs.add.bulk_mode')" class="inline-flex gap-0.5 rounded-md border border-line bg-surface-sunken p-0.5">
+            <div v-if="!requesting" role="group" :aria-label="t('certs.add.bulk_mode')" class="inline-flex gap-0.5 rounded-md border border-line bg-surface-sunken p-0.5">
               <button
                 v-for="many in [false, true]"
                 :key="String(many)"
@@ -602,11 +647,11 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
       </section>
 
       <section aria-labelledby="renewal" class="flex flex-col gap-3 rounded-lg border border-line bg-surface-raised p-4">
-        <h2 id="renewal" class="m-0 text-section-title font-semibold">{{ t(uploading ? 'certs.add.reminder' : 'certs.add.renewal') }}</h2>
+        <h2 id="renewal" class="m-0 text-section-title font-semibold">{{ t(uploading || requesting ? 'certs.add.reminder' : 'certs.add.renewal') }}</h2>
         <JecField
           id="renewBeforeDays"
-          :label="uploading ? 'certs.settings.days' : 'certs.add.renew_days'"
-          :hint="uploading ? 'certs.settings.days_help' : 'certs.add.renew_days_help'"
+          :label="uploading || requesting ? 'certs.settings.days' : 'certs.add.renew_days'"
+          :hint="uploading || requesting ? 'certs.settings.days_help' : 'certs.add.renew_days_help'"
           :error="fieldError('renewBeforeDays')"
         >
           <span class="flex items-center gap-2">
@@ -650,6 +695,7 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
       >
         <template v-if="uploading && importing"><Upload class="size-4" aria-hidden="true" />{{ t('certs.import.submit', { count: importFiles.length }) }}</template>
         <template v-else-if="uploading"><Save class="size-4" aria-hidden="true" />{{ t('certs.action.save') }}</template>
+        <template v-else-if="requesting"><FilePlus class="size-4" aria-hidden="true" />{{ t('certs.request.generate') }}</template>
         <template v-else-if="bulk"><ShieldCheck class="size-4" aria-hidden="true" />{{ t('certs.add.bulk_submit', { count: batch.length }) }}</template>
         <template v-else><ShieldCheck class="size-4" aria-hidden="true" />{{ t('certs.action.issue') }}</template>
       </JecButton>

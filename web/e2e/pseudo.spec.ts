@@ -281,6 +281,19 @@ test('every page is translated and fits', async ({ page }, info) => {
     const res = await page.request.post('api/v1/certs/certificates', { data: await selfSigned([...names], from, to) })
     expect(res.status(), names[0]).toBe(201)
   }
+  // And one to buy by hand: JEC makes its key and CSR, and it waits for the
+  // certificate the CA issues.
+  await page.goto('./certificates/new')
+  await page.getByRole('radio', { name: label('certs.source.request') }).click()
+  await page.locator('#domain-input').fill('bought.example.com')
+  await page.locator('#domain-input').press('Enter')
+  expect.soft(await problems(page), 'add a certificate to buy').toEqual([])
+  await page.locator('button[form=add-form]').click()
+  await expect(page.locator('dialog[open] pre')).toContainText('BEGIN CERTIFICATE REQUEST')
+  expect.soft(await problems(page), 'the CSR of a certificate to buy').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.getByText(label('certs.request.waiting'))).toBeVisible()
+  expect.soft(await problems(page), 'a certificate waiting for its CA').toEqual([])
   await page.goto('./')
   expect.soft(await problems(page), 'overview').toEqual([])
   await page.goto('./certificates')
@@ -928,6 +941,8 @@ test('every page is translated and fits', async ({ page }, info) => {
   // The quick jump: Ctrl+K, a domain typed, Enter goes to its certificate;
   // then a search that finds nothing.
   await page.goto('./')
+  // The shortcut is there once the shell is.
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await page.keyboard.press('Control+k')
   const jump = page.locator('dialog[open]')
   await expect(jump).toBeVisible()

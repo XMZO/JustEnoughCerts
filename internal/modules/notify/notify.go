@@ -388,6 +388,7 @@ var stateText = map[string]i18n.Key{
 	"ok": i18n.CertsStateOk, "expiring": i18n.CertsStateExpiring, "expired": i18n.CertsStateExpired,
 	"issuing": i18n.CertsStateIssuing, "deploying": i18n.CertsStateDeploying,
 	"failed": i18n.CertsStateFailed, "deploy_failed": i18n.CertsStateDeployFailed, "revoked": i18n.CertsStateRevoked,
+	"awaiting": i18n.CertsStateAwaiting,
 }
 
 // digestNote writes the weekly digest in the language tag: what needs

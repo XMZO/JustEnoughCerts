@@ -269,12 +269,15 @@
       "certs_delete": "Delete a certificate",
       "certs_deploy": "Deploy a certificate now",
       "certs_download": "Download a private key",
+      "certs_drop_csr": "Give up a CSR",
       "certs_export": "Downloaded every certificate and key",
       "certs_issue": "Issue a certificate now",
       "certs_issue_new": "Add a certificate to issue",
       "certs_pull_file": "A server fetched a certificate file",
       "certs_pull_key": "Made a certificate's pull key",
       "certs_pull_off": "Stopped a certificate being pulled",
+      "certs_request": "Add a certificate to buy (CSR made)",
+      "certs_request_csr": "Make a new CSR",
       "certs_revoke": "Revoke a certificate version",
       "certs_save_settings": "Change the renewal defaults",
       "certs_set_domains": "Changed the domains of a certificate",
@@ -661,7 +664,7 @@
       "http_help": "JEC puts the validation files there, under /.well-known/, and removes them afterwards. The CA must be able to fetch them from the domains over HTTP.",
       "intro": "Choose where the certificate comes from, then fill in what it needs.",
       "key": "Private key",
-      "key_help": "Stored encrypted in the data directory. Leave it empty if the key is in the field above.",
+      "key_help": "Stored encrypted in the data directory. Leave it empty if the key is in the field above, or if the certificate was issued for a CSR JEC made.",
       "key_type": "Key type",
       "key_type_help": "Each renewal makes a new private key. Choose RSA where old clients are common.",
       "manage_solvers": "Manage validation methods",
@@ -695,6 +698,7 @@
       "zones_untested": "This check is not yet tried with a real account: take it as a hint."
     },
     "attention": {
+      "awaiting": "{domain} awaits its certificate",
       "deploy_failed": "{domain} could not be deployed",
       "expired": "{domain} has expired",
       "expired_detail": "{life}. Upload a new certificate to replace it.",
@@ -900,6 +904,7 @@
       "bad_domain": "This is not a valid domain name. Write a wildcard as *.example.com.",
       "bad_key": "The private key cannot be read. Paste it again in full.",
       "bad_pfx": "This file cannot be read: it may be damaged, or not a PFX or P12 file.",
+      "csr_source": "Only a certificate uploaded by hand takes a CSR; one with a source renews by itself.",
       "deploy_failed": "The deployment failed. The full log says why.",
       "duplicate": "This certificate has been added already.",
       "encrypted_key": "The private key is protected by a passphrase. Remove it first, for example with openssl pkey -in key.pem -out plain.pem, then paste the key again.",
@@ -1101,6 +1106,7 @@
       "scheduled": "The new version deploys at {time}, in its window"
     },
     "note": {
+      "awaiting": "Hand the CSR to the CA, and upload the certificate it issues, without a key.",
       "deploy_failed": "{target}: {error}",
       "expired": "Upload a new certificate",
       "manual": "Not renewed automatically, upload a new one",
@@ -1121,6 +1127,7 @@
       "bulk": "Add {count, plural, one {# certificate} other {# certificates}}, each through the steps below",
       "check": "Check that the certificate and the private key match",
       "collect": "Take the certificate and its key from {source}",
+      "csr": "Make the CSR, which you hand to the CA",
       "deploy": "Deploy to {target}",
       "dns": "Add the validation records at {dns}, and remove them afterwards",
       "download": "Download the certificate once the CA has validated the domains",
@@ -1129,6 +1136,7 @@
       "key": "Make a new private key: {key}",
       "manual": "Add the TXT records the issuance's log gives at your DNS by hand (for every renewal too)",
       "order": "Order the certificate from {source}",
+      "pair": "Upload the certificate it issues, without a key; JEC pairs it with its own",
       "remind": "Remind you {days, plural, one {# day} other {# days}} before expiry to upload a new certificate",
       "renew": "Renew {days, plural, one {# day} other {# days}} before the end, at {time}",
       "store": "Store the private key encrypted",
@@ -1157,6 +1165,21 @@
     "renewal": {
       "suggested": "The CA suggests {start} to {end}",
       "why": "Why"
+    },
+    "request": {
+      "again": "Make a new one",
+      "drop": "Give up",
+      "generate": "Make the CSR",
+      "intro": "JEC makes a new private key and its CSR; the key is kept encrypted in JEC and never leaves it. Hand the CSR to the CA, and upload the certificate it issues, without a key.",
+      "key_help": "Commercial certificates generally take RSA 2048.",
+      "made": "Private key ({key}) made",
+      "new": "Make a CSR",
+      "show": "Show the CSR",
+      "shown": "Hand this CSR to the CA, as by pasting it where the seller of the certificate activates or reissues it. Upload the certificate it issues without a key: JEC pairs it with its own.",
+      "since": "CSR made",
+      "title": "CSR of {domain}",
+      "upload": "Upload the certificate",
+      "waiting": "Waiting for the CA to issue it"
     },
     "revocation": {
       "ca": "Issuer certificate",
@@ -1253,10 +1276,13 @@
       "window_help": "New versions go to the targets only in these hours, in the panel's time zone, as to reload no server by day; deploying by hand starts at once."
     },
     "source": {
+      "request": "Make a CSR",
+      "request_desc": "For a certificate bought from a CA: JEC makes the key and the CSR.",
       "upload": "Manual upload",
       "upload_desc": "Paste the certificate and its key. Not renewed automatically."
     },
     "state": {
+      "awaiting": "Awaiting certificate",
       "deploy_failed": "Deployment failed",
       "deploying": "Deploying",
       "expired": "Expired",
@@ -3572,6 +3598,7 @@
       "title": "Expiry watch"
     },
     "state": {
+      "awaiting": "Awaiting its certificate",
       "deploy_failed": "Deployment failed",
       "deploying": "Deploying",
       "expired": "Expired",

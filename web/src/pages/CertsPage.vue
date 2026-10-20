@@ -7,6 +7,7 @@ import {
   CopyPlus,
   Download,
   Eye,
+  FileClock,
   FileDown,
   Globe,
   LoaderCircle,
@@ -159,6 +160,7 @@ function note(c: Certificate): string {
   if (c.state === 'failed') return issueNote(c)
   if (c.state === 'deploy_failed') return deployNote(c)
   if (c.state === 'revoked') return revokedNote(c)
+  if (c.state === 'awaiting') return t('certs.note.awaiting')
   if (c.state === 'ok' || c.state === 'issuing' || c.state === 'deploying') return ''
   if (c.source === 'provider') {
     if (c.paused) return t('certs.note.paused')
@@ -187,6 +189,7 @@ function next(c: Certificate): string {
   // A new version waiting for its deploy window.
   const scheduled = c.deployments.map(scheduledAt).filter((at): at is string => !!at).sort()[0]
   if (scheduled) return t('certs.next.scheduled', { time: intl.dateTime(scheduled) })
+  if (c.state === 'awaiting') return t('certs.note.awaiting')
   if (c.source !== 'provider') return t('certs.next.manual')
   if (c.state === 'issuing') return t('certs.next.issuing')
   if (c.state === 'failed') return issueNote(c)
@@ -444,6 +447,7 @@ const itemLooks = {
   issuing: { icon: LoaderCircle, ink: 'text-info-ink', fill: 'bg-info-fill' },
   deploying: { icon: LoaderCircle, ink: 'text-info-ink', fill: 'bg-info-fill' },
   ok: { icon: CircleCheck, ink: 'text-ok-ink', fill: 'bg-ok-fill' },
+  awaiting: { icon: FileClock, ink: 'text-warn-ink', fill: 'bg-warn-fill' },
 } as const
 const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill' }
 </script>

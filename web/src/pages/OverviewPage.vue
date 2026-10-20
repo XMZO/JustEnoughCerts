@@ -105,7 +105,7 @@ function runPrimary(c: Certificate) {
   else if (main?.run) void act(main.run, c.id)
 }
 
-const order: CertificateState[] = ['failed', 'deploy_failed', 'revoked', 'expired', 'expiring', 'issuing', 'deploying', 'ok']
+const order: CertificateState[] = ['failed', 'deploy_failed', 'revoked', 'expired', 'awaiting', 'expiring', 'issuing', 'deploying', 'ok']
 const counts = computed(() =>
   order.map((state) => ({ state, count: all.value.filter((c) => c.state === state).length })).filter((s) => s.count > 0),
 )
@@ -134,6 +134,7 @@ function plan(c: Certificate, l: Life | null): string {
     if (c.paused) return t('certs.next.paused')
     return t('certs.next.auto', { date: intl.date(windowStart(c.current, c.renewBeforeDays)) })
   }
+  if (c.state === 'awaiting') return t('certs.note.awaiting')
   if (!l || l.expired) return t('certs.plan.expired')
   if (c.state === 'expiring' && c.current) return t('certs.plan.upload_due', { date: intl.date(c.current.notAfter) })
   return t('certs.plan.upload', { days: c.renewBeforeDays })
@@ -191,6 +192,17 @@ const todo = computed(() =>
         detail: t(issued ? 'certs.note.revoked_renewing' : 'certs.note.revoked', { reason }),
         to: issued ? `/certificates/${c.id}` : { path: `/certificates/${c.id}`, query: { upload: '1' } },
         action: (issued ? 'certs.action.details' : 'certs.action.upload_short') as MessageKey,
+        button: undefined,
+      }
+    }
+    if (c.state === 'awaiting') {
+      return {
+        cert: c,
+        expired: false,
+        title: t('certs.attention.awaiting', { domain }),
+        detail: t('certs.note.awaiting'),
+        to: { path: `/certificates/${c.id}`, query: { upload: '1' } },
+        action: 'certs.action.upload_short' as MessageKey,
         button: undefined,
       }
     }

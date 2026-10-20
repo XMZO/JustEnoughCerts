@@ -81,6 +81,7 @@ export const stateText: Record<CertificateState, MessageKey> = {
   failed: 'certs.state.failed',
   deploy_failed: 'certs.state.deploy_failed',
   revoked: 'certs.state.revoked',
+  awaiting: 'certs.state.awaiting',
 }
 
 /** caReasonText names why a CA revoked a version. */

@@ -403,7 +403,7 @@
             "type": "integer"
           },
           "state": {
-            "description": "issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)",
+            "description": "issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; awaiting: no version yet, and a CSR waits for its certificate; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)",
             "enum": [
               "ok",
               "expiring",
@@ -412,7 +412,8 @@
               "deploying",
               "failed",
               "deploy_failed",
-              "revoked"
+              "revoked",
+              "awaiting"
             ],
             "type": "string"
           },
@@ -903,6 +904,23 @@
         ],
         "type": "object"
       },
+      "CsrInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "keyType": {
+            "description": "The type of the new key; that of the certificate if left out",
+            "enum": [
+              "ecdsa-p256",
+              "ecdsa-p384",
+              "rsa-2048",
+              "rsa-3072",
+              "rsa-4096"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "DeployInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -1035,6 +1053,10 @@
           "details": {
             "$ref": "#/components/schemas/DetailsBody",
             "description": "What the current version says beyond its names and dates"
+          },
+          "request": {
+            "$ref": "#/components/schemas/RequestBody",
+            "description": "The request the certificate waits on: the certificate the CA issues for it is uploaded without a key"
           },
           "versions": {
             "description": "Every version, the newest first",
@@ -2880,6 +2902,80 @@
           "sections",
           "errors",
           "applied"
+        ],
+        "type": "object"
+      },
+      "RequestBody": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "csr": {
+            "description": "The PEM certificate request, for the CA",
+            "type": "string"
+          },
+          "keyType": {
+            "enum": [
+              "ecdsa-p256",
+              "ecdsa-p384",
+              "rsa-2048",
+              "rsa-3072",
+              "rsa-4096"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "csr",
+          "keyType",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "RequestInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "domains": {
+            "description": "The domains, the primary first; a wildcard as *.example.com",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array"
+          },
+          "keyType": {
+            "description": "The type of the key; RSA 2048, which every CA takes, if left out",
+            "enum": [
+              "ecdsa-p256",
+              "ecdsa-p384",
+              "rsa-2048",
+              "rsa-3072",
+              "rsa-4096"
+            ],
+            "type": "string"
+          },
+          "renewBeforeDays": {
+            "description": "Days before the end to send a reminder; that of the settings if left out",
+            "format": "int64",
+            "maximum": 365,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "targets": {
+            "description": "The target provider instances to deploy each version to, in order",
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "maxItems": 50,
+            "type": "array"
+          }
+        },
+        "required": [
+          "domains"
         ],
         "type": "object"
       },
@@ -5475,6 +5571,48 @@
         ]
       }
     },
+    "/certs/certificates/request": {
+      "post": {
+        "description": "The certificate waits (state awaiting) until the one the CA issues for the CSR is uploaded, without a key: it takes the key JEC made, which never leaves JEC.",
+        "operationId": "certs-request",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateBody"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Add a certificate to buy from a CA by hand, with a key and its CSR made by JEC",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
     "/certs/certificates/{id}": {
       "delete": {
         "operationId": "certs-delete",
@@ -5595,6 +5733,92 @@
           }
         },
         "summary": "Change the renewal policy, the targets or the note of a certificate",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/certificates/{id}/csr": {
+      "delete": {
+        "operationId": "certs-drop-csr",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Forget the request a certificate waits on, with its key",
+        "tags": [
+          "certs"
+        ]
+      },
+      "post": {
+        "description": "In place of any request it waited on. The certificate the CA issues for it is uploaded without a key.",
+        "operationId": "certs-request-csr",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CsrInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Make a new key and CSR for a certificate uploaded by hand, as to renew one bought",
         "tags": [
           "certs"
         ]

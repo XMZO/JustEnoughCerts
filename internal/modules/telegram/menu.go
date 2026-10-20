@@ -893,7 +893,7 @@ func (l *listener) short(c *certificate) string {
 // expired, or an upload about to.
 func needsAttention(c *certificate) bool {
 	switch c.State {
-	case "failed", "deploy_failed", "expired", "revoked":
+	case "failed", "deploy_failed", "expired", "revoked", "awaiting":
 		return true
 	case "expiring":
 		return c.Source != "provider"
@@ -924,6 +924,8 @@ func icon(c *certificate) string {
 		return iconWarn
 	case "issuing", "deploying":
 		return iconBusy
+	case "awaiting":
+		return iconWarn
 	}
 	return iconFail
 }
@@ -939,6 +941,7 @@ var states = map[string]i18n.Key{
 	"ok": i18n.TelegramStateOk, "expiring": i18n.TelegramStateExpiring, "expired": i18n.TelegramStateExpired,
 	"issuing": i18n.TelegramStateIssuing, "deploying": i18n.TelegramStateDeploying,
 	"failed": i18n.TelegramStateFailed, "deploy_failed": i18n.TelegramStateDeployFailed, "revoked": i18n.TelegramStateRevoked,
+	"awaiting": i18n.TelegramStateAwaiting,
 }
 
 var deployStates = map[string]i18n.Key{

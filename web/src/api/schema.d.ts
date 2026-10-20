@@ -345,6 +345,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certs/certificates/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a certificate to buy from a CA by hand, with a key and its CSR made by JEC
+         * @description The certificate waits (state awaiting) until the one the CA issues for the CSR is uploaded, without a key: it takes the key JEC made, which never leaves JEC.
+         */
+        post: operations["certs-request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/certs/certificates/{id}": {
         parameters: {
             query?: never;
@@ -362,6 +382,27 @@ export interface paths {
         head?: never;
         /** Change the renewal policy, the targets or the note of a certificate */
         patch: operations["certs-update"];
+        trace?: never;
+    };
+    "/certs/certificates/{id}/csr": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a new key and CSR for a certificate uploaded by hand, as to renew one bought
+         * @description In place of any request it waited on. The certificate the CA issues for it is uploaded without a key.
+         */
+        post: operations["certs-request-csr"];
+        /** Forget the request a certificate waits on, with its key */
+        delete: operations["certs-drop-csr"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/certs/certificates/{id}/deploy": {
@@ -1813,10 +1854,10 @@ export interface components {
              */
             sourceProvider?: number;
             /**
-             * @description issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)
+             * @description issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; awaiting: no version yet, and a CSR waits for its certificate; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)
              * @enum {string}
              */
-            state: "ok" | "expiring" | "expired" | "issuing" | "deploying" | "failed" | "deploy_failed" | "revoked";
+            state: "ok" | "expiring" | "expired" | "issuing" | "deploying" | "failed" | "deploy_failed" | "revoked" | "awaiting";
             /** @description The target provider instances each version is deployed to, in order */
             targets: number[];
         };
@@ -1977,6 +2018,13 @@ export interface components {
         CredentialsOutputBody: {
             credentials: components["schemas"]["CredentialBody"][];
         };
+        CsrInputBody: {
+            /**
+             * @description The type of the new key; that of the certificate if left out
+             * @enum {string}
+             */
+            keyType?: "ecdsa-p256" | "ecdsa-p384" | "rsa-2048" | "rsa-3072" | "rsa-4096";
+        };
         DeployInputBody: {
             /**
              * Format: int64
@@ -2036,6 +2084,8 @@ export interface components {
             chain: components["schemas"]["ChainEntry"][];
             /** @description What the current version says beyond its names and dates */
             details?: components["schemas"]["DetailsBody"];
+            /** @description The request the certificate waits on: the certificate the CA issues for it is uploaded without a key */
+            request?: components["schemas"]["RequestBody"];
             /** @description Every version, the newest first */
             versions: components["schemas"]["VersionBody"][];
         };
@@ -2687,6 +2737,30 @@ export interface components {
             errors: number;
             /** @description The sections the file has, in its order */
             sections: components["schemas"]["SectionReport"][];
+        };
+        RequestBody: {
+            /** Format: date-time */
+            createdAt: string;
+            /** @description The PEM certificate request, for the CA */
+            csr: string;
+            /** @enum {string} */
+            keyType: "ecdsa-p256" | "ecdsa-p384" | "rsa-2048" | "rsa-3072" | "rsa-4096";
+        };
+        RequestInputBody: {
+            /** @description The domains, the primary first; a wildcard as *.example.com */
+            domains: string[];
+            /**
+             * @description The type of the key; RSA 2048, which every CA takes, if left out
+             * @enum {string}
+             */
+            keyType?: "ecdsa-p256" | "ecdsa-p384" | "rsa-2048" | "rsa-3072" | "rsa-4096";
+            /**
+             * Format: int64
+             * @description Days before the end to send a reminder; that of the settings if left out
+             */
+            renewBeforeDays?: number;
+            /** @description The target provider instances to deploy each version to, in order */
+            targets?: number[];
         };
         RevokeInputBody: {
             /** @description The password of the signed-in account, asked again before revoking */
@@ -4015,6 +4089,39 @@ export interface operations {
             };
         };
     };
+    "certs-request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestInputBody"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     "certs-get": {
         parameters: {
             query?: never;
@@ -4098,6 +4205,70 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CertificateBody"];
                 };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-request-csr": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CsrInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-drop-csr": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Error */
             default: {

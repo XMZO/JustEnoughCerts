@@ -32,7 +32,7 @@ type CertificateBody struct {
 	DeployWindow    string           `json:"deployWindow,omitempty" doc:"The hours, in the panel's time zone, new versions are deployed in, as 1-5"`
 	NotifyTo        []int64          `json:"notifyTo" doc:"The notifiers its notes go to; empty for all"`
 	RenewBeforeDays int              `json:"renewBeforeDays" doc:"How many days before the end the certificate is renewed, or a reminder sent"`
-	State           string           `json:"state" enum:"ok,expiring,expired,issuing,deploying,failed,deploy_failed,revoked" doc:"issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)"`
+	State           string           `json:"state" enum:"ok,expiring,expired,issuing,deploying,failed,deploy_failed,revoked,awaiting" doc:"issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; awaiting: no version yet, and a CSR waits for its certificate; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)"`
 	Current         *VersionBody     `json:"current,omitempty" doc:"The version in use"`
 	RenewAt         *time.Time       `json:"renewAt,omitempty" doc:"When the renewal of the current version starts, or started: for a certificate with a source"`
 	RenewalWindow   *RenewalBody     `json:"renewalWindow,omitempty" doc:"The window the CA suggests renewing the current version in (ACME Renewal Information), once it answered"`
@@ -188,6 +188,7 @@ type detailOutput struct {
 		Versions    []VersionBody   `json:"versions" doc:"Every version, the newest first"`
 		Chain       []ChainEntry    `json:"chain" doc:"The chain of the current version, the leaf first"`
 		Details     *DetailsBody    `json:"details,omitempty" doc:"What the current version says beyond its names and dates"`
+		Request     *RequestBody    `json:"request,omitempty" doc:"The request the certificate waits on: the certificate the CA issues for it is uploaded without a key"`
 	}
 }
 
@@ -278,6 +279,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 	registerImportAPI(a, s)
 	registerKeysAPI(a, s)
 	registerPullAPI(a, s, confirm)
+	registerCSRAPI(a, s)
 
 	huma.Register(a, huma.Operation{
 		OperationID: "certs-list", Method: http.MethodGet, Path: "/certificates",
@@ -304,9 +306,22 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 		OperationID: "certs-add", Method: http.MethodPost, Path: "/certificates", DefaultStatus: http.StatusCreated,
 		Summary: "Add a certificate by uploading it with its private key",
 	}, func(ctx context.Context, in *addInput) (*certificateOutput, error) {
-		b, err := parseUpload(in.Body.UploadFields)
+		b, err := readUpload(in.Body.UploadFields)
+		if errors.Is(err, cryptox.ErrNoKey) && len(in.Body.PFX) == 0 {
+			// Issued for a request JEC made: a version of its certificate.
+			id, req, rerr := s.requestFor(ctx, in.Body.Certificate)
+			if rerr != nil {
+				return nil, rerr
+			}
+			if id != 0 {
+				if err := s.upload(ctx, id, req); err != nil {
+					return nil, serviceError(err)
+				}
+				return s.output(ctx, id)
+			}
+		}
 		if err != nil {
-			return nil, err
+			return nil, bundleError(err, len(in.Body.PFX) > 0)
 		}
 		targets, err := s.validTargets(ctx, in.Body.Targets)
 		if err != nil {
@@ -342,6 +357,9 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			b.Revocable = revocable(c, v, s.now(), typeOf) == nil
 			b.Usable = usable(c, v, s.now()) == nil
 			out.Body.Versions = append(out.Body.Versions, b)
+		}
+		if out.Body.Request, err = s.pendingCSR(ctx, in.ID); err != nil {
+			return nil, err
 		}
 		out.Body.Chain = []ChainEntry{}
 		if c.Current != nil {
@@ -421,9 +439,12 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 		OperationID: "certs-upload", Method: http.MethodPost, Path: "/certificates/{id}/versions", DefaultStatus: http.StatusCreated,
 		Summary: "Upload a new version of a certificate",
 	}, func(ctx context.Context, in *uploadInput) (*certificateOutput, error) {
-		b, err := parseUpload(in.Body)
+		b, err := readUpload(in.Body)
 		if err != nil {
-			return nil, err
+			// Without a key: that of its request, or of its version in use.
+			if b, err = s.keyFor(ctx, in.ID, in.Body, err); err != nil {
+				return nil, bundleError(err, len(in.Body.PFX) > 0)
+			}
 		}
 		if err := s.upload(ctx, in.ID, b); err != nil {
 			return nil, serviceError(err)
@@ -565,18 +586,19 @@ func (s *service) body(ctx context.Context, c *Certificate) (CertificateBody, er
 // parseUpload reads the certificate and key of an upload: a PKCS #12 file
 // when there is one, or else the PEM texts.
 func parseUpload(f UploadFields) (*cryptox.Bundle, error) {
-	if len(f.PFX) == 0 {
-		b, err := cryptox.ParseBundle([]byte(f.Certificate), []byte(f.PrivateKey))
-		if err != nil {
-			return nil, bundleError(err, false)
-		}
-		return b, nil
-	}
-	b, err := cryptox.ParsePFX(f.PFX, f.PFXPassword)
+	b, err := readUpload(f)
 	if err != nil {
-		return nil, bundleError(err, true)
+		return nil, bundleError(err, len(f.PFX) > 0)
 	}
 	return b, nil
+}
+
+// readUpload is parseUpload with cryptox's errors.
+func readUpload(f UploadFields) (*cryptox.Bundle, error) {
+	if len(f.PFX) == 0 {
+		return cryptox.ParseBundle([]byte(f.Certificate), []byte(f.PrivateKey))
+	}
+	return cryptox.ParsePFX(f.PFX, f.PFXPassword)
 }
 
 // bundleError turns what is wrong with an upload into a response that

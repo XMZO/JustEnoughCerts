@@ -17,6 +17,7 @@ added depends on its source:
 | Issued by a source | Choose a certificate source, enter the domains, and choose a validation method and a key type. Issuance starts on submission, and the certificate is renewed automatically from then on |
 | Manual upload | Choose manual upload as the source, then paste PEM text (the certificate, its intermediates and the private key, in any order) or upload a PFX/P12 file with its password. Such certificates are not renewed automatically; reminders are sent before they expire |
 | Import a certificate | Choose Import a certificate; this works as a manual upload and suits the migration of existing certificates |
+| Make a CSR | For a certificate bought from a CA by hand; see below |
 | Several at once | With a source, choose Several above the domains and enter a certificate a line, its domains apart by spaces or commas; the rest of the form applies to each. Lines that cannot be added stay, with the reason, for another try |
 
 Domains are handled as follows:
@@ -76,6 +77,29 @@ CDN, and their validation changed, as when their DNS moves.
 The list's search finds certificates by domain and by note. A host name,
 or a URL pasted in, also finds the wildcard certificate that covers it:
 `api.shop.com` finds `*.shop.com`.
+
+### Certificates bought from a CA
+
+For a certificate bought from a seller that issues it for a CSR, such as
+a PositiveSSL certificate activated by hand, JEC can make the private key
+and the CSR; the key is kept encrypted in JEC and goes nowhere else:
+
+1. When adding the certificate, choose Make a CSR as the source, enter
+   the domains and choose the key type (commercial certificates generally
+   take RSA 2048). The page then shows the CSR, to copy or to download as
+   a `.csr` file.
+2. Hand the CSR to the seller where the certificate is activated or
+   reissued, and validate the domains as it asks.
+3. Once the certificate is issued, choose Upload the certificate on its
+   page and paste the certificate alone, intermediates included if you
+   wish, leaving the private key empty: JEC pairs it with the key it made
+   for the CSR. Uploading it on the Add certificate page finds the right
+   certificate too.
+
+While it waits, the certificate shows as Awaiting certificate and is among
+those that need attention. To renew it, choose Make a CSR on its page for
+a new key and CSR; a reissue for the same CSR pairs with the key of the
+version in use.
 
 ## The certificate's page
 

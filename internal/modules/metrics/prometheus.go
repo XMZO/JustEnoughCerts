@@ -21,7 +21,7 @@ import (
 const via = "Prometheus"
 
 // The states of a certificate, as the API tells them.
-var states = []string{"ok", "expiring", "expired", "issuing", "deploying", "failed", "deploy_failed", "revoked"}
+var states = []string{"ok", "expiring", "expired", "issuing", "deploying", "failed", "deploy_failed", "revoked", "awaiting"}
 
 // What the metrics read of the API: only the fields they show.
 type certificate struct {

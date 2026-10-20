@@ -262,6 +262,25 @@ export function useSetDomains(id: MaybeRefOrGetter<number>) {
   )
 }
 
+/** Adds a certificate to buy from a CA by hand: JEC makes the key and its CSR, and the certificate waits for the CA's. */
+export function useRequestCertificate() {
+  return useCertsMutation((body: { domains: string[]; keyType?: KeyType; renewBeforeDays?: number; targets?: number[] }) =>
+    unwrap(api.POST('/certs/certificates/request', { body })),
+  )
+}
+
+/** Makes a new key and CSR for certificate id, uploaded by hand, as to renew one bought. */
+export function useNewRequest(id: MaybeRefOrGetter<number>) {
+  return useCertsMutation((keyType: KeyType) =>
+    unwrap(api.POST('/certs/certificates/{id}/csr', { params: { path: { id: toValue(id) } }, body: { keyType } })),
+  )
+}
+
+/** Forgets the request certificate id waits on, with its key. */
+export function useDropRequest(id: MaybeRefOrGetter<number>) {
+  return useCertsMutation(() => unwrap(api.DELETE('/certs/certificates/{id}/csr', { params: { path: { id: toValue(id) } } })))
+}
+
 export function useDeleteCertificate(id: MaybeRefOrGetter<number>) {
   return useCertsMutation(() => unwrap(api.DELETE('/certs/certificates/{id}', { params: { path: { id: toValue(id) } } })))
 }
