@@ -37,7 +37,9 @@ and servers, and renews them before they expire.
 ## Features
 
 - [Certificate sources](../usage/sources.md): ACME, including External
-  Account Binding; manual upload; certbot and acme.sh on the same machine;
+  Account Binding and profiles, for short-lived certificates and those of
+  IP addresses; manual upload and imports of many files, with the chain
+  completed; certbot and acme.sh on the same machine;
   Alibaba Cloud and Tencent Cloud certificate services; a private CA;
   Namecheap SSL Manager (experimental).
 - [Domain validation](../usage/validation.md): the 221 DNS providers of
@@ -48,10 +50,14 @@ and servers, and renews them before they expire.
   such as BaoTa and 1Panel, and local directories, SSH servers, Docker
   containers and Kubernetes.
 - [Renewal](../usage/renewal.md): renewal windows and a daily check time,
-  ACME Renewal Information (ARI), automatic retries and online checks.
+  ACME Renewal Information (ARI), automatic retries, online checks and
+  revocation checks.
+- [Expiry watch](../usage/sites.md): the certificates of sites JEC does not
+  manage, and when domain registrations end.
 - [Notifications](../usage/notifications.md): 14 notification channels,
   each with its own language and events, and a weekly digest; a calendar
-  feed of the ends and renewals; [Prometheus metrics](../operations/monitoring.md).
+  feed of the ends and renewals; [Prometheus metrics and a
+  heartbeat](../operations/monitoring.md).
 - [Accounts and security](../operations/security.md): encrypted secrets,
   two-factor authentication, single sign-on, API tokens and an audit log;
   issued certificates can be [revoked](../usage/certificates.md#revoking).

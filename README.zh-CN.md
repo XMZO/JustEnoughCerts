@@ -16,11 +16,12 @@ Just Enough Certs（JEC）是一款自托管的 SSL/TLS 证书管理面板，负
 
 ## 功能
 
-- **证书来源**：任意 ACME 证书颁发机构（支持 External Account Binding）；上传 PEM 或 PFX 文件；本机 certbot、acme.sh 续期的证书；阿里云与腾讯云的证书服务；自己的私有 CA；Namecheap SSL Manager（实验性）。
+- **证书来源**：任意 ACME 证书颁发机构（支持 External Account Binding 与证书配置，可签 6 天短期证书与 IP 地址证书；ZeroSSL 可自动领取 EAB）；上传 PEM 或 PFX 文件，或一次导入其他工具导出的多个文件，自动补齐证书链；本机 certbot、acme.sh 续期的证书；阿里云与腾讯云的证书服务；自己的私有 CA；Namecheap SSL Manager（实验性）。
 - **域名验证**：[lego](https://github.com/go-acme/lego) 支持的 221 家 DNS 服务商、手动添加记录与 CNAME 委派；HTTP 验证可写入网站目录，或由 JEC 自身、阿里云 ESA 或 Cloudflare 边缘应答。
 - **部署目标**：31 种，包括阿里云（ESA、CDN、OSS、负载均衡）、腾讯云（CDN、EdgeOne）、华为云（CDN、ELB）、Cloudflare、AWS（Certificate Manager、CloudFront）、Gcore、宝塔面板、1Panel、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Caddy、本地目录、SSH 服务器、Docker 容器、Kubernetes 与 Webhook。
-- **续期**：续期窗口与每日检查时间、ACME 续期信息（ARI）、失败按退避重试，并核对各域名实际提供的证书。
-- **通知**：14 种渠道，如邮件、Telegram、钉钉、飞书、企业微信、Discord、Slack、Bark、ntfy、Webhook 与脚本，可分别设置事件与语言，并可每周发送概况；证书到期与续期的日历订阅；Prometheus 指标。
+- **续期**：续期窗口与每日检查时间、ACME 续期信息（ARI）、失败按退避重试，核对各域名实际提供的证书，检查证书是否被 CA 吊销；可在续期时沿用私钥。
+- **到期监控**：不由 JEC 管理的网站证书，以及证书与站点所在域名的注册到期时间（RDAP、WHOIS）。
+- **通知**：14 种渠道，如邮件、Telegram、钉钉、飞书、企业微信、Discord、Slack、Bark、ntfy、Webhook 与脚本，可分别设置事件与语言，并可每周发送概况；证书到期与续期的日历订阅；Prometheus 指标与心跳监控。
 - **安全**：密钥加密存储、两步验证、OpenID Connect 单点登录、API 令牌、审计日志与每日自动备份，可在证书颁发机构吊销已签发的证书。
 - **轻量**：单个静态二进制文件或小体积容器镜像，数据存储于 SQLite（也可使用 PostgreSQL）；内核以外的功能均为模块，插件可用任意语言编写。
 

@@ -26,7 +26,10 @@ Minecraft mod JEI.
 ## Features
 
 - **Certificate sources**: any ACME certificate authority, including
-  External Account Binding; PEM and PFX uploads; the certificates certbot
+  External Account Binding and profiles, for six-day certificates and
+  certificates of IP addresses (ZeroSSL's EAB is fetched by itself); PEM
+  and PFX uploads, or many files another tool exported at once, with the
+  chain completed; the certificates certbot
   or acme.sh renews on the same machine; the certificate services of
   Alibaba Cloud and Tencent Cloud; a private CA of your own; Namecheap SSL
   Manager (experimental).
@@ -40,12 +43,17 @@ Minecraft mod JEI.
   Nginx Proxy Manager, Synology DSM, Proxmox VE, Caddy, local directories,
   SSH servers, Docker containers, Kubernetes and webhooks.
 - **Renewal**: renewal windows with a daily check time, ACME Renewal
-  Information (ARI), retries with backoff, and online checks of the
-  certificate each domain serves.
+  Information (ARI), retries with backoff, online checks of the
+  certificate each domain serves, and checks that the CA did not revoke
+  it; the private key can be kept across renewals.
+- **Expiry watch**: the certificates of sites JEC does not manage, and
+  the registrations of the domains of your certificates and sites (RDAP,
+  WHOIS).
 - **Notifications**: 14 channels, such as email, Telegram, DingTalk,
   Feishu, WeCom, Discord, Slack, Bark, ntfy, webhooks and scripts, each
   with its own events and language, and a weekly digest; a calendar feed
-  of the ends and renewals; metrics for Prometheus.
+  of the ends and renewals; metrics for Prometheus, and a heartbeat for a
+  monitoring service.
 - **Security**: encrypted secrets, two-factor authentication, OpenID
   Connect single sign-on, API tokens, an audit log, daily backups, and
   revocation of issued certificates at their CA.
