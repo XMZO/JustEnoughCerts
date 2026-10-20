@@ -46,8 +46,8 @@ Minecraft mod JEI.
   windows if wished; servers JEC cannot reach pull their certificates
   themselves.
 - **Renewal**: renewal windows with a daily check time, ACME Renewal
-  Information (ARI), retries with backoff, daily tests of the providers'
-  settings, online checks of the certificate each domain serves and of
+  Information (ARI), retries with backoff, a backup source at another CA
+  for when the source fails, daily tests of the providers' settings, online checks of the certificate each domain serves and of
   its intermediates, and checks that the CA did not revoke it; the
   private key can be kept across renewals, an earlier version taken back
   into use, and the renewal of a certificate paused.
@@ -65,7 +65,7 @@ Minecraft mod JEI.
   recovery codes, OpenID Connect single sign-on, signed-in devices and
   sign-in notes, API tokens that can expire,
   an audit log, a list of the addresses let in, daily backups with copies
-  to S3 compatible storage or WebDAV, and revocation of issued
+  to S3 compatible storage or WebDAV, a backup before each upgrade, and revocation of issued
   certificates at their CA; HTTPS of its own without a reverse proxy, on a
   certificate JEC renews.
 - **Lightweight**: a single static binary or a small container image, with
