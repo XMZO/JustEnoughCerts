@@ -86,6 +86,9 @@
       "description": "从支持 ACME 的 CA 获取证书，例如 Let's Encrypt、ZeroSSL、Google Trust Services。",
       "name": "ACME"
     },
+    "preflight": {
+      "internal": "{domain} 不是公网上的域名或地址，Let's Encrypt 等公共 CA 不会为它签发证书。在内网使用请改用私有 CA。"
+    },
     "test": {
       "ok": "已连上 {directory}，账号可以用。",
       "profiles": "已连上 {directory}，账号可以用。可用的证书配置：{profiles}。"

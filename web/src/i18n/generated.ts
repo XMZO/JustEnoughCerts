@@ -81,6 +81,7 @@ export type MessageKey =
   | "acme.log.wait"
   | "acme.module.description"
   | "acme.module.name"
+  | "acme.preflight.internal"
   | "acme.test.ok"
   | "acme.test.profiles"
   | "aliyun.alb.description"

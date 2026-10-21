@@ -150,7 +150,7 @@ func (s *source) Preflight(ctx context.Context, domains []string) ([]contracts.M
 	if err != nil {
 		return []contracts.Message{}, nil
 	}
-	return preflightCAA(ctx, s.m.caa, dir, domains), nil
+	return append(preflightNames(dir, domains), preflightCAA(ctx, s.m.caa, dir, domains)...), nil
 }
 
 func (s *source) RenewalInfo(ctx context.Context, leaf *x509.Certificate) (contracts.RenewalInfo, error) {

@@ -3,6 +3,7 @@ package acme
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
@@ -71,5 +72,26 @@ func TestPreflightCAA(t *testing.T) {
 	// A CA JEC does not know: nothing to say.
 	if got := preflightCAA(t.Context(), lookup, "https://pebble:14000/dir", []string{"google.example.com"}); len(got) != 0 {
 		t.Errorf("an unknown CA: %+v", got)
+	}
+}
+
+func TestPreflightNames(t *testing.T) {
+	const le = "https://acme-v02.api.letsencrypt.org/directory"
+	got := preflightNames(le, []string{"example.com", "*.example.com", "blog.github.io", "nas.lan", "localhost", "192.168.1.10", "203.0.113.7", "2001:db8::1", "::1"})
+	var told []string
+	for _, m := range got {
+		if m.Key != i18n.AcmePreflightInternal {
+			t.Errorf("message %+v", m)
+		}
+		told = append(told, m.Params["domain"].(string))
+	}
+	// 203.0.113.7 and 2001:db8::1 are for documentation, yet global by
+	// their form: the CA has the last word on them.
+	if want := []string{"nas.lan", "localhost", "192.168.1.10", "::1"}; !slices.Equal(told, want) {
+		t.Errorf("told of %v, want %v", told, want)
+	}
+	// A CA of one's own may issue for them.
+	if got := preflightNames("https://ca.internal:9000/acme/acme/directory", []string{"nas.lan"}); len(got) != 0 {
+		t.Errorf("a CA JEC does not know: %+v", got)
 	}
 }

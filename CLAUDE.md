@@ -167,6 +167,7 @@
 - `jec upgrade`（`cmd/jec/selfupgrade.go`）：问 GitHub 最新可升级的版本（`system.LatestRelease`，规则同“检查更新”），下载本平台的压缩包（32 位 ARM 是 `armv7`），按 `checksums.txt` 核对 SHA-256，新程序能运行 `version` 且版本对得上才改名替换；容器里拒绝（提示拉镜像），`-restart` 在有 systemd 单元时重启服务，`-check`、`-version`。对真实的 GitHub 发布实测过（alpha.37 → alpha.38）。`system.InImage()`（程序是 `/jec` 即 JEC 的镜像）也给 `GET /system` 的 `image`，设置页“检查更新”有新版本时据此给出升级命令。
 - lego 里国内常用的 DNS 服务商用界面语言的名字（`lego/catalog.go` 的 `names`，语言文件 `lego.name.*`：腾讯云 DNSPod、阿里云 DNS、华为云 DNS 等），类型列表按显示的名字搜索，搜“dnspod”“腾讯”都能找到；以前只有 lego 的英文名“Tencent Cloud DNS”，搜不到。凭据能填的 lego 字段用凭据种类的标签（`labelCredential`，如 SecretId），不再显示环境变量名和英文说明。
 - 文档“密钥与最小权限”（`docs/reference/permissions.md`）：按代码实际调用的接口列出阿里云 RAM、腾讯云 CAM、AWS IAM、Cloudflare 令牌要授予的操作；新加或改了云平台的调用时同步更新。
+- ACME 添加证书预检还提示公共 CA 不签发的名字（`acme/caa.go` 的 `preflightNames`：不在公共后缀下的域名如 `nas.lan`、`localhost`，内网和回环地址；只对认识的公共 CA，`acme.preflight.internal`），FAQ 指向私有 CA。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

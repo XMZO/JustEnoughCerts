@@ -62,6 +62,14 @@ parent domain count for its subdomains that have none. When adding a
 certificate, the page tells of the domains whose CAA records leave out the
 CA of the ACME account chosen, before any issuance fails.
 
+## Can JEC get a certificate for nas.lan or 192.168.1.10?
+
+Not from a public CA: Let's Encrypt and the others issue only for names
+under a public suffix and for public addresses, and the add page says so
+for such domains. For names and addresses on your own network, add a
+[private CA](../usage/sources.md#private-ca) as the source, and install
+its root certificate on the devices.
+
 ## A site still serves the old certificate after the deployment
 
 The online check connects to each domain and reports this, by

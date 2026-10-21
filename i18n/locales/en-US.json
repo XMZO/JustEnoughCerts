@@ -86,6 +86,9 @@
       "description": "Gets certificates from any CA that speaks ACME, such as Let's Encrypt, ZeroSSL and Google Trust Services.",
       "name": "ACME"
     },
+    "preflight": {
+      "internal": "{domain} is no public name: public CAs such as Let's Encrypt do not issue for it. For use on your own network, take a private CA instead."
+    },
     "test": {
       "ok": "Reached {directory}; the account works.",
       "profiles": "Reached {directory}; the account works. Profiles offered: {profiles}."

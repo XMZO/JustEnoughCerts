@@ -73,6 +73,7 @@ const (
 	AcmeLogWait                              Key = "acme.log.wait"
 	AcmeModuleDescription                    Key = "acme.module.description"
 	AcmeModuleName                           Key = "acme.module.name"
+	AcmePreflightInternal                    Key = "acme.preflight.internal"
 	AcmeTestOk                               Key = "acme.test.ok"
 	AcmeTestProfiles                         Key = "acme.test.profiles"
 	AliyunAlbDescription                     Key = "aliyun.alb.description"

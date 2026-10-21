@@ -2,8 +2,11 @@ package acme
 
 import (
 	"context"
+	"net/netip"
 	"net/url"
 	"strings"
+
+	"golang.org/x/net/publicsuffix"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
@@ -85,6 +88,34 @@ func preflightCAA(ctx context.Context, lookup func(context.Context, string) (dns
 		}
 	}
 	return out
+}
+
+// preflightNames tells of the domains a public CA, one JEC knows by its
+// directory, issues for no one: names under no public suffix, as nas.lan
+// or localhost, and private or loopback addresses. A CA of one's own, as
+// step-ca, may issue for them, so others are left alone.
+func preflightNames(directory string, domains []string) []contracts.Message {
+	out := []contracts.Message{}
+	if caaOf(directory) == nil {
+		return out
+	}
+	for _, d := range domains {
+		if !publicName(d) {
+			out = append(out, contracts.Message{Key: i18n.AcmePreflightInternal, Params: map[string]any{"domain": d}})
+		}
+	}
+	return out
+}
+
+// publicName tells whether d, a name or an IP address, is one on the
+// internet: a name under a public suffix, ICANN's or a private one as
+// github.io, or a public address.
+func publicName(d string) bool {
+	if ip, err := netip.ParseAddr(d); err == nil {
+		return ip.IsGlobalUnicast() && !ip.IsPrivate()
+	}
+	suffix, icann := publicsuffix.PublicSuffix(strings.TrimSuffix(strings.TrimPrefix(d, "*."), "."))
+	return icann || strings.Contains(suffix, ".")
 }
 
 // checkCAA makes sure the CAA records of each domain let the CA at
