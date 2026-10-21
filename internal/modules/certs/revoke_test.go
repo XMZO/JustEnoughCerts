@@ -135,3 +135,38 @@ func TestRevokeRefused(t *testing.T) {
 		t.Errorf("revoked %v", f.fake.revoked)
 	}
 }
+
+func TestRetire(t *testing.T) {
+	f := newFixture(t)
+	c, old, current := f.issueTwice()
+	path := "/certificates/" + strconv.FormatInt(c.ID, 10) + "/retire"
+	if e := f.apiError(f.api.Post(path, map[string]any{"password": "wrong"}), http.StatusUnprocessableEntity); e.Code != string(i18n.KernelErrorPasswordWrong) {
+		t.Errorf("wrong password: %+v", e)
+	}
+
+	// The CA refuses one: nothing is deleted.
+	f.fake.revoke = func(leaf *x509.Certificate, _ contracts.RevocationReason) error {
+		if fmt.Sprintf("%x", leaf.SerialNumber) == old.Serial {
+			return &contracts.Problem{Key: i18n.AcmeErrorRevoke, Params: map[string]any{"detail": "no"}}
+		}
+		return nil
+	}
+	if e := f.apiError(f.api.Post(path, map[string]any{"password": testPassword}), http.StatusBadGateway); e.Code != string(i18n.AcmeErrorRevoke) {
+		t.Errorf("the CA refused: %+v", e)
+	}
+	if got := f.certificate(c.ID); got.ID != c.ID || len(f.fake.revoked) != 0 {
+		t.Fatalf("after a refusal: revoked %v", f.fake.revoked)
+	}
+	f.fake.revoke = nil
+
+	// The one in use too, last, for no site serves it any more.
+	var out struct {
+		Revoked int `json:"revoked"`
+	}
+	f.call(f.api.Post(path, map[string]any{"password": testPassword}), http.StatusOK, &out)
+	want := []string{old.Serial + " 5", current.Serial + " 5"}
+	if out.Revoked != 2 || !slices.Equal(f.fake.revoked, want) {
+		t.Errorf("revoked %d: %v, want %v", out.Revoked, f.fake.revoked, want)
+	}
+	f.apiError(f.api.Get("/certificates/"+strconv.FormatInt(c.ID, 10)), http.StatusNotFound)
+}

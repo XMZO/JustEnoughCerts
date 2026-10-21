@@ -319,6 +319,7 @@
       "certs_pull_off": "Stopped a certificate being pulled",
       "certs_request": "Add a certificate to buy (CSR made)",
       "certs_request_csr": "Make a new CSR",
+      "certs_retire": "Revoke and delete a certificate",
       "certs_revoke": "Revoke a certificate version",
       "certs_save_settings": "Change the renewal defaults",
       "certs_set_domains": "Changed the domains of a certificate",
@@ -869,6 +870,8 @@
     },
     "delete": {
       "body": "JEC deletes this certificate with every version and private key. Copies already deployed elsewhere stay where they are.",
+      "revoke": "Also revoke it at the CA",
+      "revoke_help": "For a site that is no more: every version still valid, the one in use included, is revoked as no longer used, then deleted. Sites still serving it fail at once.",
       "title": "Delete {domain}?"
     },
     "deployment": {

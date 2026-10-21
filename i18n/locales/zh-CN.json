@@ -319,6 +319,7 @@
       "certs_pull_off": "关闭证书拉取",
       "certs_request": "添加要购买的证书（生成 CSR）",
       "certs_request_csr": "生成新的 CSR",
+      "certs_retire": "吊销并删除证书",
       "certs_revoke": "吊销证书版本",
       "certs_save_settings": "修改续期默认值",
       "certs_set_domains": "修改证书的域名",
@@ -869,6 +870,8 @@
     },
     "delete": {
       "body": "JEC 会删除这张证书的全部版本和私钥。已经部署到别处的证书不受影响。",
+      "revoke": "同时在 CA 吊销",
+      "revoke_help": "用于不再使用的网站：所有仍有效的版本（包括正在使用的）都以“停止使用”吊销，然后删除。仍在使用它的网站会立即出错。",
       "title": "删除 {domain}？"
     },
     "deployment": {

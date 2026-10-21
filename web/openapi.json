@@ -3063,6 +3063,46 @@
         ],
         "type": "object"
       },
+      "RetireInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "description": "The password of the signed-in account, asked again before revoking",
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "reason": {
+            "default": "cessation_of_operation",
+            "description": "Why, as RFC 5280 names it",
+            "enum": [
+              "unspecified",
+              "key_compromise",
+              "superseded",
+              "cessation_of_operation"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "type": "object"
+      },
+      "RetireOutputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "revoked": {
+            "description": "How many versions were revoked",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revoked"
+        ],
+        "type": "object"
+      },
       "RevokeInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -6293,6 +6333,59 @@
         "summary": "Make the key servers fetch a certificate with, once the password is confirmed; the old one stops working",
         "tags": [
           "certificates",
+          "certs"
+        ]
+      }
+    },
+    "/certs/certificates/{id}/retire": {
+      "post": {
+        "description": "For a site that is no more, once the password is confirmed. A version the CA does not revoke stops it, before anything is deleted; one whose source is gone, or does not revoke, is left as it is.",
+        "operationId": "certs-retire",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetireInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetireOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Have every version its CA would still revoke revoked, the one in use included, then delete the certificate",
+        "tags": [
           "certs"
         ]
       }

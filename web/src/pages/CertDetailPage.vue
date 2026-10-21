@@ -25,6 +25,7 @@ import {
   useCertSettings,
   useCsr,
   useDeleteCertificate,
+  useRetire,
   useDeployNow,
   useDropRequest,
   useDownload,
@@ -580,9 +581,24 @@ async function submitRevert() {
 const deleting = ref(false)
 const remove = useDeleteCertificate(() => props.id)
 const removeError = useApiError(remove.error)
+// Deleting can revoke at the CA what is still valid, for a site that is no
+// more, when the source revokes; it then asks for the password.
+const canRetire = computed(() => issued.value && !!sourceType.value?.revocable && !!current.value)
+const retiring = ref(false)
+const retirePassword = ref('')
+const retire = useRetire(() => props.id)
+const retireError = useApiError(retire.error)
+watch(deleting, (open) => {
+  if (!open) return
+  retiring.value = false
+  retirePassword.value = ''
+  remove.reset()
+  retire.reset()
+})
 async function confirmDelete() {
   try {
-    await remove.mutateAsync(undefined)
+    if (retiring.value) await retire.mutateAsync(retirePassword.value)
+    else await remove.mutateAsync(undefined)
   } catch {
     return
   }
@@ -1387,13 +1403,37 @@ async function confirmDelete() {
   </JecDialog>
 
   <JecDialog v-if="cert" v-model:open="deleting" :title="t('certs.delete.title', { domain })" small>
-    <div class="flex flex-col gap-3">
+    <form id="delete-form" class="flex flex-col gap-3" novalidate @submit.prevent="confirmDelete">
       <p class="m-0">{{ t('certs.delete.body') }}</p>
+      <label v-if="canRetire" class="flex cursor-pointer items-start gap-2">
+        <input v-model="retiring" type="checkbox" class="mt-1 size-4 flex-none accent-brand" />
+        <span class="min-w-0">
+          <span class="block font-semibold">{{ t('certs.delete.revoke') }}</span>
+          <span class="block text-small text-ink-muted">{{ t('certs.delete.revoke_help') }}</span>
+        </span>
+      </label>
+      <JecField v-if="retiring" id="retire-password" label="kernel.account.confirm_password" :error="retireError.fields.value.password">
+        <JecInput
+          id="retire-password"
+          v-model="retirePassword"
+          type="password"
+          autocomplete="current-password"
+          :invalid="!!retireError.fields.value.password"
+          required
+        />
+      </JecField>
       <JecAlert v-if="removeError.error.value" :code="removeError.error.value.code" :params="removeError.error.value.params" />
-    </div>
+      <JecAlert v-if="retireError.alert.value" :code="retireError.alert.value.code" :params="retireError.alert.value.params" />
+    </form>
     <template #footer>
       <JecButton @click="deleting = false">{{ t('kernel.action.cancel') }}</JecButton>
-      <JecButton variant="danger" :busy="remove.isPending.value" @click="confirmDelete">
+      <JecButton
+        type="submit"
+        form="delete-form"
+        variant="danger"
+        :busy="remove.isPending.value || retire.isPending.value"
+        :disabled="retiring && !retirePassword"
+      >
         <Trash2 class="size-4" aria-hidden="true" />{{ t('certs.action.delete') }}
       </JecButton>
     </template>

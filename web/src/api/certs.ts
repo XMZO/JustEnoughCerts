@@ -296,7 +296,6 @@ export function useDeleteCertificate(id: MaybeRefOrGetter<number>) {
   return useCertsMutation(() => unwrap(api.DELETE('/certs/certificates/{id}', { params: { path: { id: toValue(id) } } })))
 }
 
-/** Deletes the certificate it is given, as several chosen at once are. */
 /** Sets the targets of the certificate it is given; a new one gets the version in use at once. */
 export function useTargetsOf() {
   return useCertsMutation(({ id, targets }: { id: number; targets: number[] }) =>
@@ -318,6 +317,7 @@ export function usePauseOf() {
   )
 }
 
+/** Deletes the certificate it is given, as several chosen at once are. */
 export function useDeleteOf() {
   return useCertsMutation((id: number) => unwrap(api.DELETE('/certs/certificates/{id}', { params: { path: { id } } })))
 }
@@ -334,6 +334,17 @@ export function useRevoke(id: MaybeRefOrGetter<number>) {
         body: { password, reason },
       }),
     ),
+  )
+}
+
+/**
+ * useRetire has every version of certificate id that its CA would still
+ * revoke revoked, the one in use included, then deletes the certificate:
+ * for a site that is no more. It answers how many it revoked.
+ */
+export function useRetire(id: MaybeRefOrGetter<number>) {
+  return useCertsMutation((password: string) =>
+    unwrap(api.POST('/certs/certificates/{id}/retire', { params: { path: { id: toValue(id) } }, body: { password, reason: 'cessation_of_operation' } })),
   )
 }
 

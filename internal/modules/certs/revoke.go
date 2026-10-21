@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"time"
 
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
@@ -102,6 +103,12 @@ func (s *service) revoke(ctx context.Context, id, version int64, reason string) 
 	if err := revocable(c, v, s.now(), s.typeCache(ctx)); err != nil {
 		return err
 	}
+	return s.revokeVersion(ctx, id, v, code)
+}
+
+// revokeVersion has version v of certificate id revoked at the CA of the
+// source that issued it, for code, and records it.
+func (s *service) revokeVersion(ctx context.Context, id int64, v *Version, code contracts.RevocationReason) error {
 	chain, err := cryptox.ParseCertificates([]byte(v.Chain))
 	if err != nil {
 		return err
@@ -117,9 +124,43 @@ func (s *service) revoke(ctx context.Context, id, version int64, reason string) 
 		return err
 	}
 	if _, err := s.db.ExecContext(ctx, "UPDATE certs_versions SET revoked_at = ?, revoke_reason = ? WHERE id = ?",
-		s.now().UnixMilli(), reason, v.ID); err != nil {
+		s.now().UnixMilli(), code.String(), v.ID); err != nil {
 		return err
 	}
-	s.log.Info("revoked a version", "certificate", id, "version", v.ID, "serial", v.Serial, "reason", reason)
+	s.log.Info("revoked a version", "certificate", id, "version", v.ID, "serial", v.Serial, "reason", code.String())
 	return nil
+}
+
+// retire has every version of certificate id that its CA would still
+// revoke revoked, for reason, the one in use included, then deletes the
+// certificate: for a site that is no more. It returns how many it had
+// revoked. A version the CA does not revoke stops it, before anything is
+// deleted and before the one in use is revoked; one whose source is gone,
+// or does not revoke, is left as it is.
+func (s *service) retire(ctx context.Context, id int64, reason string) (int, error) {
+	code, ok := revocationReasons[reason]
+	if !ok {
+		return 0, fmt.Errorf("certs: no revocation reason %q", reason)
+	}
+	versions, err := s.versions(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+	typeOf := s.typeCache(ctx)
+	now, revoked := s.now(), 0
+	// The oldest first, so that a refusal leaves the one in use valid.
+	slices.Reverse(versions)
+	for _, v := range versions {
+		if !v.RevokedAt.IsZero() || !v.CARevokedAt.IsZero() || !now.Before(v.NotAfter) || v.Origin != originIssued || v.SourceProvider == 0 {
+			continue
+		}
+		if t, err := typeOf(v.SourceProvider); err != nil || !t.Revocable {
+			continue
+		}
+		if err := s.revokeVersion(ctx, id, v, code); err != nil {
+			return revoked, err
+		}
+		revoked++
+	}
+	return revoked, s.remove(ctx, id)
 }

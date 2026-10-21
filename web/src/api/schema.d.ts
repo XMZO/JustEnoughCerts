@@ -501,6 +501,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certs/certificates/{id}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Have every version its CA would still revoke revoked, the one in use included, then delete the certificate
+         * @description For a site that is no more, once the password is confirmed. A version the CA does not revoke stops it, before anything is deleted; one whose source is gone, or does not revoke, is left as it is.
+         */
+        post: operations["certs-retire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/certs/certificates/{id}/versions": {
         parameters: {
             query?: never;
@@ -2818,6 +2838,23 @@ export interface components {
             /** @description The target provider instances to deploy each version to, in order */
             targets?: number[];
         };
+        RetireInputBody: {
+            /** @description The password of the signed-in account, asked again before revoking */
+            password: string;
+            /**
+             * @description Why, as RFC 5280 names it
+             * @default cessation_of_operation
+             * @enum {string}
+             */
+            reason: "unspecified" | "key_compromise" | "superseded" | "cessation_of_operation";
+        };
+        RetireOutputBody: {
+            /**
+             * Format: int64
+             * @description How many versions were revoked
+             */
+            revoked: number;
+        };
         RevokeInputBody: {
             /** @description The password of the signed-in account, asked again before revoking */
             password: string;
@@ -4581,6 +4618,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetireInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetireOutputBody"];
+                };
             };
             /** @description Error */
             default: {

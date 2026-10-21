@@ -261,6 +261,20 @@ type revokeInput struct {
 	}
 }
 
+type retireInput struct {
+	ID   int64 `path:"id"`
+	Body struct {
+		Password string `json:"password" minLength:"1" maxLength:"1024" doc:"The password of the signed-in account, asked again before revoking"`
+		Reason   string `json:"reason,omitempty" enum:"unspecified,key_compromise,superseded,cessation_of_operation" default:"cessation_of_operation" doc:"Why, as RFC 5280 names it"`
+	}
+}
+
+type retireOutput struct {
+	Body struct {
+		Revoked int `json:"revoked" doc:"How many versions were revoked"`
+	}
+}
+
 type downloadOutput struct {
 	ContentType        string `header:"Content-Type"`
 	ContentDisposition string `header:"Content-Disposition"`
@@ -541,6 +555,24 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			return nil, revokeError(err)
 		}
 		return nil, nil
+	})
+
+	huma.Register(a, huma.Operation{
+		OperationID: "certs-retire", Method: http.MethodPost, Path: "/certificates/{id}/retire",
+		Summary: "Have every version its CA would still revoke revoked, the one in use included, then delete the certificate",
+		Description: "For a site that is no more, once the password is confirmed. A version the CA does not revoke stops it, " +
+			"before anything is deleted; one whose source is gone, or does not revoke, is left as it is.",
+	}, func(ctx context.Context, in *retireInput) (*retireOutput, error) {
+		s.named(ctx, in.ID)
+		if err := confirm(ctx, in.Body.Password); err != nil {
+			return nil, err
+		}
+		out := &retireOutput{}
+		var err error
+		if out.Body.Revoked, err = s.retire(ctx, in.ID, in.Body.Reason); err != nil {
+			return nil, revokeError(err)
+		}
+		return out, nil
 	})
 
 	huma.Register(a, huma.Operation{
