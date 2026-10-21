@@ -653,9 +653,11 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
                   @change="toggle(r.cert.id)"
                 />
               </td>
-              <td class="border-b border-line px-2 py-1.5 whitespace-nowrap">
+              <td class="border-b border-line px-2 py-1.5">
+                <!-- A long domain breaks after a dot, so that the table fits. -->
                 <RouterLink :to="`/certificates/${r.cert.id}`" class="font-semibold text-ink no-underline hover:text-ink" translate="no">
-                  {{ r.domain }}<small v-if="r.extra" class="ml-1 text-small font-normal text-ink-muted">{{ r.extra }}</small>
+                  <template v-for="(label, i) in r.domain.split(/(?<=\.)/)" :key="i"><wbr v-if="i" />{{ label }}</template
+                  ><small v-if="r.extra" class="ml-1 text-small font-normal whitespace-nowrap text-ink-muted">{{ r.extra }}</small>
                 </RouterLink>
                 <span v-if="r.cert.note" class="block max-w-64 truncate text-caption text-ink-muted" translate="no" :title="r.cert.note">{{ r.cert.note }}</span>
               </td>

@@ -58,6 +58,7 @@ const noteEvents = [
   { key: 'on_issue_failed', label: 'notify.event.issue_failed', on: true },
   { key: 'on_deploy_failed', label: 'notify.event.deploy_failed', on: true },
   { key: 'on_expiring', label: 'notify.event.expiring', on: true },
+  { key: 'on_reminder', label: 'notify.event.reminder', on: true },
   { key: 'on_served_old', label: 'notify.event.served_old', on: true },
   { key: 'on_chain_incomplete', label: 'notify.event.chain_incomplete', on: true },
   { key: 'on_revoked', label: 'notify.event.revoked', on: true },

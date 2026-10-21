@@ -764,7 +764,7 @@
       "renewal_group": "{count, plural, one {# certificate} other {# certificates}} in the renewal window",
       "renewing": "{domain} expires soon",
       "replace": "{domain} needs replacing",
-      "replace_detail": "Uploaded certificates are not renewed automatically: {life}.",
+      "replace_detail": "Uploaded certificates are not renewed automatically: {life}. Upload a new one, or choose a source in its renewal settings.",
       "revoked": "The CA revoked the certificate of {domain}",
       "title": "Needs attention"
     },
@@ -1217,7 +1217,7 @@
       "remind": "Remind you {days, plural, one {# day} other {# days}} before expiry to upload a new certificate",
       "renew": "Renew {days, plural, one {# day} other {# days}} before the end, at {time}",
       "store": "Store the private key encrypted",
-      "upload": "Uploaded certificates are not renewed automatically. JEC reminds you {days, plural, one {# day} other {# days}} before this one expires.",
+      "upload": "Uploaded certificates are not renewed automatically. JEC reminds you {days, plural, one {# day} other {# days}} before this one expires; a source chosen later in its renewal settings renews it.",
       "upload_due": "Upload a new certificate before {date}.",
       "watch": "From {days, plural, one {# day} other {# days}} before the end, at {time}, wait for the other client to renew it and take the new one in"
     },
@@ -2832,6 +2832,7 @@
       "locked": "sign-in lockouts",
       "provider_failing": "failing providers",
       "release": "new releases",
+      "reminder": "reminders",
       "revoked": "revocations",
       "served_old": "old certificates served",
       "sign_in": "sign-ins",

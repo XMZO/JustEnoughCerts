@@ -764,7 +764,7 @@
       "renewal_group": "{count, plural, other {# 张证书}}进入续期窗口",
       "renewing": "{domain} 即将到期",
       "replace": "{domain} 需要手动更换",
-      "replace_detail": "手动上传的证书无法自动续期，{life}。",
+      "replace_detail": "手动上传的证书不会自动续期，{life}。可上传新证书，或在续期设置中选择证书来源。",
       "revoked": "{domain} 的证书已被 CA 吊销",
       "title": "需要处理"
     },
@@ -1179,7 +1179,7 @@
       "awaiting": "把 CSR 交给证书颁发机构，签好后上传证书，不用私钥。",
       "deploy_failed": "{target}：{error}",
       "expired": "请上传新证书",
-      "manual": "无法自动续期，请上传新证书",
+      "manual": "不会自动续期，请上传新证书",
       "paused": "自动续期已暂停，需要手动签发",
       "renewing": "即将自动续期",
       "revoked": "CA 已吊销这张证书（{reason}），请尽快换上新证书。",
@@ -1217,7 +1217,7 @@
       "remind": "到期前 {days, plural, other {# 天}}提醒你上传新证书",
       "renew": "到期前 {days, plural, other {# 天}}，在每天 {time} 自动续期",
       "store": "加密保存私钥",
-      "upload": "手动上传的证书无法自动续期，到期前 {days, plural, other {# 天}}会提醒你上传新证书。",
+      "upload": "手动上传的证书不会自动续期，到期前 {days, plural, other {# 天}}会提醒你上传新证书；以后也可以在续期设置中选择证书来源，改为自动续期。",
       "upload_due": "请在 {date} 前上传新证书。",
       "watch": "到期前 {days, plural, other {# 天}}起，在每天 {time} 等原来的工具续期，再把新证书取进来"
     },
@@ -1370,7 +1370,7 @@
       "request": "生成 CSR",
       "request_desc": "向商业 CA 购买证书时用：JEC 生成私钥和 CSR。",
       "upload": "手动上传",
-      "upload_desc": "粘贴证书和私钥，不能自动续期。"
+      "upload_desc": "粘贴证书和私钥，不会自动续期。"
     },
     "state": {
       "awaiting": "等待证书",
@@ -2832,6 +2832,7 @@
       "locked": "登录锁定",
       "provider_failing": "服务商自检失败",
       "release": "新版本",
+      "reminder": "证书提醒",
       "revoked": "被吊销",
       "served_old": "线上旧证书",
       "sign_in": "登录",

@@ -2132,6 +2132,7 @@ const (
 	NotifyEventLocked                        Key = "notify.event.locked"
 	NotifyEventProviderFailing               Key = "notify.event.provider_failing"
 	NotifyEventRelease                       Key = "notify.event.release"
+	NotifyEventReminder                      Key = "notify.event.reminder"
 	NotifyEventRevoked                       Key = "notify.event.revoked"
 	NotifyEventServedOld                     Key = "notify.event.served_old"
 	NotifyEventSignIn                        Key = "notify.event.sign_in"

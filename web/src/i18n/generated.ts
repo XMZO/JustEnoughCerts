@@ -2140,6 +2140,7 @@ export type MessageKey =
   | "notify.event.locked"
   | "notify.event.provider_failing"
   | "notify.event.release"
+  | "notify.event.reminder"
   | "notify.event.revoked"
   | "notify.event.served_old"
   | "notify.event.sign_in"
