@@ -746,6 +746,8 @@
       "solver": "验证方式",
       "source": "证书来源",
       "targets": "部署到",
+      "twin": "JEC 里已有使用这些域名的证书：",
+      "twin_lines": "{count, plural, other {# 行}}与 JEC 里已有证书的域名相同：{domains}。",
       "validation": "域名验证",
       "zone_missing": "{zone} 不在这个 DNS 服务商的账号里，{domain} 的验证会失败。请换一个 DNS 服务商，或检查它的账号和密钥。",
       "zones_held": "这个账号管理着全部域名。",

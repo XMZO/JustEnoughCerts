@@ -767,6 +767,12 @@ test('every page is translated and fits', async ({ page }, info) => {
     return res.status
   })
   expect(backupStatus).toBe(201)
+  // Domains a certificate of JEC has already: told before adding.
+  await page.goto('./certificates/new')
+  await page.locator('#domain-input').fill('shop.example.com www.shop.example.com')
+  await page.locator('#domain-input').press('Enter')
+  await expect(page.getByText(label('certs.add.twin'))).toBeVisible()
+  expect.soft(await problems(page), 'add a certificate JEC has already').toEqual([])
   // What the directory watched holds, as certbot's would: one for domains
   // not in JEC, made up.
   await page.route('**/api/v1/providers/*/certificates', (route) =>

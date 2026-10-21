@@ -746,6 +746,8 @@
       "solver": "Validation method",
       "source": "Source",
       "targets": "Deploy to",
+      "twin": "A certificate of JEC has these domains already:",
+      "twin_lines": "{count, plural, one {# line has} other {# lines have}} the domains of a certificate in JEC already: {domains}.",
       "validation": "Domain validation",
       "zone_missing": "{zone} is not in this DNS provider's account, so validating {domain} would fail. Choose another DNS provider, or check its account and keys.",
       "zones_held": "This account holds every domain.",

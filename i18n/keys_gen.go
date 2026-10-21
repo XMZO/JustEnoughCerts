@@ -574,6 +574,8 @@ const (
 	CertsAddSolver                           Key = "certs.add.solver"
 	CertsAddSource                           Key = "certs.add.source"
 	CertsAddTargets                          Key = "certs.add.targets"
+	CertsAddTwin                             Key = "certs.add.twin"
+	CertsAddTwinLines                        Key = "certs.add.twin_lines"
 	CertsAddValidation                       Key = "certs.add.validation"
 	CertsAddZoneMissing                      Key = "certs.add.zone_missing"
 	CertsAddZonesHeld                        Key = "certs.add.zones_held"

@@ -582,6 +582,8 @@ export type MessageKey =
   | "certs.add.solver"
   | "certs.add.source"
   | "certs.add.targets"
+  | "certs.add.twin"
+  | "certs.add.twin_lines"
   | "certs.add.validation"
   | "certs.add.zone_missing"
   | "certs.add.zones_held"

@@ -50,6 +50,8 @@ Domains are handled as follows:
   Tencent Cloud, the page lists those for domains no certificate in JEC
   has yet: one fills in its domains, and under Several, Add all fills in
   a line each.
+- When a certificate of JEC has the same domains already, the page says
+  so with a link to it, and under Several names the lines that do.
 - The same certificate, by fingerprint, can be added only once.
 
 The key type is RSA 2048, 3072 or 4096, or ECDSA P-256 or P-384; the

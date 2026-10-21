@@ -159,6 +159,12 @@ const held = useHeld(() => provider.value?.id, () => !!sourceType.value?.holds)
 const sameNames = (a: string[], b: string[]) => a.length === b.length && a.every((d) => b.includes(d))
 const unheld = computed(() => (held.data.value ?? []).filter((h) => !(certificates.data.value ?? []).some((c) => sameNames(c.domains, h.domains))))
 const shownHeld = computed(() => unheld.value.slice(0, 24))
+// A certificate of JEC with the same domains already, as one added twice
+// by mistake: told before adding; for several, the lines that are.
+const twin = computed(() => (bulk.value ? undefined : (certificates.data.value ?? []).find((c) => domains.value.length && sameNames(c.domains, domains.value))))
+const twinLines = computed(() =>
+  bulk.value ? batch.value.filter((l) => (certificates.data.value ?? []).some((c) => sameNames(c.domains, l.map((d) => d.toLowerCase())))) : [],
+)
 const heldError = computed(() => {
   const err = held.error.value
   if (!err) return undefined
@@ -621,6 +627,11 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
             <label for="bulk-input" class="sr-only">{{ t('certs.add.bulk_label') }}</label>
             <JecTextarea id="bulk-input" v-model="lines" :rows="6" spellcheck="false" aria-describedby="bulk-help" />
             <p id="bulk-help" class="m-0 text-small text-ink-muted">{{ t('certs.add.bulk_help', { count: batch.length }) }}</p>
+            <p v-if="twinLines.length" role="status" class="m-0 flex items-start gap-1.5 text-small text-warn-ink [overflow-wrap:anywhere]">
+              <TriangleAlert class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{
+                t('certs.add.twin_lines', { count: twinLines.length, domains: intl.list(twinLines.map((l) => l[0] ?? '')) })
+              }}
+            </p>
             <div v-if="refused.length" role="alert" class="flex flex-col gap-1 rounded-md border border-line px-3 py-2 text-small">
               <p class="m-0 font-semibold text-danger-ink">{{ t('certs.add.bulk_failed', { count: refused.length }) }}</p>
               <p v-for="(r, i) in refused" :key="i" class="m-0 flex items-start gap-1.5 [overflow-wrap:anywhere]">
@@ -642,6 +653,10 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
               class="m-0 flex items-start gap-1.5 text-small text-warn-ink [overflow-wrap:anywhere]"
             >
               <TriangleAlert class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ t(p.key as MessageKey, (p.params ?? {}) as Params) }}
+            </p>
+            <p v-if="twin" role="status" class="m-0 flex flex-wrap items-start gap-x-1.5 text-small text-warn-ink [overflow-wrap:anywhere]">
+              <TriangleAlert class="mt-0.5 size-4 flex-none" aria-hidden="true" /><span>{{ t('certs.add.twin') }}</span>
+              <RouterLink :to="`/certificates/${twin.id}`" translate="no">{{ twin.domains[0] }}</RouterLink>
             </p>
             <p v-if="missingApex.length" role="status" class="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 text-small">
               <span class="[overflow-wrap:anywhere]">{{ t('certs.add.apex_hint', { names: intl.list(missingApex) }) }}</span>
