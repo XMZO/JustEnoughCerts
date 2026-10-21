@@ -161,6 +161,7 @@
 - 用真实数据（Pebble 签发、续期，部署成功和失败）逐页截图查出并修了：部署目标卡片不显示“失败、稍后重试”中的部署（`pending` 带 `error` 也算）；证书信息里空的“主题”行；域名在窄栏里从单词中间断开（改在点号后用 `<wbr>`）；线上检查连不上时一律说“443 端口没有 TLS 回应”（接口加了 `port` 和 `cause`：`dns` 解析不到、`connect` 连不上、`tls`，由错误文字判断，Telegram 的 `/online` 同样）。
 - 迁移指南（`docs/guide/migration.md`，从 certbot 或 acme.sh 迁移）：保留原客户端时把 `/etc/letsencrypt/live`、`archive` 的属组改成 65532 并加组读，certbot 续期生成的私钥沿用属组和组读（对 Pebble 实测过）；ACL 的默认项没用，certbot 以 0600 建私钥，mask 会把它挡掉。读不了私钥的报错也这样提示（带当前进程的组号）。自带私钥的来源可以列出持有的证书（`contracts.Holder`，类型标 `holds`，`GET /api/v1/providers/{id}/certificates`：本机证书目录、阿里云和腾讯云的取回证书），添加证书页列出域名还不在 JEC 里的供点选（不论来源），“多张证书”里“全部加入”；e2e 里用 `page.route` 编一张。整条迁移路径对真实的 certbot（向 Pebble 签发）和 Pebble 实测过：目录列出一次、取入的序列号一致，换成 ACME 账号后“立即续期”由 Pebble 签出（密钥类型取续期默认值）。
 - 查看主密钥（`POST /api/v1/system/secret-key`，sessionOnly，要密码，`secrets.Box.Export`，审计名 `audit.op.secret_key`）：设置页“数据和备份”的“主密钥 · 查看”，显示 `JEC_SECRET_KEY` 和 `secret.key` 都认的 base64，备份不含主密钥，另存后才能在别的服务器上恢复。
+- 添加证书页提示 JEC 里已有域名相同的证书（单张给链接，“多张证书”列出重复的行）；证书接口带 `issuedWeek`（过去 7 天由来源签发的版本数，`attachIssued`），“立即续期”的确认框在 3 次或以上时提示 CA 的签发次数限制（Let's Encrypt 每周 5 张），自带私钥的来源不提示；e2e 里用 `page.route` 编出 ACME 来源的证书走到。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

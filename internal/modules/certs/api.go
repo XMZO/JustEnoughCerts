@@ -37,6 +37,7 @@ type CertificateBody struct {
 	State           string           `json:"state" enum:"ok,expiring,expired,issuing,deploying,failed,deploy_failed,revoked,awaiting" doc:"issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; awaiting: no version yet, and a CSR waits for its certificate; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)"`
 	Current         *VersionBody     `json:"current,omitempty" doc:"The version in use"`
 	RenewAt         *time.Time       `json:"renewAt,omitempty" doc:"When the renewal of the current version starts, or started: for a certificate with a source"`
+	IssuedWeek      int              `json:"issuedWeek,omitempty" doc:"How many versions its sources issued in the last seven days, which CAs limit, as Let's Encrypt to five for the same domains"`
 	RenewalWindow   *RenewalBody     `json:"renewalWindow,omitempty" doc:"The window the CA suggests renewing the current version in (ACME Renewal Information), once it answered"`
 	Issuance        *IssuanceBody    `json:"issuance,omitempty" doc:"The latest issuance"`
 	Targets         []int64          `json:"targets" doc:"The target provider instances each version is deployed to, in order"`
@@ -133,7 +134,7 @@ func certificateBody(c *Certificate, now time.Time, sch schedule) CertificateBod
 	b := CertificateBody{
 		ID: c.ID, Domains: c.Domains, Source: c.Source, SourceProvider: c.SourceProvider, BackupProvider: c.BackupProvider, SolverProvider: c.SolverProvider,
 		KeyType: c.KeyType, RenewBeforeDays: c.RenewBeforeDays, State: c.state(now), CreatedAt: c.CreatedAt, Note: c.Note, ReuseKey: c.ReuseKey, NotifyTo: c.NotifyTo,
-		Paused: c.Paused, DeployWindow: c.DeployWindow,
+		Paused: c.Paused, DeployWindow: c.DeployWindow, IssuedWeek: c.IssuedWeek,
 	}
 	if c.ReminderOn != "" {
 		b.Reminder = &ReminderBody{On: c.ReminderOn, Note: c.ReminderNote, Sent: c.ReminderSent}

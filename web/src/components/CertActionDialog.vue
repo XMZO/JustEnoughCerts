@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RefreshCw, Send } from '@lucide/vue'
+import { RefreshCw, Send, TriangleAlert } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 
 import type { Certificate } from '../api/certs'
@@ -94,6 +94,20 @@ const lines = computed(() => {
   return out
 })
 
+// Those issued often lately, which their CA may refuse to issue again for
+// days: Let's Encrypt issues five a week for the same domains.
+const often = computed(() => {
+  const a = shown.value
+  if (!a || a.kind !== 'issue' || a.collects) return []
+  return a.certs.filter((c) => (c.issuedWeek ?? 0) >= 3)
+})
+const oftenText = computed(() => {
+  const list = often.value
+  if (!list.length) return ''
+  if (list.length === 1 && one.value) return t('certs.confirm.issued_week', { count: list[0]?.issuedWeek ?? 0 })
+  return t('certs.confirm.issued_week_some', { domains: intl.list(list.map((c) => c.domains[0] ?? '')) })
+})
+
 const confirmLabel = computed(() => {
   const a = shown.value
   if (a?.kind === 'deploy') return t('certs.action.redeploy')
@@ -121,6 +135,9 @@ async function confirm() {
   <JecDialog v-model:open="open" :title="title" small>
     <div class="flex flex-col gap-3">
       <p v-for="line in lines" :key="line" class="m-0">{{ line }}</p>
+      <p v-if="oftenText" role="status" class="m-0 flex items-start gap-1.5 text-small text-warn-ink [overflow-wrap:anywhere]">
+        <TriangleAlert class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ oftenText }}
+      </p>
       <ul v-if="(shown?.certs.length ?? 0) > 1" class="m-0 flex flex-col gap-1 pl-5">
         <li v-for="c in shown?.certs" :key="c.id" translate="no">{{ c.domains[0] }}</li>
       </ul>

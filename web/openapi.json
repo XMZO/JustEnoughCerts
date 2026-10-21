@@ -351,6 +351,11 @@
             "$ref": "#/components/schemas/IssuanceBody",
             "description": "The latest issuance"
           },
+          "issuedWeek": {
+            "description": "How many versions its sources issued in the last seven days, which CAs limit, as Let's Encrypt to five for the same domains",
+            "format": "int64",
+            "type": "integer"
+          },
           "keyType": {
             "description": "Type and size of the key, such as rsa-2048 or ecdsa-p256",
             "type": "string"

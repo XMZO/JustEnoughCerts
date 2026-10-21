@@ -839,6 +839,8 @@
       "collect": "JEC looks at {source} for a newer certificate now, and takes it in if there is one.",
       "collect_schedule": "The current certificate expires on {expiry}; JEC checks on its own on {date}.",
       "collect_title": "Check {domain} now?",
+      "issued_week": "It was issued {count, plural, one {# time} other {# times}} in the last seven days. CAs limit how often the same domains are issued, Let's Encrypt to five a week, after which issuing waits for days.",
+      "issued_week_some": "Issued three times or more in the last seven days: {domains}. CAs limit how often the same domains are issued, Let's Encrypt to five a week, after which issuing waits for days.",
       "redeploy": "JEC deploys the current certificate, which expires on {expiry}, to {targets} again, without getting a new one. The reloads or restarts set up for the targets run again too.",
       "redeploy_all": "The current version of each is deployed again to all its targets; the certificates stay as they are.",
       "redeploy_all_title": "Deploy {count, plural, one {# certificate} other {# certificates}} again",

@@ -653,6 +653,8 @@ export type MessageKey =
   | "certs.confirm.collect"
   | "certs.confirm.collect_schedule"
   | "certs.confirm.collect_title"
+  | "certs.confirm.issued_week"
+  | "certs.confirm.issued_week_some"
   | "certs.confirm.redeploy"
   | "certs.confirm.redeploy_all"
   | "certs.confirm.redeploy_all_title"

@@ -839,6 +839,8 @@
       "collect": "JEC 会马上到 {source} 查看有没有更新的证书，有就取回。",
       "collect_schedule": "现在这张证书 {expiry} 到期，JEC 会在 {date} 自动检查。",
       "collect_title": "立即检查 {domain}？",
+      "issued_week": "过去 7 天里已签发 {count, plural, other {# 次}}。CA 会限制相同域名的签发次数，例如 Let's Encrypt 每周最多 5 张，超出后要等几天才能再签发。",
+      "issued_week_some": "过去 7 天里已签发 3 次或以上：{domains}。CA 会限制相同域名的签发次数，例如 Let's Encrypt 每周最多 5 张，超出后要等几天才能再签发。",
       "redeploy": "JEC 会把现在这张证书（{expiry} 到期）重新部署到 {targets}，不申请新证书。部署目标设置的重载或重启也会再执行一次。",
       "redeploy_all": "每张证书的当前版本会重新部署到它的全部部署目标，证书本身不变。",
       "redeploy_all_title": "重新部署 {count, plural, other {# 张证书}}",

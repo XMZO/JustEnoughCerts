@@ -1901,6 +1901,11 @@ export interface components {
             id: number;
             /** @description The latest issuance */
             issuance?: components["schemas"]["IssuanceBody"];
+            /**
+             * Format: int64
+             * @description How many versions its sources issued in the last seven days, which CAs limit, as Let's Encrypt to five for the same domains
+             */
+            issuedWeek?: number;
             /** @description Type and size of the key, such as rsa-2048 or ecdsa-p256 */
             keyType: string;
             /** @description What people wrote about it */

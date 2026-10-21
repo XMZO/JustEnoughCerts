@@ -160,6 +160,9 @@ type Certificate struct {
 	// ReminderSent tells that it went out.
 	ReminderOn, ReminderNote string
 	ReminderSent             bool
+	// IssuedWeek is how many versions its sources issued in the last seven
+	// days, which CAs limit.
+	IssuedWeek int
 }
 
 // Version is a certificate issued or uploaded for a Certificate.
@@ -547,7 +550,44 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 	if err := s.attachTargets(ctx, q, certs); err != nil {
 		return nil, err
 	}
+	if err := s.attachIssued(ctx, q, certs); err != nil {
+		return nil, err
+	}
 	return certs, nil
+}
+
+// issuedWindow is the time over which CAs count the certificates issued
+// for the same domains, as Let's Encrypt allows five a week.
+const issuedWindow = 7 * 24 * time.Hour
+
+// attachIssued tells certs how many versions their sources issued within
+// issuedWindow.
+func (s *service) attachIssued(ctx context.Context, q querier, certs []*Certificate) error {
+	if len(certs) == 0 {
+		return nil
+	}
+	rows, err := q.QueryContext(ctx, "SELECT certificate_id, count(*) FROM certs_versions WHERE origin = ? AND created_at >= ? GROUP BY certificate_id",
+		originIssued, s.now().Add(-issuedWindow).UnixMilli())
+	if err != nil {
+		return err
+	}
+	counts := map[int64]int{}
+	for rows.Next() {
+		var id int64
+		var n int
+		if err := rows.Scan(&id, &n); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		counts[id] = n
+	}
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		return err
+	}
+	for _, c := range certs {
+		c.IssuedWeek = counts[c.ID]
+	}
+	return nil
 }
 
 // versions returns every version of certificate id, the newest first.

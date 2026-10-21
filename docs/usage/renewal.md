@@ -10,6 +10,7 @@ reminders are sent before they expire.
 
 | Rule | Description |
 |---|---|
+| Renew now | Asked first; when the certificate was issued three times or more in the last seven days, the question says so, as CAs limit how often the same domains are issued (Let's Encrypt to five a week) |
 | Renewal window | A certificate enters its renewal window a number of days before it expires, 30 by default; the default is set under Renewal defaults on the Settings page, and each certificate can have its own under Renewal settings on its page |
 | Daily check time | Within the window, renewal starts at the daily check time, 02:00 by default, in the panel's time zone |
 | Urgent renewal | With seven days or fewer left, renewal starts at once, without waiting for the check time |

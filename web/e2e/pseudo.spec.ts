@@ -918,6 +918,26 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.keyboard.press('Escape')
   await page.unroute(detailRoute)
   await page.unroute(monitorRoute)
+  // Renewing one from the ACME account that was issued four times this
+  // week, made up: the CA's limit told first.
+  const acmeId = await page.evaluate(async () => {
+    const res = await fetch(new URL('api/v1/providers?kind=source', document.baseURI))
+    const list = ((await res.json()) as { providers: { id: number; type: string }[] }).providers
+    return list.find((p) => p.type === 'acme.account')?.id
+  })
+  await page.route(detailRoute, async (route) => {
+    const res = await route.fetch()
+    const body = (await res.json()) as { certificate: Record<string, unknown> }
+    Object.assign(body.certificate, { current: madeUp(9004, -2, 88, {}), state: 'ok', paused: false, sourceProvider: acmeId, issuedWeek: 4 })
+    await route.fulfill({ response: res, json: body })
+  })
+  await page.reload()
+  await page.getByRole('button', { name: label('certs.action.renew_now') }).first().click()
+  await expect(page.locator('dialog[open] [role=status]')).toBeVisible()
+  expect.soft(await problems(page), 'renew one issued often').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  await page.unroute(detailRoute)
   // One like it: the add page starts from its source, validation and
   // targets.
   await page.goto(`./certificates/new?from=${issuedId}`)

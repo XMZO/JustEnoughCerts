@@ -1505,3 +1505,18 @@ func TestIssueBackup(t *testing.T) {
 		t.Errorf("a backup that cannot use the solver: %+v", e.Fields)
 	}
 }
+
+func TestIssuedWeek(t *testing.T) {
+	f := newFixture(t)
+	c := f.issueNew("example.com")
+	f.run()
+	f.call(f.api.Post("/certificates/"+strconv.FormatInt(c.ID, 10)+"/issue"), http.StatusAccepted, nil)
+	f.run()
+	if got := f.certificate(c.ID); got.IssuedWeek != 2 {
+		t.Errorf("issued %d this week", got.IssuedWeek)
+	}
+	// Those uploaded do not count.
+	if up := f.add(f.leaf(30, "upload.example.com")); up.IssuedWeek != 0 {
+		t.Errorf("uploaded: %d", up.IssuedWeek)
+	}
+}

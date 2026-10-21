@@ -645,6 +645,8 @@ const (
 	CertsConfirmCollect                      Key = "certs.confirm.collect"
 	CertsConfirmCollectSchedule              Key = "certs.confirm.collect_schedule"
 	CertsConfirmCollectTitle                 Key = "certs.confirm.collect_title"
+	CertsConfirmIssuedWeek                   Key = "certs.confirm.issued_week"
+	CertsConfirmIssuedWeekSome               Key = "certs.confirm.issued_week_some"
 	CertsConfirmRedeploy                     Key = "certs.confirm.redeploy"
 	CertsConfirmRedeployAll                  Key = "certs.confirm.redeploy_all"
 	CertsConfirmRedeployAllTitle             Key = "certs.confirm.redeploy_all_title"
