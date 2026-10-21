@@ -100,7 +100,7 @@ with `sudo systemctl edit jec` under `[Service]`:
 | A local directory or website directory under `/etc`, such as `/etc/nginx/ssl` | `ReadWritePaths=/etc/nginx/ssl`, and write permission for `jec` on the directory |
 | A local directory or website directory elsewhere | Write permission for `jec` on the directory |
 | The Docker container target | `SupplementaryGroups=docker` |
-| Certificates on this machine, from certbot or acme.sh | Their keys are readable by root only: install with `-user root`, or have certbot's `--deploy-hook` copy them where `jec` can read them |
+| Certificates on this machine, from certbot or acme.sh | Their keys are readable by root only: give them the group `jec` with group read, as [Moving from certbot or acme.sh](migration.md#keeping-the-old-client) shows, or install with `-user root` |
 | A command after writing that reloads a service, such as `systemctl reload nginx` | A polkit rule, as below, or `-user root` |
 
 A polkit rule that lets `jec` reload nginx, in

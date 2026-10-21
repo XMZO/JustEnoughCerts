@@ -66,7 +66,7 @@ journalctl -u jec | grep setup_token
 | 位于 `/etc` 下的本地目录或网站目录，如 `/etc/nginx/ssl` | `ReadWritePaths=/etc/nginx/ssl`，并授予 `jec` 对该目录的写权限 |
 | 位于其他位置的本地目录或网站目录 | 授予 `jec` 对该目录的写权限 |
 | Docker 容器部署目标 | `SupplementaryGroups=docker` |
-| 本机证书目录（certbot、acme.sh） | 私钥通常仅 root 可读：以 `-user root` 安装，或通过 certbot 的 `--deploy-hook` 将证书复制到 `jec` 可读取的位置 |
+| 本机证书目录（certbot、acme.sh） | 私钥通常仅 root 可读：按[从 certbot 或 acme.sh 迁移](migration.zh-CN.md#保留原客户端)把属组改为 `jec` 并加组读权限，或以 `-user root` 安装 |
 | 写入后重载服务的命令，如 `systemctl reload nginx` | 如下的 polkit 规则，或以 `-user root` 安装 |
 
 允许 `jec` 重载 nginx 的 polkit 规则，写入 `/etc/polkit-1/rules.d/50-jec.rules`：
