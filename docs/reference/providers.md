@@ -73,7 +73,7 @@ accounts are welcome.
 | `aws.acm` | AWS Certificate Manager, for CloudFront and load balancers | Emulator: moto |
 | `aws.cloudfront` | AWS CloudFront distributions, through ACM in us-east-1 | Fake |
 | `gcore.cdn` | Gcore CDN resources | Fake |
-| `baota.site` | BaoTa (aaPanel) websites | Fake |
+| `baota.site` | BaoTa (aaPanel) websites | Real software: BaoTa 11.0, its official LNMP image |
 | `onepanel.certificate` | 1Panel certificates of websites | Real software: 1Panel v1 and v2, in a community container image |
 | `onepanel.panel` | 1Panel's own HTTPS certificate, turning its HTTPS on | Real software: 1Panel v1 and v2, in a community container image |
 | `safeline.certificate` | SafeLine WAF certificates, replaced in place for their sites | Real software: SafeLine 9.4 |

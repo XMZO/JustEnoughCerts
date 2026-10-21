@@ -28,7 +28,7 @@ var pause = 3 * time.Second
 
 func siteType() providers.Type {
 	return providers.Type{
-		ID: "baota.site", Kind: providers.Target, Name: i18n.BaotaSiteName, Description: i18n.BaotaSiteDescription, Untested: true,
+		ID: "baota.site", Kind: providers.Target, Name: i18n.BaotaSiteName, Description: i18n.BaotaSiteDescription,
 		Tags: []string{"china", "self_hosted"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "url", Label: i18n.BaotaFieldUrl, Help: i18n.BaotaFieldUrlHelp, Kind: providers.URL, Required: true},
