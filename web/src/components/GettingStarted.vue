@@ -10,7 +10,9 @@ import JecButton from './JecButton.vue'
 // What the overview shows before the first certificate: the providers to
 // set up, in the order a certificate needs them, each with how many there
 // are, and the ways to add one.
-const { t } = useT()
+const { t, locale } = useT()
+// For those with certbot or acme.sh already: the guide to moving over.
+const migration = computed(() => `https://getjec.dev/${locale.value === 'zh-CN' ? 'zh-CN/' : ''}guide/migration`)
 
 const sources = useProviders('source')
 const solvers = useProviders('solver')
@@ -64,5 +66,9 @@ const intro = (kind: ProviderKind) => `kernel.providers.${kind}.intro` as Messag
       <JecButton variant="primary" to="/certificates/new"><Plus class="size-4" aria-hidden="true" />{{ t('certs.action.add') }}</JecButton>
       <JecButton :to="{ path: '/certificates/new', query: { source: 'upload' } }"><FileDown class="size-4" aria-hidden="true" />{{ t('certs.action.import') }}</JecButton>
     </div>
+    <p class="m-0 text-small text-ink-muted">
+      {{ t('certs.overview.start.migrate') }}
+      <a :href="migration" target="_blank" rel="noopener" class="underline">{{ t('certs.overview.start.migrate_link') }}</a>
+    </p>
   </section>
 </template>

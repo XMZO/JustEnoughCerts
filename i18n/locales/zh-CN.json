@@ -1193,6 +1193,8 @@
       "start": {
         "added": "已添加 {count} 个",
         "intro": "依次设置下面几项，JEC 就会自动签发、部署和续期证书。已有的证书可以直接导入，不用设置来源。",
+        "migrate": "已经在用 certbot 或 acme.sh？",
+        "migrate_link": "看看 JEC 怎样接手它们的证书",
         "optional": "可选",
         "title": "开始使用",
         "todo": "未设置"

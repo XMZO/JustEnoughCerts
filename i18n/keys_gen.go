@@ -938,6 +938,8 @@ const (
 	CertsOverviewShortCount                  Key = "certs.overview.short_count"
 	CertsOverviewStartAdded                  Key = "certs.overview.start.added"
 	CertsOverviewStartIntro                  Key = "certs.overview.start.intro"
+	CertsOverviewStartMigrate                Key = "certs.overview.start.migrate"
+	CertsOverviewStartMigrateLink            Key = "certs.overview.start.migrate_link"
 	CertsOverviewStartOptional               Key = "certs.overview.start.optional"
 	CertsOverviewStartTitle                  Key = "certs.overview.start.title"
 	CertsOverviewStartTodo                   Key = "certs.overview.start.todo"

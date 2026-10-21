@@ -1193,6 +1193,8 @@
       "start": {
         "added": "{count} set up",
         "intro": "Set these up in turn, and JEC issues, deploys and renews certificates by itself. Certificates you already have can be imported without a source.",
+        "migrate": "Using certbot or acme.sh already?",
+        "migrate_link": "See how JEC takes over their certificates",
         "optional": "Optional",
         "title": "Getting started",
         "todo": "Not set up"

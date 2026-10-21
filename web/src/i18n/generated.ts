@@ -946,6 +946,8 @@ export type MessageKey =
   | "certs.overview.short_count"
   | "certs.overview.start.added"
   | "certs.overview.start.intro"
+  | "certs.overview.start.migrate"
+  | "certs.overview.start.migrate_link"
   | "certs.overview.start.optional"
   | "certs.overview.start.title"
   | "certs.overview.start.todo"
