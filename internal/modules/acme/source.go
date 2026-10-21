@@ -275,7 +275,7 @@ func (s *source) register(ctx context.Context, client *lego.Client, directory st
 			TermsOfServiceAgreed: true, Kid: kid, HmacEncoded: hmac,
 		})
 		if err != nil {
-			return nil, &contracts.Problem{Key: i18n.AcmeErrorRegister, Err: err}
+			return nil, registerError(err, directory)
 		}
 		return reg, nil
 	case client.GetServerMetadata().ExternalAccountRequired:
@@ -284,14 +284,26 @@ func (s *source) register(ctx context.Context, client *lego.Client, directory st
 		reg, err = client.Registration.Register(ctx, registration.RegisterOptions{TermsOfServiceAgreed: true})
 	}
 	if err != nil {
-		problem := &contracts.Problem{Key: i18n.AcmeErrorRegister, Err: err}
-		var pd *legoacme.ProblemDetails
-		if errors.As(err, &pd) && pd.Type != legoacme.ServerInternalErrorType && pd.Type != legoacme.RateLimitedErrorType {
-			return nil, retry.Permanent(problem) // the CA refused: fix the account first
-		}
-		return nil, problem
+		return nil, registerError(err, directory)
 	}
 	return reg, nil
+}
+
+// registerError tells why registering at the CA at directory failed: the
+// CA refusing the account, which needs it fixed first, unless the CA failed
+// itself, was busy or wanted a new nonce, and then trying again may do; or,
+// with no answer of the CA's, the CA out of reach.
+func registerError(err error, directory string) error {
+	var pd *legoacme.ProblemDetails
+	if !errors.As(err, &pd) {
+		return &contracts.Problem{Key: i18n.AcmeErrorDirectory, Params: map[string]any{"directory": directory}, Err: err}
+	}
+	problem := &contracts.Problem{Key: i18n.AcmeErrorRegister, Err: err}
+	switch pd.Type {
+	case legoacme.ServerInternalErrorType, legoacme.RateLimitedErrorType, legoacme.BadNonceErrorType:
+		return problem
+	}
+	return retry.Permanent(problem)
 }
 
 func isAccountGone(err error) bool {

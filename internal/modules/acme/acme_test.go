@@ -215,6 +215,30 @@ func TestExplain(t *testing.T) {
 	}
 }
 
+func TestRegisterError(t *testing.T) {
+	refused := func(typ string) error {
+		return fmt.Errorf("acme: register: %w", &legoacme.ProblemDetails{Type: typ, Detail: "no", HTTPStatus: 400})
+	}
+	for name, tt := range map[string]struct {
+		err       error
+		key       i18n.Key
+		permanent bool
+	}{
+		"refused":     {refused(legoacme.MalformedErrorType), i18n.AcmeErrorRegister, true},
+		"bad contact": {refused("urn:ietf:params:acme:error:invalidContact"), i18n.AcmeErrorRegister, true},
+		"server":      {refused(legoacme.ServerInternalErrorType), i18n.AcmeErrorRegister, false},
+		"bad nonce":   {refused(legoacme.BadNonceErrorType), i18n.AcmeErrorRegister, false},
+		// No answer of the CA's: out of reach, not the account's fault.
+		"network": {errors.New("dial tcp 192.0.2.1:443: connect: connection refused"), i18n.AcmeErrorDirectory, false},
+	} {
+		err := registerError(tt.err, "https://ca.example/dir")
+		var p *contracts.Problem
+		if !errors.As(err, &p) || p.Key != tt.key || retry.IsPermanent(err) != tt.permanent {
+			t.Errorf("%s: %v, permanent %v", name, err, retry.IsPermanent(err))
+		}
+	}
+}
+
 func TestPrecheck(t *testing.T) {
 	var logged []contracts.LogLine
 	p := &dnsProvider{solver: &fakeSolver{}, log: func(l contracts.LogLine) { logged = append(logged, l) }, missed: map[string]bool{}}
