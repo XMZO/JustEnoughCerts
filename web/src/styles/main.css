@@ -121,6 +121,8 @@
     margin: 0;
     font-size: 14px;
     line-height: 22px;
+    /* No last word, or last character of Chinese, alone on a line. */
+    text-wrap: pretty;
   }
   a {
     color: var(--brand);
