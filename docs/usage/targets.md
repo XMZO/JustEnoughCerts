@@ -77,6 +77,15 @@ never sees a partly written file.
 A non-zero exit status, a syntax error or a timeout fails the deployment,
 which is then not retried automatically.
 
+### Common setups
+
+| Server | Files | Command after writing |
+|---|---|---|
+| Nginx | `ssl_certificate` to `fullchain.pem`, `ssl_certificate_key` to `privkey.pem` | `nginx -s reload` or `systemctl reload nginx` |
+| Apache | `SSLCertificateFile` to `fullchain.pem`, `SSLCertificateKeyFile` to `privkey.pem` | `systemctl reload apache2` (`httpd` on some systems) |
+| HAProxy | A combined file, such as `{domain}.pem`, in the directory of `crt` | `systemctl reload haproxy` |
+| Traefik | `certFile` and `keyFile` in a file of the file provider's directory, under `tls.certificates` | `touch` that file: Traefik reloads on a change of its configuration, not of the certificate files (tried with Traefik 3.5) |
+
 ## Other notes
 
 - **Self-signed panels**: BaoTa, 1Panel, SafeLine WAF, Proxmox VE and

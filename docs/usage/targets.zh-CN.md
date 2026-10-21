@@ -43,6 +43,15 @@
 
 命令退出码非 0、语法错误或超时时，部署记为失败且不自动重试。
 
+### 常见配置
+
+| 服务器 | 文件 | 写入后执行的命令 |
+|---|---|---|
+| Nginx | `ssl_certificate` 指向 `fullchain.pem`，`ssl_certificate_key` 指向 `privkey.pem` | `nginx -s reload` 或 `systemctl reload nginx` |
+| Apache | `SSLCertificateFile` 指向 `fullchain.pem`，`SSLCertificateKeyFile` 指向 `privkey.pem` | `systemctl reload apache2`（部分系统为 `httpd`） |
+| HAProxy | 合并文件（如 `{domain}.pem`），放在 `crt` 指定的目录 | `systemctl reload haproxy` |
+| Traefik | 在文件提供者（file provider）目录的配置文件中，于 `tls.certificates` 下写 `certFile` 与 `keyFile` | `touch` 该配置文件：Traefik 在配置文件变化时重新加载，证书文件变化不会触发（以 Traefik 3.5 实测） |
+
 ## 其他说明
 
 - **面板的自签名证书**：宝塔面板、1Panel、雷池 WAF、Proxmox VE 与 Portainer 使用 `http://` 地址时仅允许连接内网；使用自签名证书的 HTTPS 地址时按证书指纹信任，测试连接会给出指纹。Proxmox VE 与 Portainer 之后会使用 JEC 部署的证书：JEC 按它们的域名信任该证书，无需修改指纹；地址宜填写该域名而非 IP。
