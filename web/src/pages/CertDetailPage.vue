@@ -956,7 +956,9 @@ async function confirmDelete() {
             <dl class="m-0 grid grid-cols-[fit-content(40%)_minmax(0,1fr)] gap-x-4 gap-y-0.5 text-small">
               <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.memo.title') }}</dt>
               <dd class="m-0 flex min-w-0 items-start gap-1">
-                <span v-if="cert.note" class="min-w-0 flex-1 whitespace-pre-line [overflow-wrap:anywhere]" translate="no">{{ cert.note }}</span>
+                <span v-if="cert.note" class="line-clamp-3 min-w-0 flex-1 whitespace-pre-line [overflow-wrap:anywhere]" translate="no" :title="cert.note">{{
+                  cert.note
+                }}</span>
                 <span v-else class="min-w-0 flex-1 text-ink-muted">{{ t('certs.memo.none') }}</span>
                 <button
                   type="button"
