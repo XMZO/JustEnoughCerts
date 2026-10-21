@@ -965,6 +965,11 @@ test('every page is translated and fits', async ({ page }, info) => {
       await page.keyboard.press('Escape')
       await expect(page.locator('dialog[open]')).toHaveCount(0)
     }
+    await bulk.getByRole('button', { name: label('certs.bulk.source') }).click()
+    await expect(page.locator('dialog[open]')).toBeVisible()
+    expect.soft(await problems(page), 'change the source of several').toEqual([])
+    await page.keyboard.press('Escape')
+    await expect(page.locator('dialog[open]')).toHaveCount(0)
     await bulk.getByRole('button', { name: label('certs.bulk.add_target') }).click()
     await expect(page.locator('dialog[open]')).toBeVisible()
     expect.soft(await problems(page), 'add a target to several').toEqual([])

@@ -9,6 +9,7 @@ import {
   Eye,
   FileClock,
   FileDown,
+  FolderInput,
   Globe,
   LoaderCircle,
   OctagonX,
@@ -28,10 +29,21 @@ import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { ApiError, networkError } from '../api/client'
-import { saveFile, useCertificates, useDeleteCertificate, useDeleteOf, useExportAll, usePauseOf, useSolverOf, useTargetsOf, type Certificate } from '../api/certs'
+import {
+  saveFile,
+  useCertificates,
+  useDeleteCertificate,
+  useDeleteOf,
+  useExportAll,
+  usePauseOf,
+  useSolverOf,
+  useSourceOf,
+  useTargetsOf,
+  type Certificate,
+} from '../api/certs'
 import { useApiError } from '../api/errors'
 import { useMonitorStates } from '../api/monitor'
-import { useProviders } from '../api/providers'
+import { useProviders, useProviderTypes } from '../api/providers'
 import { useCertActions } from '../certs/actions'
 import { scheduledAt, useDeployNote } from '../certs/deployment'
 import { barPercent, caReasonText, certLife, lifeText, needsAttention, stateText, windowStart } from '../certs/life'
@@ -382,6 +394,48 @@ async function submitSolver() {
   solverRefused.value = refused
   if (!refused.length) solverOpen.value = false
 }
+// Another source for those chosen, as when JEC takes over from certbot,
+// from their next issuance: with the solver each has, unless one is picked
+// for a source that needs one; the server refuses one it cannot take, and
+// the rest go on.
+const sourceTypes = useProviderTypes('source')
+const sourceOpen = ref(false)
+const sourcePick = ref<number>()
+const sourceSolver = ref<number>(0)
+const sourceNeedsSolver = computed(() => {
+  const type = sources.data.value?.find((p) => p.id === sourcePick.value)?.type
+  return !!sourceTypes.data.value?.find((s) => s.id === type)?.needsSolver
+})
+const setSource = useSourceOf()
+const sourceRefused = ref<{ domain: string; why: string }[]>([])
+const settingSource = ref(false)
+function startSource() {
+  sourcePick.value = sources.data.value?.[0]?.id
+  sourceSolver.value = chosenCerts.value.some((c) => c.solverProvider) ? 0 : (solvers.data.value?.[0]?.id ?? 0)
+  sourceRefused.value = []
+  setSource.reset()
+  sourceOpen.value = true
+}
+async function submitSource() {
+  const sourceProvider = sourcePick.value
+  if (sourceProvider === undefined || settingSource.value) return
+  settingSource.value = true
+  const refused: { domain: string; why: string }[] = []
+  for (const c of chosenCerts.value) {
+    if (c.source === 'provider' && c.sourceProvider === sourceProvider) continue
+    try {
+      await setSource.mutateAsync({ id: c.id, sourceProvider, solverProvider: sourceNeedsSolver.value ? sourceSolver.value : undefined })
+    } catch (err) {
+      const e = err instanceof ApiError ? err : networkError
+      const field = e.fields[0]
+      refused.push({ domain: c.domains[0] ?? '', why: t(field?.code ?? e.code, e.params) })
+    }
+  }
+  settingSource.value = false
+  setSource.reset()
+  sourceRefused.value = refused
+  if (!refused.length) sourceOpen.value = false
+}
 async function pauseChosen(paused: boolean) {
   pausing.value = true
   try {
@@ -550,6 +604,9 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
         </JecButton>
         <JecButton v-if="solving.length && solvers.data.value?.length" size="sm" @click="startSolver">
           <Globe class="size-4" aria-hidden="true" />{{ t('certs.bulk.solver') }}
+        </JecButton>
+        <JecButton v-if="sources.data.value?.length" size="sm" @click="startSource">
+          <FolderInput class="size-4" aria-hidden="true" />{{ t('certs.bulk.source') }}
         </JecButton>
         <JecButton size="sm" variant="danger" @click="deletingMany = chosenCerts">
           <Trash2 class="size-4" aria-hidden="true" />{{ t('certs.bulk.delete', { count: chosen.length }) }}
@@ -740,6 +797,34 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
     <template #footer>
       <JecButton @click="solverOpen = false">{{ t('kernel.action.cancel') }}</JecButton>
       <JecButton type="submit" form="bulk-solver-form" variant="primary" :busy="settingSolver" :disabled="solverPick === undefined">
+        {{ t('kernel.action.save') }}
+      </JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-model:open="sourceOpen" :title="t('certs.bulk.source')" small>
+    <form id="bulk-source-form" class="flex flex-col gap-3" novalidate @submit.prevent="submitSource">
+      <p class="m-0">{{ t('certs.bulk.source_intro', { count: chosen.length }) }}</p>
+      <JecField id="bulk-source" label="certs.settings.source">
+        <select id="bulk-source" v-model.number="sourcePick" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
+          <option v-for="p in sources.data.value" :key="p.id" :value="p.id" translate="no">{{ p.name }}</option>
+        </select>
+      </JecField>
+      <JecField v-if="sourceNeedsSolver" id="bulk-source-solver" label="certs.settings.solver">
+        <select id="bulk-source-solver" v-model.number="sourceSolver" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
+          <option :value="0">{{ t('certs.bulk.source_own_solver') }}</option>
+          <option v-for="p in solvers.data.value" :key="p.id" :value="p.id" translate="no">{{ p.name }}</option>
+        </select>
+      </JecField>
+      <div v-if="sourceRefused.length" role="alert">
+        <ul class="m-0 list-none p-0 text-small text-danger-ink">
+          <li v-for="r in sourceRefused" :key="r.domain" class="[overflow-wrap:anywhere]"><span translate="no">{{ r.domain }}</span>{{ t('watch.page.refused') }}{{ r.why }}</li>
+        </ul>
+      </div>
+    </form>
+    <template #footer>
+      <JecButton @click="sourceOpen = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton type="submit" form="bulk-source-form" variant="primary" :busy="settingSource" :disabled="sourcePick === undefined">
         {{ t('kernel.action.save') }}
       </JecButton>
     </template>

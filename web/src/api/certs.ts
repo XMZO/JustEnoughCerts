@@ -311,6 +311,13 @@ export function useSolverOf() {
   )
 }
 
+/** Has the certificate it is given issued by another source, with a solver when one is given. */
+export function useSourceOf() {
+  return useCertsMutation(({ id, sourceProvider, solverProvider }: { id: number; sourceProvider: number; solverProvider?: number }) =>
+    unwrap(api.PATCH('/certs/certificates/{id}', { params: { path: { id } }, body: { sourceProvider, ...(solverProvider ? { solverProvider } : {}) } })),
+  )
+}
+
 /** Pauses or resumes the renewal of the certificate it is given. */
 export function usePauseOf() {
   return useCertsMutation(({ id, paused }: { id: number; paused: boolean }) =>
