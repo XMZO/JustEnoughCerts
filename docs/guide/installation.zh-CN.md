@@ -94,6 +94,6 @@ polkit.addRule(function (action, subject) {
 - **systemd 服务**：`sudo jec upgrade -restart` 下载适用于本机平台的最新版本，按该版本的 `checksums.txt` 校验，确认新程序能运行后替换 `/usr/local/bin/jec` 并重启服务；`-version` 指定版本，`-check` 只检查是否有新版本。用下载的新版本再次执行 `sudo ./jec service install` 也可以。
 - **其他二进制安装**：`jec upgrade` 原地替换二进制文件，之后重新启动 JEC；也可以停止 JEC、替换二进制文件后重新启动。
 
-设置页“关于”中的“检查更新”会询问 GitHub 是否有新版本；JEC 默认不会自行联网检查。开启“自动检查更新”后，JEC 每天检查一次，有新版本时经通知渠道提醒（每个版本一次）。
+设置页“关于”中的“检查更新”会询问 GitHub 是否有新版本，有新版本时给出对应的升级命令（镜像或二进制文件）；JEC 默认不会自行联网检查。开启“自动检查更新”后，JEC 每天检查一次，有新版本时经通知渠道提醒（每个版本一次）。
 
 迁移 SQLite 数据库前，JEC 会先将其复制到 `backups/`，以便退回原版本，参见[升级前的备份](../operations/backup.zh-CN.md#升级前的备份)。发布文件的签名校验方法见[校验发布文件](../operations/releases.zh-CN.md)。

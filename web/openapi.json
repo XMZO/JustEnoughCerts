@@ -3386,6 +3386,10 @@
             "description": "Where plain HTTP is answered beside HTTPS, from JEC_HTTP_LISTEN: /.well-known/, and the rest sent to HTTPS",
             "type": "string"
           },
+          "image": {
+            "description": "This is JEC's container image, upgraded by pulling a new one; otherwise jec upgrade replaces the binary",
+            "type": "boolean"
+          },
           "listen": {
             "description": "The address the HTTP server binds to, from JEC_LISTEN",
             "type": "string"
@@ -3428,7 +3432,8 @@
           "serverTimeZone",
           "autoBackup",
           "heartbeat",
-          "updateCheck"
+          "updateCheck",
+          "image"
         ],
         "type": "object"
       },

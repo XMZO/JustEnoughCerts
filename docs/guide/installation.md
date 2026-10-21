@@ -138,7 +138,8 @@ polkit.addRule(function (action, subject) {
   it again.
 
 Check for updates, under About on the Settings page, asks GitHub for a
-newer release; JEC does not check by itself unless "Check for updates by
+newer release, and gives the command that moves to it, for the image or
+the binary; JEC does not check by itself unless "Check for updates by
 itself" is on, after which it checks once a day and tells of a new
 release through the notification channels, once for each.
 

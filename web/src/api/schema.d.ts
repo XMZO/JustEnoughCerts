@@ -3024,6 +3024,8 @@ export interface components {
             hsts: boolean;
             /** @description Where plain HTTP is answered beside HTTPS, from JEC_HTTP_LISTEN: /.well-known/, and the rest sent to HTTPS */
             httpListen?: string;
+            /** @description This is JEC's container image, upgraded by pulling a new one; otherwise jec upgrade replaces the binary */
+            image: boolean;
             /** @description The address the HTTP server binds to, from JEC_LISTEN */
             listen: string;
             /**

@@ -2529,6 +2529,9 @@
       "update_check": "自动检查更新",
       "update_check_hint": "开启后 JEC 每天问一次 GitHub，有新版本时经通知渠道提醒；关闭时只在点击“检查更新”时联网。",
       "update_help": "点按钮时才会去 GitHub 查发布记录，JEC 不会自己联网检查。",
+      "upgrade_binary": "升级：在服务器上执行（适用于 systemd 服务；没有时去掉 -restart 并自行重启 JEC）",
+      "upgrade_copy": "复制命令",
+      "upgrade_image": "升级：在 docker-compose.yml 所在目录执行",
       "version": "版本"
     },
     "setup": {

@@ -98,6 +98,8 @@ const setUpdateCheck = useSetUpdateCheck()
 const releaseError = useApiError(computed(() => release.error.value))
 // A build of its own, as dev, has no version to compare.
 const versioned = computed(() => /^\d/.test(release.data.value?.current ?? ''))
+// How to move to it: pull the image, or have jec replace itself.
+const upgradeCommand = computed(() => (system.data.value?.image ? 'docker compose pull && docker compose up -d' : 'sudo jec upgrade -restart'))
 // Single sign-on, while its module is on.
 const oidcOn = computed(() => manifest.data.value?.modules.some((m) => m.id === 'oidc' && m.enabled) ?? false)
 const offsiteOn = computed(() => manifest.data.value?.modules.some((m) => m.id === 'offsite' && m.enabled) ?? false)
@@ -1035,6 +1037,13 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           {{ ' ' }}<a :href="release.data.value.url" target="_blank" rel="noopener">{{ t('kernel.settings.release_notes') }}</a>
         </template>
       </p>
+      <div v-if="release.data.value?.newer" class="flex flex-col gap-1 pb-2 text-small">
+        <span class="text-ink-muted">{{ t(system.data.value?.image ? 'kernel.settings.upgrade_image' : 'kernel.settings.upgrade_binary') }}</span>
+        <span class="flex items-center gap-2">
+          <code class="min-w-0 flex-1 rounded-sm bg-surface-sunken px-2 py-1 [overflow-wrap:anywhere]" translate="no">{{ upgradeCommand }}</code>
+          <CopyButton :value="upgradeCommand" label="kernel.settings.upgrade_copy" />
+        </span>
+      </div>
     </section>
   </div>
 

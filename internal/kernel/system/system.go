@@ -101,6 +101,7 @@ type RuntimeBody struct {
 	AutoBackup     AutoBackupBody `json:"autoBackup" doc:"The backups JEC makes by itself, one a day"`
 	Heartbeat      HeartbeatBody  `json:"heartbeat" doc:"The address JEC asks for while it runs, for a monitoring service"`
 	UpdateCheck    bool           `json:"updateCheck" doc:"JEC checks for releases by itself, once a day"`
+	Image          bool           `json:"image" doc:"This is JEC's container image, upgraded by pulling a new one; otherwise jec upgrade replaces the binary"`
 	TLS            *TLSBody       `json:"tls,omitempty" doc:"The certificate JEC serves HTTPS with, as JEC_TLS_CERT names it; absent when it serves plain HTTP"`
 }
 
@@ -232,6 +233,7 @@ func (o Options) runtime(ctx context.Context) RuntimeBody {
 		Database:       o.Database,
 		ServerTimeZone: o.Zone.Server().String(),
 		AutoBackup:     o.autoBackupState(ctx),
+		Image:          InImage(),
 		Heartbeat:      o.heartbeatState(ctx),
 	}
 	if on, err := o.meta(ctx, updateCheckMeta); err == nil {

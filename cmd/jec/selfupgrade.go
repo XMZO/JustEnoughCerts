@@ -34,6 +34,7 @@ var (
 	unitFile = "/etc/systemd/system/jec.service"
 	// executable is the binary to replace.
 	executable = os.Executable
+	inImage    = kernelsystem.InImage
 )
 
 // maxArchive bounds the archive jec upgrade downloads.
@@ -53,7 +54,7 @@ func runUpgrade(ctx context.Context, args []string, stdout, stderr io.Writer) in
 	if code, ok := parseFlags(fs, args); !ok {
 		return code
 	}
-	if _, err := os.Stat(dockerEnv); err == nil {
+	if _, err := os.Stat(dockerEnv); err == nil || inImage() {
 		fmt.Fprintln(stderr, "jec upgrade: JEC runs in a container: pull the new image instead, as with docker compose pull && docker compose up -d")
 		return exitError
 	}

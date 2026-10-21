@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -27,6 +28,17 @@ const DownloadURL = "https://github.com/" + repository + "/releases/download"
 
 // releasesURL is ReleasesURL, but for tests.
 var releasesURL = ReleasesURL
+
+// imageBinary is where JEC's container image keeps the program.
+const imageBinary = "/jec"
+
+// InImage reports whether this is JEC's container image, under Docker,
+// Podman or Kubernetes alike: it is upgraded by pulling a new image, not
+// by replacing the binary.
+func InImage() bool {
+	exe, err := os.Executable()
+	return err == nil && exe == imageBinary
+}
 
 // ReleaseBody tells whether a newer release than the running one is out.
 type ReleaseBody struct {
