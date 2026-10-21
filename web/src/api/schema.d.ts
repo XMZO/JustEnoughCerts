@@ -1300,8 +1300,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Try a solver of DNS on a domain: add the record of a challenge, wait for it, and remove it
-         * @description For solvers whose challenge is dns, but those whose records people add. The record is a TXT record at _acme-challenge under the domain, with a random value. A provider that fails to add it answers 502 with its own message.
+         * Try a solver on a domain: put what a challenge needs, see it as a CA would, and remove it
+         * @description For solvers of DNS, but those whose records people add: a TXT record at _acme-challenge under the domain, with a random value, until the domain's authoritative servers answer it. For solvers of files on the website: a file under /.well-known/acme-challenge/, fetched over http:// from the domain, following redirects as a CA does. A provider that fails to put it answers 502 with its own message.
          */
         post: operations["providers-try"];
         delete?: never;
@@ -3317,7 +3317,14 @@ export interface components {
             names: string[];
         };
         TryBody: {
-            /** @description The record's name, as _acme-challenge.example.com */
+            /** @description For a file not fetched: what its URL answered last, as an HTTP status or an error */
+            answer?: string;
+            /**
+             * @description dns: a TXT record was added; http: a file was put on the website
+             * @enum {string}
+             */
+            kind: "dns" | "http";
+            /** @description The record's name, as _acme-challenge.example.com; for a file, its URL */
             record: string;
             /** @description It was removed again; if not, remove it by hand */
             removed: boolean;

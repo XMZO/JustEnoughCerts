@@ -170,8 +170,10 @@ const cards = computed(() =>
       events: notifiers.value ? events(p) : '',
       send: sends.data.value?.find((s) => s.notifier === p.id),
       testable: notifiers.value ? !dispatchOff.value : !!summaryType?.testable,
-      // A solver of DNS that adds records itself can be tried on a domain.
-      triable: props.kind === 'solver' && (summaryType?.challenge ?? 'dns') === 'dns' && !summaryType?.manual && !!summaryType,
+      // A solver that adds records or puts files itself can be tried on a
+      // domain.
+      triable: props.kind === 'solver' && !summaryType?.manual && !!summaryType,
+      http: summaryType?.challenge === 'http',
     }
   }),
 )
@@ -352,7 +354,14 @@ async function confirmDelete() {
   </div>
 
   <ProviderDialog v-model:open="adding" :kind="kind" :title="t(page.add)" />
-  <TryDnsDialog v-if="trying" v-model:open="tryOpen" :id="trying.id" :name="trying.name" :suggested="tryDomain(trying.id)" />
+  <TryDnsDialog
+    v-if="trying"
+    v-model:open="tryOpen"
+    :id="trying.id"
+    :name="trying.name"
+    :http="cards.find((c) => c.provider.id === trying?.id)?.http ?? false"
+    :suggested="tryDomain(trying.id)"
+  />
   <ProviderDialog v-if="editing" v-model:open="editOpen" :kind="kind" :instance="editing" :title="t('kernel.providers.edit', { name: editing.name })" />
 
   <JecDialog v-model:open="deleteOpen" :title="t('kernel.providers.delete.title', { name: deleting?.name ?? '' })" small>

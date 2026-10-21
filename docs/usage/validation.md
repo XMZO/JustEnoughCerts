@@ -36,7 +36,11 @@ of up to 50) to pick, a list not yet tried with real accounts.
   domain given, waits up to 40 seconds for the authoritative DNS to answer
   it, and removes it, without a CA, to make sure of the keys and the
   domain's access before issuing. A provider's error shows as it gave it.
-  Tried against RFC 2136 dynamic updates (BIND).
+  Tried against RFC 2136 dynamic updates (BIND). For validation through
+  files on the website, Try puts a test file under
+  `/.well-known/acme-challenge/`, fetches it from the domain over
+  `http://` as a CA would, following redirects, and tells what the
+  address answered when it is not the file, as a wrong directory's 404.
 - **Propagation check**: JEC queries the domain's authoritative DNS
   servers directly, and asks the certificate authority to validate only
   once the record is visible. If the machine's own resolver answers

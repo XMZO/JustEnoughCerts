@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -49,6 +50,28 @@ func (s *fakeSolver) CleanUp(_ context.Context, ch contracts.Challenge) error {
 func (s *fakeSolver) Wait() (time.Duration, time.Duration) { return time.Minute, time.Second }
 func (s *fakeSolver) Close() error                         { return nil }
 
+// fakeFiles keeps the files it is asked for, by URL.
+type fakeFiles struct {
+	mu    *sync.Mutex
+	files map[string]string
+}
+
+func (s *fakeFiles) PutFile(_ context.Context, f contracts.File) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.files["http://"+f.Domain+f.Path] = string(f.Content)
+	return nil
+}
+
+func (s *fakeFiles) RemoveFile(_ context.Context, f contracts.File) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.files, "http://"+f.Domain+f.Path)
+	return nil
+}
+
+func (s *fakeFiles) Close() error { return nil }
+
 func TestTry(t *testing.T) {
 	dir := t.TempDir()
 	st, err := store.Open(t.Context(), dir)
@@ -65,15 +88,19 @@ func TestTry(t *testing.T) {
 	}
 	reg := providers.New(st.DB(), box.Scope("kernel"), func(string) bool { return true })
 	var mu sync.Mutex
-	records := map[string]string{}
+	records, files := map[string]string{}, map[string]string{}
 	var cleaned []string
 	scope := reg.Scope("fake")
 	for _, typ := range []providers.Type{
 		{ID: "fake.dns", Kind: providers.Solver, Brand: "DNS", Fields: []providers.Field{{Key: "FAIL", Kind: providers.Switch}}},
 		{ID: "fake.manual", Kind: providers.Solver, Brand: "Manual", Manual: true},
 		{ID: "fake.web", Kind: providers.Solver, Brand: "Web", Challenge: providers.ChallengeHTTP},
+		{ID: "fake.files", Kind: providers.Solver, Brand: "Files", Challenge: providers.ChallengeHTTP},
 	} {
 		if err := scope.Add(typ, func(_ context.Context, in providers.Instance) (any, error) {
+			if typ.ID == "fake.files" {
+				return &fakeFiles{mu: &mu, files: files}, nil
+			}
 			return &fakeSolver{mu: &mu, records: records, fail: in.Config["FAIL"] == "true", cleaned: &cleaned}, nil
 		}); err != nil {
 			t.Fatal(err)
@@ -149,5 +176,33 @@ func TestTry(t *testing.T) {
 		if resp := a.Post("/providers/"+c.id+"/try", map[string]any{"domain": c.domain}); resp.Code != c.status {
 			t.Errorf("try %s on %s = %d, want %d", c.id, c.domain, resp.Code, c.status)
 		}
+	}
+
+	// A solver of files: the file is fetched from the domain, as a CA
+	// does, and removed; on a domain served elsewhere, what it answered.
+	origFetch, origFor := fetchFile, fetchFor
+	t.Cleanup(func() { fetchFile, fetchFor = origFetch, origFor })
+	fetchFor = 100 * time.Millisecond
+	fetchFile = func(_ context.Context, url string) (int, []byte, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		if body, ok := files[url]; ok && !strings.Contains(url, "elsewhere") {
+			return http.StatusOK, []byte(body + "\n"), nil
+		}
+		return http.StatusNotFound, []byte("not found"), nil
+	}
+	web := create("fake.files", nil)
+	out = TryBody{}
+	resp = a.Post("/providers/"+web+"/try", map[string]any{"domain": "shop.example.com"})
+	if resp.Code != http.StatusOK || json.Unmarshal(resp.Body.Bytes(), &out) != nil {
+		t.Fatalf("try files = %d %s", resp.Code, resp.Body)
+	}
+	if out.Kind != "http" || !strings.HasPrefix(out.Record, "http://shop.example.com/.well-known/acme-challenge/jec-try-") || !out.Visible || !out.Removed || out.Answer != "" || len(files) != 0 {
+		t.Errorf("tried files %+v, left %v", out, files)
+	}
+	out = TryBody{}
+	resp = a.Post("/providers/"+web+"/try", map[string]any{"domain": "elsewhere.example.com"})
+	if resp.Code != http.StatusOK || json.Unmarshal(resp.Body.Bytes(), &out) != nil || out.Visible || out.Answer != "HTTP 404" || !out.Removed {
+		t.Errorf("a domain served elsewhere = %d %s", resp.Code, resp.Body)
 	}
 }

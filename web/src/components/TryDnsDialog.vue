@@ -4,17 +4,19 @@ import { computed, ref, watch } from 'vue'
 
 import { useApiError } from '../api/errors'
 import { useTryProvider, type TryResult } from '../api/providers'
-import { useT } from '../i18n'
+import { useT, type MessageKey } from '../i18n'
 import JecAlert from './JecAlert.vue'
 import JecButton from './JecButton.vue'
 import JecDialog from './JecDialog.vue'
 import JecField from './JecField.vue'
 import JecInput from './JecInput.vue'
 
-// A trial of a solver of DNS: on a domain, it adds the TXT record of a
-// challenge, waits for the authoritative servers to answer it, and removes
-// it, as an issuance would, without a CA.
-const props = defineProps<{ id: number; name: string; suggested: string }>()
+// A trial of a solver: on a domain, it adds the TXT record of a challenge
+// and waits for the authoritative servers to answer it, or, for a solver
+// of files on the website, puts a file and fetches it from the domain as a
+// CA would; then removes it, as an issuance would, without a CA.
+const props = defineProps<{ id: number; name: string; suggested: string; http?: boolean }>()
+const word = (dns: MessageKey, http: MessageKey) => t(props.http ? http : dns)
 const open = defineModel<boolean>('open', { required: true })
 
 const { t } = useT()
@@ -41,7 +43,7 @@ async function submit() {
 <template>
   <JecDialog v-model:open="open" :title="t('kernel.providers.try_title', { name })" small>
     <form id="try-form" class="flex flex-col gap-3" novalidate @submit.prevent="submit">
-      <p class="m-0">{{ t('kernel.providers.try_intro') }}</p>
+      <p class="m-0">{{ word('kernel.providers.try_intro', 'kernel.providers.try_http_intro') }}</p>
       <JecField id="try-domain" label="kernel.providers.try_domain" :error="error.fields.value.domain">
         <JecInput id="try-domain" v-model="domain" autocapitalize="none" spellcheck="false" required :invalid="!!error.fields.value.domain" />
       </JecField>
@@ -50,7 +52,7 @@ async function submit() {
         <li class="flex items-start gap-2">
           <CircleCheck class="mt-0.5 size-4 flex-none text-ok-ink" aria-hidden="true" />
           <span class="min-w-0">
-            {{ t('kernel.providers.try_added') }}
+            {{ word('kernel.providers.try_added', 'kernel.providers.try_http_put') }}
             <code class="block [overflow-wrap:anywhere]" translate="no">{{ result.record }}</code>
             <template v-if="result.via">
               {{ t('kernel.providers.try_via') }}
@@ -60,11 +62,19 @@ async function submit() {
         </li>
         <li class="flex items-start gap-2">
           <component :is="result.visible ? CircleCheck : TriangleAlert" :class="['mt-0.5 size-4 flex-none', result.visible ? 'text-ok-ink' : 'text-warn-ink']" aria-hidden="true" />
-          <span>{{ result.visible ? t('kernel.providers.try_visible', { seconds: result.seconds }) : t('kernel.providers.try_not_visible', { seconds: result.seconds }) }}</span>
+          <span v-if="props.http" class="min-w-0 [overflow-wrap:anywhere]">
+            {{
+              result.visible
+                ? t('kernel.providers.try_http_visible', { seconds: result.seconds })
+                : t('kernel.providers.try_http_not_visible', { seconds: result.seconds })
+            }}
+            <code v-if="!result.visible && result.answer" class="block" translate="no">{{ result.answer }}</code>
+          </span>
+          <span v-else>{{ result.visible ? t('kernel.providers.try_visible', { seconds: result.seconds }) : t('kernel.providers.try_not_visible', { seconds: result.seconds }) }}</span>
         </li>
         <li class="flex items-start gap-2">
           <component :is="result.removed ? CircleCheck : CircleX" :class="['mt-0.5 size-4 flex-none', result.removed ? 'text-ok-ink' : 'text-danger-ink']" aria-hidden="true" />
-          <span>{{ t(result.removed ? 'kernel.providers.try_removed' : 'kernel.providers.try_not_removed') }}</span>
+          <span>{{ result.removed ? word('kernel.providers.try_removed', 'kernel.providers.try_http_removed') : word('kernel.providers.try_not_removed', 'kernel.providers.try_http_not_removed') }}</span>
         </li>
       </ul>
     </form>
