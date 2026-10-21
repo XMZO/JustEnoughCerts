@@ -594,10 +594,47 @@ type changes struct {
 	note             *string
 	reuseKey, paused *bool
 	notifyTo         *[]int64
+	source           *int64
 	solver, backup   *int64
 	keyType          *string
 	deployWindow     *string
 	reminder         *reminder
+}
+
+// changeSource has certificate c issued by source from its next issuance
+// on, as one uploaded is to be renewed, or one that certbot renewed is to
+// be issued by JEC: not while an issuance is under way. The versions stay;
+// the key and state a failed issuance kept for an order at the old source
+// go, as does the solver of a source that needs none. The key type is the
+// new source's own, or that of the settings when the old one's was.
+func (s *service) changeSource(ctx context.Context, tx *sql.Tx, c *Certificate, source int64) error {
+	if open, err := s.openIssuance(ctx, tx, c.ID); err != nil {
+		return err
+	} else if open != nil {
+		return errIssuing
+	}
+	typ, err := s.providers.Type(ctx, source)
+	if err != nil {
+		return err
+	}
+	solver := sql.NullInt64{Int64: c.SolverProvider, Valid: c.SolverProvider != 0 && typ.NeedsSolver}
+	keyType := c.KeyType
+	switch {
+	case typ.OwnKey:
+		keyType = ""
+	case keyType == "":
+		st, err := settingsFrom(ctx, tx)
+		if err != nil {
+			return err
+		}
+		keyType = st.KeyType
+	}
+	if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET source = ?, source_provider = ?, solver_provider = ?, key_type = ?, updated_at = ? WHERE id = ?",
+		sourceProvider, source, solver, keyType, s.now().UnixMilli(), c.ID); err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, "UPDATE certs_issuances SET sealed_key = NULL, sealed_state = NULL WHERE certificate_id = ? AND state = 'failed'", c.ID)
+	return err
 }
 
 // reminder is a day to be reminded on, "" for none, and what of.
@@ -663,6 +700,11 @@ func (s *service) update(ctx context.Context, id int64, ch changes) error {
 	if ch.deployWindow != nil {
 		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET deploy_window = ?, updated_at = ? WHERE id = ?",
 			*ch.deployWindow, s.now().UnixMilli(), id); err != nil {
+			return err
+		}
+	}
+	if ch.source != nil && (*ch.source != c.SourceProvider || c.Source != sourceProvider) {
+		if err := s.changeSource(ctx, tx, c, *ch.source); err != nil {
 			return err
 		}
 	}

@@ -3468,6 +3468,11 @@ export interface components {
              * @description Another solver for a certificate with a source that needs one, from its next issuance; unchanged if left out
              */
             solverProvider?: number;
+            /**
+             * Format: int64
+             * @description Another source, from the next issuance: an uploaded certificate is renewed from then on; with solverProvider unless the solver kept does for it; unchanged if left out. Refused while an issuance is under way.
+             */
+            sourceProvider?: number;
             /** @description Replaces the targets when given; an empty list removes them all */
             targets?: number[];
         };

@@ -1351,6 +1351,63 @@ func TestChangeSolverAndKeyType(t *testing.T) {
 	}
 }
 
+func TestChangeSource(t *testing.T) {
+	f := newFixture(t)
+	ca, dns, files, spare := f.provider("fake.ca"), f.provider("fake.dns"), f.provider("fake.files"), f.provider("fake.spare")
+	patch := func(c CertificateBody, body map[string]any) CertificateBody {
+		t.Helper()
+		var got CertificateBody
+		f.call(f.api.Patch("/certificates/"+strconv.FormatInt(c.ID, 10), body), http.StatusOK, &got)
+		return got
+	}
+	refused := func(c CertificateBody, body map[string]any, status int, field string, code i18n.Key) {
+		t.Helper()
+		e := f.apiError(f.api.Patch("/certificates/"+strconv.FormatInt(c.ID, 10), body), status)
+		switch {
+		case field == "" && e.Code != string(code):
+			t.Errorf("%v: %+v", body, e)
+		case field != "" && (len(e.Fields) != 1 || e.Fields[0].Location != field || code != "" && e.Fields[0].Code != string(code)):
+			t.Errorf("%v: %+v", body, e)
+		}
+	}
+
+	// An uploaded one, renewed from then on, with its key type.
+	up := f.add(f.leaf(30, "upload.example.com"))
+	refused(up, map[string]any{"sourceProvider": ca}, http.StatusUnprocessableEntity, "body.solverProvider", i18n.KernelErrorFieldRequired)
+	refused(up, map[string]any{"sourceProvider": dns, "solverProvider": dns}, http.StatusUnprocessableEntity, "body.sourceProvider", "")
+	got := patch(up, map[string]any{"sourceProvider": ca, "solverProvider": dns})
+	if got.Source != sourceProvider || got.SourceProvider != ca || got.SolverProvider != dns || got.KeyType != up.KeyType || got.RenewAt == nil {
+		t.Errorf("uploaded, then issued: %+v", got)
+	}
+
+	// Not while an issuance is under way.
+	c := f.issueNew("example.com")
+	refused(c, map[string]any{"sourceProvider": files}, http.StatusConflict, "", i18n.CertsErrorIssuingNow)
+	f.run()
+	// To a vendor, through files, with a backup; then to the files of
+	// another client: no solver, no key type, no backup.
+	vendor, web := f.provider("fake.vendor"), f.provider("fake.web")
+	c = patch(c, map[string]any{"sourceProvider": vendor, "solverProvider": web, "backupProvider": spare})
+	if c.SourceProvider != vendor || c.SolverProvider != web || c.BackupProvider != spare {
+		t.Fatalf("to a vendor %+v", c)
+	}
+	got = patch(c, map[string]any{"sourceProvider": files})
+	if got.SourceProvider != files || got.SolverProvider != 0 || got.KeyType != "" || got.BackupProvider != 0 {
+		t.Errorf("to the files: %+v", got)
+	}
+	// And back to a CA, with a solver again and the key type of the
+	// settings.
+	refused(got, map[string]any{"sourceProvider": ca}, http.StatusUnprocessableEntity, "body.solverProvider", i18n.KernelErrorFieldRequired)
+	got = patch(got, map[string]any{"sourceProvider": ca, "solverProvider": dns})
+	st, err := f.svc.settings(t.Context())
+	if err != nil || got.SourceProvider != ca || got.SolverProvider != dns || got.KeyType != st.KeyType {
+		t.Errorf("back to a CA: %+v %v", got, err)
+	}
+	// The solver kept must do for the new source.
+	byWeb := patch(f.add(f.leaf(30, "web.example.com")), map[string]any{"sourceProvider": vendor, "solverProvider": web})
+	refused(byWeb, map[string]any{"sourceProvider": ca}, http.StatusUnprocessableEntity, "body.solverProvider", i18n.CertsErrorSolverChallenge)
+}
+
 func TestIssueBackup(t *testing.T) {
 	f := newFixture(t)
 	// The source takes files and records; its backup files only.

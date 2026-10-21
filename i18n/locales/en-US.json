@@ -820,8 +820,8 @@
       "error": {
         "ambiguous": "More than one certificate has these domains: change them on their own pages.",
         "no_source": "JEC has no such certificate, and the file names no source to issue it from, as for one that was uploaded: add it here.",
-        "source_kept": "The source stays {name}: a certificate keeps the source it was added with. To change it, add the certificate again.",
-        "uploaded_kept": "This certificate was uploaded, and stays so: to have it issued by a source, add it again."
+        "source_kept": "The source stays {name}: a configuration file does not change the source of a certificate. Change it in the certificate's renewal settings.",
+        "uploaded_kept": "This certificate was uploaded, and stays so: to have it issued by a source, choose one in its renewal settings."
       },
       "section": {
         "certificates": "Certificates",
@@ -1344,6 +1344,9 @@
       "reuse_key_help": "New certificates keep the private key in use, so the public key stays: as an app that pins it, or a TLSA record (DANE), needs. Otherwise a new key each time is safer; a revoked certificate gets a new one.",
       "solver": "Validation",
       "solver_help": "From the next issuance on, as when the domain's DNS moves to another provider.",
+      "source": "Source",
+      "source_help": "From the next issuance on; the versions so far stay. An uploaded certificate is renewed from then on.",
+      "source_upload": "Uploaded, not renewed",
       "title": "Renewal settings",
       "window": "Deploy window",
       "window_0_6": "00:00 to 06:00",

@@ -4672,6 +4672,11 @@
             "format": "int64",
             "type": "integer"
           },
+          "sourceProvider": {
+            "description": "Another source, from the next issuance: an uploaded certificate is renewed from then on; with solverProvider unless the solver kept does for it; unchanged if left out. Refused while an issuance is under way.",
+            "format": "int64",
+            "type": "integer"
+          },
           "targets": {
             "description": "Replaces the targets when given; an empty list removes them all",
             "items": {

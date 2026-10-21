@@ -187,9 +187,7 @@ const solverName = computed(() => solvers.data.value?.find((p) => p.id === cert.
 const backupName = computed(() => sources.data.value?.find((p) => p.id === cert.value?.backupProvider)?.name)
 // The sources that can stand in for its own when that fails, as ACME
 // accounts of other CAs; the server tells whether one takes the solver.
-const backups = computed(() =>
-  (sources.data.value ?? []).filter((p) => p.id !== cert.value?.sourceProvider && !!sourceTypes.data.value?.find((s) => s.id === p.type)?.backup),
-)
+const backups = computed(() => (sources.data.value ?? []).filter((p) => !!sourceTypes.data.value?.find((s) => s.id === p.type)?.backup))
 const issuances = useIssuances(() => props.id, issued)
 
 const latest = computed(() => cert.value?.issuance)
@@ -367,7 +365,6 @@ const days = ref('')
 // Keeping the private key across renewals, for a source whose keys JEC
 // makes.
 const reuseKey = ref(false)
-const keyKept = computed(() => issued.value && !ownKey.value)
 // Pausing the renewal of a certificate with a source.
 const paused = ref(false)
 // Another solver, as when the DNS moves, and another key type, from the
@@ -385,7 +382,23 @@ const windows: { value: DeployWindow; label: MessageKey }[] = [
 ]
 const keyChoice = ref<KeyType | ''>('')
 const keyTypes: KeyType[] = ['rsa-2048', 'ecdsa-p256', 'ecdsa-p384', 'rsa-3072', 'rsa-4096']
-const needsSolverHere = computed(() => issued.value && !!sourceType.value?.needsSolver)
+// Another source, from the next issuance: one uploaded is renewed from then
+// on, one another client renewed is issued by JEC; 0 keeps one uploaded so.
+// What else the dialog offers follows the source chosen.
+const sourceChoice = ref<number>(0)
+const chosenType = computed(() => {
+  const type = sources.data.value?.find((p) => p.id === sourceChoice.value)?.type
+  return sourceTypes.data.value?.find((s) => s.id === type)
+})
+const sourceMoved = computed(() => sourceChoice.value !== 0 && (!issued.value || sourceChoice.value !== cert.value?.sourceProvider))
+const chosenSolver = computed(() => sourceChoice.value !== 0 && !!chosenType.value?.needsSolver)
+const chosenKeyKept = computed(() => sourceChoice.value !== 0 && !chosenType.value?.ownKey)
+const chosenBackups = computed(() => backups.value.filter((p) => p.id !== sourceChoice.value))
+watch(sourceChoice, (id) => {
+  if (chosenSolver.value && !solverChoice.value) solverChoice.value = solvers.data.value?.[0]?.id ?? 0
+  if (chosenKeyKept.value && !keyChoice.value) keyChoice.value = certSettings.data.value?.keyType ?? 'rsa-2048'
+  if (backupChoice.value === id) backupChoice.value = 0
+})
 // The channels its notes go to; none chosen goes to all.
 const notifyTo = ref<number[]>([])
 const update = useUpdateCertificate(() => props.id)
@@ -399,6 +412,7 @@ function edit() {
   windowChoice.value = (cert.value?.deployWindow ?? '') as DeployWindow
   keyChoice.value = (cert.value?.keyType ?? '') as KeyType | ''
   notifyTo.value = [...(cert.value?.notifyTo ?? [])]
+  sourceChoice.value = issued.value ? (cert.value?.sourceProvider ?? 0) : 0
   update.reset()
   editing.value = true
 }
@@ -470,11 +484,14 @@ async function saveSettings() {
     await update.mutateAsync({
       renewBeforeDays: Number(days.value),
       notifyTo: notifyTo.value,
-      ...(keyKept.value ? { reuseKey: reuseKey.value } : {}),
-      ...(issued.value ? { paused: paused.value } : {}),
-      ...(needsSolverHere.value && solverChoice.value && solverChoice.value !== cert.value?.solverProvider ? { solverProvider: solverChoice.value } : {}),
-      ...(keyKept.value && backupChoice.value !== (cert.value?.backupProvider ?? 0) ? { backupProvider: backupChoice.value } : {}),
-      ...(keyKept.value && keyChoice.value && keyChoice.value !== cert.value?.keyType ? { keyType: keyChoice.value } : {}),
+      ...(sourceMoved.value ? { sourceProvider: sourceChoice.value } : {}),
+      ...(chosenKeyKept.value ? { reuseKey: reuseKey.value } : {}),
+      ...(sourceChoice.value ? { paused: paused.value } : {}),
+      ...(chosenSolver.value && solverChoice.value && (sourceMoved.value || solverChoice.value !== cert.value?.solverProvider)
+        ? { solverProvider: solverChoice.value }
+        : {}),
+      ...(chosenKeyKept.value && backupChoice.value !== (cert.value?.backupProvider ?? 0) ? { backupProvider: backupChoice.value } : {}),
+      ...(chosenKeyKept.value && keyChoice.value && (sourceMoved.value || keyChoice.value !== cert.value?.keyType) ? { keyType: keyChoice.value } : {}),
       ...(windowChoice.value !== (cert.value?.deployWindow ?? '') ? { deployWindow: windowChoice.value } : {}),
     })
   } catch {
@@ -1132,13 +1149,25 @@ async function confirmDelete() {
           <span>{{ t('certs.settings.days_unit') }}</span>
         </span>
       </JecField>
-      <JecField v-if="needsSolverHere" id="settings-solver" label="certs.settings.solver" hint="certs.settings.solver_help" :error="updateError.fields.value.solverProvider">
+      <JecField
+        v-if="sources.data.value?.length"
+        id="settings-source"
+        label="certs.settings.source"
+        hint="certs.settings.source_help"
+        :error="updateError.fields.value.sourceProvider"
+      >
+        <select id="settings-source" v-model.number="sourceChoice" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
+          <option v-if="!issued" :value="0">{{ t('certs.settings.source_upload') }}</option>
+          <option v-for="s in sources.data.value" :key="s.id" :value="s.id" translate="no">{{ s.name }}</option>
+        </select>
+      </JecField>
+      <JecField v-if="chosenSolver" id="settings-solver" label="certs.settings.solver" hint="certs.settings.solver_help" :error="updateError.fields.value.solverProvider">
         <select id="settings-solver" v-model.number="solverChoice" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
           <option v-for="s in solvers.data.value" :key="s.id" :value="s.id" translate="no">{{ s.name }}</option>
         </select>
       </JecField>
       <JecField
-        v-if="keyKept && (backups.length || cert.backupProvider)"
+        v-if="chosenKeyKept && (chosenBackups.length || cert.backupProvider)"
         id="settings-backup"
         label="certs.add.backup"
         hint="certs.add.backup_help"
@@ -1146,7 +1175,7 @@ async function confirmDelete() {
       >
         <select id="settings-backup" v-model.number="backupChoice" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
           <option :value="0">{{ t('certs.add.backup_none') }}</option>
-          <option v-for="s in backups" :key="s.id" :value="s.id" translate="no">{{ s.name }}</option>
+          <option v-for="s in chosenBackups" :key="s.id" :value="s.id" translate="no">{{ s.name }}</option>
         </select>
       </JecField>
       <JecField id="settings-window" label="certs.settings.window" hint="certs.settings.window_help" :error="updateError.fields.value.deployWindow">
@@ -1154,7 +1183,7 @@ async function confirmDelete() {
           <option v-for="w in windows" :key="w.value" :value="w.value">{{ t(w.label) }}</option>
         </select>
       </JecField>
-      <JecField v-if="keyKept" id="settings-key" label="certs.settings.key_type" :error="updateError.fields.value.keyType">
+      <JecField v-if="chosenKeyKept" id="settings-key" label="certs.settings.key_type" :error="updateError.fields.value.keyType">
         <select id="settings-key" v-model="keyChoice" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
           <option v-for="k in keyTypes" :key="k" :value="k">{{ t(keyText(k).key, keyText(k).params) }}</option>
         </select>
@@ -1167,14 +1196,14 @@ async function confirmDelete() {
           <span class="min-w-0 [overflow-wrap:anywhere]" translate="no">{{ n.name }}</span>
         </label>
       </fieldset>
-      <label v-if="issued" class="flex cursor-pointer items-start gap-2">
+      <label v-if="sourceChoice" class="flex cursor-pointer items-start gap-2">
         <input v-model="paused" type="checkbox" class="mt-1 size-4 flex-none accent-brand" />
         <span class="min-w-0">
           <span class="block font-semibold">{{ t('certs.settings.paused') }}</span>
           <span class="block text-small text-ink-muted">{{ t('certs.settings.paused_help') }}</span>
         </span>
       </label>
-      <label v-if="keyKept" class="flex cursor-pointer items-start gap-2">
+      <label v-if="chosenKeyKept" class="flex cursor-pointer items-start gap-2">
         <input v-model="reuseKey" type="checkbox" class="mt-1 size-4 flex-none accent-brand" />
         <span class="min-w-0">
           <span class="block font-semibold">{{ t('certs.settings.reuse_key') }}</span>

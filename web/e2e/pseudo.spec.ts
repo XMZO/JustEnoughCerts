@@ -919,6 +919,11 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.getByRole('button', { name: label('certs.settings.edit') }).click()
   await expect(page.locator('dialog[open] fieldset')).toBeVisible()
   expect.soft(await problems(page), 'the renewal settings, with the channels').toEqual([])
+  // Another source, from the next issuance, with what it takes; not saved.
+  const before = await page.locator('#settings-source').inputValue()
+  await page.locator('#settings-source').selectOption({ index: 1 })
+  await expect(page.locator('#settings-source')).not.toHaveValue(before)
+  expect.soft(await problems(page), 'the renewal settings, another source').toEqual([])
   await page.keyboard.press('Escape')
   await expect(page.locator('dialog[open]')).toHaveCount(0)
   // Its pull address: a key made, with the commands that use it, then off.

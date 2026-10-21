@@ -257,6 +257,7 @@ export function useUpdateCertificate(id: MaybeRefOrGetter<number>) {
     reuseKey?: boolean
     notifyTo?: number[]
     paused?: boolean
+    sourceProvider?: number
     solverProvider?: number
     keyType?: KeyType
     deployWindow?: DeployWindow

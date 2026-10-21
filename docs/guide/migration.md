@@ -45,7 +45,10 @@ their expiry, and issue them itself once you are ready.
    validation the old client used: the same DNS provider, with the same
    API keys, or the website directory of its webroot.
 2. Add the certificate with the same domains. JEC issues a new one at once;
-   the old one stays valid until it expires.
+   the old one stays valid until it expires. For a certificate added with
+   Certificates on this machine already, change its source to the ACME
+   account under Renewal settings instead: it keeps its history and
+   targets, and JEC issues it from its next renewal on.
 3. Deploy it where the server reads it: a local directory target with the
    server's paths, and the command that reloads it. JEC's default file
    names are certbot's, so paths into `/etc/letsencrypt/live/<domain>` keep

@@ -268,34 +268,55 @@ func (s *service) checkDomains(ctx context.Context, id int64, names []string) er
 }
 
 // checkIssuing checks the changes to how certificate id is issued from its
-// next issuance: another solver, which its source and backup take, another
-// backup source, 0 for none, or another key type, which its source takes;
-// nil changes nothing.
-func (s *service) checkIssuing(ctx context.Context, id int64, solver, backup *int64, keyType *string) error {
-	if solver == nil && backup == nil && keyType == nil {
-		return nil
+// next issuance: another source src, as for one uploaded to be renewed,
+// with the solver kept if it does; another solver, which its source and
+// backup take; another backup source, 0 for none; or another key type,
+// which its source takes; nil changes nothing. dropBackup tells that the
+// backup kept cannot stand in for the new source, and goes.
+func (s *service) checkIssuing(ctx context.Context, id int64, src, solver, backup *int64, keyType *string) (dropBackup bool, err error) {
+	if src == nil && solver == nil && backup == nil && keyType == nil {
+		return false, nil
 	}
 	c, err := s.load(ctx, s.db, id)
 	if err != nil {
-		return serviceError(err)
+		return false, serviceError(err)
 	}
 	invalid := api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil)
 	field := "body.solverProvider"
 	if solver == nil && backup != nil {
 		field = "body.backupProvider"
 	}
-	if c.Source != sourceProvider {
-		return invalid.WithField(field, i18n.KernelErrorInvalidField)
+	sourceID := c.SourceProvider
+	switch {
+	case src != nil:
+		if code := s.checkProvider(ctx, *src, providers.Source); code != "" {
+			return false, invalid.WithField("body.sourceProvider", code)
+		}
+		sourceID, field = *src, "body.sourceProvider"
+	case c.Source != sourceProvider:
+		return false, invalid.WithField(field, i18n.KernelErrorInvalidField)
 	}
-	source, err := s.providers.Type(ctx, c.SourceProvider)
+	moved := sourceID != c.SourceProvider || c.Source != sourceProvider
+	source, err := s.providers.Type(ctx, sourceID)
 	if err != nil {
-		return invalid.WithField(field, i18n.KernelErrorInvalidField)
+		return false, invalid.WithField(field, i18n.KernelErrorInvalidField)
 	}
 	// The solver the certificate goes on with, for its backup.
 	var solverType *providers.Type
 	if c.SolverProvider != 0 {
 		if typ, err := s.providers.Type(ctx, c.SolverProvider); err == nil {
 			solverType = &typ
+		}
+	}
+	if solver == nil && moved {
+		// The solver kept must do for the new source, or go.
+		switch {
+		case !source.NeedsSolver:
+			solverType = nil
+		case solverType == nil:
+			invalid = invalid.WithField("body.solverProvider", i18n.KernelErrorFieldRequired)
+		case !source.Takes(*solverType):
+			invalid = invalid.WithField("body.solverProvider", i18n.CertsErrorSolverChallenge)
 		}
 	}
 	if solver != nil {
@@ -318,12 +339,15 @@ func (s *service) checkIssuing(ctx context.Context, id int64, solver, backup *in
 	}
 	switch {
 	case backup != nil && *backup != 0:
-		if code := s.checkBackup(ctx, *backup, c.SourceProvider, &source, solverType); code != "" {
+		if code := s.checkBackup(ctx, *backup, sourceID, &source, solverType); code != "" {
 			invalid = invalid.WithField("body.backupProvider", code)
 		}
+	case backup == nil && moved && c.BackupProvider != 0:
+		// A backup that cannot stand in for the new source goes.
+		dropBackup = s.checkBackup(ctx, c.BackupProvider, sourceID, &source, solverType) != ""
 	case backup == nil && solver != nil && c.BackupProvider != 0:
 		// The backup kept must take the new solver too.
-		if code := s.checkBackup(ctx, c.BackupProvider, c.SourceProvider, &source, solverType); code == i18n.CertsErrorBackupSolver {
+		if code := s.checkBackup(ctx, c.BackupProvider, sourceID, &source, solverType); code == i18n.CertsErrorBackupSolver {
 			invalid = invalid.WithField("body.solverProvider", code)
 		}
 	}
@@ -331,9 +355,9 @@ func (s *service) checkIssuing(ctx context.Context, id int64, solver, backup *in
 		invalid = invalid.WithField("body.keyType", i18n.KernelErrorInvalidField)
 	}
 	if len(invalid.Fields) > 0 {
-		return invalid
+		return false, invalid
 	}
-	return nil
+	return dropBackup, nil
 }
 
 // addIssued checks the request and adds the certificate with its first

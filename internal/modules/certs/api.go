@@ -292,6 +292,7 @@ type updateInput struct {
 		ReuseKey        *bool         `json:"reuseKey,omitempty" doc:"Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out"`
 		NotifyTo        *[]int64      `json:"notifyTo,omitempty" maxItems:"50" doc:"The notifiers the certificate's notes go to; empty for all; unchanged if left out"`
 		Paused          *bool         `json:"paused,omitempty" doc:"Pause the renewal: the certificate is issued only when someone asks; unchanged if left out"`
+		SourceProvider  *int64        `json:"sourceProvider,omitempty" doc:"Another source, from the next issuance: an uploaded certificate is renewed from then on; with solverProvider unless the solver kept does for it; unchanged if left out. Refused while an issuance is under way."`
 		SolverProvider  *int64        `json:"solverProvider,omitempty" doc:"Another solver for a certificate with a source that needs one, from its next issuance; unchanged if left out"`
 		BackupProvider  *int64        `json:"backupProvider,omitempty" doc:"The source, of a type marked backup, that tries when an attempt with the certificate's own failed; 0 for none; unchanged if left out"`
 		KeyType         *string       `json:"keyType,omitempty" enum:"ecdsa-p256,ecdsa-p384,rsa-2048,rsa-3072,rsa-4096" doc:"Another key type for a certificate with a source whose keys JEC makes, from its next issuance; unchanged if left out"`
@@ -452,8 +453,13 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			}
 			notifyTo = &list
 		}
-		if err := s.checkIssuing(ctx, in.ID, in.Body.SolverProvider, in.Body.BackupProvider, in.Body.KeyType); err != nil {
+		dropBackup, err := s.checkIssuing(ctx, in.ID, in.Body.SourceProvider, in.Body.SolverProvider, in.Body.BackupProvider, in.Body.KeyType)
+		if err != nil {
 			return nil, err
+		}
+		backup := in.Body.BackupProvider
+		if dropBackup {
+			backup = new(int64)
 		}
 		var rem *reminder
 		if r := in.Body.Reminder; r != nil {
@@ -463,7 +469,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			rem = &reminder{on: r.On, note: r.Note}
 		}
 		ch := changes{days: in.Body.RenewBeforeDays, targets: targets, note: in.Body.Note, reuseKey: in.Body.ReuseKey, paused: in.Body.Paused, notifyTo: notifyTo, reminder: rem,
-			solver: in.Body.SolverProvider, backup: in.Body.BackupProvider, keyType: in.Body.KeyType, deployWindow: in.Body.DeployWindow}
+			source: in.Body.SourceProvider, solver: in.Body.SolverProvider, backup: backup, keyType: in.Body.KeyType, deployWindow: in.Body.DeployWindow}
 		if err := s.update(ctx, in.ID, ch); err != nil {
 			return nil, serviceError(err)
 		}
