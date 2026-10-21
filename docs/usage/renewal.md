@@ -4,7 +4,8 @@
 
 Certificates issued by a certificate source are renewed automatically
 before they expire; certificates uploaded manually are not renewed, but
-reminders are sent before they expire.
+reminders are sent before they expire, until a source is chosen in their
+renewal settings.
 
 ## When certificates are renewed
 

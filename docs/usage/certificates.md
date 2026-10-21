@@ -15,7 +15,7 @@ added depends on its source:
 | Method | Description |
 |---|---|
 | Issued by a source | Choose a certificate source, enter the domains, and choose a validation method and a key type. Issuance starts on submission, and the certificate is renewed automatically from then on |
-| Manual upload | Choose manual upload as the source, then paste PEM text (the certificate, its intermediates and the private key, in any order) or upload a PFX/P12 file with its password. Such certificates are not renewed automatically; reminders are sent before they expire |
+| Manual upload | Choose manual upload as the source, then paste PEM text (the certificate, its intermediates and the private key, in any order) or upload a PFX/P12 file with its password. Such certificates are not renewed automatically, unless given a source later in their renewal settings; reminders are sent before they expire |
 | Import a certificate | Choose Import a certificate; this works as a manual upload and suits the migration of existing certificates |
 | Make a CSR | For a certificate bought from a CA by hand; see below |
 | Several at once | With a source, choose Several above the domains and enter a certificate a line, its domains apart by spaces or commas; the rest of the form applies to each. Lines that cannot be added stay, with the reason, for another try |
