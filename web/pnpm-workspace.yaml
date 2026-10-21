@@ -2,3 +2,10 @@
 # the Vue 3 ones, so it does not need to run.
 ignoredBuiltDependencies:
   - vue-demi
+
+# braces has an advisory that no release fixes yet (GHSA-vfj7-8cjw-p6xm):
+# only ESLint uses it, on this project's own file patterns. Drop the entry
+# once a release fixes it.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm

@@ -176,6 +176,7 @@
 ## 工程约定
 
 - 代码、注释、脚本、部署文件都用英文；中文只出现在语言文件和文档里（i18n 门禁会扫描）。命令行输出和运维日志按 `PLAN.md` 7.3 算开发者日志，用英文。
+- 依赖的安全：Dependabot 的安全告警和安全更新已打开（2026-10-22），版本更新每周一次（`.github/dependabot.yml`）；`.github/workflows/audit.yml` 每周跑 govulncheck 和 web、文档站的 `pnpm audit`，还没有修复版本的公告写进该目录 `pnpm-workspace.yaml` 的 `auditConfig.ignoreGhsas` 并说明原因，有了修复版就去掉；文档站经 `overrides` 用 Vite 6（`^6.4.5`，VitePress 1.6 自带的 Vite 5 没有修复版）。
 - Go：`go.mod` 只写最低版本（1.26），CI 和发布用最新稳定版。GitHub Actions 一律钉到 commit SHA 并在注释里写版本号，由 Dependabot 每周更新（包括 `.github/actions/` 下的组合动作；Node 大版本除外，镜像和 CI 一起手动升到下一个长期支持版）。
 - CI 和发布里的 Go 一律用 `.github/actions/setup-go` 安装：每个任务有自己的编译缓存，只有 main 上的运行写缓存，发布和发布演练共用一份（`PLAN.md` 9.1）。新加的任务照此办理，不要用 setup-go 自带的缓存。
 - 容器默认以 65532:65532 运行，不在启动时切换用户；挂载的数据目录要先 `chown`，启动检查会给出明确报错。
