@@ -279,7 +279,8 @@ async function confirmDelete() {
         </div>
         <dl v-if="c.shown.length" class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-small">
           <template v-for="s in c.shown" :key="s.key">
-            <dt class="whitespace-nowrap text-ink-muted">
+            <!-- A long label wraps rather than push the card wider. -->
+            <dt class="max-w-40 text-ink-muted [overflow-wrap:anywhere]">
               <template v-if="s.label">{{ t(s.label) }}</template>
               <code v-else class="font-mono">{{ s.key }}</code>
             </dt>

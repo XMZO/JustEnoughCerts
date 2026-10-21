@@ -431,6 +431,18 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), "add a validation answered at ESA's edge").toEqual([])
   await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
   await expect(page.locator('dialog[open]')).toHaveCount(0)
+  // A website directory, tried as a CA would fetch its file: the dialog
+  // says so; not run, as nothing serves the domain here.
+  const webroot = await page.request.post('api/v1/providers', {
+    data: { type: 'files.webroot', name: 'e2e www', config: { directory: `${process.env.JEC_E2E_FILES}/${info.project.name}-www` } },
+  })
+  expect(webroot.status()).toBe(201)
+  await page.reload()
+  await page.getByRole('article').filter({ hasText: 'e2e www' }).getByRole('button', { name: label('kernel.providers.try') }).click()
+  await expect(dialog.getByText(label('kernel.providers.try_http_intro'))).toBeVisible()
+  expect.soft(await problems(page), 'try a website directory').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
 
   // Deploy targets: ESA's form, then a local directory, which needs no
   // network.
