@@ -3216,6 +3216,45 @@
       "ok": "{plugin}：{message}"
     }
   },
+  "portainer": {
+    "error": {
+      "api": "Portainer 拒绝了：{message}",
+      "fingerprint": "不是 SHA-256 指纹：{fingerprint}",
+      "key": "Portainer 拒绝了：请核对访问令牌，须是管理员的。",
+      "network": "连不上 {host}。",
+      "pin": "Portainer 证书的指纹和填写的不一样，也不是受信任 CA 为其域名签发的证书。如果 Portainer 换了自己生成的证书，请核对新指纹后重新填写；用 IP 地址连接时，请把地址改成证书里的域名。",
+      "plain": "{host} 在公网上，用 http:// 会让私钥以明文经过公网。请用 Portainer 的 https:// 地址。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "status": "Portainer 的回应看不懂（HTTP {status}），请检查地址。",
+      "unverified": "JEC 验证不了 Portainer 的证书（它用自己生成的证书时就会这样）。请核对它的 SHA-256 指纹是 {fingerprint}，然后填进高级设置。",
+      "url": "Portainer 地址不对：{url}"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "Portainer 在本机或内网、用 https:// 访问时打开。",
+      "api_key": "访问令牌",
+      "api_key_help": "管理员的访问令牌（以 ptr_ 开头），在 我的账户 → 访问令牌 里生成。",
+      "fingerprint": "Portainer 证书指纹",
+      "fingerprint_help": "Portainer 用自己生成的证书时填写：它的 SHA-256 指纹，测试连接会给出。Portainer 换上 JEC 部署的证书后，JEC 按 Portainer 的域名信任它，这里不用改。",
+      "url": "Portainer 地址",
+      "url_help": "比如 https://192.168.1.10:9443。http:// 只能连本机或内网，因为私钥会以明文传输。"
+    },
+    "log": {
+      "put": "把证书换成 Portainer 使用的证书"
+    },
+    "module": {
+      "description": "通过 Portainer 的 API，把证书换成 Portainer 自己的 HTTPS 使用的证书。",
+      "name": "Portainer"
+    },
+    "ssl": {
+      "description": "把每张新证书换成 Portainer 自己的 HTTPS 使用的证书，立即生效。",
+      "name": "Portainer HTTPS"
+    },
+    "test": {
+      "ok": "连上了，Portainer 正在使用自定义证书。",
+      "self_signed": "连上了，Portainer 还在使用它自己生成的证书。"
+    }
+  },
   "privateca": {
     "ca": {
       "description": "用你自己的 CA 的证书和私钥签发证书，用于内网域名和 IPv4 地址，不需要验证。只有信任这个 CA 的设备才信任它签的证书：要把 CA 证书装到这些设备上。",
@@ -3255,7 +3294,7 @@
       "network": "连不上 {host}。",
       "node": "不是节点名：{node}",
       "permission": "这个 API 令牌没有权限修改 {node} 的证书：它需要 /nodes/{node} 上的 Sys.Modify 权限。",
-      "pin": "节点证书的指纹和填写的不一样。JEC 部署了自己的证书（浏览器信任的）以后，请清空这个指纹。",
+      "pin": "节点证书的指纹和填写的不一样，也不是受信任 CA 为节点域名签发的证书。如果节点换了自己生成的证书，请核对新指纹后重新填写；用 IP 地址连接时，请把地址改成证书里的域名。",
       "plain": "{host} 在公网上，用 http:// 会让私钥以明文经过公网。请用 https://。",
       "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
       "token": "Proxmox VE 不认这个 API 令牌：请核对令牌 ID 和密钥。",
@@ -3266,7 +3305,7 @@
       "allow_private": "允许内网地址",
       "allow_private_help": "节点在本机或内网时打开，大多数情况都是这样。",
       "fingerprint": "节点证书指纹",
-      "fingerprint_help": "节点用 Proxmox VE 自己生成的证书时填写：它的 SHA-256 指纹，测试连接会给出。JEC 只信任这张证书；部署了 JEC 的证书以后，就不用再填了。",
+      "fingerprint_help": "节点用 Proxmox VE 自己生成的证书时填写：它的 SHA-256 指纹，测试连接会给出。节点换上 JEC 部署的证书后，JEC 按节点的域名信任它，这里不用改。",
       "node": "节点名",
       "node_help": "数据中心列表里显示的节点名，比如 pve。",
       "restart": "重启网页服务",

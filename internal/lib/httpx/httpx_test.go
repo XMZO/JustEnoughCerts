@@ -157,6 +157,39 @@ func TestPin(t *testing.T) {
 	}
 }
 
+func TestPinOrNames(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	defer srv.Close()
+	// The server's certificate is no longer the one pinned, as when a panel
+	// serves the one JEC deployed: trusted when vouched for and for a name
+	// given (httptest's is for example.com).
+	vouchers := x509.NewCertPool()
+	vouchers.AddCert(srv.Certificate())
+	other := strings.Repeat("AB:", 31) + "AB"
+	for _, tt := range []struct {
+		roots *x509.CertPool
+		names []string
+		ok    bool
+	}{
+		{vouchers, []string{"jec.example", "example.com"}, true},
+		{vouchers, []string{"jec.example"}, false},
+		{nil, []string{"example.com"}, false}, // no CA of the system vouches for it
+		{vouchers, nil, false},
+	} {
+		c, err := Client(Options{Pin: other, Roots: tt.roots, Names: tt.names})
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := c.Get(srv.URL)
+		if err == nil {
+			_ = resp.Body.Close()
+		}
+		if (err == nil) != tt.ok || err != nil && !errors.Is(err, ErrPin) {
+			t.Errorf("names %v, roots %v: %v", tt.names, tt.roots != nil, err)
+		}
+	}
+}
+
 func TestRoots(t *testing.T) {
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
 	defer srv.Close()

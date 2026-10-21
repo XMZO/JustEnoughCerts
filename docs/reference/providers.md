@@ -82,6 +82,7 @@ accounts are welcome.
 | `kong.certificate` | Kong Gateway certificates and their SNIs, through its Admin API | Real software: Kong 3.9 with PostgreSQL |
 | `synology.dsm` | Synology DSM | Fake, written after acme.sh's deploy hook |
 | `proxmox.node` | Proxmox VE nodes | Fake |
+| `portainer.ssl` | Portainer's own HTTPS certificate | Real software: Portainer CE, LTS image |
 | `kubernetes.secret` | Kubernetes TLS Secrets | Real software: kube-apiserver 1.36 with RBAC |
 | `docker.container` | Docker containers | Real software: Docker 29 |
 | `files.directory` | A directory on this machine, optionally followed by a command | The file system |

@@ -75,6 +75,7 @@
 | `kong.certificate` | Kong Gateway 的证书及其 SNI（经 Admin API） | 真实软件：Kong 3.9（PostgreSQL） |
 | `synology.dsm` | 群晖 DSM | 替身，参照 acme.sh 的部署脚本编写 |
 | `proxmox.node` | Proxmox VE 节点 | 替身 |
+| `portainer.ssl` | Portainer 自己的 HTTPS 证书 | 真实软件：Portainer CE（LTS 镜像） |
 | `kubernetes.secret` | Kubernetes TLS Secret | 真实软件：kube-apiserver 1.36（启用 RBAC） |
 | `docker.container` | Docker 容器 | 真实软件：Docker 29 |
 | `files.directory` | 本机目录，可在写入后执行命令 | 文件系统 |

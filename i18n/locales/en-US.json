@@ -3216,6 +3216,45 @@
       "ok": "{plugin}: {message}"
     }
   },
+  "portainer": {
+    "error": {
+      "api": "Portainer refused: {message}",
+      "fingerprint": "Not a SHA-256 fingerprint: {fingerprint}",
+      "key": "Portainer refused: check the access token, which must be an administrator's.",
+      "network": "Cannot reach {host}.",
+      "pin": "Portainer's certificate has neither the fingerprint entered nor a name of Portainer under a trusted CA. If Portainer made itself a new certificate, check its fingerprint and enter it again; reached by its IP address, use Portainer's domain in the address instead.",
+      "plain": "{host} is on the internet, where http:// would carry the private key in the clear. Use Portainer's https:// address.",
+      "private": "{host} is a private address. To reach private addresses, turn on \"Allow private addresses\" in the advanced settings.",
+      "status": "Portainer's answer makes no sense (HTTP {status}): check its address.",
+      "unverified": "JEC cannot verify Portainer's certificate, as happens with the one it makes itself. Check that its SHA-256 fingerprint is {fingerprint}, then set it in the advanced settings.",
+      "url": "Not a Portainer address: {url}"
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "Turn on when Portainer is on this machine or a private network, reached over https://.",
+      "api_key": "Access token",
+      "api_key_help": "An access token of an administrator (starting with ptr_), made under My account, Access tokens.",
+      "fingerprint": "Fingerprint of Portainer's certificate",
+      "fingerprint_help": "For the certificate Portainer makes itself: its SHA-256 fingerprint, which a test gives. Once Portainer serves the certificate JEC deployed, JEC trusts it for Portainer's name, with no change here.",
+      "url": "Portainer address",
+      "url_help": "Such as https://192.168.1.10:9443. http:// reaches this machine or private addresses only, as the private key would travel in the clear."
+    },
+    "log": {
+      "put": "Making the certificate the one Portainer serves"
+    },
+    "module": {
+      "description": "Makes the certificate the one Portainer serves its own HTTPS with, through its API.",
+      "name": "Portainer"
+    },
+    "ssl": {
+      "description": "Makes each new certificate the one Portainer serves its own HTTPS with, in place of the one before, at once.",
+      "name": "Portainer HTTPS"
+    },
+    "test": {
+      "ok": "Reached Portainer, which serves a certificate of its own choosing.",
+      "self_signed": "Reached Portainer, which still serves the certificate it made itself."
+    }
+  },
   "privateca": {
     "ca": {
       "description": "Signs certificates with the certificate and key of a CA of your own, for internal names and IPv4 addresses, without validation. Only the devices that trust the CA trust its certificates: install its certificate on them.",
@@ -3255,7 +3294,7 @@
       "network": "Could not reach {host}.",
       "node": "Not the name of a node: {node}",
       "permission": "The API token may not change the certificates of {node}: it needs Sys.Modify on /nodes/{node}.",
-      "pin": "The node's certificate does not have the fingerprint entered. Once JEC deployed its own, which browsers trust, clear the fingerprint.",
+      "pin": "The node's certificate has neither the fingerprint entered nor a name of the node under a trusted CA. If the node made itself a new certificate, check its fingerprint and enter it again; reached by its IP address, use the node's domain in the address instead.",
       "plain": "{host} is on the public internet, where http:// would carry the private key in the clear. Use https://.",
       "private": "{host} is a private address. To reach it, turn on “Allow private addresses” in the advanced settings.",
       "token": "Proxmox VE refused the API token: check its ID and secret.",
@@ -3266,7 +3305,7 @@
       "allow_private": "Allow private addresses",
       "allow_private_help": "For a node on this machine or on your network, as most are.",
       "fingerprint": "Node certificate fingerprint",
-      "fingerprint_help": "For the certificate Proxmox VE makes itself: its SHA-256 fingerprint, which the connection test gives. JEC then trusts that certificate only, until it deploys its own.",
+      "fingerprint_help": "For the certificate Proxmox VE makes itself: its SHA-256 fingerprint, which the connection test gives. Once the node serves the certificate JEC deployed, JEC trusts it for the node's name, with no change here.",
       "node": "Node",
       "node_help": "Its name, as Datacenter lists it, such as pve.",
       "restart": "Restart the web interface",

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -42,7 +43,8 @@ func nodeType() providers.Type {
 // node is a node of Proxmox VE.
 type node struct {
 	client  *http.Client
-	api     string // the URL of the node's API, such as https://pve:8006/api2/json/nodes/pve
+	opts    httpx.Options // of client
+	api     string        // the URL of the node's API, such as https://pve:8006/api2/json/nodes/pve
 	host    string
 	name    string
 	token   string // the value of the Authorization header
@@ -74,6 +76,9 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 	} else {
 		opts.PublicOnly = in.Config["allow_private"] != "true"
 		opts.Pin = strings.TrimSpace(in.Config["fingerprint"])
+		// Once the node serves the certificate JEC deployed, in place of
+		// the one pinned, it is trusted for the node's name.
+		opts.Names = []string{u.Hostname()}
 	}
 	client, err := httpx.Client(opts)
 	if err != nil {
@@ -81,7 +86,7 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 	}
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	return &node{
-		client: client, api: u.JoinPath("api2", "json", "nodes", name).String(), host: u.Host, name: name,
+		client: client, opts: opts, api: u.JoinPath("api2", "json", "nodes", name).String(), host: u.Host, name: name,
 		token:   "PVEAPIToken=" + strings.TrimSpace(in.Value("token_id")) + "=" + strings.TrimSpace(in.Value("token_secret")),
 		restart: in.Config["restart"] != "false",
 	}, nil
@@ -95,7 +100,7 @@ func (n *node) Close() error {
 
 // Test reads the certificates of the node, without changing them.
 func (n *node) Test(ctx context.Context) (contracts.Message, error) {
-	if err := n.call(ctx, http.MethodGet, "/certificates/info", nil); err != nil {
+	if err := n.call(ctx, n.client, http.MethodGet, "/certificates/info", nil); err != nil {
 		return contracts.Message{}, n.explain(err)
 	}
 	return contracts.Message{Key: i18n.ProxmoxTestOk, Params: map[string]any{"node": n.name}}, nil
@@ -128,7 +133,19 @@ func (n *node) Deploy(ctx context.Context, req contracts.DeployRequest) (contrac
 		form.Set("restart", "1")
 	}
 	log(contracts.LogLine{Level: contracts.Info, Key: i18n.ProxmoxLogUpload, Params: map[string]any{"node": n.name}})
-	if err := n.call(ctx, http.MethodPost, "/certificates/custom", form); err != nil {
+	client := n.client
+	if n.opts.Pin != "" {
+		// The node may serve an earlier version, for the same names, even
+		// when reached by its address.
+		opts := n.opts
+		opts.Names = append(slices.Clone(opts.Names), cryptox.Names(req.Chain[0])...)
+		if client, err = httpx.Client(opts); err != nil {
+			return none, retry.Permanent(err)
+		}
+		defer client.CloseIdleConnections()
+		client.CheckRedirect = n.client.CheckRedirect
+	}
+	if err := n.call(ctx, client, http.MethodPost, "/certificates/custom", form); err != nil {
 		return none, n.explain(err)
 	}
 	if n.restart {
@@ -146,8 +163,9 @@ type statusError struct {
 
 func (e *statusError) Error() string { return fmt.Sprintf("proxmox: %d %s", e.code, e.reason) }
 
-// call sends a request to path of the node's API, with form as its body.
-func (n *node) call(ctx context.Context, method, path string, form url.Values) error {
+// call sends a request to path of the node's API through client, with
+// form as its body.
+func (n *node) call(ctx context.Context, client *http.Client, method, path string, form url.Values) error {
 	var body io.Reader
 	if form != nil {
 		body = strings.NewReader(form.Encode())
@@ -161,7 +179,7 @@ func (n *node) call(ctx context.Context, method, path string, form url.Values) e
 	if form != nil {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
-	resp, err := n.client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}

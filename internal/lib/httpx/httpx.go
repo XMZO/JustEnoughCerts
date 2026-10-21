@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -47,6 +48,11 @@ type Options struct {
 	// panel, as SSH trusts a host key. Fingerprint tells it from the error
 	// of a connection that did not pin it.
 	Pin string
+	// Names, with Pin, are names that a certificate the trusted
+	// authorities (Roots, or the system's) vouch for is trusted for too, in
+	// place of the pinned one: a panel serves such a one once JEC deployed
+	// the certificate of people's domain there, in place of its own.
+	Names []string
 	// Roots, when set, are the only certificate authorities trusted, in
 	// place of those of the system: for a server with a certificate of a
 	// private CA, such as the API server of a Kubernetes cluster.
@@ -105,7 +111,7 @@ func Client(o Options) (*http.Client, error) {
 					return ErrPin
 				}
 				sum := sha256.Sum256(cs.PeerCertificates[0].Raw)
-				if subtle.ConstantTimeCompare(sum[:], pin) != 1 {
+				if subtle.ConstantTimeCompare(sum[:], pin) != 1 && !vouched(cs.PeerCertificates, o.Roots, o.Names) {
 					return fmt.Errorf("%w: it has %s", ErrPin, format(sum[:]))
 				}
 				return nil
@@ -154,6 +160,23 @@ func Public(a netip.Addr) bool {
 		}
 	}
 	return true
+}
+
+// vouched reports whether roots, or the system's when nil, vouch for the
+// leaf of chain, the rest of which are its intermediates, and the leaf is
+// for one of names.
+func vouched(chain []*x509.Certificate, roots *x509.CertPool, names []string) bool {
+	if len(names) == 0 {
+		return false
+	}
+	intermediates := x509.NewCertPool()
+	for _, c := range chain[1:] {
+		intermediates.AddCert(c)
+	}
+	if _, err := chain[0].Verify(x509.VerifyOptions{Roots: roots, Intermediates: intermediates}); err != nil {
+		return false
+	}
+	return slices.ContainsFunc(names, func(n string) bool { return n != "" && chain[0].VerifyHostname(n) == nil })
 }
 
 // Fingerprint returns the SHA-256 fingerprint of the certificate a server
