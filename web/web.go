@@ -1,18 +1,23 @@
 // Package web serves the web UI that "pnpm build" leaves in web/dist and
 // that the Go build embeds.
 //
-// Files are sent precompressed when the client accepts it, hashed assets
-// are cached for good, and any path that is not a file gets index.html so
+// Files are sent precompressed when the client accepts it, and unpacked
+// from the gzip copy when the build kept no original; hashed assets are
+// cached for good, and any path that is not a file gets index.html so
 // the UI's router can handle it. index.html gets a <base href> with the
 // base path, which makes one build work at the root and under a sub-path.
 package web
 
 import (
+	"bytes"
+	"compress/gzip"
 	"crypto/sha256"
 	"embed"
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"html"
+	"io"
 	"io/fs"
 	"mime"
 	"net/http"
@@ -56,8 +61,10 @@ var types = map[string]string{
 }
 
 type variant struct {
-	data []byte
-	etag string
+	data   []byte
+	etag   string
+	size   int  // bytes sent
+	gunzip bool // data is the gzip copy, unpacked while sending
 }
 
 type file struct {
@@ -115,11 +122,22 @@ func NewHandler(fsys fs.FS, base string) (http.Handler, error) {
 	index.variants = map[string]variant{"": {data: page}}
 	for name, f := range h.files {
 		if _, ok := f.variants[""]; !ok {
-			return nil, errors.New("web: " + name + " has precompressed copies but no original")
+			gz, ok := f.variants["gzip"]
+			if !ok || len(gz.data) < 18 {
+				return nil, errors.New("web: " + name + " has neither its original nor a gzip copy")
+			}
+			f.variants[""] = variant{data: gz.data, gunzip: true}
 		}
 		for enc, v := range f.variants {
 			sum := sha256.Sum256(v.data)
-			v.etag = `"` + base64.RawURLEncoding.EncodeToString(sum[:12]) + `"`
+			tag := base64.RawURLEncoding.EncodeToString(sum[:12])
+			v.size = len(v.data)
+			if v.gunzip {
+				// The gzip trailer ends with the unpacked length.
+				tag += "-u"
+				v.size = int(binary.LittleEndian.Uint32(v.data[len(v.data)-4:]))
+			}
+			v.etag = `"` + tag + `"`
 			f.variants[enc] = v
 		}
 	}
@@ -178,8 +196,14 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
-	hdr.Set("Content-Length", strconv.Itoa(len(v.data)))
+	hdr.Set("Content-Length", strconv.Itoa(v.size))
 	if r.Method == http.MethodHead {
+		return
+	}
+	if v.gunzip {
+		if zr, err := gzip.NewReader(bytes.NewReader(v.data)); err == nil {
+			_, _ = io.CopyN(w, zr, int64(v.size))
+		}
 		return
 	}
 	_, _ = w.Write(v.data)

@@ -1,6 +1,8 @@
 package web
 
 import (
+	"bytes"
+	"compress/gzip"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -9,7 +11,20 @@ import (
 	"testing/fstest"
 )
 
-func testFS() fstest.MapFS {
+func gzipped(t *testing.T, s string) []byte {
+	t.Helper()
+	var b bytes.Buffer
+	zw := gzip.NewWriter(&b)
+	if _, err := zw.Write([]byte(s)); err != nil {
+		t.Fatal(err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return b.Bytes()
+}
+
+func testFS(t *testing.T) fstest.MapFS {
 	return fstest.MapFS{
 		"index.html":            {Data: []byte(`<html><head><base href="/" /><script src="./assets/app-1a2b.js"></script></head></html>`)},
 		"index.html.br":         {Data: []byte("stale compressed page")},
@@ -17,6 +32,9 @@ func testFS() fstest.MapFS {
 		"assets/app-1a2b.js":    {Data: []byte("console.log(1)")},
 		"assets/app-1a2b.js.br": {Data: []byte("BR")},
 		"assets/app-1a2b.js.gz": {Data: []byte("GZ")},
+		// As the build leaves them: compressed copies only.
+		"assets/ui-3c4d.css.br": {Data: []byte("BR")},
+		"assets/ui-3c4d.css.gz": {Data: gzipped(t, "body{margin:0}")},
 		".gitkeep":              {Data: nil},
 	}
 }
@@ -33,7 +51,7 @@ func get(t *testing.T, h http.Handler, path string, header map[string]string) *h
 }
 
 func TestServe(t *testing.T) {
-	h, err := NewHandler(testFS(), "/jec")
+	h, err := NewHandler(testFS(t), "/jec")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,6 +93,16 @@ func TestServe(t *testing.T) {
 		t.Errorf("the br tag matched the plain file: %d", plain.Code)
 	}
 
+	// A client taking neither encoding gets the gzip copy unpacked, with
+	// a tag of its own.
+	css := get(t, h, "/jec/assets/ui-3c4d.css", nil)
+	if css.Code != http.StatusOK || css.Body.String() != "body{margin:0}" || css.Header().Get("Content-Length") != "14" || css.Header().Get("Content-Encoding") != "" {
+		t.Errorf("unpacked = %d %q %v", css.Code, css.Body.String(), css.Header())
+	}
+	if gz := get(t, h, "/jec/assets/ui-3c4d.css", map[string]string{"Accept-Encoding": "gzip"}); gz.Header().Get("ETag") == css.Header().Get("ETag") || gz.Header().Get("Content-Encoding") != "gzip" {
+		t.Errorf("gzip = %v, unpacked %v", gz.Header(), css.Header())
+	}
+
 	for _, p := range []string{"/jec/assets/missing.js", "/jec/.gitkeep", "/other", "/jec/assets/app-1a2b.js.br"} {
 		if rec := get(t, h, p, nil); rec.Code != http.StatusNotFound {
 			t.Errorf("GET %s = %d, want 404", p, rec.Code)
@@ -92,7 +120,7 @@ func TestServe(t *testing.T) {
 }
 
 func TestServeAtRoot(t *testing.T) {
-	h, err := NewHandler(testFS(), "")
+	h, err := NewHandler(testFS(t), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +134,7 @@ func TestNotBuilt(t *testing.T) {
 		t.Errorf("an empty dist = %v, want ErrNotBuilt", err)
 	}
 	if _, err := NewHandler(fstest.MapFS{"index.html": {Data: []byte("x")}, "a.js.br": {Data: []byte("x")}}, ""); err == nil {
-		t.Error("a compressed file without its original was accepted")
+		t.Error("a brotli copy without its original or a gzip copy was accepted")
 	}
 }
 
