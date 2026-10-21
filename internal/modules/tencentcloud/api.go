@@ -42,7 +42,7 @@ type sslAPI interface {
 	// count returns how many certificates the account has.
 	count(ctx context.Context) (int, error)
 	// issued lists the valid certificates Tencent Cloud issued, not those
-	// uploaded there, whose domains match keyword.
+	// uploaded there, whose domains match keyword, all when it is empty.
 	issued(ctx context.Context, keyword string) ([]issuedCert, error)
 	// download returns the ZIP archive of a certificate, as the console
 	// downloads it.
@@ -208,10 +208,14 @@ func (s *sdk) issued(ctx context.Context, keyword string) ([]issuedCert, error) 
 				AllowDownload  *bool    `json:"AllowDownload"`
 			} `json:"Certificates"`
 		}
-		err := s.call(ctx, "DescribeCertificates", map[string]any{
-			"SearchKey": keyword, "CertificateType": "SVR", "CertificateStatus": []int{statusIssued},
+		params := map[string]any{
+			"CertificateType": "SVR", "CertificateStatus": []int{statusIssued},
 			"FilterSource": "buy", "Offset": offset, "Limit": 100,
-		}, &out)
+		}
+		if keyword != "" {
+			params["SearchKey"] = keyword
+		}
+		err := s.call(ctx, "DescribeCertificates", params, &out)
 		if err != nil {
 			return nil, err
 		}

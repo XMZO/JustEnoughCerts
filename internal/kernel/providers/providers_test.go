@@ -5,11 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2/humatest"
 
@@ -110,6 +113,10 @@ func newFixture(t *testing.T) *fixture {
 		func(context.Context, providers.Instance) (any, error) { return zonal{}, nil }); err != nil {
 		t.Fatal(err)
 	}
+	if err := f.reg.Scope("holding").Add(providers.Type{ID: "holding.files", Kind: providers.Source, Brand: "Holding", OwnKey: true, Holds: true, Fields: []providers.Field{}},
+		func(context.Context, providers.Instance) (any, error) { return holding{}, nil }); err != nil {
+		t.Fatal(err)
+	}
 	cloud := f.reg.Scope("cloud")
 	for _, typ := range []providers.Type{cdnType, storeType, mailType} {
 		if err := cloud.Add(typ, func(_ context.Context, in providers.Instance) (any, error) {
@@ -163,6 +170,27 @@ func (zonal) ZoneOf(_ context.Context, name string) (string, bool, error) {
 	}
 	return "", false, errors.New("no SOA")
 }
+
+// holding holds certificates, some of them for the same domains.
+type holding struct{}
+
+func (holding) Held(context.Context) ([]contracts.Held, error) {
+	now := time.Now()
+	return []contracts.Held{
+		{Domains: []string{"www.b.com", "B.com"}, NotAfter: now.Add(24 * time.Hour)},
+		{Domains: []string{"b.com", "www.b.com", "b.com"}, NotAfter: now.Add(48 * time.Hour)},
+		{Domains: []string{"a.com"}, NotAfter: now.Add(-time.Hour)},
+		{Domains: []string{"a.com"}},
+		{Domains: []string{"b.com"}, NotAfter: now.Add(time.Hour)},
+		{Domains: []string{" "}, NotAfter: now.Add(time.Hour)},
+	}, nil
+}
+
+func (holding) Collect(context.Context, contracts.CollectRequest) (*contracts.Collected, error) {
+	return nil, errors.New("not here")
+}
+
+func (holding) Close() error { return nil }
 
 func (p probe) Test(context.Context) (contracts.Message, error) {
 	switch p {
@@ -251,6 +279,7 @@ func TestAddChecks(t *testing.T) {
 		"solver of a record":     {ID: "dns.x", Kind: providers.Solver, Brand: "X", Challenge: providers.ChallengeRecord},
 		"records of a source":    {ID: "dns.x", Kind: providers.Source, Brand: "X", NeedsSolver: true, Records: true},
 		"records over http":      {ID: "dns.x", Kind: providers.Solver, Brand: "X", Challenge: providers.ChallengeHTTP, Records: true},
+		"holds, keys made":       {ID: "dns.x", Kind: providers.Source, Brand: "X", Holds: true},
 		"text of another module": {ID: "dns.x", Kind: providers.Solver, Brand: "X", Texts: map[string]map[i18n.Key]string{"en-US": {"web.x.name": "X"}}},
 		"text in no language":    {ID: "dns.x", Kind: providers.Solver, Brand: "X", Texts: map[string]map[i18n.Key]string{"no language!": {"dns.x.name": "X"}}},
 	} {
@@ -545,6 +574,29 @@ func TestZones(t *testing.T) {
 			t.Errorf("type %s zones %v", typ.ID, typ.Zones)
 		}
 	}
+}
+
+func TestHeld(t *testing.T) {
+	f := newFixture(t)
+	h := f.create(map[string]any{"type": "holding.files", "name": "holding"})
+	var out providersapi.HeldBody
+	if resp := f.api.Get("/providers/" + strconv.FormatInt(h.ID, 10) + "/certificates"); resp.Code != http.StatusOK || json.Unmarshal(resp.Body.Bytes(), &out) != nil {
+		t.Fatalf("certificates = %d %s", resp.Code, resp.Body)
+	}
+	// The latest of each set of domains, the expired one left out, in
+	// lowercase, by their first domain.
+	var got []string
+	for _, c := range out.Certificates {
+		got = append(got, fmt.Sprintf("%s %v", strings.Join(c.Domains, ","), c.NotAfter.IsZero()))
+	}
+	if want := []string{"a.com true", "b.com false", "b.com,www.b.com false"}; !slices.Equal(got, want) {
+		t.Errorf("held %q, want %q", got, want)
+	}
+	if out.Certificates[2].NotAfter.Before(time.Now().Add(47 * time.Hour)) {
+		t.Errorf("not the latest: %v", out.Certificates[2].NotAfter)
+	}
+	z := f.create(map[string]any{"type": "zonal.dns", "name": "zonal"})
+	f.fails(http.MethodGet, "/providers/"+strconv.FormatInt(z.ID, 10)+"/certificates", nil, http.StatusUnprocessableEntity)
 }
 
 func TestCheckAll(t *testing.T) {

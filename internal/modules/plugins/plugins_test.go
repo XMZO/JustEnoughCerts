@@ -75,7 +75,7 @@ const fakeDescription = `{"protocol":1,"ok":true,
   {"id":"dns","kind":"solver","name":"Fake DNS","records":true,"wait":{"timeout":30,"interval":1},"fields":[{"key":"behave","kind":"text"}]},
   {"id":"files","kind":"solver","challenge":"http","name":"Fake files","fields":[{"key":"behave","kind":"text"}]},
   {"id":"ca","kind":"source","challenges":["record","http","record"],"revocable":true,"name":"Fake CA","fields":[{"key":"behave","kind":"text"}]},
-  {"id":"store","kind":"source","own_key":true,"name":"Fake store","fields":[{"key":"behave","kind":"text"}]}]}`
+  {"id":"store","kind":"source","own_key":true,"holds":true,"name":"Fake store","fields":[{"key":"behave","kind":"text"}]}]}`
 
 // helper is the plugin of the tests. It keeps each request in its working
 // directory, and behaves as its settings say.
@@ -133,6 +133,9 @@ func helper() int {
 	case "bad-revocable":
 		fmt.Print(strings.Replace(fakeDescription, `"kind":"notifier"`, `"kind":"notifier","revocable":true`, 1))
 		return 0
+	case "bad-holds":
+		fmt.Print(strings.Replace(fakeDescription, `"own_key":true,"holds":true`, `"holds":true`, 1))
+		return 0
 	case "wrong-key", "uncovered":
 		// A certificate for a key of the CA's own, or for one domain only.
 		csr, names := "", req.Issue.Domains
@@ -184,6 +187,11 @@ func helper() int {
 			return 2
 		}
 		return reply(map[string]any{"protocol": 1, "ok": true, "chain": chain, "key": key})
+	case actionHeld:
+		return reply(map[string]any{"protocol": 1, "ok": true, "certificates": []heldAnswer{
+			{Domains: []string{"example.com", "www.example.com"}, NotAfter: "2099-01-01T08:00:00+08:00"},
+			{Domains: []string{"other.example"}, NotAfter: "soon"},
+		}})
 	}
 	return reply(map[string]any{"protocol": 1, "ok": true})
 }
@@ -452,7 +460,7 @@ func TestDescribe(t *testing.T) {
 		!slices.Equal(ca.Challenges, []string{providers.ChallengeHTTP, providers.ChallengeRecord}) {
 		t.Errorf("ca %+v", ca)
 	}
-	if store, _ := f.reg.Type("plugins.fake.store"); store.Kind != providers.Source || store.NeedsSolver || !store.OwnKey || store.Revocable {
+	if store, _ := f.reg.Type("plugins.fake.store"); store.Kind != providers.Source || store.NeedsSolver || !store.OwnKey || store.Revocable || !store.Holds {
 		t.Errorf("store %+v", store)
 	}
 
@@ -474,6 +482,7 @@ func TestDescribeFails(t *testing.T) {
 		"bad-key-challenges": i18n.PluginsErrorDescribe,
 		"bad-challenges":     i18n.PluginsErrorDescribe,
 		"bad-revocable":      i18n.PluginsErrorDescribe,
+		"bad-holds":          i18n.PluginsErrorDescribe,
 		"garbage":            i18n.PluginsErrorAnswer,
 		"exit":               i18n.PluginsErrorExit,
 		"protocol2":          i18n.PluginsErrorAnswer,
@@ -921,6 +930,12 @@ func TestKeySource(t *testing.T) {
 	if !errors.As(err, &w) || w.After != time.Hour || string(w.State) != "same" || sent.Action != actionCollect || sent.Collect.Current != "abc" ||
 		sent.Collect.CurrentEnd != "2026-11-30T16:00:00Z" || sent.Collect.State != "before" {
 		t.Errorf("wait %+v %v, sent %+v", w, err, sent.Collect)
+	}
+
+	// What it holds, to pick from.
+	held, err := ks.(contracts.Holder).Held(t.Context())
+	if err != nil || len(held) != 2 || len(held[0].Domains) != 2 || !held[0].NotAfter.Equal(time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC)) || !held[1].NotAfter.IsZero() || f.sent().Action != actionHeld {
+		t.Errorf("held %+v: %v", held, err)
 	}
 
 	ks = f.open("plugins.fake.store", map[string]string{"behave": "wait-files"}, nil).(contracts.KeySource)

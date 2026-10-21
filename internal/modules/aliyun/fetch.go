@@ -29,7 +29,7 @@ const recheck = 6 * time.Hour
 
 func fetchType() providers.Type {
 	return providers.Type{
-		ID: "aliyun.fetch", Kind: providers.Source, OwnKey: true, Name: i18n.AliyunFetchName, Description: i18n.AliyunFetchDescription, Untested: true,
+		ID: "aliyun.fetch", Kind: providers.Source, OwnKey: true, Holds: true, Name: i18n.AliyunFetchName, Description: i18n.AliyunFetchDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "access_key_id", Label: i18n.AliyunFieldAccessKeyId, Kind: providers.Text, Required: true},
@@ -51,6 +51,7 @@ type fetcher struct {
 
 var (
 	_ contracts.KeySource = (*fetcher)(nil)
+	_ contracts.Holder    = (*fetcher)(nil)
 	_ contracts.Tester    = (*fetcher)(nil)
 )
 
@@ -160,27 +161,64 @@ func (f *fetcher) Collect(ctx context.Context, req contracts.CollectRequest) (*c
 	return &contracts.Collected{Chain: append([]*x509.Certificate{b.Leaf}, b.Chain...), Key: b.Key}, nil
 }
 
+// Held lists the certificates the service issued, with the day each ends
+// on, at noon UTC so that the day shows alike in any time zone.
+func (f *fetcher) Held(ctx context.Context) ([]contracts.Held, error) {
+	list, err := f.issued(ctx, "")
+	if err != nil {
+		return nil, explainRPC(err, f.endpoint, noneAbsent)
+	}
+	held := make([]contracts.Held, 0, len(list))
+	for _, c := range list {
+		end, _ := time.Parse(time.DateOnly, c.EndDate)
+		if !end.IsZero() {
+			end = end.Add(12 * time.Hour)
+		}
+		held = append(held, contracts.Held{Domains: c.names(), NotAfter: end})
+	}
+	return held, nil
+}
+
 // newest returns the certificate the service issued, not one uploaded
 // there, that covers domains and ends last; nil when there is none.
 func (f *fetcher) newest(ctx context.Context, domains []string) (*listed, error) {
+	list, err := f.issued(ctx, strings.TrimPrefix(cmp.Or(domains...), "*."))
+	if err != nil {
+		return nil, err
+	}
 	var best *listed
+	for _, c := range list {
+		if cryptox.Covers(c.names(), domains) && (best == nil || c.later(*best)) {
+			best = &c
+		}
+	}
+	return best, nil
+}
+
+// issued lists the valid certificates the service issued, not those
+// uploaded there, whose names match keyword, all when it is empty.
+func (f *fetcher) issued(ctx context.Context, keyword string) ([]listed, error) {
+	var all []listed
 	for page := 1; page <= maxPages; page++ {
 		var out struct {
 			CertificateOrderList []listed `json:"CertificateOrderList"`
 		}
 		// With no status, the list has the valid certificates only.
-		query := map[string]string{"OrderType": "CERT", "Keyword": strings.TrimPrefix(cmp.Or(domains...), "*."), "CurrentPage": strconv.Itoa(page), "ShowSize": "50"}
+		query := map[string]string{"OrderType": "CERT", "CurrentPage": strconv.Itoa(page), "ShowSize": "50"}
+		if keyword != "" {
+			query["Keyword"] = keyword
+		}
 		if err := f.api.do(ctx, "ListUserCertificateOrder", query, nil, &out); err != nil {
 			return nil, err
 		}
 		for _, c := range out.CertificateOrderList {
-			if !c.Upload && !c.Expired && cryptox.Covers(c.names(), domains) && (best == nil || c.later(*best)) {
-				best = &c
+			if !c.Upload && !c.Expired {
+				all = append(all, c)
 			}
 		}
 		if len(out.CertificateOrderList) < 50 {
 			break
 		}
 	}
-	return best, nil
+	return all, nil
 }

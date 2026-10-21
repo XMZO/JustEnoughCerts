@@ -1,12 +1,15 @@
 package providersapi
 
 import (
+	"cmp"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"maps"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -213,6 +216,93 @@ func registerDomains(a huma.API, r *providers.Registry) {
 		}
 		return &domainsOutput{Body: DomainsBody{Domains: names, Total: total}}, nil
 	})
+}
+
+// HeldBody lists the certificates a source with keys of its own holds.
+type HeldBody struct {
+	Certificates []HeldCertificate `json:"certificates" doc:"Those still valid, the latest of each set of domains, by their first domain"`
+}
+
+// HeldCertificate is a certificate a source holds.
+type HeldCertificate struct {
+	Domains  []string  `json:"domains" doc:"Its domains, as the source lists them"`
+	NotAfter time.Time `json:"notAfter" doc:"When it expires; the zero time when the source does not say"`
+}
+
+type heldOutput struct{ Body HeldBody }
+
+// maxHeld is how many certificates a listing of a source's holds at most.
+const maxHeld = 500
+
+func registerHeld(a huma.API, r *providers.Registry) {
+	huma.Register(a, huma.Operation{
+		OperationID: "providers-held", Method: http.MethodGet, Path: "/providers/{id}/certificates",
+		Summary:     "List the certificates a source with keys of its own holds",
+		Description: "For types marked holds, as the directory of certbot: for people to add them by picking. A provider that fails answers with its own message.",
+	}, func(ctx context.Context, in *idInput) (*heldOutput, error) {
+		scope := r.Scope("kernel")
+		t, err := scope.Type(ctx, in.ID)
+		if err != nil {
+			return nil, apiError(err)
+		}
+		if !t.Holds {
+			return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil)
+		}
+		p, _, err := scope.Open(ctx, in.ID)
+		if err != nil {
+			return nil, testError(err)
+		}
+		if c, ok := p.(interface{ Close() error }); ok {
+			defer func() { _ = c.Close() }()
+		}
+		holder, ok := p.(contracts.Holder)
+		if !ok {
+			return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil)
+		}
+		hctx, cancel := context.WithTimeout(ctx, testTimeout)
+		defer cancel()
+		held, err := holder.Held(hctx)
+		if err != nil {
+			var p *contracts.Problem
+			if errors.As(err, &p) {
+				return nil, testError(err)
+			}
+			return nil, api.NewError(http.StatusBadGateway, i18n.KernelErrorProviderTry, map[string]any{"message": err.Error()})
+		}
+		return &heldOutput{Body: HeldBody{Certificates: latestHeld(held, time.Now())}}, nil
+	})
+}
+
+// latestHeld keeps of held those valid at now, the latest of each set of
+// domains, in lowercase without repeats, sorted by their first domain.
+func latestHeld(held []contracts.Held, now time.Time) []HeldCertificate {
+	byNames := map[string]HeldCertificate{}
+	for _, h := range held {
+		if !h.NotAfter.IsZero() && !h.NotAfter.After(now) {
+			continue
+		}
+		var names []string
+		for _, d := range h.Domains {
+			if d = strings.ToLower(strings.TrimSpace(d)); d != "" && !slices.Contains(names, d) {
+				names = append(names, d)
+			}
+		}
+		if len(names) == 0 {
+			continue
+		}
+		sorted := slices.Sorted(slices.Values(names))
+		key := strings.Join(sorted, " ")
+		if had, ok := byNames[key]; !ok || h.NotAfter.After(had.NotAfter) {
+			byNames[key] = HeldCertificate{Domains: names, NotAfter: h.NotAfter}
+		}
+	}
+	out := slices.SortedFunc(maps.Values(byNames), func(a, b HeldCertificate) int {
+		return cmp.Or(strings.Compare(a.Domains[0], b.Domains[0]), strings.Compare(strings.Join(a.Domains, " "), strings.Join(b.Domains, " ")))
+	})
+	if len(out) > maxHeld {
+		out = out[:maxHeld]
+	}
+	return out
 }
 
 type preflightInput struct {

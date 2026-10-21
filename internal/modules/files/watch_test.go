@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -139,6 +141,16 @@ func TestWatchAcmesh(t *testing.T) {
 	if err != nil || msg.Key != i18n.FilesTestWatchOk || msg.Params["count"] != 2 || msg.Params["domains"] != "example.com, other.example" {
 		t.Errorf("test: %+v, %v", msg, err)
 	}
+	// And listed, to pick from, with when they end.
+	held, err := openWatch(t, c.root).Held(t.Context())
+	var listed []string
+	for _, h := range held {
+		listed = append(listed, strings.Join(h.Domains, ",")+" "+h.NotAfter.UTC().Format(time.DateOnly))
+	}
+	slices.Sort(listed)
+	if want := []string{"example.com " + cert.NotAfter.UTC().Format(time.DateOnly), "other.example " + leaf.NotAfter.UTC().Format(time.DateOnly)}; err != nil || !slices.Equal(listed, want) {
+		t.Errorf("held %q, want %q: %v", listed, want, err)
+	}
 }
 
 func TestWatchExpired(t *testing.T) {
@@ -183,8 +195,11 @@ func TestWatchErrors(t *testing.T) {
 		}
 	}
 	_, err := openWatch(t, c.root).Collect(t.Context(), contracts.CollectRequest{Domains: []string{"example.com"}})
-	if p := problemOf(err); p == nil || p.Key != i18n.FilesErrorWatchDenied || !strings.Contains(p.Params["path"].(string), "privkey") {
+	if p := problemOf(err); p == nil || p.Key != i18n.FilesErrorWatchDenied || !strings.Contains(p.Params["path"].(string), "privkey") || p.Params["group"] != strconv.Itoa(os.Getgid()) {
 		t.Errorf("unreadable: %v", err)
+	}
+	if _, err := openWatch(t, c.root).Held(t.Context()); problemOf(err) == nil || problemOf(err).Key != i18n.FilesErrorWatchDenied {
+		t.Errorf("unreadable, listed: %v", err)
 	}
 }
 

@@ -32,6 +32,7 @@ type TypeSummary struct {
 	Tags         []string       `json:"tags,omitempty" doc:"The groups of the type in the UI; a solver that adds records of any type is in records too"`
 	NeedsSolver  bool           `json:"needsSolver,omitempty" doc:"For a source: issuing needs a solver"`
 	OwnKey       bool           `json:"ownKey,omitempty" doc:"For a source: its certificates come with their own private key, so there is no key type to choose"`
+	Holds        bool           `json:"holds,omitempty" doc:"For a source with keys of its own: its instances list the certificates they hold"`
 	Revocable    bool           `json:"revocable,omitempty" doc:"For a source: it can have the certificates it issued revoked"`
 	Backup       bool           `json:"backup,omitempty" doc:"For a source: it can stand in for a certificate's own source when that fails"`
 	Challenges   []string       `json:"challenges,omitempty" enum:"dns,http,record" doc:"For a source that needs a solver: the challenges of the solvers it can use; record takes a solver of DNS that adds records of any type"`
@@ -157,7 +158,7 @@ func Register(a huma.API, r *providers.Registry) {
 		for _, t := range r.Types(providers.Kind(in.Kind)) {
 			sum := TypeSummary{
 				ID: t.ID, Kind: t.Kind, Module: t.Module, Name: t.Name, Description: t.Description,
-				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, OwnKey: t.OwnKey, Revocable: t.Revocable, Backup: t.Backup, Testable: t.Testable, Zones: t.Zones, NameServers: t.NameServers, Experimental: t.Experimental, Untested: t.Untested,
+				Brand: t.Brand, URL: t.URL, Tags: t.Tags, NeedsSolver: t.NeedsSolver, OwnKey: t.OwnKey, Holds: t.Holds, Revocable: t.Revocable, Backup: t.Backup, Testable: t.Testable, Zones: t.Zones, NameServers: t.NameServers, Experimental: t.Experimental, Untested: t.Untested,
 				CredentialKind: t.CredentialKind, Texts: t.Texts, Manual: t.Manual,
 			}
 			switch {
@@ -264,6 +265,7 @@ func Register(a huma.API, r *providers.Registry) {
 	registerCredentials(a, r)
 	registerTry(a, r)
 	registerDomains(a, r)
+	registerHeld(a, r)
 	registerPreflight(a, r)
 }
 

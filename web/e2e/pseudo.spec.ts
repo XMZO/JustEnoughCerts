@@ -781,6 +781,11 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'add a certificate from a source with an error').toEqual([])
   // Several at once, a line each: the box, then back to one.
   await page.getByRole('button', { name: label('certs.add.bulk_many') }).click()
+  // What the watched directory holds, the certificate deployed to it: a
+  // line each.
+  await page.getByRole('button', { name: message('certs.add.held_all', { count: '0' }).split(' 0')[0] }).click()
+  await expect(page.locator('#bulk-input')).not.toHaveValue('')
+  expect.soft(await problems(page), 'add the certificates a source holds').toEqual([])
   await page.locator('#bulk-input').fill('a.example.com www.a.example.com\nb.example.com')
   expect.soft(await problems(page), 'add several certificates').toEqual([])
   await page.getByRole('button', { name: label('certs.add.bulk_one') }).click()

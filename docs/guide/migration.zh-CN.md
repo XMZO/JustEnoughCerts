@@ -22,7 +22,7 @@ JEC 可以一次性接替 certbot 或 acme.sh，也可以分步进行：先读�
 
    acme.sh 续期时沿用域名的私钥：对其主目录（如 `/root/.acme.sh`）做同样设置，并用 `sudo chmod o+x /root` 允许 JEC 进入 `/root`。在 Docker 中还须在 `docker-compose.yml` 里启用该目录的挂载，参见[可选挂载](installation.zh-CN.md#可选挂载)。
 2. 在“证书来源”中添加“本机证书目录”，目录填 `/etc/letsencrypt` 或 acme.sh 的主目录。
-3. 以该来源逐个添加证书并填写域名，按需选择部署目标。
+3. 以该来源添加证书：页面列出目录中的证书供选择，在“多张证书”中点“全部加入”可一次全部添加；按需选择部署目标。
 4. 原客户端续期后，JEC 在下一次查看时取入新证书并部署。
 
 ## 由 JEC 签发

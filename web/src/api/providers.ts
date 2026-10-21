@@ -142,6 +142,17 @@ export function useAccountDomains(id: MaybeRefOrGetter<number | undefined>, enab
   })
 }
 
+/** The certificates source id holds, as the directory of certbot: those still valid; only while enabled. */
+export function useHeld(id: MaybeRefOrGetter<number | undefined>, enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: computed(() => [...all, 'held', toValue(id)] as const),
+    queryFn: async () => (await unwrap(api.GET('/providers/{id}/certificates', { params: { path: { id: toValue(id) ?? 0 } } }))).certificates,
+    enabled: computed(() => toValue(enabled) && toValue(id) !== undefined),
+    staleTime: 60_000,
+    retry: false,
+  })
+}
+
 /** What source id sees wrong with domains before issuing, as their CAA records; only while enabled. */
 export function usePreflight(id: MaybeRefOrGetter<number | undefined>, domains: MaybeRefOrGetter<string[]>, enabled: MaybeRefOrGetter<boolean>) {
   return useQuery({

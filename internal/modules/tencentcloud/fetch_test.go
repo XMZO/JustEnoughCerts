@@ -130,6 +130,12 @@ func TestFetch(t *testing.T) {
 		}
 	}
 
+	// All it can take in, to pick from, ending in Beijing time.
+	held, err := s.Held(t.Context())
+	if err != nil || len(held) != 3 || held[0].Domains[0] != "example.com" || !held[2].NotAfter.Equal(time.Date(2026, 12, 31, 16, 0, 0, 0, time.UTC)) {
+		t.Errorf("held %+v: %v", held, err)
+	}
+
 	// Without a key, as for a CSR of one's own; with a key that has a
 	// password; with nothing that fits.
 	api.archives["newest"] = archive(t, map[string]string{"example.com_nginx/example.com_bundle.crt": cryptoxtest.CertPEM(leaf, ca.Intermediate)})

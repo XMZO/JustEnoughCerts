@@ -34,6 +34,8 @@ const (
 	actionIssue   = "issue"
 	actionCollect = "collect"
 	actionRevoke  = "revoke"
+	// One with keys of its own that holds certificates lists them.
+	actionHeld = "held"
 )
 
 // request is what JEC writes on a plugin's standard input.
@@ -161,6 +163,15 @@ type answer struct {
 	Chain string      `json:"chain"`
 	Key   string      `json:"key"`
 	Wait  *waitAnswer `json:"wait"`
+	// Certificates are those a source holds, as held lists them.
+	Certificates []heldAnswer `json:"certificates"`
+}
+
+// heldAnswer is a certificate a source holds: its domains, and when it
+// expires, in RFC 3339.
+type heldAnswer struct {
+	Domains  []string `json:"domains"`
+	NotAfter string   `json:"not_after"`
 }
 
 // waitAnswer has JEC ask a source again after After seconds, handing back
@@ -212,8 +223,10 @@ type typeSpec struct {
 	Records bool `json:"records"`
 	OwnKey  bool `json:"own_key"`
 	// Revocable marks a source that can have the certificates it issued
-	// revoked: JEC sends it revoke.
+	// revoked: JEC sends it revoke. Holds marks a source with keys of its
+	// own that lists the certificates it holds: JEC sends it held.
 	Revocable  bool        `json:"revocable"`
+	Holds      bool        `json:"holds"`
 	Challenges []string    `json:"challenges"`
 	Fields     []fieldSpec `json:"fields"`
 	// Wait is how long a DNS record may take to be seen, and how often to

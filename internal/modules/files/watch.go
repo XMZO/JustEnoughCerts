@@ -36,7 +36,7 @@ const recheck = 6 * time.Hour
 
 func watchType() providers.Type {
 	return providers.Type{
-		ID: "files.watch", Kind: providers.Source, OwnKey: true,
+		ID: "files.watch", Kind: providers.Source, OwnKey: true, Holds: true,
 		Name: i18n.FilesWatchName, Description: i18n.FilesWatchDescription,
 		Tags: []string{"self_hosted"}, Testable: true,
 		Fields: []providers.Field{
@@ -54,6 +54,7 @@ type watcher struct {
 
 var (
 	_ contracts.KeySource = (*watcher)(nil)
+	_ contracts.Holder    = (*watcher)(nil)
 	_ contracts.Tester    = (*watcher)(nil)
 )
 
@@ -104,6 +105,25 @@ func (w *watcher) Collect(_ context.Context, req contracts.CollectRequest) (*con
 	log(contracts.LogLine{Level: contracts.OK, Step: contracts.StepDownload, Key: i18n.FilesLogWatchFound,
 		Params: map[string]any{"path": best.path, "date": best.Leaf.NotAfter.Format(time.DateOnly)}})
 	return &contracts.Collected{Chain: append([]*x509.Certificate{best.Leaf}, best.Chain...), Key: best.Key}, nil
+}
+
+// Held lists the certificates of the directory, as Collect finds them,
+// or says why it found none.
+func (w *watcher) Held(context.Context) ([]contracts.Held, error) {
+	s, err := w.scan()
+	if err != nil {
+		return nil, err
+	}
+	if len(s.certs) == 0 {
+		if err := s.trouble(w); err != nil {
+			return nil, err
+		}
+	}
+	held := make([]contracts.Held, 0, len(s.certs))
+	for _, c := range s.certs {
+		held = append(held, contracts.Held{Domains: cryptox.Names(c.Leaf), NotAfter: c.Leaf.NotAfter})
+	}
+	return held, nil
 }
 
 // Test scans the directory and tells what it found.

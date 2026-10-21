@@ -170,6 +170,20 @@ type CollectRequest struct {
 	Log func(LogLine)
 }
 
+// Holder is a KeySource that can list the certificates it holds, for
+// people to add them by picking rather than typing their domains: those
+// still valid, the latest of each set of domains. A type whose providers
+// are Holders says so with providers.Type.Holds.
+type Holder interface {
+	Held(ctx context.Context) ([]Held, error)
+}
+
+// Held is a certificate a Holder holds.
+type Held struct {
+	Domains  []string
+	NotAfter time.Time
+}
+
 // Collected is what a KeySource found.
 type Collected struct {
 	// Chain is the certificate and its intermediates, leaf first.

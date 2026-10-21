@@ -41,7 +41,7 @@ const (
 
 func fetchType() providers.Type {
 	return providers.Type{
-		ID: "tencentcloud.fetch", Kind: providers.Source, OwnKey: true, Name: i18n.TencentcloudFetchName, Description: i18n.TencentcloudFetchDescription, Untested: true,
+		ID: "tencentcloud.fetch", Kind: providers.Source, OwnKey: true, Holds: true, Name: i18n.TencentcloudFetchName, Description: i18n.TencentcloudFetchDescription, Untested: true,
 		Tags: []string{"china"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "secret_id", Label: i18n.TencentcloudFieldSecretId, Kind: providers.Text, Required: true},
@@ -64,6 +64,7 @@ type fetcher struct {
 
 var (
 	_ contracts.KeySource = (*fetcher)(nil)
+	_ contracts.Holder    = (*fetcher)(nil)
 	_ contracts.Tester    = (*fetcher)(nil)
 )
 
@@ -90,6 +91,26 @@ func (f *fetcher) Test(ctx context.Context) (contracts.Message, error) {
 		return contracts.Message{}, explain(err, f.endpoint)
 	}
 	return contracts.Message{Key: i18n.TencentcloudTestFetchOk, Params: map[string]any{"count": n}}, nil
+}
+
+// beijing is the time zone of the times the service tells.
+var beijing = time.FixedZone("CST", 8*60*60)
+
+// Held lists the certificates the service issued that JEC can take in.
+func (f *fetcher) Held(ctx context.Context) ([]contracts.Held, error) {
+	list, err := f.api.issued(ctx, "")
+	if err != nil {
+		return nil, explain(err, f.endpoint)
+	}
+	var held []contracts.Held
+	for _, c := range list {
+		if !c.Download {
+			continue
+		}
+		end, _ := time.ParseInLocation(time.DateTime, c.End, beijing)
+		held = append(held, contracts.Held{Domains: c.Names, NotAfter: end})
+	}
+	return held, nil
 }
 
 // Collect takes in the newest certificate the service issued for the

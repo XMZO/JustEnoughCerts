@@ -1769,6 +1769,44 @@
         ],
         "type": "object"
       },
+      "HeldBody": {
+        "additionalProperties": false,
+        "properties": {
+          "certificates": {
+            "description": "Those still valid, the latest of each set of domains, by their first domain",
+            "items": {
+              "$ref": "#/components/schemas/HeldCertificate"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "certificates"
+        ],
+        "type": "object"
+      },
+      "HeldCertificate": {
+        "additionalProperties": false,
+        "properties": {
+          "domains": {
+            "description": "Its domains, as the source lists them",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "notAfter": {
+            "description": "When it expires; the zero time when the source does not say",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "domains",
+          "notAfter"
+        ],
+        "type": "object"
+      },
       "ImportInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -4270,6 +4308,9 @@
             },
             "type": "array"
           },
+          "holds": {
+            "type": "boolean"
+          },
           "id": {
             "type": "string"
           },
@@ -4384,6 +4425,10 @@
             "type": "string"
           },
           "experimental": {
+            "type": "boolean"
+          },
+          "holds": {
+            "description": "For a source with keys of its own: its instances list the certificates they hold",
             "type": "boolean"
           },
           "id": {
@@ -8474,6 +8519,46 @@
           }
         },
         "summary": "Change a configured provider"
+      }
+    },
+    "/providers/{id}/certificates": {
+      "get": {
+        "description": "For types marked holds, as the directory of certbot: for people to add them by picking. A provider that fails answers with its own message.",
+        "operationId": "providers-held",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeldBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the certificates a source with keys of its own holds"
       }
     },
     "/providers/{id}/domains": {

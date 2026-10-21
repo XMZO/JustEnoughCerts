@@ -52,6 +52,7 @@ type instance struct {
 var (
 	_ contracts.Source       = (*source)(nil)
 	_ contracts.KeySource    = (*keySource)(nil)
+	_ contracts.Holder       = (*keySource)(nil)
 	_ contracts.Target       = (*target)(nil)
 	_ contracts.Notifier     = (*notifier)(nil)
 	_ contracts.Solver       = (*dnsSolver)(nil)

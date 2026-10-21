@@ -33,8 +33,9 @@ their expiry, and issue them itself once you are ready.
    [Optional mounts](installation.md#optional-mounts).
 2. Under Certificate sources, add **Certificates on this machine** with the
    directory: `/etc/letsencrypt`, or the home directory of acme.sh.
-3. Add each certificate with that source and its domains, with the deploy
-   targets it needs.
+3. Add the certificates with that source: the page lists those the
+   directory holds, to pick from; under Several, Add all takes them all,
+   with the deploy targets they need.
 4. When the old client renews, JEC takes the new certificate in at its next
    look and deploys it.
 

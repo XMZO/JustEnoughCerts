@@ -329,6 +329,24 @@ func (s *keySource) Collect(ctx context.Context, req contracts.CollectRequest) (
 	return &contracts.Collected{Chain: append([]*x509.Certificate{b.Leaf}, b.Chain...), Key: b.Key}, nil
 }
 
+// maxHeld is how many of the certificates a plugin lists JEC reads.
+const maxHeld = 1000
+
+// Held asks the plugin for the certificates it holds. An expiry it does not
+// give, or not in RFC 3339, is left unknown.
+func (s *keySource) Held(ctx context.Context) ([]contracts.Held, error) {
+	a, err := s.do(ctx, testTimeout, s.request(actionHeld), nil)
+	if err != nil {
+		return nil, err
+	}
+	held := make([]contracts.Held, 0, min(len(a.Certificates), maxHeld))
+	for _, c := range a.Certificates[:min(len(a.Certificates), maxHeld)] {
+		end, _ := time.Parse(time.RFC3339, c.NotAfter)
+		held = append(held, contracts.Held{Domains: c.Domains, NotAfter: end})
+	}
+	return held, nil
+}
+
 // waitFor is how long to wait as a plugin asked, in seconds: a minute to a
 // day.
 func waitFor(seconds int) time.Duration {

@@ -1210,6 +1210,26 @@ export interface paths {
         patch: operations["providers-update"];
         trace?: never;
     };
+    "/providers/{id}/certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the certificates a source with keys of its own holds
+         * @description For types marked holds, as the directory of certbot: for people to add them by picking. A provider that fails answers with its own message.
+         */
+        get: operations["providers-held"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/providers/{id}/domains": {
         parameters: {
             query?: never;
@@ -2386,6 +2406,19 @@ export interface components {
             /** @description An http or https address; empty for none */
             url: string;
         };
+        HeldBody: {
+            /** @description Those still valid, the latest of each set of domains, by their first domain */
+            certificates: components["schemas"]["HeldCertificate"][];
+        };
+        HeldCertificate: {
+            /** @description Its domains, as the source lists them */
+            domains: string[];
+            /**
+             * Format: date-time
+             * @description When it expires; the zero time when the source does not say
+             */
+            notAfter: string;
+        };
         ImportInputBody: {
             /** @description Certificates and private keys in any mix, as another tool exported them */
             files: components["schemas"]["Item1"][];
@@ -3288,6 +3321,7 @@ export interface components {
             doc?: string;
             experimental?: boolean;
             fields: components["schemas"]["Field"][];
+            holds?: boolean;
             id: string;
             /** @enum {string} */
             kind: "source" | "solver" | "target" | "notifier";
@@ -3326,6 +3360,8 @@ export interface components {
             credentialKind?: string;
             description?: string;
             experimental?: boolean;
+            /** @description For a source with keys of its own: its instances list the certificates they hold */
+            holds?: boolean;
             id: string;
             /** @enum {string} */
             kind: "source" | "solver" | "target" | "notifier";
@@ -6134,6 +6170,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstanceBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "providers-held": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeldBody"];
                 };
             };
             /** @description Error */

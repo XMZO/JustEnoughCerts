@@ -45,6 +45,10 @@ Domains are handled as follows:
   Cloudflare, DNSPod, Alibaba Cloud, Route 53, GoDaddy or Namecheap, the
   page looks up the name servers of each domain's zone, following a CNAME
   of `_acme-challenge`, and says so when they are not that provider's.
+- With a source that holds certificates already, as Certificates on this
+  machine (certbot, acme.sh) or those fetched from Alibaba Cloud or
+  Tencent Cloud, the page lists those not yet added with it: one fills in
+  its domains, and under Several, Add all fills in a line each.
 - The same certificate, by fingerprint, can be added only once.
 
 The key type is RSA 2048, 3072 or 4096, or ECDSA P-256 or P-384; the

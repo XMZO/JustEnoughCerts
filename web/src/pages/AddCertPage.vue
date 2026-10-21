@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleCheck, CircleX, FilePlus, Plus, Save, ShieldCheck, TriangleAlert, Upload } from '@lucide/vue'
+import { CircleCheck, CircleX, FilePlus, ListPlus, Plus, Save, ShieldCheck, TriangleAlert, Upload } from '@lucide/vue'
 import { computed, ref, watch, watchEffect } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
@@ -15,7 +15,7 @@ import {
   type KeyType,
 } from '../api/certs'
 import { revealError, useApiError } from '../api/errors'
-import { useAccountDomains, usePreflight, useProviders, useProviderTypes, useZones, type Provider } from '../api/providers'
+import { useAccountDomains, useHeld, usePreflight, useProviders, useProviderTypes, useZones, type Provider } from '../api/providers'
 import { loadLastChoice, saveLastChoice, type LastChoice } from '../certs/lastChoice'
 import { keyText } from '../certs/life'
 import DomainInput from '../components/DomainInput.vue'
@@ -151,6 +151,38 @@ const batch = computed(() =>
 interface Outcome {
   domains: string[]
   message: string
+}
+// The certificates a source with keys of its own holds, as the directory
+// of certbot: those not added with it yet, to pick rather than type, a
+// line each when adding several.
+const held = useHeld(() => provider.value?.id, () => !!sourceType.value?.holds)
+const sameNames = (a: string[], b: string[]) => a.length === b.length && a.every((d) => b.includes(d))
+const unheld = computed(() =>
+  (held.data.value ?? []).filter(
+    (h) => !(certificates.data.value ?? []).some((c) => c.sourceProvider === provider.value?.id && sameNames(c.domains, h.domains)),
+  ),
+)
+const shownHeld = computed(() => unheld.value.slice(0, 24))
+const heldError = computed(() => {
+  const err = held.error.value
+  if (!err) return undefined
+  const e = err instanceof ApiError ? err : networkError
+  return t(e.code, e.params)
+})
+const heldLabel = (h: { domains: string[]; notAfter: string }) => {
+  const names = h.domains.join(', ')
+  return h.notAfter.startsWith('0001-')
+    ? t('certs.add.held_pick_undated', { domains: names })
+    : t('certs.add.held_pick', { domains: names, date: intl.date(h.notAfter) })
+}
+const inLines = (names: string[]) => batch.value.some((l) => sameNames(l, names))
+const addLines = (sets: string[][]) => {
+  const fresh = sets.filter((names) => !inLines(names)).map((names) => names.join(' '))
+  if (fresh.length) lines.value = [...lines.value.split('\n').filter((l) => l.trim()), ...fresh].join('\n')
+}
+const pickHeld = (names: string[]) => {
+  if (bulk.value) addLines([names])
+  else domains.value = [...names]
 }
 // The lines that could not be added, and why.
 const refused = ref<Outcome[]>([])
@@ -620,6 +652,34 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
               <JecButton size="sm" @click="addApex"><Plus class="size-4" aria-hidden="true" />{{ t('certs.add.apex_add') }}</JecButton>
             </p>
           </div>
+          <div v-if="unheld.length" class="flex flex-col gap-1.5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="text-small text-ink-muted">{{ t(bulk ? 'certs.add.held_lines' : 'certs.add.held', { count: unheld.length }) }}</span>
+              <JecButton v-if="bulk" size="sm" @click="addLines(unheld.map((h) => h.domains))">
+                <ListPlus class="size-4" aria-hidden="true" />{{ t('certs.add.held_all', { count: unheld.length }) }}
+              </JecButton>
+            </div>
+            <span class="flex flex-wrap gap-1.5">
+              <JecButton
+                v-for="h in shownHeld"
+                :key="h.domains.join(' ')"
+                size="sm"
+                :aria-label="heldLabel(h)"
+                class="max-w-full"
+                @click="pickHeld(h.domains)"
+              >
+                <Plus class="size-4 flex-none" aria-hidden="true" /><span class="truncate" translate="no" :title="h.domains.join(', ')">{{
+                  h.domains.join(', ')
+                }}</span>
+              </JecButton>
+            </span>
+            <span v-if="unheld.length > shownHeld.length" class="text-caption text-ink-muted">
+              {{ t('certs.add.held_more', { count: unheld.length - shownHeld.length }) }}
+            </span>
+          </div>
+          <p v-else-if="heldError" role="status" class="m-0 flex items-start gap-1.5 text-small text-warn-ink [overflow-wrap:anywhere]">
+            <TriangleAlert class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ heldError }}
+          </p>
         </section>
 
         <section v-if="needsSolver" aria-labelledby="validation" class="flex flex-col gap-3 rounded-lg border border-line bg-surface-raised p-4">

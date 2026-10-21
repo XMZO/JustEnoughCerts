@@ -125,6 +125,10 @@ type Type struct {
 	// OwnKey is set on a source whose certificates come with their own
 	// private key (contracts.KeySource): no key type to choose.
 	OwnKey bool `json:"ownKey,omitempty"`
+	// Holds is set on a source with keys of its own whose providers list
+	// the certificates they hold (contracts.Holder), through GET
+	// /api/v1/providers/{id}/certificates.
+	Holds bool `json:"holds,omitempty"`
 	// Revocable is set on a source whose providers can have the
 	// certificates they issued revoked (contracts.Revoker).
 	Revocable bool `json:"revocable,omitempty"`
@@ -338,6 +342,8 @@ func (s *Scope) Add(t Type, f Factory) error {
 		return fmt.Errorf("provider type %s: name servers are for solvers of DNS", t.ID)
 	case t.OwnKey && (t.Kind != Source || t.NeedsSolver):
 		return fmt.Errorf("provider type %s: own keys are for sources that need no solver", t.ID)
+	case t.Holds && (t.Kind != Source || !t.OwnKey):
+		return fmt.Errorf("provider type %s: holding certificates is for sources with keys of their own", t.ID)
 	case t.Revocable && t.Kind != Source:
 		return fmt.Errorf("provider type %s: revoking is for sources", t.ID)
 	case t.Backup && (t.Kind != Source || t.OwnKey):

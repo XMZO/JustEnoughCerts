@@ -119,6 +119,16 @@ func TestFetch(t *testing.T) {
 		t.Errorf("reissued: %v", err)
 	}
 
+	// All it issued, to pick from, none uploaded or expired: the day each
+	// ends on, at noon UTC.
+	held, err := s.Held(t.Context())
+	if err != nil || len(held) != 3 || !held[0].NotAfter.Equal(time.Date(2098, 1, 1, 12, 0, 0, 0, time.UTC)) || !slices.Equal(held[2].Domains, []string{"example.com", "www.example.com"}) {
+		t.Errorf("held %+v: %v", held, err)
+	}
+	if list := f.called("ListUserCertificateOrder"); list[len(list)-1].query["Keyword"] != "" {
+		t.Errorf("listed with %+v", list[len(list)-1])
+	}
+
 	// Without its intermediates, it comes in with a warning.
 	f.details["9"]["Cert"] = cryptoxtest.CertPEM(leaf)
 	if _, keys, err := collect(t, s, "", time.Time{}, "example.com", "www.example.com"); err != nil || !slices.Contains(keys, i18n.AliyunLogFetchNoChain) {
