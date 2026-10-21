@@ -3,7 +3,6 @@ import {
   Ban,
   Check,
   CircleCheck,
-  CircleDashed,
   Download,
   Equal,
   KeyRound,
@@ -59,6 +58,7 @@ import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
 import JecField from '../components/JecField.vue'
 import JecInput from '../components/JecInput.vue'
+import JobsDialog from '../components/JobsDialog.vue'
 import OffsiteSettings from '../components/OffsiteSettings.vue'
 import OidcSettings from '../components/OidcSettings.vue'
 import RecoveryCodes from '../components/RecoveryCodes.vue'
@@ -283,18 +283,21 @@ async function removeToken(id: number) {
 const system = useSystem()
 
 // How the background jobs went last, and the space left for the data: a
-// failure nothing else shows. The jobs list, those that failed first.
+// failure nothing else shows; the jobs in a dialog.
 const health = useHealth()
 type Job = Health['jobs'][number]
 const failedJobs = computed(() => (health.data.value?.jobs ?? []).filter((j) => j.error))
 const jobsOpen = ref(false)
-const jobsShown = computed(() => [...(health.data.value?.jobs ?? [])].sort((a, b) => Number(!!b.error) - Number(!!a.error)))
 const moduleName = (j: Job) => {
   if (j.module === 'kernel') return t('kernel.health.kernel')
   const m = manifest.data.value?.modules.find((x) => x.id === j.module)
   return m ? t(m.name as MessageKey) : j.module
 }
 const diskLow = computed(() => lowDisk(health.data.value?.disk))
+const diskText = computed(() => {
+  const disk = health.data.value?.disk
+  return disk ? t('kernel.health.disk_free', { free: intl.bytes(disk.free), total: intl.bytes(disk.total) }) : ''
+})
 
 // The time zone of the whole panel, saved as soon as it changes: the one
 // chosen, or the server's.
@@ -506,545 +509,550 @@ const repository = { name: 'XMZO/JustEnoughCerts', url: 'https://github.com/XMZO
 const databases = { sqlite: 'SQLite', postgres: 'PostgreSQL' } as const
 const variables = { database: 'JEC_DATABASE_URL', baseURL: 'JEC_BASE_URL', listen: 'JEC_LISTEN', trustedProxies: 'JEC_TRUSTED_PROXIES', allowedClients: 'JEC_ALLOWED_CLIENTS', tls: 'JEC_TLS_CERT', hsts: 'JEC_HSTS' }
 
-// The cards flow into as many columns as fit, each packed from the top, so
-// that short ones leave no gaps.
-const panel = 'flex flex-col rounded-lg border border-line bg-surface-raised px-3 py-2 sm:mb-4 sm:break-inside-avoid sm:px-4 sm:py-3'
-const row = 'flex min-h-11 items-center gap-3 border-b border-line py-1.5 last:border-b-0'
-// The read-only facts of the about card, a line each.
+// The cards in columns, packed from the top; the last of each column
+// stretches, so that the columns end on one line. From 1280px three
+// columns hold them all in one screen, as the user asked.
+const panel = 'flex flex-col rounded-lg border border-line bg-surface-raised px-3 py-2 sm:px-3.5 sm:py-2'
+const heading = 'm-0 text-heading font-semibold'
+const row = 'flex min-h-10 items-center gap-x-3 gap-y-1 border-b border-line py-1 last:border-b-0'
+// The words under a label, two lines at most from 640px and one in three
+// columns; the title has them all.
+const help = 'block text-caption text-ink-muted sm:line-clamp-2 xl:line-clamp-1'
+// Two lines in the cards of the columns with room to spare.
+const help2 = 'block text-caption text-ink-muted sm:line-clamp-2'
+// The read-only facts of the about and the runtime cards, a line each, cut
+// short with the whole in the title where they are long.
 const fact = 'm-0 min-w-0 text-right [overflow-wrap:anywhere]'
-const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2 text-ink aria-invalid:border-danger-ink max-sm:h-11'
+const line = 'm-0 min-w-0 truncate text-right'
+// A fact that a variable sets: its title names the variable.
+const variable = 'cursor-help font-semibold underline decoration-ink-muted decoration-dotted underline-offset-4'
+const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2 text-ink aria-invalid:border-danger-ink max-sm:h-11 sm:h-8 sm:text-small'
+// In a dialog's form, as tall as the inputs beside it.
+const field = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2 text-ink aria-invalid:border-danger-ink max-sm:h-11'
 </script>
 
 <template>
-  <PageHeader :title="t('kernel.settings.title')" :subtitle="t('kernel.settings.intro')" :phone-back="fromMore" />
+  <PageHeader :title="t('kernel.settings.title')" :phone-back="fromMore">
+    <template #badge>
+      <span class="text-small text-ink-muted">{{ t('kernel.settings.intro') }}</span>
+    </template>
+  </PageHeader>
 
-  <!-- In this order, two columns come out about as tall: what JEC does and keeps on the left, the account and JEC itself on the right. -->
-  <div class="flex flex-col gap-3 px-4 pt-3 sm:mt-4 sm:block sm:columns-[24rem] sm:gap-4 sm:p-0">
+  <!--
+    Three groups: how it looks and renews, the data and JEC itself, the
+    account and how JEC runs. From 640px the first two side by side and the
+    third under them in two columns; from 1280px three columns.
+  -->
+  <div class="flex flex-col gap-3 px-4 pt-3 sm:mt-3 sm:grid sm:grid-cols-2 sm:p-0 xl:grid-cols-3">
     <p class="m-0 text-ink-muted sm:hidden">{{ t('kernel.settings.intro') }}</p>
 
-    <section aria-labelledby="appearance" :class="panel">
-      <div class="mb-1 flex flex-wrap items-center justify-between gap-x-3">
-        <h2 id="appearance" class="m-0 text-heading font-semibold sm:text-section-title">{{ t('kernel.settings.appearance') }}</h2>
-        <p v-if="zoneSaved" role="status" class="m-0 inline-flex items-center gap-1 text-small text-ok-ink">
-          <Check class="size-4" aria-hidden="true" />{{ t('kernel.settings.saved') }}
-        </p>
-      </div>
-      <JecAlert v-if="zoneError.alert.value" :code="zoneError.alert.value.code" :params="zoneError.alert.value.params" />
-      <div :class="row">
-        <div class="min-w-0 flex-1">
-          <label for="language" class="block font-semibold">{{ t('kernel.settings.language') }}</label>
-          <span id="language-help" class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.language_help') }}</span>
+    <div class="flex flex-col gap-3">
+      <section aria-labelledby="appearance" :class="panel">
+        <div class="flex flex-wrap items-center justify-between gap-x-3">
+          <h2 id="appearance" :class="heading">{{ t('kernel.settings.appearance') }}</h2>
+          <p v-if="zoneSaved" role="status" class="m-0 inline-flex items-center gap-1 text-small text-ok-ink">
+            <Check class="size-4" aria-hidden="true" />{{ t('kernel.settings.saved') }}
+          </p>
         </div>
-        <select id="language" :value="locale" aria-describedby="language-help" :class="[control, 'flex-none']" @change="pickLocale">
-          <option v-for="l in locales" :key="l.tag" :value="l.tag" :lang="l.tag" translate="no">{{ l.name }}</option>
-        </select>
-      </div>
-      <div :class="[row, 'flex-wrap']">
-        <div class="min-w-0 flex-[1_1_10rem]">
-          <span id="theme-label" class="block font-semibold">{{ t('kernel.settings.theme') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.theme_help') }}</span>
-        </div>
-        <div
-          role="group"
-          aria-labelledby="theme-label"
-          class="inline-flex flex-none gap-0.5 rounded-md border border-line bg-surface-sunken p-0.5 max-sm:flex max-sm:w-full"
-        >
-          <button
-            v-for="th in themes"
-            :key="th"
-            type="button"
-            :aria-pressed="theme === th ? 'true' : 'false'"
-            class="h-[30px] cursor-pointer rounded-sm border-0 bg-transparent px-3 text-[13px] font-semibold whitespace-nowrap text-ink-muted hover:text-ink aria-pressed:bg-surface-raised aria-pressed:text-ink aria-pressed:shadow-[0_0_0_1px_var(--line-strong)] max-sm:h-auto max-sm:min-h-9 max-sm:min-w-0 max-sm:flex-1 max-sm:px-1.5 max-sm:py-1 max-sm:whitespace-normal"
-            @click="setTheme(th)"
-          >
-            {{ t(themeLabels[th]) }}
-          </button>
-        </div>
-      </div>
-      <div :class="[row, 'flex-wrap']">
-        <div class="min-w-0 flex-[1_1_10rem]">
-          <span id="accent-label" class="block font-semibold">{{ t('kernel.settings.accent') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.accent_help') }}</span>
-        </div>
-        <!-- Each swatch takes its own color: data-accent sets the brand's tokens within it. -->
-        <div role="group" aria-labelledby="accent-label" class="flex flex-none flex-wrap gap-1.5">
-          <button
-            v-for="a in accents"
-            :key="a"
-            type="button"
-            :data-accent="a"
-            :aria-pressed="accent === a ? 'true' : 'false'"
-            :aria-label="t(accentLabels[a])"
-            :title="t(accentLabels[a])"
-            class="grid size-8 cursor-pointer place-items-center rounded-full border-2 border-surface-raised bg-brand p-0 text-on-brand shadow-[0_0_0_1px_var(--line-strong)] aria-pressed:shadow-[0_0_0_2px_var(--ink)] max-sm:size-11"
-            @click="setAccent(a)"
-          >
-            <Check v-if="accent === a" class="size-4" aria-hidden="true" />
-          </button>
-        </div>
-      </div>
-      <div :class="[row, 'flex-wrap']">
-        <div class="min-w-0 flex-[1_1_10rem]">
-          <span id="style-label" class="block font-semibold">{{ t('kernel.settings.style') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.style_help') }}</span>
-        </div>
-        <div
-          role="group"
-          aria-labelledby="style-label"
-          class="inline-flex flex-none gap-0.5 rounded-md border border-line bg-surface-sunken p-0.5 max-sm:flex max-sm:w-full"
-        >
-          <button
-            v-for="s in styles"
-            :key="s"
-            type="button"
-            :aria-pressed="style === s ? 'true' : 'false'"
-            class="h-[30px] cursor-pointer rounded-sm border-0 bg-transparent px-3 text-[13px] font-semibold whitespace-nowrap text-ink-muted hover:text-ink aria-pressed:bg-surface-raised aria-pressed:text-ink aria-pressed:shadow-[0_0_0_1px_var(--line-strong)] max-sm:h-auto max-sm:min-h-9 max-sm:min-w-0 max-sm:flex-1 max-sm:px-1.5 max-sm:py-1 max-sm:whitespace-normal"
-            @click="setStyle(s)"
-          >
-            {{ t(styleLabels[s]) }}
-          </button>
-        </div>
-      </div>
-      <div v-if="system.data.value" :class="row">
-        <div class="min-w-0 flex-1">
-          <label for="timeZone" class="block font-semibold">{{ t('kernel.settings.time_zone') }}</label>
-          <span id="zone-help" class="block text-caption leading-[18px] text-ink-muted">
-            {{ zoneError.fields.value.timeZone ? t(zoneError.fields.value.timeZone) : t('kernel.settings.time_zone_help') }}
-          </span>
-        </div>
-        <select
-          id="timeZone"
-          :value="system.data.value.timeZone ?? ''"
-          aria-describedby="zone-help"
-          :aria-invalid="!!zoneError.fields.value.timeZone || undefined"
-          :class="[control, 'max-w-[55%] min-w-0 flex-none']"
-          @change="pickZone"
-        >
-          <option value="">{{ t('kernel.settings.time_zone_server', { zone: system.data.value.serverTimeZone }) }}</option>
-          <option v-for="z in zoneChoices" :key="z" :value="z" translate="no">{{ z }}</option>
-        </select>
-      </div>
-    </section>
-
-    <section aria-labelledby="renewal" :class="panel">
-      <div class="mb-1 flex flex-wrap items-center justify-between gap-x-3">
-        <h2 id="renewal" class="m-0 text-heading font-semibold sm:text-section-title">{{ t('certs.defaults.title') }}</h2>
-        <p v-if="saved" role="status" class="m-0 inline-flex items-center gap-1 text-small text-ok-ink">
-          <Check class="size-4" aria-hidden="true" />{{ t('kernel.settings.saved') }}
-        </p>
-      </div>
-      <JecAlert v-if="loadError.error.value" :code="loadError.error.value.code" :params="loadError.error.value.params" />
-      <JecAlert v-if="saveError.alert.value" :code="saveError.alert.value.code" :params="saveError.alert.value.params" />
-      <template v-if="form">
+        <JecAlert v-if="zoneError.alert.value" :code="zoneError.alert.value.code" :params="zoneError.alert.value.params" />
         <div :class="row">
+          <label for="language" class="min-w-0 flex-1 font-semibold">{{ t('kernel.settings.language') }}</label>
+          <select id="language" :value="locale" :class="[control, 'flex-none']" @change="pickLocale">
+            <option v-for="l in locales" :key="l.tag" :value="l.tag" :lang="l.tag" translate="no">{{ l.name }}</option>
+          </select>
+        </div>
+        <div :class="[row, 'flex-wrap']">
+          <span id="theme-label" class="min-w-0 flex-[1_1_4rem] font-semibold">{{ t('kernel.settings.theme') }}</span>
+          <div
+            role="group"
+            aria-labelledby="theme-label"
+            class="inline-flex flex-none gap-0.5 rounded-md border border-line bg-surface-sunken p-0.5 max-sm:flex max-sm:w-full"
+          >
+            <button
+              v-for="th in themes"
+              :key="th"
+              type="button"
+              :aria-pressed="theme === th ? 'true' : 'false'"
+              class="h-7 cursor-pointer rounded-sm border-0 bg-transparent px-2.5 text-[13px] font-semibold whitespace-nowrap text-ink-muted hover:text-ink aria-pressed:bg-surface-raised aria-pressed:text-ink aria-pressed:shadow-[0_0_0_1px_var(--line-strong)] max-sm:h-auto max-sm:min-h-9 max-sm:min-w-0 max-sm:flex-1 max-sm:px-1.5 max-sm:py-1 max-sm:whitespace-normal"
+              @click="setTheme(th)"
+            >
+              {{ t(themeLabels[th]) }}
+            </button>
+          </div>
+        </div>
+        <div :class="[row, 'flex-wrap']">
+          <span id="accent-label" class="min-w-0 flex-[1_1_4rem] font-semibold">{{ t('kernel.settings.accent') }}</span>
+          <!-- Each swatch takes its own color: data-accent sets the brand's tokens within it. -->
+          <div role="group" aria-labelledby="accent-label" class="flex flex-none flex-wrap gap-1.5">
+            <button
+              v-for="a in accents"
+              :key="a"
+              type="button"
+              :data-accent="a"
+              :aria-pressed="accent === a ? 'true' : 'false'"
+              :aria-label="t(accentLabels[a])"
+              :title="t(accentLabels[a])"
+              class="grid size-7 cursor-pointer place-items-center rounded-full border-2 border-surface-raised bg-brand p-0 text-on-brand shadow-[0_0_0_1px_var(--line-strong)] aria-pressed:shadow-[0_0_0_2px_var(--ink)] max-sm:size-11"
+              @click="setAccent(a)"
+            >
+              <Check v-if="accent === a" class="size-4" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+        <div :class="[row, 'flex-wrap']">
+          <span id="style-label" class="min-w-0 flex-[1_1_4rem] font-semibold">{{ t('kernel.settings.style') }}</span>
+          <div
+            role="group"
+            aria-labelledby="style-label"
+            class="inline-flex flex-none gap-0.5 rounded-md border border-line bg-surface-sunken p-0.5 max-sm:flex max-sm:w-full"
+          >
+            <button
+              v-for="st in styles"
+              :key="st"
+              type="button"
+              :aria-pressed="style === st ? 'true' : 'false'"
+              :title="st === 'blocks' ? t('kernel.settings.style_help') : undefined"
+              class="h-7 cursor-pointer rounded-sm border-0 bg-transparent px-2.5 text-[13px] font-semibold whitespace-nowrap text-ink-muted hover:text-ink aria-pressed:bg-surface-raised aria-pressed:text-ink aria-pressed:shadow-[0_0_0_1px_var(--line-strong)] max-sm:h-auto max-sm:min-h-9 max-sm:min-w-0 max-sm:flex-1 max-sm:px-1.5 max-sm:py-1 max-sm:whitespace-normal"
+              @click="setStyle(st)"
+            >
+              {{ t(styleLabels[st]) }}
+            </button>
+          </div>
+        </div>
+        <div v-if="system.data.value" :class="row">
           <div class="min-w-0 flex-1">
-            <label for="renewBeforeDays" class="block font-semibold">{{ t('certs.defaults.days') }}</label>
-            <span id="days-help" class="block text-caption leading-[18px] text-ink-muted">
-              {{ saveError.fields.value.renewBeforeDays ? t(saveError.fields.value.renewBeforeDays) : t('certs.defaults.days_help') }}
+            <label for="timeZone" class="block font-semibold">{{ t('kernel.settings.time_zone') }}</label>
+            <span v-if="zoneError.fields.value.timeZone" id="zone-help" class="block text-caption text-danger-ink">{{ t(zoneError.fields.value.timeZone) }}</span>
+          </div>
+          <select
+            id="timeZone"
+            :value="system.data.value.timeZone ?? ''"
+            :aria-describedby="zoneError.fields.value.timeZone ? 'zone-help' : undefined"
+            :aria-invalid="!!zoneError.fields.value.timeZone || undefined"
+            :class="[control, 'max-w-[70%] min-w-0 flex-none']"
+            @change="pickZone"
+          >
+            <option value="">{{ t('kernel.settings.time_zone_server', { zone: system.data.value.serverTimeZone }) }}</option>
+            <option v-for="z in zoneChoices" :key="z" :value="z" translate="no">{{ z }}</option>
+          </select>
+        </div>
+        <p class="m-0 pt-1 pb-0.5 text-caption text-ink-muted">{{ t('kernel.settings.browser_only') }}</p>
+      </section>
+
+      <section aria-labelledby="renewal" :class="[panel, 'sm:flex-1']">
+        <div class="flex flex-wrap items-center justify-between gap-x-3">
+          <h2 id="renewal" :class="heading">{{ t('certs.defaults.title') }}</h2>
+          <p v-if="saved" role="status" class="m-0 inline-flex items-center gap-1 text-small text-ok-ink">
+            <Check class="size-4" aria-hidden="true" />{{ t('kernel.settings.saved') }}
+          </p>
+        </div>
+        <JecAlert v-if="loadError.error.value" :code="loadError.error.value.code" :params="loadError.error.value.params" />
+        <JecAlert v-if="saveError.alert.value" :code="saveError.alert.value.code" :params="saveError.alert.value.params" />
+        <template v-if="form">
+          <div :class="row">
+            <div class="min-w-0 flex-1">
+              <label for="renewBeforeDays" class="block font-semibold">{{ t('certs.defaults.days') }}</label>
+              <span id="days-help" :class="help2" :title="t('certs.defaults.days_help')">
+                {{ saveError.fields.value.renewBeforeDays ? t(saveError.fields.value.renewBeforeDays) : t('certs.defaults.days_help') }}
+              </span>
+            </div>
+            <span class="flex flex-none items-center gap-2">
+              <input
+                id="renewBeforeDays"
+                v-model.number="form.renewBeforeDays"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                max="365"
+                aria-describedby="days-help"
+                :aria-invalid="!!saveError.fields.value.renewBeforeDays || undefined"
+                :class="[control, 'w-16 tabular-nums']"
+                @change="store"
+              />
+              <span>{{ t('certs.settings.days_unit') }}</span>
             </span>
           </div>
-          <span class="flex flex-none items-center gap-2">
+          <div :class="row">
+            <div class="min-w-0 flex-1">
+              <label for="checkTime" class="block font-semibold">{{ t('certs.defaults.check_time') }}</label>
+              <span id="check-help" :class="help2" :title="t('certs.defaults.check_time_help', { zone: settings.data.value?.timeZone ?? '' })">
+                {{
+                  saveError.fields.value.checkTime
+                    ? t(saveError.fields.value.checkTime)
+                    : t('certs.defaults.check_time_help', { zone: settings.data.value?.timeZone ?? '' })
+                }}
+              </span>
+            </div>
             <input
-              id="renewBeforeDays"
-              v-model.number="form.renewBeforeDays"
-              type="number"
-              inputmode="numeric"
-              min="1"
-              max="365"
-              aria-describedby="days-help"
-              :aria-invalid="!!saveError.fields.value.renewBeforeDays || undefined"
-              :class="[control, 'w-20 tabular-nums']"
+              id="checkTime"
+              v-model="form.checkTime"
+              type="time"
+              required
+              aria-describedby="check-help"
+              :aria-invalid="!!saveError.fields.value.checkTime || undefined"
+              :class="[control, 'w-28 flex-none tabular-nums']"
               @change="store"
             />
-            <span>{{ t('certs.settings.days_unit') }}</span>
-          </span>
+          </div>
+          <div :class="row">
+            <div class="min-w-0 flex-1">
+              <label for="retries" class="block font-semibold">{{ t('certs.defaults.retries') }}</label>
+              <span id="retries-help" :class="help2" :title="t('certs.defaults.retries_help')">
+                {{ saveError.fields.value.retries ? t(saveError.fields.value.retries) : t('certs.defaults.retries_help') }}
+              </span>
+            </div>
+            <span class="flex flex-none items-center gap-2">
+              <input
+                id="retries"
+                v-model.number="form.retries"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                max="20"
+                aria-describedby="retries-help"
+                :aria-invalid="!!saveError.fields.value.retries || undefined"
+                :class="[control, 'w-16 tabular-nums']"
+                @change="store"
+              />
+              <span>{{ t('certs.defaults.retries_unit', { count: form.retries ?? 0 }) }}</span>
+            </span>
+          </div>
+          <div :class="row">
+            <div class="min-w-0 flex-1">
+              <label for="keyType" class="block font-semibold">{{ t('certs.defaults.key_type') }}</label>
+              <span id="key-help" :class="help2" :title="t('certs.defaults.key_type_help')">{{ t('certs.defaults.key_type_help') }}</span>
+            </div>
+            <select id="keyType" v-model="form.keyType" aria-describedby="key-help" :class="[control, 'flex-none']" @change="store">
+              <option v-for="k in keyTypes" :key="k" :value="k">{{ keyLabel(k) }}</option>
+            </select>
+          </div>
+        </template>
+      </section>
+    </div>
+
+    <div class="flex flex-col gap-3">
+      <section v-if="system.data.value" aria-labelledby="data" :class="panel">
+        <h2 id="data" :class="heading">{{ t('kernel.settings.data') }}</h2>
+        <div :class="[row, 'flex-wrap']">
+          <div class="min-w-0 flex-[1_1_6rem]">
+            <span class="block font-semibold">{{ t('kernel.settings.backup') }}</span>
+            <span :class="help2" :title="t('kernel.settings.backup_help')">{{ t('kernel.settings.backup_help') }}</span>
+          </div>
+          <div class="ml-auto flex max-w-full min-w-0 flex-wrap justify-end gap-1">
+            <JecButton size="sm" @click="backingUp = true">
+              <Download class="size-4" aria-hidden="true" />{{ t('kernel.settings.backup_download') }}
+            </JecButton>
+            <JecButton size="sm" @click="restoring = true">
+              <RotateCcw class="size-4" aria-hidden="true" />{{ t('kernel.settings.restore') }}
+            </JecButton>
+          </div>
         </div>
         <div :class="row">
           <div class="min-w-0 flex-1">
-            <label for="checkTime" class="block font-semibold">{{ t('certs.defaults.check_time') }}</label>
-            <span id="check-help" class="block text-caption leading-[18px] text-ink-muted">
-              {{
-                saveError.fields.value.checkTime
-                  ? t(saveError.fields.value.checkTime)
-                  : t('certs.defaults.check_time_help', { zone: settings.data.value?.timeZone ?? '' })
-              }}
+            <label for="autoBackup" class="block font-semibold">{{ t('kernel.settings.auto_backup') }}</label>
+            <span id="auto-backup-help" :class="help2">
+              <template v-if="system.data.value.autoBackup.last">
+                {{ t('kernel.settings.auto_backup_last', { count: system.data.value.autoBackup.count }) }}
+                <time :datetime="system.data.value.autoBackup.last">{{ intl.dateTime(system.data.value.autoBackup.last) }}</time>
+              </template>
+              <span v-else :title="t('kernel.settings.auto_backup_help')">{{ t('kernel.settings.auto_backup_help') }}</span>
+            </span>
+            <JecAlert v-if="autoBackupError.alert.value" class="mt-2" :code="autoBackupError.alert.value.code" :params="autoBackupError.alert.value.params" />
+          </div>
+          <select
+            id="autoBackup"
+            :value="system.data.value.autoBackup.keep"
+            aria-describedby="auto-backup-help"
+            :class="[control, 'flex-none']"
+            @change="pickKeep"
+          >
+            <option v-for="k in keeps" :key="k" :value="k">
+              {{ k ? t('kernel.settings.auto_backup_keep', { count: k }) : t('kernel.settings.auto_backup_off') }}
+            </option>
+          </select>
+        </div>
+        <OffsiteSettings v-if="offsiteOn" :row-class="row" />
+        <div :class="[row, 'flex-wrap']">
+          <div class="min-w-0 flex-[1_1_8rem]">
+            <label for="heartbeat" class="block font-semibold">{{ t('kernel.settings.heartbeat') }}</label>
+            <span id="heartbeat-help" :class="help2">
+              <template v-if="heartbeatError.fields.value.url">{{ t(heartbeatError.fields.value.url) }}</template>
+              <template v-else-if="system.data.value.heartbeat.last && system.data.value.heartbeat.error">
+                <span class="font-semibold text-warn-ink">{{ t('kernel.settings.heartbeat_failed') }}</span>
+                <time :datetime="system.data.value.heartbeat.last">{{ intl.dateTime(system.data.value.heartbeat.last) }}</time>
+                <span translate="no" :title="system.data.value.heartbeat.error">{{ system.data.value.heartbeat.error }}</span>
+              </template>
+              <template v-else-if="system.data.value.heartbeat.last">
+                {{ t('kernel.settings.heartbeat_ok') }}
+                <time :datetime="system.data.value.heartbeat.last">{{ intl.dateTime(system.data.value.heartbeat.last) }}</time>
+              </template>
+              <span v-else :title="t('kernel.settings.heartbeat_help')">{{ t('kernel.settings.heartbeat_help') }}</span>
             </span>
           </div>
           <input
-            id="checkTime"
-            v-model="form.checkTime"
-            type="time"
-            required
-            aria-describedby="check-help"
-            :aria-invalid="!!saveError.fields.value.checkTime || undefined"
-            :class="[control, 'w-32 flex-none tabular-nums']"
-            @change="store"
+            id="heartbeat"
+            v-model="heartbeat"
+            type="url"
+            inputmode="url"
+            autocomplete="off"
+            spellcheck="false"
+            aria-describedby="heartbeat-help"
+            :aria-invalid="!!heartbeatError.fields.value.url || undefined"
+            :class="[control, 'w-full min-w-0 flex-[1_1_9rem]']"
+            @change="saveHeartbeat"
           />
         </div>
-        <div :class="row">
-          <div class="min-w-0 flex-1">
-            <label for="retries" class="block font-semibold">{{ t('certs.defaults.retries') }}</label>
-            <span id="retries-help" class="block text-caption leading-[18px] text-ink-muted">
-              {{ saveError.fields.value.retries ? t(saveError.fields.value.retries) : t('certs.defaults.retries_help') }}
-            </span>
-          </div>
-          <span class="flex flex-none items-center gap-2">
-            <input
-              id="retries"
-              v-model.number="form.retries"
-              type="number"
-              inputmode="numeric"
-              min="0"
-              max="20"
-              aria-describedby="retries-help"
-              :aria-invalid="!!saveError.fields.value.retries || undefined"
-              :class="[control, 'w-20 tabular-nums']"
-              @change="store"
+        <div :class="[row, 'flex-wrap']">
+          <div class="min-w-0 flex-[1_1_8rem]">
+            <span class="block font-semibold">{{ t('kernel.settings.config') }}</span>
+            <span :class="help2" :title="t('kernel.settings.config_help')">{{ t('kernel.settings.config_help') }}</span>
+            <span v-if="imported" role="status" class="mt-1 block text-small font-semibold text-ok-ink">{{ t('kernel.settings.config_imported') }}</span>
+            <JecAlert
+              v-if="exportError.alert.value && !exportingSecrets"
+              class="mt-2"
+              :code="exportError.alert.value.code"
+              :params="exportError.alert.value.params"
             />
-            <span>{{ t('certs.defaults.retries_unit', { count: form.retries ?? 0 }) }}</span>
-          </span>
-        </div>
-        <div :class="row">
-          <div class="min-w-0 flex-1">
-            <label for="keyType" class="block font-semibold">{{ t('certs.defaults.key_type') }}</label>
-            <span id="key-help" class="block text-caption leading-[18px] text-ink-muted">{{ t('certs.defaults.key_type_help') }}</span>
           </div>
-          <select id="keyType" v-model="form.keyType" aria-describedby="key-help" :class="[control, 'flex-none']" @change="store">
-            <option v-for="k in keyTypes" :key="k" :value="k">{{ keyLabel(k) }}</option>
-          </select>
+          <div class="ml-auto flex max-w-full min-w-0 flex-wrap justify-end gap-1">
+            <JecButton size="sm" :busy="exportConfig.isPending.value && !exportingSecrets" @click="downloadConfig()">
+              <Download class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_export') }}
+            </JecButton>
+            <JecButton size="sm" @click="exportingSecrets = true">
+              <KeyRound class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_export_secrets') }}
+            </JecButton>
+            <JecButton size="sm" @click="importing = true">
+              <Upload class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_import') }}
+            </JecButton>
+          </div>
         </div>
-      </template>
-    </section>
-
-    <section v-if="system.data.value" aria-labelledby="data" :class="panel">
-      <h2 id="data" class="m-0 mb-1 text-heading font-semibold sm:text-section-title">{{ t('kernel.settings.data') }}</h2>
-      <div :class="[row, 'flex-wrap']">
-        <div class="min-w-0 flex-[1_1_12rem]">
-          <span class="block font-semibold">{{ t('kernel.settings.backup') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.backup_help') }}</span>
-        </div>
-        <div class="ml-auto flex max-w-full min-w-0 flex-wrap justify-end gap-2">
-          <JecButton size="sm" @click="backingUp = true">
-            <Download class="size-4" aria-hidden="true" />{{ t('kernel.settings.backup_download') }}
-          </JecButton>
-          <JecButton size="sm" @click="restoring = true">
-            <RotateCcw class="size-4" aria-hidden="true" />{{ t('kernel.settings.restore') }}
-          </JecButton>
-        </div>
-      </div>
-      <div :class="row">
-        <div class="min-w-0 flex-1">
-          <label for="autoBackup" class="block font-semibold">{{ t('kernel.settings.auto_backup') }}</label>
-          <span id="auto-backup-help" class="block text-caption leading-[18px] text-ink-muted">
-            <template v-if="system.data.value.autoBackup.last">
-              {{ t('kernel.settings.auto_backup_last', { count: system.data.value.autoBackup.count }) }}
-              <time :datetime="system.data.value.autoBackup.last">{{ intl.dateTime(system.data.value.autoBackup.last) }}</time>
-            </template>
-            <template v-else>{{ t('kernel.settings.auto_backup_help') }}</template>
-          </span>
-          <JecAlert v-if="autoBackupError.alert.value" class="mt-2" :code="autoBackupError.alert.value.code" :params="autoBackupError.alert.value.params" />
-        </div>
-        <select
-          id="autoBackup"
-          :value="system.data.value.autoBackup.keep"
-          aria-describedby="auto-backup-help"
-          :class="[control, 'flex-none']"
-          @change="pickKeep"
-        >
-          <option v-for="k in keeps" :key="k" :value="k">
-            {{ k ? t('kernel.settings.auto_backup_keep', { count: k }) : t('kernel.settings.auto_backup_off') }}
-          </option>
-        </select>
-      </div>
-      <OffsiteSettings v-if="offsiteOn" :row-class="row" />
-      <div :class="[row, 'flex-wrap']">
-        <div class="min-w-0 flex-[1_1_12rem]">
-          <label for="heartbeat" class="block font-semibold">{{ t('kernel.settings.heartbeat') }}</label>
-          <span id="heartbeat-help" class="block text-caption leading-[18px] text-ink-muted">
-            <template v-if="heartbeatError.fields.value.url">{{ t(heartbeatError.fields.value.url) }}</template>
-            <template v-else-if="system.data.value.heartbeat.last && system.data.value.heartbeat.error">
-              <span class="font-semibold text-warn-ink">{{ t('kernel.settings.heartbeat_failed') }}</span>
-              <time :datetime="system.data.value.heartbeat.last">{{ intl.dateTime(system.data.value.heartbeat.last) }}</time>
-              <span translate="no">{{ system.data.value.heartbeat.error }}</span>
-            </template>
-            <template v-else-if="system.data.value.heartbeat.last">
-              {{ t('kernel.settings.heartbeat_ok') }}
-              <time :datetime="system.data.value.heartbeat.last">{{ intl.dateTime(system.data.value.heartbeat.last) }}</time>
-            </template>
-            <template v-else>{{ t('kernel.settings.heartbeat_help') }}</template>
-          </span>
-        </div>
-        <input
-          id="heartbeat"
-          v-model="heartbeat"
-          type="url"
-          inputmode="url"
-          autocomplete="off"
-          spellcheck="false"
-          aria-describedby="heartbeat-help"
-          :aria-invalid="!!heartbeatError.fields.value.url || undefined"
-          :class="[control, 'w-full min-w-0 flex-[1_1_14rem]']"
-          @change="saveHeartbeat"
-        />
-      </div>
-      <div :class="[row, 'flex-wrap']">
-        <!-- Three buttons leave the words too little room beside them: they go below. -->
-        <div class="min-w-0 flex-[1_1_18rem]">
-          <span class="block font-semibold">{{ t('kernel.settings.config') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.config_help') }}</span>
-          <span v-if="imported" role="status" class="mt-1 block text-small font-semibold text-ok-ink">{{ t('kernel.settings.config_imported') }}</span>
-          <JecAlert
-            v-if="exportError.alert.value && !exportingSecrets"
-            class="mt-2"
-            :code="exportError.alert.value.code"
-            :params="exportError.alert.value.params"
-          />
-        </div>
-        <div class="ml-auto flex max-w-full min-w-0 flex-wrap justify-end gap-2">
-          <JecButton size="sm" :busy="exportConfig.isPending.value && !exportingSecrets" @click="downloadConfig()">
-            <Download class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_export') }}
-          </JecButton>
-          <JecButton size="sm" @click="exportingSecrets = true">
-            <KeyRound class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_export_secrets') }}
-          </JecButton>
-          <JecButton size="sm" @click="importing = true">
-            <Upload class="size-4" aria-hidden="true" />{{ t('kernel.settings.config_import') }}
-          </JecButton>
-        </div>
-      </div>
-      <div :class="row">
-        <div class="min-w-0 flex-1">
-          <span class="block font-semibold">{{ t('kernel.settings.secret_key') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.secret_key_help') }}</span>
-        </div>
-        <span class="flex min-w-0 max-w-[60%] flex-wrap items-center justify-end gap-x-3 gap-y-1 text-right text-small">
-          {{ t(system.data.value.secretKey === 'env' ? 'kernel.settings.secret_key_env' : 'kernel.settings.secret_key_file') }}
-          <JecButton size="sm" :aria-label="t('kernel.settings.secret_key_show_label')" @click="showingKey = true">
+        <div :class="[row, 'flex-wrap']">
+          <div class="min-w-0 flex-[1_1_8rem]">
+            <span class="flex min-w-0 items-baseline gap-x-2">
+              <span class="flex-none font-semibold">{{ t('kernel.settings.secret_key') }}</span>
+              <span class="min-w-0 truncate text-caption text-ink-muted" :title="t(system.data.value.secretKey === 'env' ? 'kernel.settings.secret_key_env' : 'kernel.settings.secret_key_file')">{{
+                t(system.data.value.secretKey === 'env' ? 'kernel.settings.secret_key_env' : 'kernel.settings.secret_key_file')
+              }}</span>
+            </span>
+            <span :class="help2" :title="t('kernel.settings.secret_key_help')">{{ t('kernel.settings.secret_key_help') }}</span>
+          </div>
+          <JecButton size="sm" class="ml-auto flex-none" :aria-label="t('kernel.settings.secret_key_show_label')" @click="showingKey = true">
             <KeyRound class="size-4" aria-hidden="true" />{{ t('kernel.settings.secret_key_show') }}
           </JecButton>
-        </span>
-      </div>
-    </section>
+        </div>
+      </section>
 
-    <section v-if="session.data.value" aria-labelledby="account" :class="panel">
-      <h2 id="account" class="m-0 mb-1 text-heading font-semibold sm:text-section-title">{{ t('kernel.settings.account') }}</h2>
-      <p v-if="changed" role="status" class="m-0 mb-1 inline-flex items-center gap-1 text-small text-ok-ink">
-        <Check class="size-4 flex-none" aria-hidden="true" />{{ t('kernel.settings.password_done') }}
-      </p>
-      <p v-if="twoFactorDone" role="status" class="m-0 mb-1 inline-flex items-center gap-1 text-small text-ok-ink">
-        <Check class="size-4 flex-none" aria-hidden="true" />{{
-          t(twoFactorDone === 'on' ? 'kernel.settings.two_factor_done' : 'kernel.settings.two_factor_off_done')
-        }}
-      </p>
-      <JecAlert v-if="accountError.error.value" :code="accountError.error.value.code" :params="accountError.error.value.params" />
-      <div :class="row">
-        <span class="min-w-0 flex-1 font-semibold">{{ t('kernel.account.username') }}</span>
-        <span class="min-w-0 max-w-[60%] text-right [overflow-wrap:anywhere]" translate="no">{{ session.data.value.username }}</span>
-      </div>
-      <div :class="[row, 'flex-wrap']">
-        <div class="min-w-0 flex-[1_1_12rem]">
-          <span class="block font-semibold">{{ t('kernel.account.password') }}</span>
-          <span v-if="session.data.value.passwordChangedAt" class="block text-caption leading-[18px] text-ink-muted">
-            {{ t('kernel.settings.password_changed_at', { date: intl.date(session.data.value.passwordChangedAt) }) }}
+      <section v-if="manifest.data.value" aria-labelledby="about" :class="[panel, 'sm:flex-1']">
+        <h2 id="about" :class="heading">{{ t('kernel.settings.about') }}</h2>
+        <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1 border-b border-line py-1.5 text-small">
+          <dt class="font-semibold">{{ t('kernel.settings.version') }}</dt>
+          <!-- A build from source has a long version: cut short. -->
+          <dd :class="[line, 'font-mono']" translate="no" :title="manifest.data.value.version">
+            <data :value="manifest.data.value.version">{{ manifest.data.value.version }}</data>
+          </dd>
+          <dt class="font-semibold">{{ t('kernel.settings.build') }}</dt>
+          <dd :class="[fact, 'flex flex-wrap justify-end gap-x-2 text-ink-muted']">
+            <time v-if="manifest.data.value.date" :datetime="manifest.data.value.date">{{ intl.date(manifest.data.value.date) }}</time>
+            <data :value="manifest.data.value.platform" class="font-mono">{{ manifest.data.value.platform }}</data>
+          </dd>
+          <dt class="font-semibold">{{ t('kernel.settings.source') }}</dt>
+          <dd :class="[fact, 'flex flex-wrap justify-end gap-x-2']">
+            <a :href="repository.url" target="_blank" rel="noopener" translate="no">{{ repository.name }}</a>
+            <span class="text-ink-muted">{{ t('kernel.settings.license') }}</span>
+          </dd>
+        </dl>
+        <div :class="[row, 'flex-wrap']">
+          <div class="min-w-0 flex-[1_1_8rem]">
+            <span class="block font-semibold">{{ t('kernel.settings.check_update') }}</span>
+            <span :class="help" :title="t('kernel.settings.update_help')">{{ t('kernel.settings.update_help') }}</span>
+          </div>
+          <JecButton size="sm" class="ml-auto flex-none" :busy="release.isPending.value" @click="release.mutate()">
+            <RefreshCw class="size-4" aria-hidden="true" />{{ t('kernel.settings.check_update') }}
+          </JecButton>
+        </div>
+        <label :class="[row, 'cursor-pointer']">
+          <span class="min-w-0 flex-1">
+            <span class="block font-semibold">{{ t('kernel.settings.update_check') }}</span>
+            <span :class="help" :title="t('kernel.settings.update_check_hint')">{{ t('kernel.settings.update_check_hint') }}</span>
+          </span>
+          <input
+            type="checkbox"
+            class="size-4 flex-none accent-brand"
+            :checked="system.data.value?.updateCheck"
+            :disabled="setUpdateCheck.isPending.value || !system.data.value"
+            @change="setUpdateCheck.mutate(($event.target as HTMLInputElement).checked)"
+          />
+        </label>
+        <JecAlert v-if="releaseError.alert.value" :code="releaseError.alert.value.code" :params="releaseError.alert.value.params" />
+        <p v-else-if="release.data.value" role="status" class="m-0 py-1.5 text-small [overflow-wrap:anywhere]">
+          <template v-if="!release.data.value.latest">{{ t('kernel.settings.no_release') }}</template>
+          <span v-else-if="release.data.value.newer" class="font-semibold text-ok-ink">
+            {{ t('kernel.settings.update_available', { version: release.data.value.latest }) }}
+          </span>
+          <template v-else-if="versioned">{{ t('kernel.settings.up_to_date') }}</template>
+          <template v-else>{{ t('kernel.settings.latest_release', { version: release.data.value.latest }) }}</template>
+          <template v-if="release.data.value.url && release.data.value.latest">
+            {{ ' ' }}<a :href="release.data.value.url" target="_blank" rel="noopener">{{ t('kernel.settings.release_notes') }}</a>
+          </template>
+        </p>
+        <div v-if="release.data.value?.newer" class="flex flex-col gap-1 pb-2 text-small">
+          <span class="text-ink-muted">{{ t(system.data.value?.image ? 'kernel.settings.upgrade_image' : 'kernel.settings.upgrade_binary') }}</span>
+          <span class="flex items-center gap-2">
+            <code class="min-w-0 flex-1 rounded-sm bg-surface-sunken px-2 py-1 [overflow-wrap:anywhere]" translate="no">{{ upgradeCommand }}</code>
+            <CopyButton :value="upgradeCommand" label="kernel.settings.upgrade_copy" />
           </span>
         </div>
-        <JecButton size="sm" class="ml-auto flex-none" @click="changing = true">
-          <KeyRound class="size-4" aria-hidden="true" />{{ t('kernel.settings.change_password') }}
-        </JecButton>
-      </div>
-      <div :class="[row, 'flex-wrap']">
-        <div class="min-w-0 flex-[1_1_12rem]">
-          <span class="block font-semibold">{{ t('kernel.settings.two_factor') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.two_factor_hint') }}</span>
-        </div>
-        <span v-if="session.data.value.twoFactor" class="inline-flex flex-none items-center gap-1 text-small font-semibold text-ok-ink">
-          <ShieldCheck class="size-4" aria-hidden="true" />{{ t('kernel.settings.two_factor_state_on') }}
-        </span>
-        <span v-else class="inline-flex flex-none items-center gap-1 text-small text-ink-muted">
-          <ShieldOff class="size-4" aria-hidden="true" />{{ t('kernel.settings.two_factor_state_off') }}
-        </span>
-        <JecButton v-if="session.data.value.twoFactor" size="sm" class="ml-auto flex-none" @click="turningOff = true">
-          {{ t('kernel.settings.two_factor_turn_off') }}
-        </JecButton>
-        <JecButton v-else size="sm" class="ml-auto flex-none" @click="turningOn = true">
-          {{ t('kernel.settings.two_factor_turn_on') }}
-        </JecButton>
-      </div>
-      <RecoveryCodes v-if="session.data.value.twoFactor" v-model:codes="newCodes" :row-class="row" :left="session.data.value.recoveryCodes ?? 0" />
-      <OidcSettings v-if="oidcOn" :row-class="row" />
-      <div :class="row">
-        <div class="min-w-0 flex-1">
-          <label for="session-days" class="block font-semibold">{{ t('kernel.settings.session_days') }}</label>
-          <span id="session-days-help" class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.session_days_hint') }}</span>
-        </div>
-        <select
-          id="session-days"
-          :value="session.data.value.sessionDays"
-          aria-describedby="session-days-help"
-          :aria-invalid="accountError.error.value ? 'true' : undefined"
-          :class="[control, 'flex-none']"
-          @change="pickSessionDays"
-        >
-          <option v-for="d in sessionDays" :key="d" :value="d">{{ t('kernel.settings.days', { days: d }) }}</option>
-        </select>
-      </div>
-      <div :class="[row, 'flex-wrap']">
-        <div class="min-w-0 flex-[1_1_12rem]">
-          <span class="block font-semibold">{{ t('kernel.settings.tokens') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.tokens_hint') }}</span>
-        </div>
-        <data v-if="tokens.data.value" :value="tokens.data.value.tokens.length" class="flex-none text-small text-ink-muted tabular-nums">
-          {{ tokens.data.value.tokens.length }}
-        </data>
-        <JecButton size="sm" class="ml-auto flex-none" @click="tokensOpen = true">
-          <KeySquare class="size-4" aria-hidden="true" />{{ t('kernel.settings.tokens_manage') }}
-        </JecButton>
-      </div>
-      <SessionsSettings :row-class="row" />
-    </section>
+      </section>
+    </div>
 
-    <section v-if="manifest.data.value" aria-labelledby="about" :class="panel">
-      <h2 id="about" class="m-0 mb-1 text-heading font-semibold sm:text-section-title">{{ t('kernel.settings.about') }}</h2>
-      <!-- What this JEC is and how it runs, a line each; the variables that set them are data. -->
-      <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 gap-y-2 border-b border-line py-2 text-small">
-        <dt class="font-semibold">{{ t('kernel.settings.version') }}</dt>
-        <!-- A build from source has a long version: it wraps. -->
-        <dd :class="[fact, 'font-mono']">
-          <data :value="manifest.data.value.version">{{ manifest.data.value.version }}</data>
-        </dd>
-        <dt class="font-semibold">{{ t('kernel.settings.build') }}</dt>
-        <dd :class="[fact, 'flex flex-wrap justify-end gap-x-2 text-ink-muted']">
-          <time v-if="manifest.data.value.date" :datetime="manifest.data.value.date">{{ intl.date(manifest.data.value.date) }}</time>
-          <data :value="manifest.data.value.platform" class="font-mono">{{ manifest.data.value.platform }}</data>
-        </dd>
-        <dt class="font-semibold">{{ t('kernel.settings.source') }}</dt>
-        <dd :class="[fact, 'flex flex-wrap justify-end gap-x-2']">
-          <a :href="repository.url" target="_blank" rel="noopener" translate="no">{{ repository.name }}</a>
-          <span class="text-ink-muted">{{ t('kernel.settings.license') }}</span>
-        </dd>
-        <template v-if="system.data.value">
-          <dt class="font-semibold">{{ t('kernel.settings.data_dir') }}</dt>
-          <dd :class="[fact, 'font-mono']" translate="no">{{ system.data.value.dataDir }}</dd>
-          <dt>
-            <span class="block font-semibold">{{ t('kernel.settings.database') }}</span>
-            <code class="block text-caption text-ink-muted" translate="no">{{ variables.database }}</code>
-          </dt>
-          <dd :class="fact" translate="no">{{ databases[system.data.value.database] }}</dd>
-          <dt>
-            <span class="block font-semibold">{{ t('kernel.settings.base_url') }}</span>
-            <code class="block text-caption text-ink-muted" translate="no">{{ variables.baseURL }}</code>
-          </dt>
-          <dd v-if="system.data.value.baseURL" :class="[fact, 'font-mono']" translate="no">{{ system.data.value.baseURL }}</dd>
-          <dd v-else :class="[fact, 'text-ink-muted']">{{ t('kernel.settings.not_set') }}</dd>
-          <dt>
-            <span class="block font-semibold">{{ t('kernel.settings.listen') }}</span>
-            <code class="block text-caption text-ink-muted" translate="no">{{ variables.listen }}</code>
-          </dt>
-          <dd :class="[fact, 'flex flex-col items-end']">
-            <span class="font-mono" translate="no">{{ system.data.value.listen }}</span>
-            <span v-if="system.data.value.httpListen" class="text-caption text-ink-muted">
-              {{ t('kernel.settings.http_listen') }} <span class="font-mono" translate="no">{{ system.data.value.httpListen }}</span>
+    <div class="flex flex-col gap-3 sm:col-span-2 sm:grid sm:grid-cols-2 xl:col-span-1 xl:flex">
+      <section v-if="session.data.value" aria-labelledby="account" :class="panel">
+        <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+          <h2 id="account" :class="heading">{{ t('kernel.settings.account') }}</h2>
+          <p class="m-0 min-w-0 text-small [overflow-wrap:anywhere]">
+            <span class="text-ink-muted">{{ t('kernel.account.username') }}</span>
+            {{ ' ' }}<span class="font-semibold" translate="no">{{ session.data.value.username }}</span>
+          </p>
+        </div>
+        <p v-if="changed" role="status" class="m-0 inline-flex items-center gap-1 text-small text-ok-ink">
+          <Check class="size-4 flex-none" aria-hidden="true" />{{ t('kernel.settings.password_done') }}
+        </p>
+        <p v-if="twoFactorDone" role="status" class="m-0 inline-flex items-center gap-1 text-small text-ok-ink">
+          <Check class="size-4 flex-none" aria-hidden="true" />{{
+            t(twoFactorDone === 'on' ? 'kernel.settings.two_factor_done' : 'kernel.settings.two_factor_off_done')
+          }}
+        </p>
+        <JecAlert v-if="accountError.error.value" :code="accountError.error.value.code" :params="accountError.error.value.params" />
+        <div :class="[row, 'flex-wrap']">
+          <div class="min-w-0 flex-[1_1_8rem]">
+            <span class="block font-semibold">{{ t('kernel.account.password') }}</span>
+            <span v-if="session.data.value.passwordChangedAt" :class="help">
+              {{ t('kernel.settings.password_changed_at', { date: intl.date(session.data.value.passwordChangedAt) }) }}
             </span>
-          </dd>
-          <dt>
-            <span class="block font-semibold">{{ t('kernel.settings.trusted_proxies') }}</span>
-            <code class="block text-caption text-ink-muted" translate="no">{{ variables.trustedProxies }}</code>
-          </dt>
-          <dd v-if="system.data.value.trustedProxies" :class="[fact, 'font-mono']" translate="no">{{ system.data.value.trustedProxies }}</dd>
-          <dd v-else :class="[fact, 'text-ink-muted']">{{ t('kernel.settings.not_set') }}</dd>
-          <dt>
-            <span class="block font-semibold">{{ t('kernel.settings.allowed_clients') }}</span>
-            <code class="block text-caption text-ink-muted" translate="no">{{ variables.allowedClients }}</code>
-          </dt>
-          <dd v-if="system.data.value.allowedClients" :class="[fact, 'font-mono']" translate="no">{{ system.data.value.allowedClients }}</dd>
-          <dd v-else :class="[fact, 'text-ink-muted']">{{ t('kernel.settings.allowed_any') }}</dd>
-          <dt>
-            <span class="block font-semibold">{{ t('kernel.settings.tls') }}</span>
-            <code class="block text-caption text-ink-muted" translate="no">{{ variables.tls }}</code>
-          </dt>
-          <dd v-if="!system.data.value.tls" :class="[fact, 'text-ink-muted']">{{ t('kernel.settings.tls_off') }}</dd>
-          <dd v-else-if="system.data.value.tls.missing" :class="[fact, 'inline-flex items-center justify-end gap-1 font-semibold text-warn-ink']">
-            <TriangleAlert class="size-4 flex-none" aria-hidden="true" />{{ t('kernel.settings.tls_missing') }}
-          </dd>
-          <dd v-else :class="[fact, 'flex flex-wrap justify-end gap-x-2']">
-            <span class="font-mono" translate="no">{{ system.data.value.tls.names?.join(', ') }}</span>
-            <span v-if="system.data.value.tls.notAfter" class="text-ink-muted">
-              {{ t('kernel.settings.tls_until') }} <time :datetime="system.data.value.tls.notAfter">{{ intl.date(system.data.value.tls.notAfter) }}</time>
-            </span>
-          </dd>
-          <dt>
-            <span class="block font-semibold">{{ t('kernel.settings.hsts') }}</span>
-            <code class="block text-caption text-ink-muted" translate="no">{{ variables.hsts }}</code>
-          </dt>
-          <dd :class="[fact, system.data.value.hsts ? 'font-semibold text-ok-ink' : 'text-ink-muted']">
-            {{ t(system.data.value.hsts ? 'kernel.settings.hsts_on' : 'kernel.settings.hsts_off') }}
-          </dd>
-        </template>
-        <template v-if="health.data.value">
-          <dt class="font-semibold">{{ t('kernel.health.jobs') }}</dt>
-          <dd :class="[fact, 'flex flex-wrap items-center justify-end gap-x-2']">
-            <span v-if="failedJobs.length" class="inline-flex items-center gap-1 font-semibold text-warn-ink">
-              <TriangleAlert class="size-4 flex-none" aria-hidden="true" />{{ t('kernel.health.failed', { count: failedJobs.length }) }}
-            </span>
-            <span v-else class="inline-flex items-center gap-1 text-ok-ink">
-              <CircleCheck class="size-4 flex-none" aria-hidden="true" />{{ t('kernel.health.all_ok', { count: health.data.value.jobs.length }) }}
-            </span>
-            <button type="button" class="cursor-pointer border-0 bg-transparent p-0 text-ink underline" @click="jobsOpen = true">
-              {{ t('kernel.health.details') }}
-            </button>
-          </dd>
-          <template v-if="health.data.value.disk">
-            <dt class="font-semibold">{{ t('kernel.health.disk') }}</dt>
-            <dd :class="[fact, diskLow ? 'font-semibold text-warn-ink' : '']">
-              <TriangleAlert v-if="diskLow" class="mr-1 inline size-4 align-[-3px]" aria-hidden="true" />{{
-                t('kernel.health.disk_free', { free: intl.bytes(health.data.value.disk.free), total: intl.bytes(health.data.value.disk.total) })
-              }}
+          </div>
+          <JecButton size="sm" class="ml-auto flex-none" @click="changing = true">
+            <KeyRound class="size-4" aria-hidden="true" />{{ t('kernel.settings.change_password') }}
+          </JecButton>
+        </div>
+        <div :class="[row, 'flex-wrap']">
+          <div class="min-w-0 flex-[1_1_8rem]">
+            <span class="block font-semibold">{{ t('kernel.settings.two_factor') }}</span>
+            <span :class="help" :title="t('kernel.settings.two_factor_hint')">{{ t('kernel.settings.two_factor_hint') }}</span>
+          </div>
+          <span v-if="session.data.value.twoFactor" class="inline-flex flex-none items-center gap-1 text-small font-semibold text-ok-ink">
+            <ShieldCheck class="size-4" aria-hidden="true" />{{ t('kernel.settings.two_factor_state_on') }}
+          </span>
+          <span v-else class="inline-flex flex-none items-center gap-1 text-small text-ink-muted">
+            <ShieldOff class="size-4" aria-hidden="true" />{{ t('kernel.settings.two_factor_state_off') }}
+          </span>
+          <JecButton v-if="session.data.value.twoFactor" size="sm" class="ml-auto flex-none" @click="turningOff = true">
+            {{ t('kernel.settings.two_factor_turn_off') }}
+          </JecButton>
+          <JecButton v-else size="sm" class="ml-auto flex-none" @click="turningOn = true">
+            {{ t('kernel.settings.two_factor_turn_on') }}
+          </JecButton>
+        </div>
+        <RecoveryCodes v-if="session.data.value.twoFactor" v-model:codes="newCodes" :row-class="row" :left="session.data.value.recoveryCodes ?? 0" />
+        <OidcSettings v-if="oidcOn" :row-class="row" />
+        <div :class="row">
+          <div class="min-w-0 flex-1">
+            <label for="session-days" class="block font-semibold">{{ t('kernel.settings.session_days') }}</label>
+            <span id="session-days-help" :class="help">{{ t('kernel.settings.session_days_hint') }}</span>
+          </div>
+          <select
+            id="session-days"
+            :value="session.data.value.sessionDays"
+            aria-describedby="session-days-help"
+            :aria-invalid="accountError.error.value ? 'true' : undefined"
+            :class="[control, 'flex-none']"
+            @change="pickSessionDays"
+          >
+            <option v-for="d in sessionDays" :key="d" :value="d">{{ t('kernel.settings.days', { days: d }) }}</option>
+          </select>
+        </div>
+        <div :class="[row, 'flex-wrap']">
+          <div class="min-w-0 flex-[1_1_8rem]">
+            <span class="block font-semibold">{{ t('kernel.settings.tokens') }}</span>
+            <span :class="help" :title="t('kernel.settings.tokens_hint')">{{ t('kernel.settings.tokens_hint') }}</span>
+          </div>
+          <data v-if="tokens.data.value" :value="tokens.data.value.tokens.length" class="flex-none text-small text-ink-muted tabular-nums">
+            {{ tokens.data.value.tokens.length }}
+          </data>
+          <JecButton size="sm" class="ml-auto flex-none" @click="tokensOpen = true">
+            <KeySquare class="size-4" aria-hidden="true" />{{ t('kernel.settings.tokens_manage') }}
+          </JecButton>
+        </div>
+        <SessionsSettings :row-class="row" />
+      </section>
+
+      <!-- How this JEC runs, a line each; the variable that sets each is in its title. -->
+      <section v-if="system.data.value || health.data.value" aria-labelledby="runtime" :class="[panel, 'xl:flex-1']">
+        <h2 id="runtime" :class="heading">{{ t('kernel.settings.runtime') }}</h2>
+        <dl class="m-0 grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1 py-1.5 text-small">
+          <template v-if="system.data.value">
+            <dt class="font-semibold">{{ t('kernel.settings.data_dir') }}</dt>
+            <dd :class="[line, 'font-mono text-caption']" translate="no" :title="system.data.value.dataDir">{{ system.data.value.dataDir }}</dd>
+            <dt :class="variable" :title="t('kernel.settings.set_by', { name: variables.database })">{{ t('kernel.settings.database') }}</dt>
+            <dd :class="fact" translate="no">{{ databases[system.data.value.database] }}</dd>
+            <dt :class="variable" :title="t('kernel.settings.set_by', { name: variables.baseURL })">{{ t('kernel.settings.base_url') }}</dt>
+            <dd v-if="system.data.value.baseURL" :class="[fact, 'font-mono text-caption']" translate="no">{{ system.data.value.baseURL }}</dd>
+            <dd v-else :class="[fact, 'text-ink-muted']">{{ t('kernel.settings.not_set') }}</dd>
+            <dt :class="variable" :title="t('kernel.settings.set_by', { name: variables.listen })">{{ t('kernel.settings.listen') }}</dt>
+            <dd :class="[fact, 'flex flex-wrap justify-end gap-x-2']">
+              <span class="font-mono text-caption" translate="no">{{ system.data.value.listen }}</span>
+              <span v-if="system.data.value.httpListen" class="text-caption text-ink-muted">
+                {{ t('kernel.settings.http_listen') }} <span class="font-mono" translate="no">{{ system.data.value.httpListen }}</span>
+              </span>
+            </dd>
+            <dt :class="variable" :title="t('kernel.settings.set_by', { name: variables.trustedProxies })">{{ t('kernel.settings.trusted_proxies') }}</dt>
+            <dd v-if="system.data.value.trustedProxies" :class="[line, 'font-mono text-caption']" translate="no" :title="system.data.value.trustedProxies">
+              {{ system.data.value.trustedProxies }}
+            </dd>
+            <dd v-else :class="[fact, 'text-ink-muted']">{{ t('kernel.settings.not_set') }}</dd>
+            <dt :class="variable" :title="t('kernel.settings.set_by', { name: variables.allowedClients })">{{ t('kernel.settings.allowed_clients') }}</dt>
+            <dd v-if="system.data.value.allowedClients" :class="[line, 'font-mono text-caption']" translate="no" :title="system.data.value.allowedClients">
+              {{ system.data.value.allowedClients }}
+            </dd>
+            <dd v-else :class="[fact, 'text-ink-muted']">{{ t('kernel.settings.allowed_any') }}</dd>
+            <dt :class="variable" :title="t('kernel.settings.set_by', { name: variables.tls })">{{ t('kernel.settings.tls') }}</dt>
+            <dd v-if="!system.data.value.tls" :class="[line, 'text-ink-muted']" :title="t('kernel.settings.tls_off')">{{ t('kernel.settings.tls_off') }}</dd>
+            <dd v-else-if="system.data.value.tls.missing" :class="[fact, 'inline-flex items-center justify-end gap-1 font-semibold text-warn-ink']">
+              <TriangleAlert class="size-4 flex-none" aria-hidden="true" />{{ t('kernel.settings.tls_missing') }}
+            </dd>
+            <dd v-else :class="[fact, 'flex flex-wrap justify-end gap-x-2']">
+              <span class="font-mono text-caption" translate="no">{{ system.data.value.tls.names?.join(', ') }}</span>
+              <span v-if="system.data.value.tls.notAfter" class="text-ink-muted">
+                {{ t('kernel.settings.tls_until') }} <time :datetime="system.data.value.tls.notAfter">{{ intl.date(system.data.value.tls.notAfter) }}</time>
+              </span>
+            </dd>
+            <dt :class="variable" :title="t('kernel.settings.set_by', { name: variables.hsts })">{{ t('kernel.settings.hsts') }}</dt>
+            <dd :class="[fact, system.data.value.hsts ? 'font-semibold text-ok-ink' : 'text-ink-muted']">
+              {{ t(system.data.value.hsts ? 'kernel.settings.hsts_on' : 'kernel.settings.hsts_off') }}
             </dd>
           </template>
-        </template>
-      </dl>
-      <div :class="[row, 'flex-wrap']">
-        <div class="min-w-0 flex-[1_1_12rem]">
-          <span class="block font-semibold">{{ t('kernel.settings.check_update') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.update_help') }}</span>
-        </div>
-        <JecButton size="sm" class="flex-none" :busy="release.isPending.value" @click="release.mutate()">
-          <RefreshCw class="size-4" aria-hidden="true" />{{ t('kernel.settings.check_update') }}
-        </JecButton>
-      </div>
-      <label :class="[row, 'cursor-pointer']">
-        <span class="min-w-0 flex-1">
-          <span class="block font-semibold">{{ t('kernel.settings.update_check') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.update_check_hint') }}</span>
-        </span>
-        <input
-          type="checkbox"
-          class="size-4 flex-none accent-brand"
-          :checked="system.data.value?.updateCheck"
-          :disabled="setUpdateCheck.isPending.value || !system.data.value"
-          @change="setUpdateCheck.mutate(($event.target as HTMLInputElement).checked)"
-        />
-      </label>
-      <JecAlert v-if="releaseError.alert.value" :code="releaseError.alert.value.code" :params="releaseError.alert.value.params" />
-      <p v-else-if="release.data.value" role="status" class="m-0 py-2 text-small [overflow-wrap:anywhere]">
-        <template v-if="!release.data.value.latest">{{ t('kernel.settings.no_release') }}</template>
-        <span v-else-if="release.data.value.newer" class="font-semibold text-ok-ink">
-          {{ t('kernel.settings.update_available', { version: release.data.value.latest }) }}
-        </span>
-        <template v-else-if="versioned">{{ t('kernel.settings.up_to_date') }}</template>
-        <template v-else>{{ t('kernel.settings.latest_release', { version: release.data.value.latest }) }}</template>
-        <template v-if="release.data.value.url && release.data.value.latest">
-          {{ ' ' }}<a :href="release.data.value.url" target="_blank" rel="noopener">{{ t('kernel.settings.release_notes') }}</a>
-        </template>
-      </p>
-      <div v-if="release.data.value?.newer" class="flex flex-col gap-1 pb-2 text-small">
-        <span class="text-ink-muted">{{ t(system.data.value?.image ? 'kernel.settings.upgrade_image' : 'kernel.settings.upgrade_binary') }}</span>
-        <span class="flex items-center gap-2">
-          <code class="min-w-0 flex-1 rounded-sm bg-surface-sunken px-2 py-1 [overflow-wrap:anywhere]" translate="no">{{ upgradeCommand }}</code>
-          <CopyButton :value="upgradeCommand" label="kernel.settings.upgrade_copy" />
-        </span>
-      </div>
-    </section>
+          <template v-if="health.data.value">
+            <dt class="font-semibold">{{ t('kernel.health.jobs') }}</dt>
+            <dd :class="[fact, 'flex flex-wrap items-center justify-end gap-x-2']">
+              <span v-if="failedJobs.length" class="inline-flex items-center gap-1 font-semibold text-warn-ink">
+                <TriangleAlert class="size-4 flex-none" aria-hidden="true" />{{ t('kernel.health.failed', { count: failedJobs.length }) }}
+              </span>
+              <span v-else class="inline-flex items-center gap-1 text-ok-ink">
+                <CircleCheck class="size-4 flex-none" aria-hidden="true" />{{ t('kernel.health.all_ok', { count: health.data.value.jobs.length }) }}
+              </span>
+              <button type="button" class="cursor-pointer border-0 bg-transparent p-0 text-ink underline" @click="jobsOpen = true">
+                {{ t('kernel.health.details') }}
+              </button>
+            </dd>
+            <template v-if="health.data.value.disk">
+              <dt class="font-semibold">{{ t('kernel.health.disk') }}</dt>
+              <dd :class="[line, diskLow ? 'font-semibold text-warn-ink' : '']" :title="diskText">
+                <TriangleAlert v-if="diskLow" class="mr-1 inline size-4 align-[-3px]" aria-hidden="true" />{{ diskText }}
+              </dd>
+            </template>
+          </template>
+        </dl>
+      </section>
+    </div>
   </div>
 
   <JecDialog v-model:open="showingKey" :title="t('kernel.settings.secret_key')" small>
@@ -1246,30 +1254,33 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
       <form id="token-form" class="flex flex-col gap-3 border-t border-line pt-3" novalidate @submit.prevent="submitToken">
         <h3 class="m-0 text-heading font-semibold">{{ t('kernel.tokens.new') }}</h3>
         <JecAlert v-if="tokenError.alert.value" :code="tokenError.alert.value.code" :params="tokenError.alert.value.params" />
-        <JecField id="token-name" label="kernel.tokens.name" hint="kernel.tokens.name_help" :error="tokenError.fields.value.name">
-          <JecInput id="token-name" v-model="tokenForm.name" maxlength="64" required :invalid="!!tokenError.fields.value.name" />
-        </JecField>
-        <JecField id="token-scope" label="kernel.tokens.scope">
-          <select id="token-scope" v-model="tokenForm.scope" :class="control">
-            <option value="read">{{ t('kernel.tokens.scope_read') }}</option>
-            <option value="write">{{ t('kernel.tokens.scope_write') }}</option>
-          </select>
-        </JecField>
-        <JecField id="token-days" label="kernel.tokens.days">
-          <select id="token-days" v-model.number="tokenForm.days" :class="control">
-            <option v-for="d in tokenDays" :key="d" :value="d">{{ d ? t('kernel.settings.days', { days: d }) : t('kernel.tokens.forever') }}</option>
-          </select>
-        </JecField>
-        <JecField id="token-password" label="kernel.account.confirm_password" :error="tokenError.fields.value.password">
-          <JecInput
-            id="token-password"
-            v-model="tokenForm.password"
-            type="password"
-            autocomplete="current-password"
-            required
-            :invalid="!!tokenError.fields.value.password"
-          />
-        </JecField>
+        <!-- Two fields a line: the dialog stays short. -->
+        <div class="grid gap-3 sm:grid-cols-2">
+          <JecField id="token-name" label="kernel.tokens.name" hint="kernel.tokens.name_help" :error="tokenError.fields.value.name">
+            <JecInput id="token-name" v-model="tokenForm.name" maxlength="64" required :invalid="!!tokenError.fields.value.name" />
+          </JecField>
+          <JecField id="token-scope" label="kernel.tokens.scope">
+            <select id="token-scope" v-model="tokenForm.scope" :class="field">
+              <option value="read">{{ t('kernel.tokens.scope_read') }}</option>
+              <option value="write">{{ t('kernel.tokens.scope_write') }}</option>
+            </select>
+          </JecField>
+          <JecField id="token-days" label="kernel.tokens.days">
+            <select id="token-days" v-model.number="tokenForm.days" :class="field">
+              <option v-for="d in tokenDays" :key="d" :value="d">{{ d ? t('kernel.settings.days', { days: d }) : t('kernel.tokens.forever') }}</option>
+            </select>
+          </JecField>
+          <JecField id="token-password" label="kernel.account.confirm_password" :error="tokenError.fields.value.password">
+            <JecInput
+              id="token-password"
+              v-model="tokenForm.password"
+              type="password"
+              autocomplete="current-password"
+              required
+              :invalid="!!tokenError.fields.value.password"
+            />
+          </JecField>
+        </div>
       </form>
     </div>
     <template #footer>
@@ -1462,31 +1473,5 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
       </JecButton>
     </template>
   </JecDialog>
-  <JecDialog v-model:open="jobsOpen" :title="t('kernel.health.jobs')">
-    <p class="m-0 mb-2 text-small text-ink-muted">{{ t('kernel.health.help') }}</p>
-    <ul class="m-0 list-none p-0">
-      <li v-for="j in jobsShown" :key="j.name" class="flex items-start gap-2.5 border-b border-line py-2 last:border-b-0">
-        <TriangleAlert v-if="j.error" class="mt-0.5 size-4 flex-none text-warn-ink" :aria-label="t('kernel.health.state_failed')" />
-        <LoaderCircle v-else-if="j.running" class="mt-0.5 size-4 flex-none animate-spin text-ink-muted" :aria-label="t('kernel.health.state_running')" />
-        <CircleDashed v-else-if="!j.startedAt" class="mt-0.5 size-4 flex-none text-ink-muted" :aria-label="t('kernel.health.state_never')" />
-        <CircleCheck v-else class="mt-0.5 size-4 flex-none text-ok-ink" :aria-label="t('kernel.health.state_ok')" />
-        <span class="grid min-w-0 flex-1 gap-0.5 text-small">
-          <span class="flex flex-wrap items-baseline gap-x-2">
-            <span class="font-semibold">{{ moduleName(j) }}</span>
-            <code class="text-caption text-ink-muted" translate="no">{{ j.name }}</code>
-          </span>
-          <span class="text-ink-muted">
-            <template v-if="j.startedAt">
-              {{ t('kernel.health.last_run') }} <time :datetime="j.startedAt">{{ intl.dateTime(j.startedAt) }}</time>
-            </template>
-            <template v-else>{{ t('kernel.health.state_never') }}</template>
-          </span>
-          <span v-if="j.error" class="whitespace-pre-wrap text-warn-ink [overflow-wrap:anywhere]" translate="no">{{ j.error }}</span>
-        </span>
-      </li>
-    </ul>
-    <template #footer>
-      <JecButton @click="jobsOpen = false">{{ t('kernel.action.close') }}</JecButton>
-    </template>
-  </JecDialog>
+  <JobsDialog v-model:open="jobsOpen" :jobs="health.data.value?.jobs ?? []" :module-name="moduleName" />
 </template>

@@ -3,7 +3,7 @@ import { CircleCheck, Download, KeyRound, OctagonX } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { auditExport, pageSize, useAuditEntries, type AuditEntry, type AuditQuery } from '../api/audit'
+import { auditExport, useAuditEntries, type AuditEntry, type AuditQuery } from '../api/audit'
 import { saveFile } from '../api/certs'
 import { useApiError } from '../api/errors'
 import JecAlert from '../components/JecAlert.vue'
@@ -11,16 +11,18 @@ import JecButton from '../components/JecButton.vue'
 import JecPager from '../components/JecPager.vue'
 import PageHeader from '../components/PageHeader.vue'
 import SearchBox from '../components/SearchBox.vue'
+import { keepPlace, useFitRows } from '../fit'
 import { useT, type MessageKey } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import { fromMore } from '../shell'
 import { dayKey, stamp } from '../zone'
 
-// What was done through the API (module audit), the newest first and
-// grouped by day, filtered by result, time and text, which the server
-// does, and paged, as the user asked: a log can grow long, as of a chat
-// bot or a script. The page is in the address. On phones a list, from
-// 640px a table.
+// What was done through the API (module audit), the newest first,
+// filtered by result, time and text, which the server does, and paged, as
+// the user asked: a log can grow long, as of a chat bot or a script. A
+// page holds as many entries as fit the window, so that it shows whole;
+// the page is in the address. From 640px a table, an entry a line with
+// its date; on phones a list grouped by day.
 const { t } = useT()
 const intl = useIntl()
 
@@ -158,11 +160,23 @@ const asked = computed<AuditQuery>(() => ({
   q: text.value || undefined,
   ops: ops.value || undefined,
 }))
-const entries = useAuditEntries(() => ({ ...asked.value, page: page.value }))
+// Under the rows: the pager and the margin of the page, and on phones the
+// tab bar.
+const list = ref<HTMLElement>()
+const size = useFitRows(list, {
+  row: () => (window.innerWidth >= 640 ? 34 : 66),
+  head: () => (window.innerWidth >= 640 ? 37 : 28),
+  below: () => (window.innerWidth >= 640 ? 84 : 180),
+  again: () => entries.data.value,
+})
+watch(size, (n, o) => {
+  if (o && n !== o && page.value > 1) page.value = keepPlace(page.value, o, n)
+})
+const entries = useAuditEntries(() => ({ ...asked.value, page: page.value, size: size.value }))
 const loadError = useApiError(entries.error)
 const shown = computed(() => entries.data.value?.entries ?? [])
 const total = computed(() => entries.data.value?.total ?? 0)
-const pages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+const pages = computed(() => Math.max(1, Math.ceil(total.value / Math.max(1, size.value))))
 // Past the last page, as after the log was pruned: the last one.
 watch(pages, (n) => {
   if (page.value > n) page.value = n
@@ -201,6 +215,19 @@ const groups = computed(() => {
   return out
 })
 
+// The whole of an entry: in the CSV, and as a message in the title of its
+// line cut short.
+const whole = (e: AuditEntry) => `${label(e)}${e.subject ? ` · ${e.subject}` : ''} (${raw(e)})`
+const wholeTitle = (e: AuditEntry) => {
+  const subject = e.subject ? ` · ${e.subject}` : ''
+  return operations[e.operation] ? t('audit.page.entry', { action: label(e), subject, request: raw(e) }) : t('audit.page.entry_raw', { request: raw(e), subject })
+}
+// Who, in the title of the account's cell cut short.
+const accountTitle = (e: AuditEntry) => {
+  const user = e.user ?? t('audit.page.no_account')
+  return e.token ? t('audit.page.account_token', { user, via: t('audit.page.via_token', { name: e.token }) }) : user
+}
+
 const columns = ['audit.column.time', 'audit.column.action', 'audit.column.account', 'audit.column.result', 'audit.column.client'] as const
 
 // The entries the filters match, every page, as CSV: times in the panel's
@@ -219,7 +246,7 @@ async function exportCsv() {
   }
   const lines = [[...columns.map((c) => t(c)), 'HTTP', 'User-Agent']]
   for (const e of list) {
-    lines.push([stamp(e.at, true), `${label(e)}${e.subject ? ` · ${e.subject}` : ''} (${raw(e)})`, e.user ?? '', t(resultText[resultOf(e)]), e.client, String(e.status), e.userAgent ?? ''])
+    lines.push([stamp(e.at, true), whole(e), e.user ?? '', t(resultText[resultOf(e)]), e.client, String(e.status), e.userAgent ?? ''])
   }
   const csv = String.fromCharCode(0xfeff) + lines.map((l) => l.map(cell).join(',')).join('\r\n') + '\r\n'
   saveFile(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `jec-audit-${dayKey(Date.now()).replaceAll('-', '')}.csv`)
@@ -265,109 +292,122 @@ const selectClass =
       </div>
     </div>
 
-    <p
-      v-if="entries.isSuccess.value && !entries.data.value?.counts.all && !text"
-      class="m-0 rounded-lg border border-line bg-surface-raised p-4 text-ink-muted"
-    >
-      {{ t('audit.page.empty') }}
-    </p>
-    <p v-else-if="entries.isSuccess.value && !shown.length" class="m-0 rounded-lg border border-line bg-surface-raised p-4 text-ink-muted">
-      {{ t('audit.page.no_match') }}
-    </p>
+    <!-- Where the rows start, for as many as fit the window. -->
+    <div ref="list" class="flex flex-col gap-3 sm:gap-4">
+      <p
+        v-if="entries.isSuccess.value && !entries.data.value?.counts.all && !text"
+        class="m-0 rounded-lg border border-line bg-surface-raised p-4 text-ink-muted"
+      >
+        {{ t('audit.page.empty') }}
+      </p>
+      <p v-else-if="entries.isSuccess.value && !shown.length" class="m-0 rounded-lg border border-line bg-surface-raised p-4 text-ink-muted">
+        {{ t('audit.page.no_match') }}
+      </p>
 
-    <!-- From 640px: the table, a group of rows for each day. -->
-    <div v-if="shown.length" class="hidden overflow-x-auto sm:block">
-      <table class="w-full border-separate border-spacing-0 overflow-hidden rounded-lg border border-line bg-surface-raised text-small">
-        <thead>
-          <tr>
-            <th
-              v-for="col in columns"
-              :key="col"
-              scope="col"
-              class="border-b border-line bg-surface-sunken px-3 py-2 text-left font-semibold whitespace-nowrap text-ink-muted"
-            >
-              {{ t(col) }}
-            </th>
-          </tr>
-        </thead>
-        <tbody v-for="g in groups" :key="g.key">
-          <tr>
-            <th colspan="5" scope="rowgroup" class="border-b border-line px-3 pt-2.5 pb-1 text-left font-semibold text-ink">
-              <time v-if="g.date" :datetime="g.entries[0]?.at">{{ g.label }}</time>
-              <template v-else>{{ g.label }}</template>
-            </th>
-          </tr>
-          <tr v-for="e in g.entries" :key="e.id" class="hover:bg-surface-sunken">
-            <td class="w-20 border-b border-line px-3 py-1.5 align-top text-ink-muted tabular-nums">
-              <time :datetime="e.at">{{ intl.clock(e.at) }}</time>
-            </td>
-            <td class="w-full border-b border-line px-3 py-1.5 align-top [overflow-wrap:anywhere]">
-              <span class="flex flex-wrap items-center gap-x-1.5 font-semibold">
+      <!-- From 640px: the table, an entry a line, cut short with the whole of it in the title. -->
+      <div v-if="shown.length" class="hidden sm:block">
+        <table class="w-full table-fixed border-separate border-spacing-0 overflow-hidden rounded-lg border border-line bg-surface-raised text-small">
+          <colgroup>
+            <col class="w-32" />
+            <col />
+            <col class="w-36" />
+            <col class="w-24" />
+            <col class="w-36" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th
+                v-for="col in columns"
+                :key="col"
+                scope="col"
+                :title="t(col)"
+                class="truncate border-b border-line bg-surface-sunken px-3 py-2 text-left font-semibold text-ink-muted"
+              >
+                {{ t(col) }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="e in shown" :key="e.id" data-row class="hover:bg-surface-sunken">
+              <td class="border-b border-line px-3 py-1.5 whitespace-nowrap text-ink-muted tabular-nums">
+                <time :datetime="e.at" :title="intl.date(e.at)">{{ intl.dateTime(e.at) }}</time>
+              </td>
+              <td class="border-b border-line px-3 py-1.5">
+                <div class="flex min-w-0 items-center gap-1.5">
+                  <KeyRound v-if="secret.has(e.operation)" class="size-3.5 shrink-0 text-warn-ink" aria-hidden="true" />
+                  <span class="min-w-0 truncate" :title="wholeTitle(e)">
+                    <span v-if="operations[e.operation]" class="font-semibold">{{ label(e) }}</span>
+                    <code v-else class="font-semibold">{{ raw(e) }}</code>
+                    <span v-if="e.subject" class="text-ink-muted" translate="no"> · {{ e.subject }}</span>
+                    <code v-if="operations[e.operation]" class="ml-2 text-caption text-ink-muted">{{ e.path }}</code>
+                  </span>
+                </div>
+              </td>
+              <td class="border-b border-line px-3 py-1.5">
+                <div class="truncate" :title="accountTitle(e)" :translate="e.user && !e.token ? 'no' : undefined">
+                  <span v-if="e.user" translate="no">{{ e.user }}</span>
+                  <span v-else class="text-ink-muted">{{ t('audit.page.no_account') }}</span>
+                  <span v-if="e.token" class="text-caption text-ink-muted"> {{ t('audit.page.via_token', { name: e.token }) }}</span>
+                </div>
+              </td>
+              <td class="border-b border-line px-3 py-1.5">
+                <span
+                  :class="['inline-flex max-w-full items-center gap-1 rounded-sm px-1.5 font-semibold whitespace-nowrap', looks[resultOf(e)].badge]"
+                  :title="t('audit.result.status', { status: e.status })"
+                >
+                  <component :is="looks[resultOf(e)].icon" class="size-3.5 flex-none" aria-hidden="true" />
+                  <span class="truncate" :title="t(resultText[resultOf(e)])">{{ t(resultText[resultOf(e)]) }}</span>
+                </span>
+              </td>
+              <td class="border-b border-line px-3 py-1.5 text-ink-muted tabular-nums">
+                <div class="truncate" translate="no" :title="e.userAgent ? `${e.client} ${e.userAgent}` : e.client">{{ e.client }}</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Phones: a list for each day. -->
+      <section v-for="g in groups" :key="g.key" :aria-label="g.label" class="grid gap-2 sm:hidden">
+        <h2 class="m-0 px-1 text-small font-semibold text-ink-muted">
+          <time v-if="g.date" :datetime="g.entries[0]?.at">{{ g.label }}</time>
+          <template v-else>{{ g.label }}</template>
+        </h2>
+        <ul class="m-0 list-none overflow-hidden rounded-lg border border-line bg-surface-raised p-0">
+          <li
+            v-for="e in g.entries"
+            :key="e.id"
+            data-row
+            class="grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border-b border-line px-4 py-2.5 last:border-b-0"
+          >
+            <component :is="looks[resultOf(e)].icon" :class="['mt-0.5 size-5', looks[resultOf(e)].ink]" aria-hidden="true" />
+            <span class="grid min-w-0 gap-0.5">
+              <span class="flex min-w-0 flex-wrap items-center gap-x-1.5 font-semibold [overflow-wrap:anywhere]">
                 <KeyRound v-if="secret.has(e.operation)" class="size-3.5 shrink-0 text-warn-ink" aria-hidden="true" />
                 <template v-if="operations[e.operation]">{{ label(e) }}</template>
                 <code v-else>{{ raw(e) }}</code>
-                <span v-if="e.subject" class="font-normal text-ink-muted" translate="no">· {{ e.subject }}</span>
               </span>
-              <code v-if="operations[e.operation]" class="text-caption text-ink-muted">{{ e.path }}</code>
-            </td>
-            <td class="border-b border-line px-3 py-1.5 align-top whitespace-nowrap">
-              <span v-if="e.user" translate="no">{{ e.user }}</span>
-              <span v-else class="text-ink-muted">{{ t('audit.page.no_account') }}</span>
-              <span v-if="e.token" class="block text-caption text-ink-muted">{{ t('audit.page.via_token', { name: e.token }) }}</span>
-            </td>
-            <td class="border-b border-line px-3 py-1.5 align-top">
-              <span
-                :class="['inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-semibold whitespace-nowrap', looks[resultOf(e)].badge]"
-                :title="t('audit.result.status', { status: e.status })"
-              >
-                <component :is="looks[resultOf(e)].icon" class="size-3.5" aria-hidden="true" />
-                {{ t(resultText[resultOf(e)]) }}
+              <span v-if="e.subject" class="min-w-0 text-small text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ e.subject }}</span>
+              <span class="flex flex-wrap gap-x-2 text-small">
+                <span v-if="e.user" translate="no">{{ e.user }}</span>
+                <span v-else class="text-ink-muted">{{ t('audit.page.no_account') }}</span>
+                <span v-if="e.token" class="text-ink-muted">{{ t('audit.page.via_token', { name: e.token }) }}</span>
+                <span translate="no" class="text-ink-muted">{{ e.client }}</span>
+                <span :class="['font-semibold', looks[resultOf(e)].ink]">{{ t(resultText[resultOf(e)]) }}</span>
               </span>
-            </td>
-            <td class="border-b border-line px-3 py-1.5 align-top whitespace-nowrap text-ink-muted tabular-nums">
-              <span translate="no" :title="e.userAgent">{{ e.client }}</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </span>
+            <time :datetime="e.at" class="text-small text-ink-muted tabular-nums">{{ intl.clock(e.at) }}</time>
+          </li>
+        </ul>
+      </section>
     </div>
 
-    <!-- Phones: a list for each day. -->
-    <section v-for="g in groups" :key="g.key" :aria-label="g.label" class="grid gap-2 sm:hidden">
-      <h2 class="m-0 px-1 text-small font-semibold text-ink-muted">
-        <time v-if="g.date" :datetime="g.entries[0]?.at">{{ g.label }}</time>
-        <template v-else>{{ g.label }}</template>
-      </h2>
-      <ul class="m-0 list-none overflow-hidden rounded-lg border border-line bg-surface-raised p-0">
-        <li
-          v-for="e in g.entries"
-          :key="e.id"
-          class="grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border-b border-line px-4 py-2.5 last:border-b-0"
-        >
-          <component :is="looks[resultOf(e)].icon" :class="['mt-0.5 size-5', looks[resultOf(e)].ink]" aria-hidden="true" />
-          <span class="grid min-w-0 gap-0.5">
-            <span class="flex min-w-0 flex-wrap items-center gap-x-1.5 font-semibold [overflow-wrap:anywhere]">
-              <KeyRound v-if="secret.has(e.operation)" class="size-3.5 shrink-0 text-warn-ink" aria-hidden="true" />
-              <template v-if="operations[e.operation]">{{ label(e) }}</template>
-              <code v-else>{{ raw(e) }}</code>
-            </span>
-            <span v-if="e.subject" class="min-w-0 text-small text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ e.subject }}</span>
-            <span class="flex flex-wrap gap-x-2 text-small">
-              <span v-if="e.user" translate="no">{{ e.user }}</span>
-              <span v-else class="text-ink-muted">{{ t('audit.page.no_account') }}</span>
-              <span v-if="e.token" class="text-ink-muted">{{ t('audit.page.via_token', { name: e.token }) }}</span>
-              <span translate="no" class="text-ink-muted">{{ e.client }}</span>
-              <span :class="['font-semibold', looks[resultOf(e)].ink]">{{ t(resultText[resultOf(e)]) }}</span>
-            </span>
-          </span>
-          <time :datetime="e.at" class="text-small text-ink-muted tabular-nums">{{ intl.clock(e.at) }}</time>
-        </li>
-      </ul>
-    </section>
-
-    <JecPager v-model="page" :pages="pages" />
-    <p v-if="shown.length" class="m-0 text-center text-small text-ink-muted">
-      {{ t('kernel.pager.summary', { from: (page - 1) * pageSize + 1, to: (page - 1) * pageSize + shown.length, total }) }}
-    </p>
+    <!-- Which entries these are, and the pager, on one line. -->
+    <div v-if="shown.length" class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:justify-between">
+      <p class="m-0 text-small text-ink-muted">
+        {{ t('kernel.pager.summary', { from: (page - 1) * size + 1, to: (page - 1) * size + shown.length, total }) }}
+      </p>
+      <JecPager v-model="page" :pages="pages" />
+    </div>
   </div>
 </template>

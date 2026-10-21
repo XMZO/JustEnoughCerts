@@ -43,7 +43,7 @@ scrape_configs:
 | `jec_site_state` | 监控站点所处状态（标签 `state`）为 1，其余为 0 |
 | `jec_domain_expiry_timestamp_seconds` | [域名注册](../usage/sites.zh-CN.md#域名注册)的到期时间，标签为 `domain` |
 | `jec_domain_state` | 域名所处状态（标签 `state`）为 1，其余为 0 |
-| `jec_ct_unknown_certificates` | 开启[证书透明度](../usage/sites.zh-CN.md#证书透明度)时：某域名下发现的、不是 JEC 管理且未被信任或忽略的证书数，标签为 `domain` |
+| `jec_ct_unknown_certificates` | 开启[证书透明度](../usage/transparency.zh-CN.md)时：某域名下发现的、不是 JEC 管理且未被信任或忽略的证书数，标签为 `domain` |
 | `jec_job_failed` | 后台任务（标签 `job`）上次运行失败为 1，否则为 0 |
 | `jec_data_free_bytes` | 数据目录所在文件系统的可用空间（字节） |
 | `jec_data_size_bytes` | 数据目录所在文件系统的总大小（字节） |
@@ -90,4 +90,4 @@ groups:
 
 ## 运行状况
 
-不用 Prometheus 时，设置页“关于”中的“后台任务”与“数据目录剩余空间”显示同样的信息：上次运行失败的后台任务（续期、检查、通知等）及其原因，以及数据目录所在文件系统的剩余空间（少于 1 GB 或 5% 时以警告色显示）。接口为 `GET /api/v1/system/health`，只读的 API 令牌即可读取。
+不用 Prometheus 时，设置页“运行环境”中的“后台任务”与“剩余空间”显示同样的信息：上次运行失败的后台任务（续期、检查、通知等）及其原因，以及数据目录所在文件系统的剩余空间（少于 1 GB 或 5% 时以警告色显示）。接口为 `GET /api/v1/system/health`，只读的 API 令牌即可读取。

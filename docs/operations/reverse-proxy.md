@@ -348,7 +348,7 @@ and `trusted_proxies_strict` in Caddy.
 
    The files are not there yet, so JEC starts with a self-signed
    certificate; the browser warns that it is not trusted, and once you
-   accept, you can sign in. "Panel HTTPS" under "About" on the Settings
+   accept, you can sign in. "Panel HTTPS" under "Runtime" on the Settings
    page tells how it stands.
 2. Under Deploy targets, add a "Local directory": directory `/data/tls`,
    "Where the files go" set to "Right in this directory".

@@ -47,16 +47,16 @@ async function signOut(id: string) {
 
 <template>
   <div :class="[rowClass, 'flex-wrap']">
-    <div class="min-w-0 flex-[1_1_12rem]">
+    <div class="min-w-0 flex-[1_1_8rem]">
       <span class="block font-semibold">{{ t('kernel.sessions.title') }}</span>
-      <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.sessions.hint') }}</span>
+      <span class="block text-caption text-ink-muted sm:line-clamp-2 xl:line-clamp-1" :title="t('kernel.sessions.hint')">{{ t('kernel.sessions.hint') }}</span>
     </div>
     <JecButton size="sm" class="ml-auto flex-none" @click="show">
       <MonitorSmartphone class="size-4" aria-hidden="true" />{{ t('kernel.sessions.manage') }}
     </JecButton>
   </div>
 
-  <JecDialog v-model:open="open" :title="t('kernel.sessions.title')">
+  <JecDialog v-model:open="open" :title="t('kernel.sessions.title')" fit>
     <div class="flex flex-col gap-3">
       <JecAlert v-if="endError.error.value" :code="endError.error.value.code" :params="endError.error.value.params" />
       <ul class="m-0 list-none p-0">

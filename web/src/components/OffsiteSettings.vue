@@ -62,9 +62,9 @@ async function submit() {
 
 <template>
   <div :class="[rowClass, 'flex-wrap']">
-    <div class="min-w-0 flex-[1_1_12rem]">
+    <div class="min-w-0 flex-[1_1_8rem]">
       <span class="block font-semibold">{{ t('offsite.settings.title') }}</span>
-      <span class="block text-caption leading-[18px] text-ink-muted">
+      <span class="block text-caption text-ink-muted sm:line-clamp-2">
         <template v-if="settings.data.value?.enabled && settings.data.value.backupsOff">{{ t('offsite.settings.backups_off') }}</template>
         <template v-else-if="settings.data.value?.enabled && settings.data.value.lastError">
           <span class="font-semibold text-warn-ink">{{ t('offsite.settings.failed') }}</span>
@@ -74,7 +74,7 @@ async function submit() {
           {{ t('offsite.settings.copied', { count: settings.data.value.copied }) }}
           <time :datetime="settings.data.value.lastCopy">{{ intl.dateTime(settings.data.value.lastCopy) }}</time>
         </template>
-        <template v-else>{{ t('offsite.settings.hint') }}</template>
+        <span v-else :title="t('offsite.settings.hint')">{{ t('offsite.settings.hint') }}</span>
       </span>
     </div>
     <span v-if="settings.data.value?.enabled && settings.data.value.lastError" class="inline-flex flex-none items-center gap-1 text-small font-semibold text-warn-ink">
@@ -86,7 +86,7 @@ async function submit() {
     <span v-else-if="settings.data.value" class="inline-flex flex-none items-center gap-1 text-small text-ink-muted">
       {{ t('offsite.settings.state_off') }}
     </span>
-    <JecButton size="sm" class="ml-auto flex-none" :disabled="!settings.data.value" @click="open = true">
+    <JecButton size="sm" class="ml-auto flex-none" :disabled="!settings.data.value" :aria-label="t('offsite.settings.edit_label')" @click="open = true">
       <Settings2 class="size-4" aria-hidden="true" />{{ t('offsite.settings.edit') }}
     </JecButton>
   </div>

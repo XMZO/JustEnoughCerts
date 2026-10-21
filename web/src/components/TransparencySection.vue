@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { CircleCheck, Clock, EyeOff, ExternalLink, KeyRound, Plus, Radar, RefreshCw, ScanSearch, ShieldCheck, ShieldQuestion, Undo2 } from '@lucide/vue'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { useApiError } from '../api/errors'
 import {
@@ -13,6 +13,7 @@ import {
   type Spotted,
   type TransparencyTrust,
 } from '../api/watch'
+import { useFitRows } from '../fit'
 import { useT, type MessageKey } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import JecAlert from './JecAlert.vue'
@@ -20,11 +21,16 @@ import JecButton from './JecButton.vue'
 import JecDialog from './JecDialog.vue'
 import JecField from './JecField.vue'
 import JecInput from './JecInput.vue'
+import JecPager from './JecPager.vue'
+import RowMenu, { type MenuItem } from './RowMenu.vue'
 
 // Certificate transparency (module watch): the certificates logged for the
 // domains JEC holds certificates under, through Cert Spotter; those JEC
 // does not hold are listed, to trust (as a CDN's) or ignore. Off until
-// switched on, as it sends the domains to SSLMate.
+// switched on, as it sends the domains to SSLMate. A CDN or another tool
+// renews the same certificate again and again: those of the same names by
+// the same issuer, the kind a trust covers, make one row, and the rows
+// come a page at a time, as many as fit the window.
 const { t } = useT()
 const intl = useIntl()
 const ct = useTransparency()
@@ -39,10 +45,10 @@ const untrust = useUntrust()
 const watchSite = useAddSite()
 const watchError = useApiError(computed(() => watchSite.error.value))
 const siteOf = (s: Spotted) => s.names.find((n) => !n.startsWith('*.'))
-async function watchIt(s: Spotted) {
-  const host = siteOf(s)
+async function watchIt(k: Kind) {
+  const host = siteOf(k.latest)
   if (!host) return
-  busy.value = s.id + 'watch'
+  busy.value = k.key + 'watch'
   try {
     await watchSite.mutateAsync({ host })
   } catch {
@@ -73,17 +79,61 @@ const lastSearch = computed(() => {
   return times.sort().at(-1)
 })
 
+// The certificates of the same names by the same issuer, the newest
+// first, as one row: told of if any is, and judged together.
+interface Kind {
+  key: string
+  latest: Spotted
+  all: Spotted[]
+  state: Spotted['state']
+}
+const worse: Spotted['state'][] = ['baseline', 'new', 'unknown']
+const kinds = computed(() => {
+  const out = new Map<string, Kind>()
+  for (const s of ct.data.value?.certificates ?? []) {
+    const key = `${[...s.names].sort().join(',')}|${s.issuer}`
+    const k = out.get(key)
+    if (!k) out.set(key, { key, latest: s, all: [s], state: s.state })
+    else {
+      k.all.push(s)
+      if (worse.indexOf(s.state) > worse.indexOf(k.state)) k.state = s.state
+    }
+  }
+  return [...out.values()]
+})
+// Under the rows: the pager, the trusted kinds and the note, then the
+// page's margin (on phones, the tab bar's).
+const list = ref<HTMLElement>()
+const after = ref<HTMLElement>()
+const size = useFitRows(list, {
+  row: () => (window.innerWidth >= 640 ? 58 : 110),
+  below: () => (after.value?.offsetHeight ?? 0) + (window.innerWidth >= 640 ? 48 : 108),
+  again: () => ct.data.value,
+})
+const page = ref(1)
+const pages = computed(() => Math.max(1, Math.ceil(kinds.value.length / Math.max(1, size.value))))
+watch(pages, (n) => {
+  if (page.value > n) page.value = n
+})
+const shown = computed(() => kinds.value.slice((page.value - 1) * size.value, page.value * size.value))
+
 const busy = ref<string>()
-async function act(s: Spotted, how: 'trust' | 'ignore') {
-  busy.value = s.id + how
+async function act(k: Kind, how: 'trust' | 'ignore') {
+  busy.value = k.key + how
   try {
-    await judge.mutateAsync({ id: s.id, how })
+    // A trust covers the kind; each certificate is ignored on its own.
+    for (const s of how === 'trust' ? [k.latest] : k.all) await judge.mutateAsync({ id: s.id, how })
   } catch {
     // the alert shows why
   } finally {
     busy.value = undefined
   }
 }
+const menu = (k: Kind): MenuItem[] => [
+  ...(siteOf(k.latest) ? [{ key: 'watch', label: t('watch.ct.watch'), hint: t('watch.ct.watch_help'), icon: Radar, run: () => void watchIt(k) }] : []),
+  { key: 'manage', label: t('watch.ct.manage'), hint: t('watch.ct.manage_help'), icon: Plus, to: { path: '/certificates/new', query: { domains: k.latest.names.join(',') } } },
+  { key: 'view', label: t('watch.ct.view'), icon: ExternalLink, run: () => void window.open(`https://crt.sh/?sha256=${k.latest.sha256}`, '_blank', 'noopener') },
+]
 async function drop(tr: TransparencyTrust) {
   try {
     await untrust.mutateAsync({ names: tr.names, issuer: tr.issuer })
@@ -111,7 +161,6 @@ async function saveKey(clear = false) {
 </script>
 
 <template>
-  <h2 class="m-0 mt-2 text-section-title font-semibold">{{ t('watch.ct.title') }}</h2>
   <JecAlert v-if="loadError.error.value" :code="loadError.error.value.code" :params="loadError.error.value.params" />
   <section v-if="ct.data.value" class="flex flex-col gap-3 rounded-lg border border-line bg-surface-raised p-4">
     <div class="flex flex-wrap items-start gap-3">
@@ -148,64 +197,60 @@ async function saveKey(clear = false) {
     <JecAlert v-if="judgeError.error.value" :code="judgeError.error.value.code" :params="judgeError.error.value.params" />
     <JecAlert v-if="watchError.alert.value" :code="watchError.alert.value.code" :params="watchError.alert.value.params" />
     <p v-if="!ct.data.value.certificates.length" class="m-0 text-ink-muted">{{ t('watch.ct.none') }}</p>
-    <ul v-else class="m-0 list-none overflow-hidden rounded-lg border border-line bg-surface-raised p-0">
+    <ul v-else ref="list" class="m-0 list-none overflow-hidden rounded-lg border border-line bg-surface-raised p-0">
       <li
-        v-for="s in ct.data.value.certificates"
-        :key="s.id"
-        class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 border-b border-line px-4 py-2.5 last:border-b-0 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
+        v-for="k in shown"
+        :key="k.key"
+        data-row
+        class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 border-b border-line px-4 py-2 last:border-b-0 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
       >
-        <component :is="looks[s.state].icon" :class="['mt-0.5 size-5', looks[s.state].ink]" aria-hidden="true" />
+        <component :is="looks[k.state].icon" :class="['size-5 self-start sm:self-center', looks[k.state].ink]" aria-hidden="true" />
         <span class="grid min-w-0 gap-0.5">
-          <span class="font-semibold [overflow-wrap:anywhere]" translate="no">{{ names(s) }}</span>
-          <span class="flex flex-wrap items-center gap-x-2 text-small">
-            <span :class="['inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-semibold', looks[s.state].badge]">{{ t(looks[s.state].label) }}</span>
-            <span class="text-ink-muted [overflow-wrap:anywhere]" translate="no" :title="s.issuerDn">{{ s.issuer }}</span>
+          <span class="truncate font-semibold" translate="no" :title="names(k.latest)">{{ names(k.latest) }}</span>
+          <span class="flex min-w-0 flex-wrap items-center gap-x-2 text-small">
+            <span :class="['inline-flex items-center rounded-sm px-1.5 font-semibold', looks[k.state].badge]">{{ t(looks[k.state].label) }}</span>
+            <span class="max-w-60 truncate text-ink-muted" translate="no" :title="k.latest.issuerDn">{{ k.latest.issuer }}</span>
+            <span v-if="k.all.length > 1" class="font-semibold text-ink-muted">{{ t('watch.ct.trusted_count', { count: k.all.length }) }}</span>
             <span class="text-ink-muted">
-              <time :datetime="s.notBefore">{{ intl.date(s.notBefore) }}</time>{{ t('watch.ct.to') }}<time :datetime="s.notAfter">{{ intl.date(s.notAfter) }}</time>
+              <template v-if="k.all.length > 1">{{ t('watch.ct.latest') }}</template>
+              <time :datetime="k.latest.notBefore">{{ intl.date(k.latest.notBefore) }}</time>{{ t('watch.ct.to') }}<time :datetime="k.latest.notAfter">{{
+                intl.date(k.latest.notAfter)
+              }}</time>
             </span>
           </span>
         </span>
-        <span class="col-start-2 flex flex-wrap gap-1 sm:col-start-3">
-          <JecButton size="sm" :busy="busy === s.id + 'trust'" :title="t('watch.ct.trust_help')" @click="act(s, 'trust')">
+        <span class="col-start-2 flex items-center gap-1 sm:col-start-3">
+          <JecButton size="sm" :busy="busy === k.key + 'trust'" :title="t('watch.ct.trust_help')" @click="act(k, 'trust')">
             <ShieldCheck class="size-4" aria-hidden="true" />{{ t('watch.ct.trust') }}
           </JecButton>
-          <JecButton size="sm" variant="ghost" :busy="busy === s.id + 'ignore'" @click="act(s, 'ignore')">
+          <JecButton size="sm" variant="ghost" :busy="busy === k.key + 'ignore'" @click="act(k, 'ignore')">
             <EyeOff class="size-4" aria-hidden="true" />{{ t('watch.ct.ignore') }}
           </JecButton>
-          <JecButton v-if="siteOf(s)" size="sm" variant="ghost" :busy="busy === s.id + 'watch'" :title="t('watch.ct.watch_help')" @click="watchIt(s)">
-            <Radar class="size-4" aria-hidden="true" />{{ t('watch.ct.watch') }}
-          </JecButton>
-          <JecButton size="sm" variant="ghost" :to="{ path: '/certificates/new', query: { domains: s.names.join(',') } }" :title="t('watch.ct.manage_help')">
-            <Plus class="size-4" aria-hidden="true" />{{ t('watch.ct.manage') }}
-          </JecButton>
-          <a
-            :href="`https://crt.sh/?sha256=${s.sha256}`"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex min-h-[30px] items-center gap-1 px-2 text-small underline max-sm:min-h-11"
-          >
-            <ExternalLink class="size-4" aria-hidden="true" />{{ t('watch.ct.view') }}
-          </a>
+          <JecButton v-if="busy === k.key + 'watch'" size="sm" variant="ghost" busy>{{ t('watch.ct.watch') }}</JecButton>
+          <RowMenu :label="t('watch.ct.more', { names: names(k.latest) })" :items="menu(k)" />
         </span>
       </li>
     </ul>
-    <div v-if="ct.data.value.trusted.length" class="flex flex-col gap-1">
-      <h3 class="m-0 text-small font-semibold text-ink-muted">{{ t('watch.ct.trusted') }}</h3>
-      <ul class="m-0 list-none p-0">
-        <li v-for="tr in ct.data.value.trusted" :key="names(tr) + tr.issuer" class="flex flex-wrap items-center gap-x-2 text-small">
-          <span class="[overflow-wrap:anywhere]" translate="no">{{ names(tr) }}</span>
-          <span class="text-ink-muted" translate="no">{{ tr.issuer }}</span>
-          <span class="text-ink-muted">{{ t('watch.ct.trusted_count', { count: tr.count ?? 0 }) }}</span>
-          <JecButton size="sm" variant="ghost" :busy="untrust.isPending.value" @click="drop(tr)">
-            <Undo2 class="size-4" aria-hidden="true" />{{ t('watch.ct.untrust') }}
-          </JecButton>
-        </li>
-      </ul>
+    <div ref="after" class="flex flex-col gap-3">
+      <JecPager v-model="page" :pages="pages" />
+      <div v-if="ct.data.value.trusted.length" class="flex flex-col gap-1">
+        <h2 class="m-0 text-small font-semibold text-ink-muted">{{ t('watch.ct.trusted') }}</h2>
+        <ul class="m-0 list-none p-0">
+          <li v-for="tr in ct.data.value.trusted" :key="names(tr) + tr.issuer" class="flex flex-wrap items-center gap-x-2 text-small">
+            <span class="[overflow-wrap:anywhere]" translate="no">{{ names(tr) }}</span>
+            <span class="text-ink-muted" translate="no">{{ tr.issuer }}</span>
+            <span class="text-ink-muted">{{ t('watch.ct.trusted_count', { count: tr.count ?? 0 }) }}</span>
+            <JecButton size="sm" variant="ghost" :busy="untrust.isPending.value" @click="drop(tr)">
+              <Undo2 class="size-4" aria-hidden="true" />{{ t('watch.ct.untrust') }}
+            </JecButton>
+          </li>
+        </ul>
+      </div>
+      <p class="m-0 text-small text-ink-muted">
+        {{ t('watch.ct.foot') }}
+        <template v-if="ct.data.value.ignored">{{ t('watch.ct.ignored', { count: ct.data.value.ignored }) }}</template>
+      </p>
     </div>
-    <p class="m-0 text-small text-ink-muted">
-      {{ t('watch.ct.foot') }}
-      <template v-if="ct.data.value.ignored">{{ t('watch.ct.ignored', { count: ct.data.value.ignored }) }}</template>
-    </p>
   </template>
 
   <JecDialog v-model:open="keyOpen" :title="t('watch.ct.key')" small>

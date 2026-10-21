@@ -20,7 +20,7 @@ message at once.
 | The CA revoked a certificate (see [Revocation checks](renewal.md#revocation-checks)) | On |
 | A watched site's certificate ends soon or ended (see [Expiry watch](sites.md)) | On |
 | A domain registration ends soon or ended (likewise) | On |
-| A certificate JEC does not hold shows up in certificate transparency logs (likewise, when switched on) | On |
+| A certificate JEC does not hold shows up in certificate transparency logs (see [Certificate transparency](transparency.md), when switched on) | On |
 | New certificate (issued or uploaded) | Off |
 | Deployment succeeded | Off |
 | A deploy target, DNS provider or source fails the daily test of its settings (each testable one is tested once a day, as its card's Test does; told once until its settings change; those failing also show among what needs attention on the overview) | On |

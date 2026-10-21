@@ -58,6 +58,12 @@ export const router = createRouter({
         },
         { path: 'sites', name: 'sites', component: () => import('./pages/SitesPage.vue'), meta: { title: 'watch.page.title', for: 'app' } },
         {
+          path: 'transparency',
+          name: 'transparency',
+          component: () => import('./pages/TransparencyPage.vue'),
+          meta: { title: 'watch.ct.title', for: 'app' },
+        },
+        {
           path: 'sources',
           name: 'sources',
           component: () => import('./pages/ProvidersPage.vue'),

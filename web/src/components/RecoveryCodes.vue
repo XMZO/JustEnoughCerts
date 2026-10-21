@@ -48,9 +48,12 @@ const shown = computed({
 
 <template>
   <div :class="[rowClass, 'flex-wrap']">
-    <div class="min-w-0 flex-[1_1_12rem]">
+    <div class="min-w-0 flex-[1_1_8rem]">
       <span class="block font-semibold">{{ t('kernel.recovery.title') }}</span>
-      <span :class="['block text-caption leading-[18px]', left <= 2 ? 'font-semibold text-warn-ink' : 'text-ink-muted']">
+      <span
+        :class="['block text-caption sm:line-clamp-2 xl:line-clamp-1', left <= 2 ? 'font-semibold text-warn-ink' : 'text-ink-muted']"
+        :title="t('kernel.recovery.left', { count: left })"
+      >
         {{ t('kernel.recovery.left', { count: left }) }}
       </span>
     </div>

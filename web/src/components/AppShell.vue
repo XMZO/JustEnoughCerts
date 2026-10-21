@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Blocks, Ellipsis, Globe, History, KeyRound, LayoutGrid, LogOut, Menu, Package, Radar, ScrollText, Search, Server, Settings, ShieldCheck, TriangleAlert, X } from '@lucide/vue'
+import { Bell, Blocks, Ellipsis, Globe, History, KeyRound, LayoutGrid, LogOut, Menu, Package, Radar, ScanSearch, ScrollText, Search, Server, Settings, ShieldCheck, TriangleAlert, X } from '@lucide/vue'
 import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
@@ -50,10 +50,14 @@ const links = computed<Link[]>(() => [
   { to: '/history', label: 'certs.runs.title', icon: History },
 ])
 const tabs = computed<Link[]>(() => [...links.value, { to: '/more', label: 'kernel.shell.more', icon: Ellipsis }])
-// The sidebar has the watched sites too, while their module is on; on
-// phones, the More tab.
+// The sidebar has the watched sites and certificate transparency too,
+// while their module is on; on phones, the More tab.
 const watching = computed(() => manifest.data.value?.modules.some((m) => m.id === 'watch' && m.enabled) ?? false)
-const main = computed<Link[]>(() => [...links.value, ...(watching.value ? [{ to: '/sites', label: 'watch.page.title', icon: Radar } satisfies Link] : [])])
+const watched: Link[] = [
+  { to: '/sites', label: 'watch.page.title', icon: Radar },
+  { to: '/transparency', label: 'watch.ct.title', icon: ScanSearch },
+]
+const main = computed<Link[]>(() => [...links.value, ...(watching.value ? watched : [])])
 const sites = useSites(watching)
 const domains = useDomains(watching)
 const ct = useTransparency(watching)
@@ -156,8 +160,9 @@ async function leave() {
 
     <aside
       :class="[
-        'z-40 w-[232px] flex-none flex-col gap-5 border-r border-line bg-surface-raised px-3 py-5',
-        'lg:sticky lg:top-0 lg:flex lg:h-dvh',
+        // Never taller than the window: on a short one it scrolls within.
+        'z-40 w-[232px] flex-none flex-col gap-4 border-r border-line bg-surface-raised px-3 py-4',
+        'lg:sticky lg:top-0 lg:flex lg:h-dvh lg:overflow-y-auto',
         drawer ? 'fixed inset-y-0 left-0 flex overflow-y-auto' : 'hidden',
       ]"
     >

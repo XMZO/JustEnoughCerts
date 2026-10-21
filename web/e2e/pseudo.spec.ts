@@ -743,8 +743,10 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.unroute('**/api/v1/watch/domains')
   await page.unroute('**/api/v1/watch/sites')
 
-  // Certificate transparency: off here, as it would ask Cert Spotter; the
-  // key dialog, then a made-up search with each kind of row.
+  // Certificate transparency, a page of its own: off here, as it would ask
+  // Cert Spotter; the key dialog, then a made-up search with each kind of
+  // row.
+  await page.goto('./transparency')
   await page.getByRole('button', { name: label('watch.ct.key') }).click()
   await expect(dialog).toBeVisible()
   expect.soft(await problems(page), 'certificate transparency key').toEqual([])
@@ -765,6 +767,8 @@ test('every page is translated and fits', async ({ page }, info) => {
             ],
             certificates: [
               spotted('1', 'unknown', ['www.e2e-shop.com'], 'Some CA'),
+              // The same kind again, renewed: one row with the two.
+              spotted('4', 'baseline', ['www.e2e-shop.com'], 'Some CA'),
               spotted('2', 'new', ['e2e-shop.com'], 'Sectigo'),
               spotted('3', 'baseline', ['*.e2e-shop.com', 'e2e-shop.com'], 'Google Trust Services'),
             ],
@@ -775,6 +779,11 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.reload()
   await expect(page.getByText('www.e2e-shop.com').filter({ visible: true })).toBeVisible()
   expect.soft(await problems(page), 'certificate transparency').toEqual([])
+  // The rarer actions of a row, in its menu.
+  await page.getByRole('button', { name: message('watch.ct.more', { names: 'www.e2e-shop.com' }) }).click()
+  await expect(page.getByRole('menuitem').first()).toBeVisible()
+  expect.soft(await problems(page), 'certificate transparency: the menu of a row').toEqual([])
+  await page.keyboard.press('Escape')
   await page.unroute('**/api/v1/watch/transparency')
 
   // Credentials: the page, a new one, and a provider that takes its keys
@@ -1338,7 +1347,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(dialog).toBeHidden()
 
   // Offsite backups: a bucket that is not there, which the server refuses.
-  await page.getByRole('button', { name: label('offsite.settings.edit') }).click()
+  await page.getByRole('button', { name: label('offsite.settings.edit_label') }).click()
   await expect(dialog).toBeVisible()
   expect.soft(await problems(page), 'offsite backups').toEqual([])
   await dialog.locator('#offsite-endpoint').fill('http://127.0.0.1:9')
@@ -1392,9 +1401,14 @@ test('every page is translated and fits', async ({ page }, info) => {
   // The audit log of all that, then what failed, then filtered down to
   // nothing.
   await page.goto('./audit')
-  // The table on wide screens, the list on phones: whichever shows.
-  await expect(page.getByText(label('audit.op.backup')).filter({ visible: true }).first()).toBeVisible()
+  // The table on wide screens, the list on phones: whichever shows. A page
+  // holds what fits the window: the backup, made early on, is found by
+  // its name.
+  await expect(page.locator('[data-row]').filter({ visible: true }).first()).toBeVisible()
   expect.soft(await problems(page), 'audit log').toEqual([])
+  await page.getByRole('searchbox').fill(label('audit.op.backup'))
+  await expect(page.getByText(label('audit.op.backup')).filter({ visible: true }).first()).toBeVisible()
+  await page.getByRole('searchbox').fill('')
   await page.getByRole('button', { name: label('audit.result.failed') }).click()
   expect.soft(await problems(page), 'audit log: what failed').toEqual([])
   await page.getByRole('searchbox').fill('nothing.example')
@@ -1410,7 +1424,7 @@ test('the dark theme keeps its contrast', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' })
   const signIn = await page.request.post('api/v1/session', { data: { username: 'admin', password: 'correct horse' } })
   expect(signIn.ok()).toBe(true)
-  const pages = ['./', './certificates', './certificates/1', './history', './sites', './sources', './dns', './targets', './notify']
+  const pages = ['./', './certificates', './certificates/1', './history', './sites', './transparency', './sources', './dns', './targets', './notify']
   for (const path of [...pages, './credentials', './modules', './settings', './audit']) {
     await page.goto(path)
     await page.waitForLoadState('networkidle')

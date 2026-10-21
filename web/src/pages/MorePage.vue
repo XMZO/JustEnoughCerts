@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Blocks, ChevronRight, Globe, KeyRound, LogOut, Package, Radar, ScrollText, Search, Server, Settings, TriangleAlert } from '@lucide/vue'
+import { Bell, Blocks, ChevronRight, Globe, KeyRound, LogOut, Package, Radar, ScanSearch, ScrollText, Search, Server, Settings, TriangleAlert } from '@lucide/vue'
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
@@ -78,6 +78,15 @@ async function leave() {
     >
       <Radar class="size-5 flex-none text-ink-muted" aria-hidden="true" />
       <span class="min-w-0 flex-1">{{ t('watch.page.title') }}</span>
+      <ChevronRight class="size-4 flex-none text-ink-muted" aria-hidden="true" />
+    </RouterLink>
+    <RouterLink
+      v-if="watching"
+      to="/transparency"
+      class="flex min-h-12 items-center gap-3 rounded-lg border border-line bg-surface-raised px-4 text-ink no-underline hover:bg-surface-sunken hover:text-ink"
+    >
+      <ScanSearch class="size-5 flex-none text-ink-muted" aria-hidden="true" />
+      <span class="min-w-0 flex-1">{{ t('watch.ct.title') }}</span>
       <ChevronRight class="size-4 flex-none text-ink-muted" aria-hidden="true" />
     </RouterLink>
     <section aria-labelledby="config" class="overflow-hidden rounded-lg border border-line bg-surface-raised">

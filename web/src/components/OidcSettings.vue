@@ -70,9 +70,9 @@ async function submit() {
 
 <template>
   <div :class="[rowClass, 'flex-wrap']">
-    <div class="min-w-0 flex-[1_1_12rem]">
+    <div class="min-w-0 flex-[1_1_8rem]">
       <span class="block font-semibold">{{ t('oidc.settings.title') }}</span>
-      <span class="block text-caption leading-[18px] text-ink-muted">{{ t('oidc.settings.hint') }}</span>
+      <span class="block text-caption text-ink-muted sm:line-clamp-2 xl:line-clamp-1" :title="t('oidc.settings.hint')">{{ t('oidc.settings.hint') }}</span>
       <span v-if="saved" role="status" class="inline-flex items-center gap-1 text-small text-ok-ink">
         <Check class="size-4 flex-none" aria-hidden="true" />{{ t('oidc.settings.saved') }}
       </span>

@@ -9,8 +9,15 @@ import { useT } from '../i18n'
 // back to whatever opened it. On phones it fills the screen.
 const open = defineModel<boolean>('open', { required: true })
 // A wide dialog leaves a form room for two columns of fields beside a list;
-// a steady one keeps its height as what it shows changes, scrolling within.
-withDefaults(defineProps<{ title: string; small?: boolean; wide?: boolean; steady?: boolean }>(), { small: false, wide: false, steady: false })
+// a fitted one is as wide as what it lists, so that a short list is not
+// spread out (words that should not set the width: w-0 min-w-full); a
+// steady one keeps its height as what it shows changes, scrolling within.
+withDefaults(defineProps<{ title: string; small?: boolean; wide?: boolean; fit?: boolean; steady?: boolean }>(), {
+  small: false,
+  wide: false,
+  fit: false,
+  steady: false,
+})
 
 const { t } = useT()
 const dialog = ref<HTMLDialogElement>()
@@ -39,7 +46,13 @@ watch(
       'm-auto flex-col overflow-hidden border-line bg-surface-raised p-0 text-ink shadow-popover open:flex',
       'max-sm:h-dvh max-sm:max-h-none max-sm:w-full max-sm:max-w-none max-sm:border-0',
       'sm:max-h-[calc(100dvh-48px)] sm:rounded-lg sm:border',
-      small ? 'sm:w-[min(480px,calc(100vw-48px))]' : wide ? 'sm:w-[min(960px,calc(100vw-48px))]' : 'sm:w-[min(720px,calc(100vw-48px))]',
+      small
+        ? 'sm:w-[min(480px,calc(100vw-48px))]'
+        : wide
+          ? 'sm:w-[min(960px,calc(100vw-48px))]'
+          : fit
+            ? 'sm:w-fit sm:max-w-[min(720px,calc(100vw-48px))] sm:min-w-[min(400px,calc(100vw-48px))]'
+            : 'sm:w-[min(720px,calc(100vw-48px))]',
       steady ? 'sm:h-[min(720px,calc(100dvh-48px))]' : '',
     ]"
     @close="open = false"
