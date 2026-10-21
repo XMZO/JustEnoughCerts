@@ -45,7 +45,7 @@ and servers, and renews them before they expire.
 - [Domain validation](../usage/validation.md): the 221 DNS providers of
   lego, arbitrary records, manual records, website directories, answers by
   JEC itself and answers at the edge of Alibaba Cloud ESA or Cloudflare.
-- [Deploy targets](../usage/targets.md): 33 types, covering clouds such as
+- [Deploy targets](../usage/targets.md): 34 types, covering clouds such as
   Alibaba Cloud, Tencent Cloud, Huawei Cloud, Cloudflare, AWS and Gcore, panels
   such as BaoTa, 1Panel and SafeLine WAF, and local directories, SSH servers, Docker
   containers and Kubernetes.

@@ -79,6 +79,7 @@ accounts are welcome.
 | `npm.certificate` | Nginx Proxy Manager | Real software: NPM 2.16 |
 | `caddy.admin` | Caddy, through its admin API | Real software: Caddy 2.11 |
 | `apisix.ssl` | Apache APISIX SSL objects, through its Admin API | Real software: APISIX 3.19 with etcd |
+| `kong.certificate` | Kong Gateway certificates and their SNIs, through its Admin API | Real software: Kong 3.9 with PostgreSQL |
 | `synology.dsm` | Synology DSM | Fake, written after acme.sh's deploy hook |
 | `proxmox.node` | Proxmox VE nodes | Fake |
 | `kubernetes.secret` | Kubernetes TLS Secrets | Real software: kube-apiserver 1.36 with RBAC |

@@ -2513,6 +2513,49 @@
       "title_on": "Turn on two-factor authentication"
     }
   },
+  "kong": {
+    "certificate": {
+      "description": "Puts each new certificate into a certificate object of Kong, made or replaced at once, with the certificate's domains as its SNIs: nothing to bind by hand. Kong needs a database: DB-less mode is read-only.",
+      "name": "Kong certificate"
+    },
+    "error": {
+      "api": "Kong refused: {message}",
+      "conflict": "Kong refused: another certificate object holds one of these domains as its SNI ({message}). Remove that SNI, or set that object's ID under the advanced settings.",
+      "dbless": "Kong runs without a database (DB-less), where the Admin API cannot change certificates.",
+      "fingerprint": "Not a SHA-256 fingerprint: {fingerprint}",
+      "id": "Not a UUID: {id}",
+      "network": "Cannot reach {host}.",
+      "pin": "The Admin API's certificate does not have the fingerprint set. If it changed, check the new fingerprint and set it again.",
+      "plain": "{host} is on the internet, where http:// would carry the private key in the clear. Use an https:// address.",
+      "private": "{host} is a private address. To reach private addresses, turn on \"Allow private addresses\" in the advanced settings.",
+      "status": "Kong's answer makes no sense (HTTP {status}): check the Admin API address.",
+      "token": "Kong refused: check the admin token and its rights.",
+      "unverified": "JEC cannot verify the Admin API's certificate, as happens with one of its own making. Check that its SHA-256 fingerprint is {fingerprint}, then set it in the advanced settings.",
+      "url": "Not an Admin API address: {url}"
+    },
+    "field": {
+      "admin_token": "Admin token",
+      "admin_token_help": "Optional: when the Admin API asks for one (RBAC of Kong Enterprise), sent in the Kong-Admin-Token header.",
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "Turn on when Kong is on this machine or a private network, reached over https://.",
+      "fingerprint": "Fingerprint of the Admin API's certificate",
+      "fingerprint_help": "When the Admin API uses a certificate of its own making over HTTPS: its SHA-256 fingerprint, which a test gives. JEC trusts that certificate only.",
+      "id": "Certificate object ID",
+      "id_help": "A UUID, to replace a certificate object of your own; empty for one named after the certificate in JEC.",
+      "url": "Admin API address",
+      "url_help": "Such as http://127.0.0.1:8001. http:// reaches this machine or private addresses only, as the private key would travel in the clear."
+    },
+    "log": {
+      "put": "Putting the certificate into the certificate object {id}, for {names}"
+    },
+    "module": {
+      "description": "Puts certificates into certificate objects of Kong Gateway through its Admin API; the gateway serves them for their domains.",
+      "name": "Kong Gateway"
+    },
+    "test": {
+      "ok": "Reached Kong {version}."
+    }
+  },
   "kubernetes": {
     "error": {
       "account": "Could not read the service account of the pod JEC runs in. Check that the pod mounts it (automountServiceAccountToken).",

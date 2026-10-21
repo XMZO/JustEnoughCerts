@@ -2513,6 +2513,49 @@
       "title_on": "开启两步验证"
     }
   },
+  "kong": {
+    "certificate": {
+      "description": "把每张新证书放进 Kong 的一个证书对象（没有就新建，有就替换），以证书的域名作为 SNI 生效，不用手动绑定。Kong 须使用数据库：无数据库模式（DB-less）不能写入。",
+      "name": "Kong 证书"
+    },
+    "error": {
+      "api": "Kong 拒绝了：{message}",
+      "conflict": "Kong 拒绝了：另一个证书对象已经用了其中某个域名作为 SNI（{message}）。请删掉那个 SNI，或在高级设置里填那个对象的 ID。",
+      "dbless": "Kong 运行在无数据库模式（DB-less），Admin API 不能修改证书。",
+      "fingerprint": "不是 SHA-256 指纹：{fingerprint}",
+      "id": "不是 UUID：{id}",
+      "network": "连不上 {host}。",
+      "pin": "Admin API 证书的指纹和填写的不一样。如果它换了证书，请核对新指纹后重新填写。",
+      "plain": "{host} 在公网上，用 http:// 会让私钥以明文经过公网。请用 https:// 地址。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "status": "Kong 的回应看不懂（HTTP {status}），请检查 Admin API 地址。",
+      "token": "Kong 拒绝了：请核对 Admin Token 和它的权限。",
+      "unverified": "JEC 验证不了 Admin API 的证书（用自签名证书时就会这样）。请核对它的 SHA-256 指纹是 {fingerprint}，然后填进高级设置。",
+      "url": "Admin API 地址不对：{url}"
+    },
+    "field": {
+      "admin_token": "Admin Token",
+      "admin_token_help": "可不填：Admin API 要求时（Kong 企业版的 RBAC）填写，经 Kong-Admin-Token 头发送。",
+      "allow_private": "允许内网地址",
+      "allow_private_help": "Kong 在本机或内网、用 https:// 访问时打开。",
+      "fingerprint": "Admin API 证书指纹",
+      "fingerprint_help": "Admin API 经 HTTPS 使用自签名证书时填写：它的 SHA-256 指纹，测试连接会给出。JEC 只信任这张证书。",
+      "id": "证书对象 ID",
+      "id_help": "UUID，用于替换你自己建的证书对象；留空时按 JEC 里的证书生成一个固定的 ID。",
+      "url": "Admin API 地址",
+      "url_help": "比如 http://127.0.0.1:8001。http:// 只能连本机或内网，因为私钥会以明文传输。"
+    },
+    "log": {
+      "put": "把证书放进证书对象 {id}，用于 {names}"
+    },
+    "module": {
+      "description": "通过 Admin API 把证书放进 Kong Gateway 的证书对象，网关按域名使用它们。",
+      "name": "Kong Gateway"
+    },
+    "test": {
+      "ok": "连上了 Kong {version}。"
+    }
+  },
   "kubernetes": {
     "error": {
       "account": "读不到 JEC 所在 Pod 的服务账号。请检查 Pod 是否挂载了它（automountServiceAccountToken）。",

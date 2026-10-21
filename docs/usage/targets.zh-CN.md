@@ -10,7 +10,7 @@
 |---|---|
 | 阿里云 | ESA、CDN、全站加速（DCDN）、数字证书管理服务、OSS 自定义域名、传统型负载均衡（CLB）、应用型负载均衡（ALB） |
 | 其他云服务 | 腾讯云 SSL 证书服务（更新 CDN、EdgeOne、CLB 等资源）、直接部署到腾讯云 CDN 和 EdgeOne、华为云 CDN 和 ELB、七牛云 CDN、火山引擎 CDN、百度智能云 CDN、又拍云 CDN（实验性）、Cloudflare 自定义证书、AWS Certificate Manager、AWS CloudFront、Gcore CDN |
-| 面板与服务器软件 | 宝塔面板（aaPanel）、1Panel、雷池 WAF、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Caddy（经管理接口）、Apache APISIX（经 Admin API） |
+| 面板与服务器软件 | 宝塔面板（aaPanel）、1Panel、雷池 WAF、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Caddy（经管理接口）、Apache APISIX 与 Kong Gateway（经 Admin API） |
 | 文件与容器 | 本地目录、SSH 服务器、Docker 容器、Kubernetes TLS Secret |
 | 自定义 | Webhook 部署、插件 |
 
@@ -18,7 +18,7 @@
 
 ## 旧证书的处理
 
-上传到云平台的证书统一命名为 `jec-<证书 ID>-<指纹前 12 位>`。部署新版本后，支持删除的目标会删除 JEC 此前部署的版本，不影响其他证书；例如阿里云 ESA 免费版每个站点最多 2 张自定义证书，删除旧证书可避免占满。部分目标（如 Cloudflare、Nginx Proxy Manager、Caddy）原地替换同一张证书。雷池 WAF 替换其中域名相同（或指定 ID）的证书；没有时上传一张，需在雷池里为站点选用一次。Apache APISIX 把每张证书放进单独的 SSL 对象（默认 `jec-<证书 ID>`），按证书域名生效，不用绑定。
+上传到云平台的证书统一命名为 `jec-<证书 ID>-<指纹前 12 位>`。部署新版本后，支持删除的目标会删除 JEC 此前部署的版本，不影响其他证书；例如阿里云 ESA 免费版每个站点最多 2 张自定义证书，删除旧证书可避免占满。部分目标（如 Cloudflare、Nginx Proxy Manager、Caddy）原地替换同一张证书。雷池 WAF 替换其中域名相同（或指定 ID）的证书；没有时上传一张，需在雷池里为站点选用一次。Apache APISIX 把每张证书放进单独的 SSL 对象（默认 `jec-<证书 ID>`），按证书域名生效，不用绑定；Kong Gateway 同样为每张证书维护一个证书对象，以域名作为 SNI，须使用数据库（无数据库模式不能写入）。
 
 ## 写入文件的目标
 
