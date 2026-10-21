@@ -19,8 +19,14 @@ import (
 // repository is where JEC is released.
 const repository = "XMZO/JustEnoughCerts"
 
-// releasesURL lists the releases of the repository, the newest first.
-var releasesURL = "https://api.github.com/repos/" + repository + "/releases?per_page=30"
+// ReleasesURL lists the releases of the repository, the newest first.
+const ReleasesURL = "https://api.github.com/repos/" + repository + "/releases?per_page=30"
+
+// DownloadURL is where the files of a release are, by tag and file name.
+const DownloadURL = "https://github.com/" + repository + "/releases/download"
+
+// releasesURL is ReleasesURL, but for tests.
+var releasesURL = ReleasesURL
 
 // ReleaseBody tells whether a newer release than the running one is out.
 type ReleaseBody struct {
@@ -64,10 +70,16 @@ func latest(current string, releases []release) (release, bool) {
 // than current. It only runs when someone asks: JEC calls home on its own
 // never.
 func checkRelease(ctx context.Context, client *http.Client, current string) (ReleaseBody, error) {
+	return LatestRelease(ctx, client, releasesURL, current)
+}
+
+// LatestRelease asks list, a listing of releases as ReleasesURL gives, for
+// the newest release current may move to, and tells whether it is newer.
+func LatestRelease(ctx context.Context, client *http.Client, list, current string) (ReleaseBody, error) {
 	out := ReleaseBody{Current: current}
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, releasesURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, list, nil)
 	if err != nil {
 		return out, err
 	}

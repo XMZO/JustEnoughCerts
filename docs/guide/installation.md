@@ -127,9 +127,15 @@ polkit.addRule(function (action, subject) {
   docker compose up -d
   ```
 
-- **systemd service**: run `sudo ./jec service install` again with the
-  new binary; it replaces the binary and restarts the service.
-- **Other binaries**: stop JEC, replace the binary and start it again.
+- **systemd service**: `sudo jec upgrade -restart` downloads the newest
+  release for this platform, checks it against the release's
+  `checksums.txt`, replaces `/usr/local/bin/jec` once the new binary runs,
+  and restarts the service; `-version` picks a release, `-check` only
+  tells whether a newer one is out. Running `sudo ./jec service install`
+  again with a downloaded binary does the same.
+- **Other binaries**: `jec upgrade` replaces the binary in place, after
+  which JEC is to be restarted; or stop JEC, replace the binary and start
+  it again.
 
 Check for updates, under About on the Settings page, asks GitHub for a
 newer release; JEC does not check by itself unless "Check for updates by

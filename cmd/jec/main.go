@@ -43,6 +43,7 @@ func commands() []command {
 		{"import-sqlite", "copy the SQLite database into the PostgreSQL that JEC_DATABASE_URL names", runImportSQLite},
 		{"doctor", "check the data directory, the database, the master key, the network to a CA and the clock", runDoctor},
 		{"service", "install or uninstall JEC as a systemd service", runService},
+		{"upgrade", "replace this binary with that of a newer release, checked against its checksums", runUpgrade},
 		{"version", "print version information", runVersion},
 	}
 }

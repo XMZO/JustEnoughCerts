@@ -164,6 +164,7 @@
 - 添加证书页提示 JEC 里已有域名相同的证书（单张给链接，“多张证书”列出重复的行）；证书接口带 `issuedWeek`（过去 7 天由来源签发的版本数，`attachIssued`），“立即续期”的确认框在 3 次或以上时提示 CA 的签发次数限制（Let's Encrypt 每周 5 张），自带私钥的来源不提示；e2e 里用 `page.route` 编出 ACME 来源的证书走到。
 - 签发、部署日志可“复制整段日志”（`LogView.vue`，和下载的内容相同，第一行是文件名、JEC 版本和平台），方便贴进问题报告。
 - cPanel 部署目标 `internal/modules/cpanel`（`cpanel.account`，UAPI 的 `SSL/install_ssl`，`Authorization: cpanel 用户:令牌`，地址规则同面板）：只用替身测过，标“未实测”。部署目标共 37 种。
+- `jec upgrade`（`cmd/jec/selfupgrade.go`）：问 GitHub 最新可升级的版本（`system.LatestRelease`，规则同“检查更新”），下载本平台的压缩包（32 位 ARM 是 `armv7`），按 `checksums.txt` 核对 SHA-256，新程序能运行 `version` 且版本对得上才改名替换；容器里拒绝（提示拉镜像），`-restart` 在有 systemd 单元时重启服务，`-check`、`-version`。对真实的 GitHub 发布实测过（alpha.37 → alpha.38）。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

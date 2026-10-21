@@ -91,8 +91,8 @@ polkit.addRule(function (action, subject) {
   docker compose up -d
   ```
 
-- **systemd 服务**：使用新版本的二进制文件再次执行 `sudo ./jec service install`，即可替换二进制文件并重启服务。
-- **其他二进制安装**：停止 JEC，替换二进制文件后重新启动。
+- **systemd 服务**：`sudo jec upgrade -restart` 下载适用于本机平台的最新版本，按该版本的 `checksums.txt` 校验，确认新程序能运行后替换 `/usr/local/bin/jec` 并重启服务；`-version` 指定版本，`-check` 只检查是否有新版本。用下载的新版本再次执行 `sudo ./jec service install` 也可以。
+- **其他二进制安装**：`jec upgrade` 原地替换二进制文件，之后重新启动 JEC；也可以停止 JEC、替换二进制文件后重新启动。
 
 设置页“关于”中的“检查更新”会询问 GitHub 是否有新版本；JEC 默认不会自行联网检查。开启“自动检查更新”后，JEC 每天检查一次，有新版本时经通知渠道提醒（每个版本一次）。
 
