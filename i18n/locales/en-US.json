@@ -3300,6 +3300,53 @@
       "ok": "Found the accelerated domains {domains}."
     }
   },
+  "safeline": {
+    "certificate": {
+      "description": "Replaces the content of SafeLine's certificate for the same domains, or of the one set by its ID, with each new certificate, and the sites using it follow; without one, uploads a new one.",
+      "name": "SafeLine certificate"
+    },
+    "error": {
+      "api": "SafeLine refused: {message} ({code})",
+      "certificate_id": "Not a certificate ID: {id}",
+      "fingerprint": "Not a SHA-256 fingerprint: {fingerprint}",
+      "network": "Cannot reach {host}.",
+      "no_certificate": "SafeLine has no certificate {id}. Its certificates: {certificates}",
+      "pin": "SafeLine's certificate does not have the fingerprint set. If SafeLine changed its certificate, check the new fingerprint and set it again.",
+      "plain": "{host} is on the internet, where http:// would carry the private key in the clear. Use SafeLine's https:// address.",
+      "private": "{host} is a private address. To reach private addresses, turn on \"Allow private addresses\" in the advanced settings.",
+      "status": "SafeLine's answer makes no sense (HTTP {status}): check the management address.",
+      "token": "SafeLine refused: check the API token.",
+      "unverified": "JEC cannot verify SafeLine's certificate, as happens with one of its own making. Check that its SHA-256 fingerprint is {fingerprint}, then set it in the advanced settings, under \"Fingerprint of the management certificate\".",
+      "url": "Not a management address: {url}"
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "Turn on when SafeLine is on this machine or a private network, reached over https://.",
+      "api_token": "API token",
+      "api_token_help": "Made in SafeLine under System settings, API Token.",
+      "certificate": "Certificate ID",
+      "certificate_help": "Optional: JEC replaces SafeLine's certificate for the same domains, or uploads a new one. A test lists SafeLine's certificates with their IDs.",
+      "fingerprint": "Fingerprint of the management certificate",
+      "fingerprint_help": "When SafeLine uses a certificate of its own making: its SHA-256 fingerprint, which a test gives. JEC trusts that certificate only.",
+      "url": "Management address",
+      "url_help": "Such as https://192.168.1.10:9443. http:// reaches this machine or private addresses only, as the private key would travel in the clear."
+    },
+    "log": {
+      "add": "SafeLine has no certificate for these domains: uploading a new one",
+      "added": "Uploaded as certificate #{id}: choose it in the settings of SafeLine's sites; later versions replace it in place.",
+      "replace": "Replacing the content of the certificate {certificate}",
+      "unused": "No site of SafeLine uses the certificate {certificate} yet."
+    },
+    "module": {
+      "description": "Updates the certificates of SafeLine, Chaitin's web application firewall, through its API; the sites using them follow.",
+      "name": "SafeLine WAF"
+    },
+    "test": {
+      "list": "SafeLine's certificates: {certificates}. Without a certificate ID, the one for the same domains is replaced.",
+      "none": "Reached SafeLine, which has no certificate yet: the first deployment uploads one.",
+      "ok": "Found the certificate {certificate}."
+    }
+  },
   "serverchan": {
     "error": {
       "api": "ServerChan refused the message: {message} ({code})",

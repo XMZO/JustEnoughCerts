@@ -15,7 +15,7 @@ anything.
 |---|---|
 | Alibaba Cloud | ESA, CDN, DCDN, Certificate Management Service, OSS custom domains, CLB and ALB load balancers |
 | Other clouds | Tencent Cloud SSL Certificates (updating CDN, EdgeOne, CLB and other resources), Tencent Cloud CDN and EdgeOne directly, Huawei Cloud CDN and ELB, Qiniu Cloud CDN, Volcengine CDN, Baidu AI Cloud CDN, UPYUN CDN (experimental), Cloudflare custom certificates, AWS Certificate Manager, AWS CloudFront, Gcore CDN |
-| Panels and server software | BaoTa (aaPanel), 1Panel, Nginx Proxy Manager, Synology DSM, Proxmox VE, Caddy (through its admin API) |
+| Panels and server software | BaoTa (aaPanel), 1Panel, SafeLine WAF, Nginx Proxy Manager, Synology DSM, Proxmox VE, Caddy (through its admin API) |
 | Files and containers | Local directory, SSH server, Docker container, Kubernetes TLS Secret |
 | Custom | Webhook deployment, plugins |
 
@@ -30,7 +30,9 @@ deploying a new version, targets that support it remove the versions JEC
 deployed there before, leaving other certificates untouched; the free plan
 of Alibaba Cloud ESA, for example, holds at most two custom certificates
 per site. Some targets, such as Cloudflare, Nginx Proxy Manager and Caddy,
-replace the same certificate in place.
+replace the same certificate in place. SafeLine WAF replaces its
+certificate for the same domains, or the one set by its ID; with none, it
+uploads one, for the sites to be given in SafeLine once.
 
 ## Targets that write files
 
@@ -73,7 +75,7 @@ which is then not retried automatically.
 
 ## Other notes
 
-- **Self-signed panels**: BaoTa, 1Panel and Proxmox VE accept `http://`
+- **Self-signed panels**: BaoTa, 1Panel, SafeLine WAF and Proxmox VE accept `http://`
   addresses only on private networks; for HTTPS with a self-signed
   certificate, they trust the certificate's fingerprint, which the
   connection test reports.

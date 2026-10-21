@@ -68,6 +68,7 @@
 | `gcore.cdn` | Gcore CDN 资源 | 替身 |
 | `baota.site` | 宝塔面板（aaPanel）网站 | 替身 |
 | `onepanel.certificate` | 1Panel 证书 | 替身 |
+| `safeline.certificate` | 雷池 WAF 证书，原地替换，用它的站点随之更新 | 真实软件：雷池 9.4 |
 | `npm.certificate` | Nginx Proxy Manager | 真实软件：NPM 2.16 |
 | `caddy.admin` | Caddy（经管理接口） | 真实软件：Caddy 2.11 |
 | `synology.dsm` | 群晖 DSM | 替身，参照 acme.sh 的部署脚本编写 |

@@ -75,6 +75,7 @@ accounts are welcome.
 | `gcore.cdn` | Gcore CDN resources | Fake |
 | `baota.site` | BaoTa (aaPanel) websites | Fake |
 | `onepanel.certificate` | 1Panel certificates | Fake |
+| `safeline.certificate` | SafeLine WAF certificates, replaced in place for their sites | Real software: SafeLine 9.4 |
 | `npm.certificate` | Nginx Proxy Manager | Real software: NPM 2.16 |
 | `caddy.admin` | Caddy, through its admin API | Real software: Caddy 2.11 |
 | `synology.dsm` | Synology DSM | Fake, written after acme.sh's deploy hook |

@@ -3300,6 +3300,53 @@
       "ok": "找到了加速域名 {domains}。"
     }
   },
+  "safeline": {
+    "certificate": {
+      "description": "用每张新证书替换雷池里域名相同（或指定 ID）的证书内容，用它的站点随之换上新证书；没有这样的证书时上传一张新的。",
+      "name": "雷池证书"
+    },
+    "error": {
+      "api": "雷池拒绝了：{message}（{code}）",
+      "certificate_id": "不是证书 ID：{id}",
+      "fingerprint": "不是 SHA-256 指纹：{fingerprint}",
+      "network": "连不上 {host}。",
+      "no_certificate": "雷池里没有证书 {id}。现有的证书：{certificates}",
+      "pin": "雷池管理界面证书的指纹和填写的不一样。如果雷池换了证书，请核对新指纹后重新填写。",
+      "plain": "{host} 在公网上，用 http:// 会让私钥以明文经过公网。请用雷池的 https:// 地址。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "status": "雷池的回应看不懂（HTTP {status}），请检查管理地址。",
+      "token": "雷池拒绝了：请核对 API Token。",
+      "unverified": "JEC 验证不了雷池管理界面的证书（用自签名证书时就会这样）。请核对它的 SHA-256 指纹是 {fingerprint}，然后填进高级设置里的“管理界面证书指纹”。",
+      "url": "管理地址不对：{url}"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "雷池在本机或内网、用 https:// 访问时打开。",
+      "api_token": "API Token",
+      "api_token_help": "在雷池的 系统设置 → API Token 里生成。",
+      "certificate": "证书 ID",
+      "certificate_help": "可不填：JEC 会替换雷池里域名相同的证书，没有就上传一张新的。测试连接会列出雷池里的证书和它们的 ID。",
+      "fingerprint": "管理界面证书指纹",
+      "fingerprint_help": "雷池用自签名证书时填写：它的 SHA-256 指纹，测试连接会给出。JEC 只信任这张证书。",
+      "url": "管理地址",
+      "url_help": "比如 https://192.168.1.10:9443。http:// 只能连本机或内网，因为私钥会以明文传输。"
+    },
+    "log": {
+      "add": "雷池里没有这些域名的证书，上传一张新的",
+      "added": "已上传为证书 #{id}：请在雷池的站点设置里选用它，之后的新版本会原地替换这张。",
+      "replace": "替换证书 {certificate} 的内容",
+      "unused": "雷池里还没有站点在用证书 {certificate}。"
+    },
+    "module": {
+      "description": "通过长亭雷池 WAF 的 API 更新它的证书，用这些证书的站点随之更新。",
+      "name": "雷池 WAF"
+    },
+    "test": {
+      "list": "雷池里的证书：{certificates}。不填证书 ID 时，替换域名相同的那张。",
+      "none": "连上了，雷池里还没有证书：第一次部署时会上传一张。",
+      "ok": "找到了证书 {certificate}。"
+    }
+  },
   "serverchan": {
     "error": {
       "api": "Server酱 拒绝了这条消息：{message}（{code}）",
