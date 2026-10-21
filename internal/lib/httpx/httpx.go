@@ -48,10 +48,11 @@ type Options struct {
 	// panel, as SSH trusts a host key. Fingerprint tells it from the error
 	// of a connection that did not pin it.
 	Pin string
-	// Names, with Pin, are names that a certificate the trusted
-	// authorities (Roots, or the system's) vouch for is trusted for too, in
-	// place of the pinned one: a panel serves such a one once JEC deployed
-	// the certificate of people's domain there, in place of its own.
+	// Names are names that a certificate the trusted authorities (Roots,
+	// or the system's) vouch for is trusted for, whatever the host of the
+	// URL, as well as the one pinned, if any: a panel serves such a one once
+	// JEC deployed the certificate of people's domain there, in place of
+	// its own, and may be reached by its address.
 	Names []string
 	// Roots, when set, are the only certificate authorities trusted, in
 	// place of those of the system: for a server with a certificate of a
@@ -98,23 +99,31 @@ func Client(o Options) (*http.Client, error) {
 	switch {
 	case o.SkipVerify:
 		t.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // fetches public files as a CA does; see Options.SkipVerify
-	case o.Pin != "":
-		pin, err := hex.DecodeString(strings.NewReplacer(":", "", " ", "").Replace(o.Pin))
-		if err != nil || len(pin) != sha256.Size {
-			return nil, fmt.Errorf("httpx: %q is no SHA-256 fingerprint", o.Pin)
+	case o.Pin != "" || len(o.Names) > 0:
+		var pin []byte
+		if o.Pin != "" {
+			var err error
+			if pin, err = hex.DecodeString(strings.NewReplacer(":", "", " ", "").Replace(o.Pin)); err != nil || len(pin) != sha256.Size {
+				return nil, fmt.Errorf("httpx: %q is no SHA-256 fingerprint", o.Pin)
+			}
 		}
 		t.TLSClientConfig = &tls.Config{
-			// The pin is the check: VerifyConnection compares it.
-			InsecureSkipVerify: true, //nolint:gosec // the certificate is checked against the pinned fingerprint
+			// The pin and the names are the check: VerifyConnection makes it.
+			InsecureSkipVerify: true, //nolint:gosec // the certificate is checked against the pinned fingerprint or the names
 			VerifyConnection: func(cs tls.ConnectionState) error {
 				if len(cs.PeerCertificates) == 0 {
 					return ErrPin
 				}
 				sum := sha256.Sum256(cs.PeerCertificates[0].Raw)
-				if subtle.ConstantTimeCompare(sum[:], pin) != 1 && !vouched(cs.PeerCertificates, o.Roots, o.Names) {
+				switch {
+				case pin != nil && subtle.ConstantTimeCompare(sum[:], pin) == 1, vouched(cs.PeerCertificates, o.Roots, o.Names):
+					return nil
+				case pin != nil:
 					return fmt.Errorf("%w: it has %s", ErrPin, format(sum[:]))
 				}
-				return nil
+				// As a certificate that does not verify, for Fingerprint.
+				return &tls.CertificateVerificationError{UnverifiedCertificates: cs.PeerCertificates,
+					Err: fmt.Errorf("httpx: no certificate vouched for %s", strings.Join(o.Names, ", "))}
 			},
 		}
 	case o.Roots != nil:

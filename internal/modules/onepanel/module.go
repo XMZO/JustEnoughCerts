@@ -29,7 +29,11 @@ func (*Module) Manifest() module.Manifest {
 // Migrations returns nil: the module keeps nothing of its own.
 func (*Module) Migrations() fs.FS { return nil }
 
-// Register adds the certificate type.
+// Register adds the types of a certificate of the panel's websites and of
+// the panel's own.
 func (*Module) Register(r *module.Registry) error {
-	return r.Providers.Add(certificateType(), factory)
+	if err := r.Providers.Add(certificateType(), factory); err != nil {
+		return err
+	}
+	return r.Providers.Add(panelType(), panelFactory)
 }

@@ -15,7 +15,7 @@ anything.
 |---|---|
 | Alibaba Cloud | ESA, CDN, DCDN, Certificate Management Service, OSS custom domains, CLB and ALB load balancers |
 | Other clouds | Tencent Cloud SSL Certificates (updating CDN, EdgeOne, CLB and other resources), Tencent Cloud CDN and EdgeOne directly, Huawei Cloud CDN and ELB, Qiniu Cloud CDN, Volcengine CDN, Baidu AI Cloud CDN, UPYUN CDN (experimental), Cloudflare custom certificates, AWS Certificate Manager, AWS CloudFront, Gcore CDN |
-| Panels and server software | BaoTa (aaPanel), 1Panel, SafeLine WAF, Nginx Proxy Manager, Synology DSM, Proxmox VE, Portainer, Caddy (through its admin API), Apache APISIX and Kong Gateway (through their Admin APIs) |
+| Panels and server software | BaoTa (aaPanel), 1Panel (website certificates and the panel's own), SafeLine WAF, Nginx Proxy Manager, Synology DSM, Proxmox VE, Portainer, Caddy (through its admin API), Apache APISIX and Kong Gateway (through their Admin APIs) |
 | Files and containers | Local directory, SSH server, Docker container, Kubernetes TLS Secret |
 | Custom | Webhook deployment, plugins |
 
@@ -94,7 +94,10 @@ which is then not retried automatically.
   fingerprint, which the connection test reports. Proxmox VE and Portainer
   then serve the certificate JEC deploys: JEC trusts it for their domain
   with no change to the fingerprint, and the address is best given by
-  that domain rather than an IP address.
+  that domain rather than an IP address. 1Panel's own certificate turns
+  the panel's HTTPS on: the address set with `http://` keeps working for
+  deployments, which then go over HTTPS, but change it to
+  `https://<domain>:<port>` as the deployment log says.
 - **Webhook deployment**: posts the certificate and its private key as
   JSON, or in a custom template, to an HTTPS address, optionally with a
   signing key (header `X-JEC-Signature`) and extra headers.

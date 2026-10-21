@@ -35,7 +35,7 @@ const maxListed = 20
 
 func certificateType() providers.Type {
 	return providers.Type{
-		ID: "onepanel.certificate", Kind: providers.Target, Name: i18n.OnepanelCertificateName, Description: i18n.OnepanelCertificateDescription, Untested: true,
+		ID: "onepanel.certificate", Kind: providers.Target, Name: i18n.OnepanelCertificateName, Description: i18n.OnepanelCertificateDescription,
 		Tags: []string{"china", "self_hosted"}, Testable: true,
 		Fields: []providers.Field{
 			{Key: "url", Label: i18n.OnepanelFieldUrl, Help: i18n.OnepanelFieldUrlHelp, Kind: providers.URL, Required: true},
@@ -54,7 +54,8 @@ func certificateType() providers.Type {
 // panel is a 1Panel with a certificate to keep up to date.
 type panel struct {
 	client *http.Client
-	base   *url.URL // the panel and the path of its API
+	opts   httpx.Options // of client
+	base   *url.URL      // the panel and the path of its API
 	host   string
 	key    string
 	id     int64 // the certificate's, or 0 when not set
@@ -91,7 +92,7 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 		return nil, retry.Permanent(&contracts.Problem{Key: i18n.OnepanelErrorFingerprint, Params: map[string]any{"fingerprint": opts.Pin}})
 	}
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	p := &panel{client: client, host: u.Host, key: strings.TrimSpace(in.Value("api_key")), now: time.Now}
+	p := &panel{client: client, opts: opts, host: u.Host, key: strings.TrimSpace(in.Value("api_key")), now: time.Now}
 	p.base = u.JoinPath("api", cmp.Or(in.Config["api_version"], apiV2))
 	if s := strings.TrimSpace(in.Config["certificate"]); s != "" {
 		if p.id, err = strconv.ParseInt(s, 10, 64); err != nil || p.id <= 0 {
@@ -215,20 +216,28 @@ type apiError struct {
 
 func (e *apiError) Error() string { return fmt.Sprintf("onepanel: %d %s", e.code, e.message) }
 
-// statusError is an answer that is no answer of the API.
-type statusError struct{ status int }
+// statusError is an answer that is no answer of the API, with the start
+// of its text.
+type statusError struct {
+	status int
+	text   string
+}
 
 func (e *statusError) Error() string { return fmt.Sprintf("onepanel: HTTP %d", e.status) }
 
-// call posts body as JSON to path of the API, signed as the panel wants:
-// the time, and the MD5 of 1panel, the key and the time. It decodes the
-// data of the answer into out.
+// call posts body as JSON to path of the API, or gets it when body is nil,
+// signed as the panel wants: the time, and the MD5 of 1panel, the key and
+// the time. It decodes the data of the answer into out.
 func (p *panel) call(ctx context.Context, path string, body any, out any) error {
-	data, err := json.Marshal(body)
-	if err != nil {
-		return err
+	method, reader := http.MethodGet, io.Reader(nil)
+	if body != nil {
+		data, err := json.Marshal(body)
+		if err != nil {
+			return err
+		}
+		method, reader = http.MethodPost, bytes.NewReader(data)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.base.String()+path, bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(ctx, method, p.base.String()+path, reader)
 	if err != nil {
 		return err
 	}
@@ -253,7 +262,7 @@ func (p *panel) call(ctx context.Context, path string, body any, out any) error 
 		Data    json.RawMessage `json:"data"`
 	}
 	if json.Unmarshal(raw, &answer) != nil || answer.Code == 0 {
-		return &statusError{status: resp.StatusCode}
+		return &statusError{status: resp.StatusCode, text: string(raw[:min(len(raw), 200)])}
 	}
 	if answer.Code/100 != 2 {
 		return &apiError{code: answer.Code, message: answer.Message}

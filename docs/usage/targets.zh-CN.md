@@ -10,7 +10,7 @@
 |---|---|
 | 阿里云 | ESA、CDN、全站加速（DCDN）、数字证书管理服务、OSS 自定义域名、传统型负载均衡（CLB）、应用型负载均衡（ALB） |
 | 其他云服务 | 腾讯云 SSL 证书服务（更新 CDN、EdgeOne、CLB 等资源）、直接部署到腾讯云 CDN 和 EdgeOne、华为云 CDN 和 ELB、七牛云 CDN、火山引擎 CDN、百度智能云 CDN、又拍云 CDN（实验性）、Cloudflare 自定义证书、AWS Certificate Manager、AWS CloudFront、Gcore CDN |
-| 面板与服务器软件 | 宝塔面板（aaPanel）、1Panel、雷池 WAF、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Portainer、Caddy（经管理接口）、Apache APISIX 与 Kong Gateway（经 Admin API） |
+| 面板与服务器软件 | 宝塔面板（aaPanel）、1Panel（网站证书与面板自己的证书）、雷池 WAF、Nginx Proxy Manager、群晖 DSM、Proxmox VE、Portainer、Caddy（经管理接口）、Apache APISIX 与 Kong Gateway（经 Admin API） |
 | 文件与容器 | 本地目录、SSH 服务器、Docker 容器、Kubernetes TLS Secret |
 | 自定义 | Webhook 部署、插件 |
 
@@ -54,7 +54,7 @@
 
 ## 其他说明
 
-- **面板的自签名证书**：宝塔面板、1Panel、雷池 WAF、Proxmox VE 与 Portainer 使用 `http://` 地址时仅允许连接内网；使用自签名证书的 HTTPS 地址时按证书指纹信任，测试连接会给出指纹。Proxmox VE 与 Portainer 之后会使用 JEC 部署的证书：JEC 按它们的域名信任该证书，无需修改指纹；地址宜填写该域名而非 IP。
+- **面板的自签名证书**：宝塔面板、1Panel、雷池 WAF、Proxmox VE 与 Portainer 使用 `http://` 地址时仅允许连接内网；使用自签名证书的 HTTPS 地址时按证书指纹信任，测试连接会给出指纹。Proxmox VE 与 Portainer 之后会使用 JEC 部署的证书：JEC 按它们的域名信任该证书，无需修改指纹；地址宜填写该域名而非 IP。1Panel 面板证书会同时启用面板的 HTTPS：原先填写的 `http://` 地址仍可用于部署（随后改经 HTTPS），但请按部署日志的提示改成 `https://<域名>:<端口>`。
 - **Webhook 部署**：以 JSON（或自定义模板）将证书与私钥 POST 至指定地址；地址须使用 HTTPS，可设置签名密钥（请求头 `X-JEC-Signature`）与额外的请求头。
 - **代理**：Cloudflare、AWS Certificate Manager 与 Webhook 部署可在高级设置中单独设置代理。
 - **插件**：插件可提供新的部署目标，参见[插件](../development/plugins.zh-CN.md)。

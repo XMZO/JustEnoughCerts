@@ -35,6 +35,10 @@ type fakePanel struct {
 	paths   []string
 	uploads []map[string]any
 	reply   func(path string) (int, string)
+	// panel is the panel's own HTTPS certificate: its domain, "" while
+	// its HTTPS is off; updates, what was asked to set it.
+	panel   string
+	updates []map[string]any
 }
 
 func (f *fakePanel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -43,8 +47,10 @@ func (f *fakePanel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		f.t.Errorf("signed %v", r.Header)
 	}
 	var body map[string]any
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		f.t.Error(err)
+	if r.Method == http.MethodPost {
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			f.t.Error(err)
+		}
 	}
 	f.mu.Lock()
 	f.paths = append(f.paths, r.URL.Path)
@@ -61,6 +67,13 @@ func (f *fakePanel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, `{"code": 200, "message": "", "data": {"total": 2, "items": [
 			{"id": 3, "primaryDomain": "example.com", "domains": "example.com,www.example.com", "description": "mine"},
 			{"id": 5, "primaryDomain": "", "domains": "b.example", "description": ""}]}}`)
+	case "/api/v2/core/settings/ssl/info", "/api/v1/settings/ssl/info":
+		_, _ = io.WriteString(w, `{"code": 200, "message": "", "data": {"domain": "`+f.panel+`", "timeout": "2027-01-15 08:00:00"}}`)
+	case "/api/v2/core/settings/ssl/update", "/api/v1/settings/ssl/update":
+		f.mu.Lock()
+		f.updates = append(f.updates, body)
+		f.mu.Unlock()
+		_, _ = io.WriteString(w, `{"code": 200, "message": "success", "data": null}`)
 	case "/api/" + f.version + "/websites/ssl/upload":
 		f.mu.Lock()
 		f.uploads = append(f.uploads, body)

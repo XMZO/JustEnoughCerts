@@ -74,7 +74,8 @@ accounts are welcome.
 | `aws.cloudfront` | AWS CloudFront distributions, through ACM in us-east-1 | Fake |
 | `gcore.cdn` | Gcore CDN resources | Fake |
 | `baota.site` | BaoTa (aaPanel) websites | Fake |
-| `onepanel.certificate` | 1Panel certificates | Fake |
+| `onepanel.certificate` | 1Panel certificates of websites | Real software: 1Panel v1 and v2, in a community container image |
+| `onepanel.panel` | 1Panel's own HTTPS certificate, turning its HTTPS on | Real software: 1Panel v1 and v2, in a community container image |
 | `safeline.certificate` | SafeLine WAF certificates, replaced in place for their sites | Real software: SafeLine 9.4 |
 | `npm.certificate` | Nginx Proxy Manager | Real software: NPM 2.16 |
 | `caddy.admin` | Caddy, through its admin API | Real software: Caddy 2.11 |

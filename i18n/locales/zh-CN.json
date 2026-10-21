@@ -3135,6 +3135,7 @@
       "certificate_id": "不是证书 ID：{id}",
       "certificate_missing": "请填写要更新的面板证书的 ID。",
       "fingerprint": "不是 SHA-256 指纹：{fingerprint}",
+      "https_now": "面板已经启用 HTTPS：请把地址改成 https:// 和证书里的域名，比如 {address}。",
       "key": "面板拒绝了：请核对 API 接口密钥、IP 白名单和这台服务器的时间（请求按时间签名）。",
       "network": "连不上 {host}。",
       "no_certificate": "面板里没有证书 {id}。现有的证书：{certificates}",
@@ -3157,19 +3158,32 @@
       "certificate_help": "要更新的面板证书：先在 网站 → 证书 里上传或申请一张，并在网站上启用。测试连接会列出面板里的证书和它们的 ID。",
       "fingerprint": "面板证书指纹",
       "fingerprint_help": "面板用自签名证书时填写：它的 SHA-256 指纹，测试连接会给出。JEC 只信任这张证书。",
+      "panel_url_help": "比如 http://192.168.1.10:10086，不用带安全入口。JEC 启用面板的 HTTPS 后，请改用 https:// 和证书里的域名，比如 https://panel.example.com:10086。http:// 只能连本机或内网。",
+      "restart": "部署后重启面板",
+      "restart_help": "面板重启后才换上新证书；关闭时请自己重启。",
       "url": "面板地址",
       "url_help": "比如 https://203.0.113.5:10086，不用带安全入口。http:// 只能连本机或内网，因为私钥会以明文传输。"
     },
     "log": {
-      "upload": "替换证书 {certificate} 的内容"
+      "https": "面板已经启用 HTTPS，改经 HTTPS 部署：{address}",
+      "panel": "把证书设为面板自己的 HTTPS 证书",
+      "restart": "面板正在重启以换上新证书",
+      "upload": "替换证书 {certificate} 的内容",
+      "use_https": "之后要经 HTTPS 访问面板：请把地址改成 {address}"
     },
     "module": {
       "description": "通过 1Panel 的 API 更新面板里的证书，用它的网站随之更新。",
       "name": "1Panel"
     },
+    "panel": {
+      "description": "把每张新证书设为 1Panel 面板自己的 HTTPS 证书（未启用 HTTPS 时随之启用），并按设置重启面板换上它。",
+      "name": "1Panel 面板证书"
+    },
     "test": {
       "list": "面板里的证书：{certificates}。请填上要更新的那张的 ID。",
-      "ok": "找到了证书 {certificate}。"
+      "ok": "找到了证书 {certificate}。",
+      "panel": "面板的证书属于 {domain}，到期时间 {until}。",
+      "plain": "连上了，面板还没有启用 HTTPS：第一次部署时会启用。"
     }
   },
   "plugins": {

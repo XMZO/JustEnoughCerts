@@ -3135,6 +3135,7 @@
       "certificate_id": "Not a certificate ID: {id}",
       "certificate_missing": "Enter the ID of the panel's certificate to keep up to date.",
       "fingerprint": "Not a SHA-256 fingerprint: {fingerprint}",
+      "https_now": "The panel serves HTTPS now: change its address to https://, with a domain of its certificate, such as {address}.",
       "key": "The panel refused: check the API key, the allowlist of addresses, and the clock of this server, as requests are signed with the time.",
       "network": "Could not reach {host}.",
       "no_certificate": "The panel has no certificate {id}. It has: {certificates}",
@@ -3157,19 +3158,32 @@
       "certificate_help": "The certificate of the panel to keep up to date: upload or apply for one in Websites → Certificates, and set it on the websites first. The connection test lists the panel's certificates with their IDs.",
       "fingerprint": "Panel certificate fingerprint",
       "fingerprint_help": "For a panel with a certificate of its own making: its SHA-256 fingerprint, which the connection test gives. JEC then trusts that certificate only.",
+      "panel_url_help": "Such as http://192.168.1.10:10086, without the security entrance. Once JEC turned the panel's HTTPS on, use https:// with a domain of the certificate, such as https://panel.example.com:10086. http:// reaches this machine or private addresses only.",
+      "restart": "Restart the panel after deploying",
+      "restart_help": "The panel serves the new certificate once restarted; off, restart it yourself.",
       "url": "Panel address",
       "url_help": "Such as https://203.0.113.5:10086, without the security entrance. Plain http:// reaches this machine or your network only, as the private key would cross the internet in the clear."
     },
     "log": {
-      "upload": "Replacing the content of the certificate {certificate}"
+      "https": "The panel serves HTTPS already: deploying over it, to {address}",
+      "panel": "Making the certificate the panel's own",
+      "restart": "The panel restarts to serve it",
+      "upload": "Replacing the content of the certificate {certificate}",
+      "use_https": "The panel is reached over HTTPS from now on: change its address to {address}"
     },
     "module": {
       "description": "Keeps a certificate of a 1Panel up to date through its API, and with it the websites that use it.",
       "name": "1Panel"
     },
+    "panel": {
+      "description": "Makes each new certificate the one 1Panel's own HTTPS serves, turning it on if off, and restarts the panel to serve it, if set.",
+      "name": "1Panel panel certificate"
+    },
     "test": {
       "list": "The panel's certificates: {certificates}. Enter the ID of the one to keep up to date.",
-      "ok": "Found the certificate {certificate}."
+      "ok": "Found the certificate {certificate}.",
+      "panel": "The panel's certificate is for {domain}, until {until}.",
+      "plain": "Reached the panel, whose HTTPS is off: the first deployment turns it on."
     }
   },
   "plugins": {

@@ -190,6 +190,34 @@ func TestPinOrNames(t *testing.T) {
 	}
 }
 
+func TestNamesAlone(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	defer srv.Close()
+	vouchers := x509.NewCertPool()
+	vouchers.AddCert(srv.Certificate())
+	// Reached at 127.0.0.1, a certificate for example.com is trusted for it.
+	c, err := Client(Options{Roots: vouchers, Names: []string{"example.com"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.Get(srv.URL)
+	if err != nil {
+		t.Fatalf("vouched for a name: %v", err)
+	}
+	_ = resp.Body.Close()
+	// For no name given, it is one that does not verify, with its fingerprint.
+	if c, err = Client(Options{Roots: vouchers, Names: []string{"jec.example"}}); err != nil {
+		t.Fatal(err)
+	}
+	resp, err = c.Get(srv.URL)
+	if err == nil {
+		_ = resp.Body.Close()
+	}
+	if _, ok := Fingerprint(err); !ok || errors.Is(err, ErrPin) {
+		t.Errorf("vouched for no name given: %v", err)
+	}
+}
+
 func TestRoots(t *testing.T) {
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) }))
 	defer srv.Close()
