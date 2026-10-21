@@ -2686,6 +2686,20 @@
       "description": "借助 lego，在 221 家 DNS 服务商添加 TXT 记录，完成域名验证。",
       "name": "DNS 服务商（lego）"
     },
+    "name": {
+      "alidns": "阿里云 DNS",
+      "aliesa": "阿里云 ESA",
+      "baiducloud": "百度智能云 DNS",
+      "edgeone": "腾讯云 EdgeOne",
+      "huaweicloud": "华为云 DNS",
+      "jdcloud": "京东云 DNS",
+      "rainyun": "雨云",
+      "tencentcloud": "腾讯云 DNSPod",
+      "todaynic": "时代互联",
+      "volcengine": "火山引擎 DNS",
+      "westcn": "西部数码",
+      "xinnet": "新网"
+    },
     "test": {
       "domains": "连接正常：这个账号能管理 {count, plural, other {# 个域名}}，比如 {domains}。",
       "none": "连接正常，但这个账号下还没有域名。"

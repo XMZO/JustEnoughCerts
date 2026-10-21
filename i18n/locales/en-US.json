@@ -2686,6 +2686,20 @@
       "description": "Proves control of a domain by adding a TXT record at any of 221 DNS providers, through lego.",
       "name": "DNS providers (lego)"
     },
+    "name": {
+      "alidns": "Alibaba Cloud DNS",
+      "aliesa": "Alibaba Cloud ESA",
+      "baiducloud": "Baidu AI Cloud DNS",
+      "edgeone": "Tencent Cloud EdgeOne",
+      "huaweicloud": "Huawei Cloud DNS",
+      "jdcloud": "JD Cloud DNS",
+      "rainyun": "Rainyun",
+      "tencentcloud": "Tencent Cloud DNSPod",
+      "todaynic": "TodayNIC",
+      "volcengine": "Volcengine DNS",
+      "westcn": "West.cn",
+      "xinnet": "Xinnet"
+    },
     "test": {
       "domains": "Connected: the account manages {count, plural, one {# domain} other {# domains}}, such as {domains}.",
       "none": "Connected, but the account has no domains yet."

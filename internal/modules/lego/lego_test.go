@@ -57,7 +57,7 @@ func TestCatalog(t *testing.T) {
 		}
 	}
 	typ := providerType(provider(t, "tencentcloud"))
-	if typ.ID != "lego.tencentcloud" || typ.Kind != providers.Solver || typ.Brand != "Tencent Cloud DNS" || !slices.Equal(typ.Tags, []string{"china"}) {
+	if typ.ID != "lego.tencentcloud" || typ.Kind != providers.Solver || typ.Brand != "" || typ.Name != i18n.LegoNameTencentcloud || !slices.Equal(typ.Tags, []string{"china"}) {
 		t.Errorf("tencentcloud: %+v", typ)
 	}
 	secret := map[string]bool{}

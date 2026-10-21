@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/credentials"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/dnsrecord"
@@ -45,6 +46,24 @@ func loadCatalog() (*catalog, error) {
 		return nil, fmt.Errorf("lego catalog: %w", err)
 	}
 	return &c, nil
+}
+
+// names are the names of providers common in China in the UI's language,
+// as people know them there, such as DNSPod for Tencent Cloud DNS: lego's
+// own are English, and the type list searches the names shown.
+var names = map[string]i18n.Key{
+	"alidns":       i18n.LegoNameAlidns,
+	"aliesa":       i18n.LegoNameAliesa,
+	"tencentcloud": i18n.LegoNameTencentcloud,
+	"edgeone":      i18n.LegoNameEdgeone,
+	"huaweicloud":  i18n.LegoNameHuaweicloud,
+	"baiducloud":   i18n.LegoNameBaiducloud,
+	"jdcloud":      i18n.LegoNameJdcloud,
+	"volcengine":   i18n.LegoNameVolcengine,
+	"westcn":       i18n.LegoNameWestcn,
+	"xinnet":       i18n.LegoNameXinnet,
+	"rainyun":      i18n.LegoNameRainyun,
+	"todaynic":     i18n.LegoNameTodaynic,
 }
 
 // Groups for the UI (PLAN.md 5.3.2): providers common in China, popular
@@ -94,6 +113,9 @@ func providerType(p catalogProvider) providers.Type {
 		t.Fields = append(t.Fields, providers.Field{
 			Key: k.Key, Doc: k.Doc, Kind: providers.Text, Secret: k.Secret, Advanced: i >= len(p.Credentials),
 		})
+	}
+	if name, ok := names[p.Code]; ok {
+		t.Name, t.Brand = name, ""
 	}
 	if p.Code == "cloudflare" {
 		cloudflareWays(&t)
