@@ -787,6 +787,7 @@
       "solver_intro": "Changes the validation of the {count} certificates chosen, from their next issuance; those whose source does not take it stay as they are, each with why.",
       "source": "Change the source",
       "source_intro": "Has the {count} certificates chosen issued by another source, from their next issuance: those uploaded are renewed from then on, and those without a version yet are issued at once. Those it cannot take stay as they are, each with why.",
+      "source_needs_solver": "it has no validation of its own: choose one above.",
       "source_own_solver": "Each certificate's own",
       "target": "Deploy target"
     },

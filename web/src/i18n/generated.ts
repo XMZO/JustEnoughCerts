@@ -619,6 +619,7 @@ export type MessageKey =
   | "certs.bulk.solver_intro"
   | "certs.bulk.source"
   | "certs.bulk.source_intro"
+  | "certs.bulk.source_needs_solver"
   | "certs.bulk.source_own_solver"
   | "certs.bulk.target"
   | "certs.ca_revoked.reason.affiliation_changed"

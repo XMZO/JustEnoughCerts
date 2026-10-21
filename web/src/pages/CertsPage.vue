@@ -428,7 +428,9 @@ async function submitSource() {
     } catch (err) {
       const e = err instanceof ApiError ? err : networkError
       const field = e.fields[0]
-      refused.push({ domain: c.domains[0] ?? '', why: t(field?.code ?? e.code, e.params) })
+      // Without a solver of its own, it takes one picked above.
+      const needs = field?.location === 'body.solverProvider' && field.code === 'kernel.error.field_required'
+      refused.push({ domain: c.domains[0] ?? '', why: needs ? t('certs.bulk.source_needs_solver') : t(field?.code ?? e.code, e.params) })
     }
   }
   settingSource.value = false

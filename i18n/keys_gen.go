@@ -611,6 +611,7 @@ const (
 	CertsBulkSolverIntro                     Key = "certs.bulk.solver_intro"
 	CertsBulkSource                          Key = "certs.bulk.source"
 	CertsBulkSourceIntro                     Key = "certs.bulk.source_intro"
+	CertsBulkSourceNeedsSolver               Key = "certs.bulk.source_needs_solver"
 	CertsBulkSourceOwnSolver                 Key = "certs.bulk.source_own_solver"
 	CertsBulkTarget                          Key = "certs.bulk.target"
 	CertsCaRevokedReasonAffiliationChanged   Key = "certs.ca_revoked.reason.affiliation_changed"
