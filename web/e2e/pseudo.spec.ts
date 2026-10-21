@@ -587,6 +587,27 @@ test('every page is translated and fits', async ({ page }, info) => {
   const relative = page.getByRole('article').filter({ hasText: 'e2e relative' })
   await expect(relative.locator('p.text-warn-ink time')).toBeVisible()
   expect.soft(await problems(page), 'deploy targets, one of which failed').toEqual([])
+  // Long data in the cards: a long name and a long path, with no place to
+  // break, must wrap or be cut short with all of it in a tooltip.
+  const long = 'e2e-a-rather-long-name-without-spaces-that-goes-on-and-on'
+  const longTarget = await page.request.post('api/v1/providers', {
+    data: { type: 'files.directory', name: long, config: { directory: `${process.env.JEC_E2E_FILES}/${info.project.name}/${'deep-directory-name/'.repeat(6)}` } },
+  })
+  expect(longTarget.status()).toBe(201)
+  const longNotifier = await page.request.post('api/v1/providers', {
+    data: { type: 'webhook.notify', name: long, config: { url: `https://hooks.example.com/${'a-long-path-segment-'.repeat(8)}` } },
+  })
+  expect(longNotifier.status()).toBe(201)
+  await page.reload()
+  await expect(page.getByRole('article').filter({ hasText: long })).toBeVisible()
+  expect.soft(await problems(page), 'deploy targets with long data').toEqual([])
+  await page.goto('./notify')
+  await expect(page.getByRole('article').filter({ hasText: long })).toBeVisible()
+  expect.soft(await problems(page), 'notifications with long data').toEqual([])
+  for (const res of [longTarget, longNotifier]) {
+    const { id } = (await res.json()) as { id: number }
+    expect((await page.request.delete(`api/v1/providers/${id}`)).status()).toBeLessThan(300)
+  }
 
   // Notifications: Telegram's form, then a webhook to this machine, whose
   // test the guard against private addresses refuses.
