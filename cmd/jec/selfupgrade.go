@@ -164,9 +164,12 @@ func (u upgrader) upgrade(ctx context.Context, version string) error {
 	if err := errors.Join(tmp.Chmod(0o755), tmp.Close()); err != nil {
 		return err
 	}
-	out, err := exec.CommandContext(ctx, tmp.Name(), "version").Output()
-	if first, _, _ := strings.Cut(string(out), "\n"); err != nil || first != "jec "+version {
-		return fmt.Errorf("the new binary does not run here, or is not jec %s: %q %v", version, first, err)
+	out, err := exec.CommandContext(ctx, tmp.Name(), "version").Output() //nolint:gosec // G204: the binary just checked against the release's checksums
+	if err != nil {
+		return fmt.Errorf("the new binary does not run here: %w", err)
+	}
+	if first, _, _ := strings.Cut(string(out), "\n"); first != "jec "+version {
+		return fmt.Errorf("the new binary is not jec %s: it says %q", version, first)
 	}
 	return os.Rename(tmp.Name(), u.bin)
 }
