@@ -140,3 +140,14 @@ export function updateTitle(): void {
 
 router.afterEach(updateTitle)
 watch(attention, updateTitle)
+
+/**
+ * updateBadge shows the count on the icon of the installed app, where the
+ * browser can (the Badging API); elsewhere it does nothing.
+ */
+export function updateBadge(count: number): void {
+  const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> }
+  const done = count > 0 ? nav.setAppBadge?.(count) : nav.clearAppBadge?.()
+  done?.catch(() => {}) // not allowed, as outside an installed app
+}
+watch(attention, updateBadge)

@@ -70,7 +70,8 @@ and servers, and renews them before they expire.
   image, with data in SQLite (or [PostgreSQL](../operations/postgresql.md)),
   and an interface in English and Chinese
   that can be installed on a phone's home screen as a progressive web app
-  (PWA).
+  (PWA), whose icon shows how many certificates need attention, where the
+  browser can.
 
 ## Project status
 
