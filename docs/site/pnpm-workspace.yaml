@@ -2,3 +2,8 @@
 # package of the platform anyway; the build works without it.
 ignoredBuiltDependencies:
   - esbuild
+
+# VitePress 1.6 asks for Vite 5, whose dev server has known vulnerabilities
+# that no Vite 5 release fixes; it builds and serves with Vite 6 as well.
+overrides:
+  vite: 6.4.5
