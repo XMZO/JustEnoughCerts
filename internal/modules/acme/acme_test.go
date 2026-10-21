@@ -306,6 +306,8 @@ func TestRefusedReplaces(t *testing.T) {
 		order(legoacme.MalformedErrorType, "while parsing ARI CertID an error occurred"):                                          true,
 		order(legoacme.MalformedErrorType, "request included `replaces` field, but no current certificate with serial 01 exists"): true,
 		order(legoacme.RateLimitedErrorType, "too many new orders recently; replaces"):                                            false,
+		order(legoacme.ServerInternalErrorType, "could not find order resulting in the given certificate serial number"):          true,
+		order(legoacme.ServerInternalErrorType, "the database is down"):                                                           false,
 		order(legoacme.UnauthorizedErrorType, "the authorization was not valid"):                                                  false,
 		&legoacme.ProblemDetails{Type: legoacme.MalformedErrorType, Detail: "replaces", Method: http.MethodGet}:                   false,
 		errors.New("replaces"): false,

@@ -126,17 +126,23 @@ func (s *source) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509
 
 // refusedReplaces tells whether err is the CA refusing a new order for its
 // replaces field, as Let's Encrypt does for a certificate of another
-// account or of another CA, rather than a failure of the validation.
-// lego itself orders again when the certificate was replaced already.
+// account or of another CA, rather than a failure of the validation; or
+// the CA failing on the certificate replaced, as Pebble does at times,
+// not finding the order of its serial. lego itself orders again when the
+// certificate was replaced already.
 func refusedReplaces(err error) bool {
 	var pd *legoacme.ProblemDetails
-	if !errors.As(err, &pd) || pd.Method != http.MethodPost || pd.Type == legoacme.RateLimitedErrorType || pd.Type == legoacme.ServerInternalErrorType {
+	if !errors.As(err, &pd) || pd.Method != http.MethodPost || pd.Type == legoacme.RateLimitedErrorType {
 		return false
 	}
 	// As Boulder words it: "request included `replaces` field, but no
 	// current certificate with serial ... exists", "while parsing ARI
-	// CertID an error occurred".
+	// CertID an error occurred"; as Pebble does: "could not find order
+	// resulting in the given certificate serial number".
 	detail := strings.ToLower(pd.Detail)
+	if pd.Type == legoacme.ServerInternalErrorType {
+		return strings.Contains(detail, "certificate serial")
+	}
 	return strings.Contains(detail, "replace") || strings.Contains(detail, "certid")
 }
 
