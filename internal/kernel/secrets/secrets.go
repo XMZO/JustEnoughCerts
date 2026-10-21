@@ -35,6 +35,7 @@ var ErrOpen = errors.New("cannot open sealed data: wrong secret key, or damaged 
 // Box seals and opens data with the master key.
 type Box struct {
 	aead cipher.AEAD
+	raw  []byte
 }
 
 // Load returns the box for the master key: key, when it is given, or else
@@ -63,8 +64,12 @@ func Load(dataDir, key string) (box *Box, created bool, err error) {
 	if err != nil {
 		return nil, false, err
 	}
-	return &Box{aead: aead}, created, nil
+	return &Box{aead: aead, raw: raw}, created, nil
 }
+
+// Export returns the master key as JEC_SECRET_KEY and the key file take it,
+// for people to keep apart from the backups that need it.
+func (b *Box) Export() string { return base64.StdEncoding.EncodeToString(b.raw) }
 
 func decodeKey(s string) ([]byte, error) {
 	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s))

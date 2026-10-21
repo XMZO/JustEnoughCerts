@@ -135,3 +135,23 @@ func TestCheck(t *testing.T) {
 		t.Error("Verify does not tell the keys apart")
 	}
 }
+
+func TestExport(t *testing.T) {
+	dir := t.TempDir()
+	box, _, err := Load(dir, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.ReadFile(filepath.Join(dir, KeyFile))
+	if err != nil || box.Export() != strings.TrimSpace(string(file)) {
+		t.Fatalf("exported %q, the file holds %q: %v", box.Export(), file, err)
+	}
+	// Given as JEC_SECRET_KEY elsewhere, it opens what the box sealed.
+	other, _, err := Load(t.TempDir(), box.Export())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := other.Open(box.Seal([]byte("private key"), "test"), "test"); err != nil || string(got) != "private key" {
+		t.Errorf("opened %q, %v", got, err)
+	}
+}

@@ -25,6 +25,7 @@ import (
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/events"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/jobs"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/zone"
 )
@@ -67,6 +68,8 @@ type Options struct {
 	JobStatus func(ctx context.Context) ([]jobs.Status, error)
 	// beats keeps how the heartbeat went, once Register made it.
 	beats *beats
+	// ExportKey returns the master key, as secrets.Box.Export does.
+	ExportKey func() string
 	// Confirm checks the password of the signed-in account, as
 	// auth.Service.ConfirmPassword does.
 	Confirm func(ctx context.Context, password string) error
@@ -121,6 +124,13 @@ type backupInput struct {
 	}
 }
 
+// SecretKeyBody is the master key, as JEC_SECRET_KEY and the key file take it.
+type SecretKeyBody struct {
+	Key string `json:"key" doc:"Base64 of the 32 bytes of the key"`
+	// From is a word for the UI.
+	From string `json:"from" enum:"env,file" doc:"Where JEC took it from: JEC_SECRET_KEY, or the key file in the data directory"`
+}
+
 type backupOutput struct {
 	ContentType        string `header:"Content-Type"`
 	ContentDisposition string `header:"Content-Disposition"`
@@ -166,6 +176,24 @@ func Register(a huma.API, o Options) {
 
 	registerAutoBackup(a, o, tags)
 	registerRestore(a, o, tags)
+	huma.Register(a, huma.Operation{
+		OperationID: "secret-key", Method: http.MethodPost, Path: "/system/secret-key", Tags: tags,
+		Metadata: map[string]any{auth.SessionOnly: true},
+		Summary:  "Tell the master key, once the password is confirmed",
+		Description: "Backups do not hold the master key that their private keys and credentials are sealed with: kept apart, it restores them " +
+			"on another server, given as JEC_SECRET_KEY or put in " + secrets.KeyFile + " before JEC first starts there.",
+	}, func(ctx context.Context, in *backupInput) (*struct{ Body SecretKeyBody }, error) {
+		if err := o.Confirm(ctx, in.Body.Password); err != nil {
+			return nil, err
+		}
+		u, _ := auth.UserFrom(ctx)
+		o.Log.Info("master key shown", "username", u.Username)
+		from := "file"
+		if o.KeyFromEnv {
+			from = "env"
+		}
+		return &struct{ Body SecretKeyBody }{Body: SecretKeyBody{Key: o.ExportKey(), From: from}}, nil
+	})
 	registerHealth(a, o, tags)
 	registerHeartbeat(a, o, client, tags)
 	registerUpdates(a, o, client, tags)

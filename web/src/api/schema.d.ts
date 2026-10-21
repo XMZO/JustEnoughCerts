@@ -1495,6 +1495,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/secret-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tell the master key, once the password is confirmed
+         * @description Backups do not hold the master key that their private keys and credentials are sealed with: kept apart, it restores them on another server, given as JEC_SECRET_KEY or put in secret.key before JEC first starts there.
+         */
+        post: operations["secret-key"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/time-zone": {
         parameters: {
             query?: never;
@@ -3016,6 +3036,15 @@ export interface components {
             trustedProxies?: string;
             /** @description JEC checks for releases by itself, once a day */
             updateCheck: boolean;
+        };
+        SecretKeyBody: {
+            /**
+             * @description Where JEC took it from: JEC_SECRET_KEY, or the key file in the data directory
+             * @enum {string}
+             */
+            from: "env" | "file";
+            /** @description Base64 of the 32 bytes of the key */
+            key: string;
         };
         SectionReport: {
             items: components["schemas"]["Item"][];
@@ -6755,6 +6784,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "secret-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecretKeyBody"];
+                };
             };
             /** @description Error */
             default: {

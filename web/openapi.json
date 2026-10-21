@@ -3427,6 +3427,28 @@
         ],
         "type": "object"
       },
+      "SecretKeyBody": {
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "description": "Where JEC took it from: JEC_SECRET_KEY, or the key file in the data directory",
+            "enum": [
+              "env",
+              "file"
+            ],
+            "type": "string"
+          },
+          "key": {
+            "description": "Base64 of the 32 bytes of the key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "from"
+        ],
+        "type": "object"
+      },
       "SectionReport": {
         "additionalProperties": false,
         "properties": {
@@ -9278,6 +9300,48 @@
           }
         },
         "summary": "Restore a backup, once the password is confirmed: JEC stops, to start again with it",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/system/secret-key": {
+      "post": {
+        "description": "Backups do not hold the master key that their private keys and credentials are sealed with: kept apart, it restores them on another server, given as JEC_SECRET_KEY or put in secret.key before JEC first starts there.",
+        "operationId": "secret-key",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackupInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecretKeyBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Tell the master key, once the password is confirmed",
         "tags": [
           "system"
         ]

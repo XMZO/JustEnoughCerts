@@ -80,6 +80,11 @@ export function useBackup() {
 }
 
 /** Sends a backup to restore, once the password is confirmed: JEC then stops, to start again with it. */
+/** Tells the master key, once the password is confirmed, for people to keep apart from the backups. */
+export function useSecretKey() {
+  return useMutation({ mutationFn: (password: string) => unwrap(api.POST('/system/secret-key', { body: { password } })) })
+}
+
 export function useRestore() {
   return useMutation({
     mutationFn: (input: { file: File; password: string }) => {

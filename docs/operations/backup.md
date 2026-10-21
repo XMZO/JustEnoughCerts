@@ -29,6 +29,13 @@ Either of the following:
   and enter the password to download a consistent copy of the database.
   JEC keeps running meanwhile. The backup does not contain the master key.
 
+To keep the master key, choose Show next to Master key under Data and
+backups, enter the password, and copy the key, into a password manager
+for instance. To restore a backup on another server, give the key as
+`JEC_SECRET_KEY`, or write it into `secret.key` of the data directory,
+before JEC first starts there. Showing the key is recorded in the audit
+log.
+
 To keep the configuration in Git or move it to another instance, use the
 YAML configuration file; see [Configuration file](config-file.md).
 

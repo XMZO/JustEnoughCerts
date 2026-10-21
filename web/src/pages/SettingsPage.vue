@@ -44,6 +44,7 @@ import {
   useSetHeartbeat,
   useReleaseCheck,
   useRestore,
+  useSecretKey,
   useSetAutoBackup,
   useSetTimeZone,
   useSetUpdateCheck,
@@ -338,6 +339,25 @@ watch(backingUp, (open) => {
   backupPassword.value = ''
   backup.reset()
 })
+
+// The master key, which backups lack: told once the password is right, to
+// keep apart, as in a password manager.
+const secretKey = useSecretKey()
+const secretKeyError = useApiError(computed(() => secretKey.error.value))
+const showingKey = ref(false)
+const keyPassword = ref('')
+watch(showingKey, (open) => {
+  if (!open) return
+  keyPassword.value = ''
+  secretKey.reset()
+})
+async function submitKey() {
+  try {
+    await secretKey.mutateAsync(keyPassword.value)
+  } catch {
+    // shown by the field
+  }
+}
 
 async function submitBackup() {
   let file
@@ -710,6 +730,15 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           </JecButton>
         </div>
       </div>
+      <div :class="[row, 'flex-wrap']">
+        <div class="min-w-0 flex-[1_1_12rem]">
+          <span class="block font-semibold">{{ t('kernel.settings.secret_key') }}</span>
+          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.secret_key_help') }}</span>
+        </div>
+        <JecButton size="sm" class="ml-auto" @click="showingKey = true">
+          <KeyRound class="size-4" aria-hidden="true" />{{ t('kernel.settings.secret_key_show') }}
+        </JecButton>
+      </div>
       <div :class="row">
         <div class="min-w-0 flex-1">
           <label for="autoBackup" class="block font-semibold">{{ t('kernel.settings.auto_backup') }}</label>
@@ -1014,6 +1043,43 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
       </p>
     </section>
   </div>
+
+  <JecDialog v-model:open="showingKey" :title="t('kernel.settings.secret_key')" small>
+    <form id="secret-key-form" class="flex flex-col gap-3" novalidate @submit.prevent="submitKey">
+      <template v-if="secretKey.data.value">
+        <p class="m-0">{{ t(secretKey.data.value.from === 'env' ? 'kernel.settings.secret_key_env' : 'kernel.settings.secret_key_file') }}</p>
+        <div class="flex items-center gap-2">
+          <code class="min-w-0 flex-1 rounded-sm bg-surface-sunken px-2 py-1 text-small [overflow-wrap:anywhere]" translate="no">{{
+            secretKey.data.value.key
+          }}</code>
+          <CopyButton :value="secretKey.data.value.key" label="kernel.settings.secret_key_copy" />
+        </div>
+        <p class="m-0 text-small text-ink-muted">{{ t('kernel.settings.secret_key_use') }}</p>
+      </template>
+      <template v-else>
+        <p class="m-0">{{ t('kernel.settings.secret_key_intro') }}</p>
+        <JecAlert v-if="secretKeyError.alert.value" :code="secretKeyError.alert.value.code" :params="secretKeyError.alert.value.params" />
+        <JecField id="secret-key-password" label="kernel.account.confirm_password" :error="secretKeyError.fields.value.password">
+          <JecInput
+            id="secret-key-password"
+            v-model="keyPassword"
+            type="password"
+            autocomplete="current-password"
+            :invalid="!!secretKeyError.fields.value.password"
+          />
+        </JecField>
+      </template>
+    </form>
+    <template #footer>
+      <JecButton v-if="secretKey.data.value" variant="primary" @click="showingKey = false">{{ t('kernel.action.close') }}</JecButton>
+      <template v-else>
+        <JecButton @click="showingKey = false">{{ t('kernel.action.cancel') }}</JecButton>
+        <JecButton type="submit" form="secret-key-form" variant="primary" :busy="secretKey.isPending.value" :disabled="!keyPassword">
+          <KeyRound class="size-4" aria-hidden="true" />{{ t('kernel.settings.secret_key_show') }}
+        </JecButton>
+      </template>
+    </template>
+  </JecDialog>
 
   <JecDialog v-model:open="backingUp" :title="t('kernel.settings.backup_download')" small>
     <form id="backup-form" class="flex flex-col gap-3" novalidate @submit.prevent="submitBackup">

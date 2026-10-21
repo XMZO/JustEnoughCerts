@@ -183,7 +183,7 @@ func New(ctx context.Context, cfg config.Config, log *slog.Logger, mods []module
 	system.Register(a.Kernel(), system.Options{
 		DataDir: cfg.DataDir, Listen: cfg.Listen, BaseURL: cfg.BaseURL, KeyFromEnv: cfg.SecretKey != "",
 		TrustedProxies: cfg.TrustedProxies, HSTS: cfg.HSTS == "true", TLSCert: cfg.TLSCert, HTTPListen: cfg.HTTPListen, AllowedClients: cfg.AllowedClients,
-		VerifyKey: box.Verify, Versions: versions, Restart: func() { restartOnce.Do(func() { close(restart) }) },
+		VerifyKey: box.Verify, ExportKey: box.Export, Versions: versions, Restart: func() { restartOnce.Do(func() { close(restart) }) },
 		Database: string(st.Dialect()), Confirm: accounts.ConfirmPassword, Now: time.Now, Log: log,
 		Backup: func(ctx context.Context, path string) error { return st.Snapshot(ctx, path, migrateAll) },
 		DB:     st.DB(), Jobs: sched.Scope(owner), JobStatus: sched.Status,

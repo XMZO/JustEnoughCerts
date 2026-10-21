@@ -62,10 +62,19 @@ func TestSystem(t *testing.T) {
 			}
 			return nil
 		},
-		Now:  func() time.Time { return time.Date(2026, 10, 17, 22, 30, 5, 0, time.UTC) },
-		Log:  slog.New(slog.DiscardHandler),
-		Zone: tz,
+		ExportKey: func() string { return "a2V5" },
+		Now:       func() time.Time { return time.Date(2026, 10, 17, 22, 30, 5, 0, time.UTC) },
+		Log:       slog.New(slog.DiscardHandler),
+		Zone:      tz,
 	})
+
+	// The master key, told once the password is right.
+	if resp := api.Post("/system/secret-key", map[string]any{"password": "wrong horse"}); resp.Code == http.StatusOK {
+		t.Error("the key with a wrong password")
+	}
+	if resp := api.Post("/system/secret-key", map[string]any{"password": "correct horse"}); resp.Code != http.StatusOK || resp.Body.String() != `{"key":"a2V5","from":"env"}`+"\n" {
+		t.Errorf("the key = %d %q", resp.Code, resp.Body.String())
+	}
 
 	resp := api.Get("/system")
 	if resp.Code != http.StatusOK || !strings.Contains(resp.Body.String(), `"dataDir":`) ||
