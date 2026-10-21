@@ -139,6 +139,20 @@ func (in *Import) Provider(kind providers.Kind, name string) (Provider, *Problem
 	return Provider{}, &Problem{Key: i18n.KernelConfigErrorAmbiguous, Params: map[string]any{"name": name}}
 }
 
+// ByID returns provider instance id, as the file leaves it, when its type
+// is available: so that a section reads it within the import, not around
+// it.
+func (in *Import) ByID(id int64) (Provider, bool) {
+	for _, list := range in.named {
+		for _, p := range list {
+			if p.ID == id {
+				return p, true
+			}
+		}
+	}
+	return Provider{}, false
+}
+
 // Report adds an entry of the section, with what the import does with it.
 func (in *Import) Report(it Item) {
 	for _, p := range it.Problems {

@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -461,7 +460,7 @@ func (s *service) addCertificate(ctx context.Context, ci *certImport, e certific
 // is of type source and whose solver is to be solver, of solverType when
 // e names it, and tells why it cannot stand in, if so. Left out of e, the
 // backup stays, as long as it takes the solver.
-func (s *service) backupOf(ctx context.Context, ci *certImport, e certificateEntry, c *Certificate, source providers.Type, solver int64, solverType *providers.Type, backup *int64) ([]configfile.Problem, error) {
+func (s *service) backupOf(_ context.Context, ci *certImport, e certificateEntry, c *Certificate, source providers.Type, solver int64, solverType *providers.Type, backup *int64) ([]configfile.Problem, error) {
 	var backupType providers.Type
 	switch {
 	case e.BackupSource != nil && *e.BackupSource == "":
@@ -477,15 +476,15 @@ func (s *service) backupOf(ctx context.Context, ci *certImport, e certificateEnt
 	case *backup == 0:
 		return nil, nil
 	default:
-		t, err := s.providers.Type(ctx, *backup)
-		if err != nil {
-			return nil, nil //nolint:nilerr // a backup of a module turned off stays as it is
+		p, ok := ci.in.ByID(*backup)
+		if !ok {
+			return nil, nil // a backup of a module turned off stays as it is
 		}
-		backupType = t
+		backupType = p.Type
 	}
 	if solverType == nil && solver != 0 {
-		if t, err := s.providers.Type(ctx, solver); err == nil {
-			solverType = &t
+		if p, ok := ci.in.ByID(solver); ok {
+			solverType = &p.Type
 		}
 	}
 	if key := backupProblem(*backup, c.SourceProvider, backupType, source, solverType); key != "" {
@@ -513,24 +512,20 @@ func (s *service) changeCertificate(ctx context.Context, ci *certImport, e certi
 ) (configfile.Item, error) {
 	solver, backup, keyType, days := c.SolverProvider, c.BackupProvider, c.KeyType, c.RenewBeforeDays
 	var solverType *providers.Type
-	current, err := s.providers.Type(ctx, c.SourceProvider)
+	// Read within the import, as the file leaves them.
+	own, available := ci.in.ByID(c.SourceProvider)
+	current := own.Type
 	switch {
 	case c.Source != sourceProvider:
 		if e.Source != "" {
 			it.Problems = append(it.Problems, configfile.Problem{Field: "source", Key: i18n.CertsConfigErrorUploadedKept, Warning: true})
 		}
-	case errors.Is(err, providers.ErrUnavailable):
+	case !available:
 		// Its module is off: the solver and the key type stay too.
 		it.Problems = append(it.Problems, configfile.Problem{Field: "source", Key: i18n.KernelErrorProviderTypeUnknown, Warning: true})
-	case err != nil:
-		return it, fmt.Errorf("provider %d: %w", c.SourceProvider, err)
 	default:
 		if p, pr := ci.in.Provider(providers.Source, e.Source); pr != nil || p.ID != c.SourceProvider {
-			name, err := s.providerName(ctx, c.SourceProvider)
-			if err != nil {
-				return it, err
-			}
-			it.Problems = append(it.Problems, configfile.Problem{Field: "source", Key: i18n.CertsConfigErrorSourceKept, Params: map[string]any{"name": name}, Warning: true})
+			it.Problems = append(it.Problems, configfile.Problem{Field: "source", Key: i18n.CertsConfigErrorSourceKept, Params: map[string]any{"name": own.Name}, Warning: true})
 		}
 		switch {
 		case e.Solver != "":

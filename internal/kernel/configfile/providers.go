@@ -67,7 +67,7 @@ func (r *Registry) exportProviders(ctx context.Context, x Export, credentials ma
 // stay as they are. Whatever the file has, the names of the instances,
 // as it leaves them, go to in for the sections after it.
 func (r *Registry) importProviders(ctx context.Context, tx *sql.Tx, entries *[]providerEntry, in *Import) error {
-	have, err := r.providers.List(ctx, "")
+	have, err := r.providers.ListWithTx(ctx, tx, "")
 	if err != nil {
 		return err
 	}

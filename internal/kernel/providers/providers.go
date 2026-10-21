@@ -912,7 +912,16 @@ func forgetCredentialTests(ctx context.Context, tx *sql.Tx, credential int64) er
 // List returns the instances whose type is of kind, or every instance for
 // "", ordered by name.
 func (r *Registry) List(ctx context.Context, kind Kind) ([]Summary, error) {
-	rows, err := r.db.QueryContext(ctx, "SELECT "+providerColumns+" FROM kernel_providers ORDER BY name, id")
+	return r.list(ctx, r.db, kind)
+}
+
+// ListWithTx is List within tx, as an import reads what it changes.
+func (r *Registry) ListWithTx(ctx context.Context, tx *sql.Tx, kind Kind) ([]Summary, error) {
+	return r.list(ctx, tx, kind)
+}
+
+func (r *Registry) list(ctx context.Context, q querier, kind Kind) ([]Summary, error) {
+	rows, err := q.QueryContext(ctx, "SELECT "+providerColumns+" FROM kernel_providers ORDER BY name, id")
 	if err != nil {
 		return nil, err
 	}
