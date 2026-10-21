@@ -169,6 +169,7 @@
 - 文档“密钥与最小权限”（`docs/reference/permissions.md`）：按代码实际调用的接口列出阿里云 RAM、腾讯云 CAM、AWS IAM、Cloudflare 令牌要授予的操作；新加或改了云平台的调用时同步更新。
 - ACME 添加证书预检还提示公共 CA 不签发的名字（`acme/caa.go` 的 `preflightNames`：不在公共后缀下的域名如 `nas.lan`、`localhost`，内网和回环地址；只对认识的公共 CA，`acme.preflight.internal`），FAQ 指向私有 CA。
 - “试一下”也支持网站文件类的验证方式（`providersapi/try.go` 的 `tryFile`：`contracts.FileSolver` 放 `/.well-known/acme-challenge/jec-try-…`，经 `http://` 像 CA 一样跟随跳转、不验证书取回，最多 40 秒，取不回时 `answer` 给出最后的回应；`TryBody.kind` 区分 dns/http；界面 `TryDnsDialog.vue` 按类型换说法；在 busybox 容器里对本地网站目录实测过：目录对时立即取回，目录不对时 40 秒后报 `HTTP 404`）。
+- `cmd/jec/untested_test.go` 的 `TestUntestedTags` 核对“未实测”标签和 `docs/reference/providers.md` 的表一致：只用替身测过的类型必须标 `Untested`，对真实服务、真实软件或模拟器试过的不能标，每个类型都要在表里。新加类型或实测后要同时改表和标签。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定
