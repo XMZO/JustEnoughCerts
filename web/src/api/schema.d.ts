@@ -2210,6 +2210,11 @@ export interface components {
             state: "pending" | "ok" | "expiring" | "expired" | "unknown" | "failed";
         };
         DomainCheckBody: {
+            /**
+             * @description For a domain unreachable: dns, its name resolves to nothing; connect, its port takes no connection; tls, it answers without TLS
+             * @enum {string}
+             */
+            cause?: "dns" | "connect" | "tls";
             /** Format: date-time */
             checkedAt: string;
             /** @description The domain, with its port when not 443, as mail.example.com:993 */
@@ -2229,6 +2234,11 @@ export interface components {
              * @description When the certificate served ends
              */
             notAfter?: string;
+            /**
+             * Format: int64
+             * @description The port checked
+             */
+            port: number;
             /**
              * @description ok: the version in use; old: an older certificate for the domain from the same CA; other: someone else's certificate, such as a CDN's own, or one for other names, or a newer one; unreachable: nothing over TLS on the port
              * @enum {string}

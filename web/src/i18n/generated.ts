@@ -2037,6 +2037,8 @@ export type MessageKey =
   | "monitor.section.title"
   | "monitor.section.untracked"
   | "monitor.state.incomplete"
+  | "monitor.state.no_connect"
+  | "monitor.state.no_dns"
   | "monitor.state.ok"
   | "monitor.state.old"
   | "monitor.state.other"

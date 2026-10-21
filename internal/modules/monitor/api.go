@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"slices"
 	"strconv"
@@ -25,6 +26,8 @@ type DomainCheckBody struct {
 	NotAfter    *time.Time `json:"notAfter,omitempty" doc:"When the certificate served ends"`
 	Issuer      string     `json:"issuer,omitempty" doc:"Who issued the certificate served"`
 	Error       string     `json:"error,omitempty" doc:"Why the connection failed, as Go put it"`
+	Port        int        `json:"port" doc:"The port checked"`
+	Cause       string     `json:"cause,omitempty" enum:"dns,connect,tls" doc:"For a domain unreachable: dns, its name resolves to nothing; connect, its port takes no connection; tls, it answers without TLS"`
 	Incomplete  bool       `json:"incomplete,omitempty" doc:"The version in use was served without the intermediates clients need: browsers on computers fetch them, many apps, Android and curl fail"`
 	TLSVersion  string     `json:"tlsVersion,omitempty" doc:"The TLS version spoken, as 1.3, where the version in use was served"`
 	LegacyTLS   bool       `json:"legacyTls,omitempty" doc:"Where the version in use was served, TLS 1.0 or 1.1 is still taken, which browsers dropped"`
@@ -144,6 +147,20 @@ func registerAPI(a huma.API, m *Module) {
 	})
 }
 
+// causeOf tells, from the error of a connection, why a domain was
+// unreachable: dns when its name resolves to nothing, connect when its
+// port takes no connection, tls otherwise.
+func causeOf(err string) string {
+	switch {
+	case strings.Contains(err, "no such host"), strings.Contains(err, "lookup ") && strings.Contains(err, "server misbehaving"):
+		return "dns"
+	case strings.Contains(err, "connection refused"), strings.Contains(err, "i/o timeout"), strings.Contains(err, "no route to host"),
+		strings.Contains(err, "network is unreachable"), strings.Contains(err, "connection reset"):
+		return "connect"
+	}
+	return "tls"
+}
+
 // output tells what the monitor knows of certificate id.
 func (m *Module) output(ctx context.Context, id int64) (*certificateOutput, error) {
 	out := &certificateOutput{Body: CertificateChecksBody{Results: []DomainCheckBody{}, Skipped: []string{}, Ports: []int{defaultPort}}}
@@ -173,6 +190,13 @@ func (m *Module) output(ctx context.Context, id int64) (*certificateOutput, erro
 		}
 		r.Incomplete = incomplete == 1 && r.State == stateOK
 		r.LegacyTLS = legacy == 1 && r.State == stateOK
+		r.Port = defaultPort
+		if _, port, err := net.SplitHostPort(r.Domain); err == nil {
+			r.Port, _ = strconv.Atoi(port)
+		}
+		if r.State == stateUnreachable {
+			r.Cause = causeOf(r.Error)
+		}
 		if notAfter != 0 {
 			na := time.UnixMilli(notAfter).UTC()
 			r.NotAfter = &na

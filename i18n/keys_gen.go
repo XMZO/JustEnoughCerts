@@ -2029,6 +2029,8 @@ const (
 	MonitorSectionTitle                      Key = "monitor.section.title"
 	MonitorSectionUntracked                  Key = "monitor.section.untracked"
 	MonitorStateIncomplete                   Key = "monitor.state.incomplete"
+	MonitorStateNoConnect                    Key = "monitor.state.no_connect"
+	MonitorStateNoDns                        Key = "monitor.state.no_dns"
 	MonitorStateOk                           Key = "monitor.state.ok"
 	MonitorStateOld                          Key = "monitor.state.old"
 	MonitorStateOther                        Key = "monitor.state.other"

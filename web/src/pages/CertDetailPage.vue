@@ -962,7 +962,10 @@ async function confirmDelete() {
               <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.domains') }}</dt>
               <dd class="m-0 flex min-w-0 items-start gap-1">
                 <span class="min-w-0 flex-1 [overflow-wrap:anywhere]" translate="no">
-                  <span v-for="d in cert.domains" :key="d" class="block">{{ d }}</span>
+                  <!-- Broken after a dot, where a name must be. -->
+                  <span v-for="d in cert.domains" :key="d" class="block"
+                    ><template v-for="(label, i) in d.split(/(?<=\.)/)" :key="i"><wbr v-if="i" />{{ label }}</template></span
+                  >
                 </span>
                 <button
                   v-if="issued"
@@ -992,7 +995,7 @@ async function confirmDelete() {
                   </RouterLink>
                 </dd>
               </template>
-              <template v-if="details && details.subject !== `CN=${cert.domains[0]}`">
+              <template v-if="details && details.subject && details.subject !== `CN=${cert.domains[0]}`">
                 <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.subject') }}</dt>
                 <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ details.subject }}</dd>
               </template>

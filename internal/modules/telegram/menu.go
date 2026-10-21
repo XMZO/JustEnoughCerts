@@ -687,7 +687,7 @@ func (l *listener) checks(results []check) []string {
 	}
 	var out []outcome
 	for _, r := range results {
-		key := strings.Join([]string{r.View, r.State, r.Issuer, l.day(ptrTime(r.NotAfter))}, "|")
+		key := strings.Join([]string{r.View, r.State, r.Cause, r.Issuer, l.day(ptrTime(r.NotAfter))}, "|")
 		if i := slices.IndexFunc(out, func(o outcome) bool { return o.key == key }); i >= 0 {
 			out[i].domains = append(out[i].domains, r.Domain)
 			continue
@@ -706,7 +706,7 @@ func (l *listener) checks(results []check) []string {
 		case "other":
 			what = l.text(i18n.TelegramOnlineOther, i18n.Args{"issuer": r.Issuer})
 		default:
-			what = l.text(i18n.TelegramOnlineUnreachable, nil)
+			what = unreachable(l, r)
 		}
 		where := html.EscapeString(strings.Join(o.domains, ", "))
 		switch r.View {
@@ -978,6 +978,19 @@ func runIcon(state string) string {
 		return iconInfo
 	}
 	return iconBusy
+}
+
+// unreachable says why the domain of r was unreachable, as the web UI does.
+func unreachable(l *listener, r check) string {
+	switch {
+	case r.Cause == "dns":
+		return l.text(i18n.MonitorStateNoDns, nil)
+	case r.Cause == "connect":
+		return l.text(i18n.MonitorStateNoConnect, i18n.Args{"port": r.Port})
+	case r.Port != 0:
+		return l.text(i18n.MonitorStateUnreachable, i18n.Args{"port": r.Port})
+	}
+	return l.text(i18n.TelegramOnlineUnreachable, nil)
 }
 
 func checkIcon(state string) string {

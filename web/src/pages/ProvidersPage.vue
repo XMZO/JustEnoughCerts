@@ -100,11 +100,14 @@ function statusOf(p: Provider): CardStatus | undefined {
     found.push({ ok: p.lastTest.ok, at: p.lastTest.at, text: p.lastTest.ok ? said : t('kernel.providers.status.test_failed', { error: said }) })
   }
   if (props.kind === 'target') {
-    const d = runs.data.value?.runs?.find((r) => r.kind === 'deployment' && r.target === p.id && (r.state === 'done' || r.state === 'failed') && r.finishedAt)
-    if (d?.finishedAt) {
+    // A deployment that failed and is tried again later waits, with why.
+    const ended = (r: { state: string; error?: unknown }) => r.state === 'done' || r.state === 'failed' || (r.state === 'pending' && !!r.error)
+    const d = runs.data.value?.runs?.find((r) => r.kind === 'deployment' && r.target === p.id && ended(r))
+    const at = d?.finishedAt ?? d?.startedAt
+    if (d && at) {
       found.push({
         ok: d.state === 'done',
-        at: d.finishedAt,
+        at,
         text: d.state === 'done' ? t('kernel.providers.status.deployed') : t('kernel.providers.status.deploy_failed', { error: errorText(d.error) }),
       })
     }

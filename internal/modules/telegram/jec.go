@@ -78,6 +78,8 @@ type check struct {
 	State     string     `json:"state"`
 	Issuer    string     `json:"issuer"`
 	NotAfter  *time.Time `json:"notAfter"`
+	Port      int        `json:"port"`
+	Cause     string     `json:"cause"`
 	CheckedAt time.Time  `json:"checkedAt"`
 }
 

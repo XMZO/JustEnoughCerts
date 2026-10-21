@@ -553,3 +553,17 @@ func TestTLSVersions(t *testing.T) {
 		t.Error("versionName")
 	}
 }
+
+func TestCauseOf(t *testing.T) {
+	for err, want := range map[string]string{
+		"dial tcp: lookup shop.example.test on 127.0.0.11:53: no such host": "dns",
+		"dial tcp 192.0.2.1:443: connect: connection refused":               "connect",
+		"dial tcp 192.0.2.1:993: i/o timeout":                               "connect",
+		"tls: first record does not look like a TLS handshake":              "tls",
+		"remote error: tls: unrecognized name":                              "tls",
+	} {
+		if got := causeOf(err); got != want {
+			t.Errorf("%q: %s, want %s", err, got, want)
+		}
+	}
+}

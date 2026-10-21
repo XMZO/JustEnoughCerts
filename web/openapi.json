@@ -1296,6 +1296,15 @@
       "DomainCheckBody": {
         "additionalProperties": false,
         "properties": {
+          "cause": {
+            "description": "For a domain unreachable: dns, its name resolves to nothing; connect, its port takes no connection; tls, it answers without TLS",
+            "enum": [
+              "dns",
+              "connect",
+              "tls"
+            ],
+            "type": "string"
+          },
           "checkedAt": {
             "format": "date-time",
             "type": "string"
@@ -1329,6 +1338,11 @@
             "format": "date-time",
             "type": "string"
           },
+          "port": {
+            "description": "The port checked",
+            "format": "int64",
+            "type": "integer"
+          },
           "state": {
             "description": "ok: the version in use; old: an older certificate for the domain from the same CA; other: someone else's certificate, such as a CDN's own, or one for other names, or a newer one; unreachable: nothing over TLS on the port",
             "enum": [
@@ -1355,6 +1369,7 @@
         "required": [
           "domain",
           "state",
+          "port",
           "checkedAt"
         ],
         "type": "object"

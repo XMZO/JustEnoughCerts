@@ -92,7 +92,9 @@ function line(r: MonitorResult): string {
     case 'other':
       return t('monitor.state.other', { issuer: r.issuer ?? '', date })
     case 'unreachable':
-      return t('monitor.state.unreachable')
+      if (r.cause === 'dns') return t('monitor.state.no_dns')
+      if (r.cause === 'connect') return t('monitor.state.no_connect', { port: r.port })
+      return t('monitor.state.unreachable', { port: r.port })
   }
   return ''
 }

@@ -158,6 +158,7 @@
 - 删除时同时吊销（`POST /api/v1/certs/certificates/{id}/retire`，要密码，`certs/revoke.go` 的 `retire`）：按从旧到新吊销仍有效、由可吊销来源签发的版本（当前版本最后），原因 `cessation_of_operation`，CA 拒绝任何一个就停下、不删除；界面在详情页删除对话框的勾选项（来源可吊销且有当前版本时出现），审计名 `audit.op.certs_retire`。
 - 1Panel 面板证书 `onepanel.panel`（`onepanel/panel.go`）：v2 `POST /api/v2/core/settings/ssl/update`、v1 `/api/v1/settings/ssl/update`（`ssl` 分别为 `Enable`/`enable`，`sslType: import-paste`，`autoRestart`），会启用面板的 HTTPS；地址仍是 `http://` 时部署前先 GET 一次 info（带请求体的请求会在面板回 400 前被断开），回“Client sent an HTTP request to an HTTPS server”就改经 HTTPS、按证书的名字信任，日志提示改成 `https://<域名>:<端口>`。`httpx.Options.Names` 可单独使用（无指纹时：受信任 CA 为这些名字签发的证书即可，不看地址的主机名；失败时仍是证书验证错误，能给出指纹）。1Panel 网站证书和面板证书都对 1Panel v1、v2 实测过（社区镜像 `moelin/1panel`，经 sqlite 打开 API：v2 `core.db`、v1 `1Panel.db` 的 `ApiInterfaceStatus`/`ApiKey`/`IpWhiteList`，v1 的值是小写；容器里面板重启不了，要重启容器；`live_test.go` 的 `TestLive`、`TestLivePanel` 靠 `JEC_TEST_ONEPANEL` 等），网站证书去掉了“未实测”。部署目标共 36 种。
 - 宝塔网站目标 `baota.site` 对真实的宝塔 11.0（官方镜像 `btpanel/baota:lnmp`）实测过并去掉“未实测”：API 经 `config/api.json` 打开（`token` 为 API 密钥的 MD5，`limit_addr` 列客户端 IP），`site?action=AddSite` 建站，部署后 Nginx 立即换上（`live_test.go` 靠 `JEC_TEST_BAOTA` 等环境变量运行）。
+- 用真实数据（Pebble 签发、续期，部署成功和失败）逐页截图查出并修了：部署目标卡片不显示“失败、稍后重试”中的部署（`pending` 带 `error` 也算）；证书信息里空的“主题”行；域名在窄栏里从单词中间断开（改在点号后用 `<wbr>`）；线上检查连不上时一律说“443 端口没有 TLS 回应”（接口加了 `port` 和 `cause`：`dns` 解析不到、`connect` 连不上、`tls`，由错误文字判断，Telegram 的 `/online` 同样）。
 - 下一步：ESA 边缘应答还没有用真实账号试（用户境外走 Cloudflare，用的是 Cloudflare 边缘应答；`PLAN.md` 5.4 列了要确认的点，给用户的操作清单在 `docs/development/testing.zh-CN.md`，和英文版同步）；M4（`PLAN.md` 11）。
 
 ## 工程约定

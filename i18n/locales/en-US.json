@@ -2701,10 +2701,12 @@
     },
     "state": {
       "incomplete": "Without the intermediates: some apps, Android devices and curl fail to verify it. Deploy the full chain.",
+      "no_connect": "Port {port} takes no connection",
+      "no_dns": "The domain resolves to no address",
       "ok": "Serves the version in use",
       "old": "Still serves an older certificate, which ends on {date}",
       "other": "Serves another certificate, not one JEC deployed: from {issuer}, ending on {date}",
-      "unreachable": "Nothing answered over TLS on port 443"
+      "unreachable": "Nothing answered over TLS on port {port}"
     },
     "tls": {
       "legacy": "Still takes TLS 1.0 or 1.1, which browsers dropped long ago: turn them off in the server's or CDN's settings.",
