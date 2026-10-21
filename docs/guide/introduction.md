@@ -39,7 +39,7 @@ and servers, and renews them before they expire.
 - [Certificate sources](../usage/sources.md): ACME, including External
   Account Binding and profiles, for short-lived certificates and those of
   IP addresses; manual upload and imports of many files, with the chain
-  completed; certbot and acme.sh on the same machine;
+  completed; [certbot and acme.sh](migration.md) on the same machine;
   Alibaba Cloud and Tencent Cloud certificate services; a private CA;
   Namecheap SSL Manager (experimental).
 - [Domain validation](../usage/validation.md): the 221 DNS providers of

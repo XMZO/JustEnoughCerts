@@ -24,7 +24,7 @@ docker compose up -d
 
 | 挂载 | 用途 |
 |---|---|
-| `/etc/letsencrypt:/etc/letsencrypt:ro` | 证书来源“本机证书目录”读取 certbot（或 acme.sh）续期的证书。私钥通常属于 root，此时 JEC 须以 `user: "0:0"` 运行 |
+| `/etc/letsencrypt:/etc/letsencrypt:ro` | 证书来源“本机证书目录”读取 certbot（或 acme.sh）续期的证书。私钥通常属于 root：按[从 certbot 或 acme.sh 迁移](migration.zh-CN.md#保留原客户端)改为组 65532 可读，或以 `user: "0:0"` 运行 JEC |
 | `/var/run/docker.sock` | 部署目标“Docker 容器”向其他容器写入证书并使其重载。该套接字等同于 Docker 的完全控制权，建议改用仅放开 `CONTAINERS=1` 与 `POST=1` 的套接字代理 |
 
 ## 二进制文件

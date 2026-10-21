@@ -39,7 +39,7 @@ them as needed:
 
 | Mount | Purpose |
 |---|---|
-| `/etc/letsencrypt:/etc/letsencrypt:ro` | The certificate source "certificates on this machine" reads the certificates that certbot, or acme.sh, renews. Their keys usually belong to root, so JEC must then run as `user: "0:0"` |
+| `/etc/letsencrypt:/etc/letsencrypt:ro` | The certificate source "certificates on this machine" reads the certificates that certbot, or acme.sh, renews. Their keys usually belong to root: give them group 65532 with group read, as [Moving from certbot or acme.sh](migration.md#keeping-the-old-client) shows, or run JEC as `user: "0:0"` |
 | `/var/run/docker.sock` | The deploy target "Docker container" writes certificates into other containers and has them reload. The socket grants full control of Docker; a socket proxy that allows only `CONTAINERS=1` and `POST=1` is safer |
 
 ## Binaries
