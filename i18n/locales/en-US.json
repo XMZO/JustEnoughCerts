@@ -1072,6 +1072,7 @@
     "issuance": {
       "background": "Continue in the background",
       "check_now": "Check now",
+      "copy_log": "Copy the whole log, with the version of JEC",
       "copy_name": "Copy the name",
       "copy_value": "Copy the value",
       "deploy_step": "Deploy to {target}",

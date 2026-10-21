@@ -3,6 +3,7 @@ import { Download } from '@lucide/vue'
 import { computed, nextTick, ref, watch } from 'vue'
 
 import { saveFile, type LogLine } from '../api/certs'
+import { useManifest } from '../api/manifest'
 import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import CopyButton from './CopyButton.vue'
@@ -11,7 +12,8 @@ import JecButton from './JecButton.vue'
 // The log of an issuance or a deployment (docs/design/system/components/
 // LogView.md): a time and a sentence a line, colored by level, following
 // new lines unless someone scrolled up to read; the raw details on
-// request, when a line has any, and the whole log as a download.
+// request, when a line has any, and the whole log as a download or to
+// copy, as into a report, with the version of JEC first.
 const props = defineProps<{
   lines: LogLine[]
   /** Shows the cursor of a log still growing. */
@@ -22,6 +24,7 @@ const props = defineProps<{
 
 const { t } = useT()
 const intl = useIntl()
+const manifest = useManifest()
 
 const message = (l: LogLine) => t(l.key as MessageKey, (l.params ?? {}) as Params)
 // A record to add to the DNS, as a validation by hand needs: its name and
@@ -49,14 +52,21 @@ const showDetail = ref(false)
 const hasDetail = computed(() => props.lines.some((l) => l.detail))
 
 /** The full log as text: every line with its time, attempt, level and raw detail. */
-function download() {
-  const text = props.lines
+const text = computed(() =>
+  props.lines
     .map((l) => {
       const head = `${l.at}  #${l.attempt}  ${l.level.toUpperCase().padEnd(5)}  ${message(l)}`
       return l.detail ? `${head}\n    ${l.detail.replaceAll('\n', '\n    ')}` : head
     })
-    .join('\n')
-  saveFile(new Blob([`${text}\n`], { type: 'text/plain' }), props.filename)
+    .join('\n'),
+)
+// Copied, it says which log of which JEC it is.
+const copyText = computed(() => {
+  const m = manifest.data.value
+  return `${props.filename}${m ? `  (JEC ${m.version}, ${m.platform})` : ''}\n${text.value}\n`
+})
+function download() {
+  saveFile(new Blob([`${text.value}\n`], { type: 'text/plain' }), props.filename)
 }
 </script>
 
@@ -71,6 +81,7 @@ function download() {
         <JecButton size="sm" :disabled="!lines.length" @click="download">
           <Download class="size-4" aria-hidden="true" />{{ t('certs.issuance.download_log') }}
         </JecButton>
+        <CopyButton v-if="lines.length" :value="copyText" label="certs.issuance.copy_log" />
       </div>
     </div>
     <div

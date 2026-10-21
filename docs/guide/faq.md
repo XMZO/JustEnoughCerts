@@ -37,7 +37,9 @@ with its log, and **Show raw details** adds the raw errors. Common causes are
 credentials of the DNS provider without the permission to add records, a
 DNS provider that does not serve the domain, CAA records that exclude the
 CA, and the CA's rate limits. JEC retries failures on its own; see
-[Failures and retries](../usage/renewal.md#failures-and-retries).
+[Failures and retries](../usage/renewal.md#failures-and-retries). To ask
+for help, the copy button next to Download log copies the whole log with
+the version of JEC, ready to paste into a report.
 
 ## The validation records never become visible
 

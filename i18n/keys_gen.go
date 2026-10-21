@@ -842,6 +842,7 @@ const (
 	CertsInfoTitle                           Key = "certs.info.title"
 	CertsIssuanceBackground                  Key = "certs.issuance.background"
 	CertsIssuanceCheckNow                    Key = "certs.issuance.check_now"
+	CertsIssuanceCopyLog                     Key = "certs.issuance.copy_log"
 	CertsIssuanceCopyName                    Key = "certs.issuance.copy_name"
 	CertsIssuanceCopyValue                   Key = "certs.issuance.copy_value"
 	CertsIssuanceDeployStep                  Key = "certs.issuance.deploy_step"
