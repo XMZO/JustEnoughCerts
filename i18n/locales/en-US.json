@@ -923,7 +923,7 @@
       "no_targets": "No targets chosen yet.",
       "retrying": "The issuance failed; trying again later",
       "revoked_renewing": "JEC is issuing a new one, which it deploys as usual.",
-      "revoked_upload": "It has no source for JEC to issue a new one from: upload a new one soon.",
+      "revoked_upload": "It has no source for JEC to issue a new one from: upload a new one soon, or choose a source in its renewal settings.",
       "run_deploy_failed": "Started {start}. Time taken: {duration}. Issued, but a deployment failed.",
       "run_deploying": "Started {start}. Time taken: {duration}. Issued; deploying now.",
       "run_done": "Started {start}. Time taken: {duration}. All went through.",
@@ -2971,7 +2971,7 @@
       "reminder_title": "Reminder: {domain}",
       "retry": "JEC tries again at {time}.",
       "revoked": {
-        "manual": "The certificate has no source for JEC to issue a new one from: replace it soon.",
+        "manual": "The certificate has no source for JEC to issue a new one from: replace it soon, or choose a source for it in JEC.",
         "renewing": "JEC is issuing a new one, which it deploys as usual.",
         "title": "The CA revoked the certificate of {domain}",
         "when": "Revoked on {date}; reason: {reason}."
