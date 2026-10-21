@@ -396,7 +396,9 @@ const chosenKeyKept = computed(() => sourceChoice.value !== 0 && !chosenType.val
 const chosenBackups = computed(() => backups.value.filter((p) => p.id !== sourceChoice.value))
 watch(sourceChoice, (id) => {
   if (chosenSolver.value && !solverChoice.value) solverChoice.value = solvers.data.value?.[0]?.id ?? 0
-  if (chosenKeyKept.value && !keyChoice.value) keyChoice.value = certSettings.data.value?.keyType ?? 'rsa-2048'
+  // The key type of the version in use, as certbot's ECDSA, else the settings'.
+  const inUse = keyTypes.find((k) => k === current.value?.keyType)
+  if (chosenKeyKept.value && !keyChoice.value) keyChoice.value = inUse ?? certSettings.data.value?.keyType ?? 'rsa-2048'
   if (backupChoice.value === id) backupChoice.value = 0
 })
 // The channels its notes go to; none chosen goes to all.

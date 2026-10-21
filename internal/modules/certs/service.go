@@ -606,7 +606,8 @@ type changes struct {
 // be issued by JEC: not while an issuance is under way. The versions stay;
 // the key and state a failed issuance kept for an order at the old source
 // go, as does the solver of a source that needs none. The key type is the
-// new source's own, or that of the settings when the old one's was.
+// new source's own, or, when the old one's was, that of the version in use,
+// as certbot's ECDSA keys, else that of the settings.
 func (s *service) changeSource(ctx context.Context, tx *sql.Tx, c *Certificate, source int64) error {
 	if open, err := s.openIssuance(ctx, tx, c.ID); err != nil {
 		return err
@@ -622,6 +623,8 @@ func (s *service) changeSource(ctx context.Context, tx *sql.Tx, c *Certificate, 
 	switch {
 	case typ.OwnKey:
 		keyType = ""
+	case keyType == "" && c.Current != nil && slices.Contains(cryptox.KeyTypes, c.Current.KeyType):
+		keyType = c.Current.KeyType
 	case keyType == "":
 		st, err := settingsFrom(ctx, tx)
 		if err != nil {

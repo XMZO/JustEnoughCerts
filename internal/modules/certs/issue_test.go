@@ -1396,12 +1396,11 @@ func TestChangeSource(t *testing.T) {
 		t.Errorf("to the files: %+v", got)
 	}
 	// And back to a CA, with a solver again and the key type of the
-	// settings.
+	// version in use.
 	refused(got, map[string]any{"sourceProvider": ca}, http.StatusUnprocessableEntity, "body.solverProvider", i18n.KernelErrorFieldRequired)
 	got = patch(got, map[string]any{"sourceProvider": ca, "solverProvider": dns})
-	st, err := f.svc.settings(t.Context())
-	if err != nil || got.SourceProvider != ca || got.SolverProvider != dns || got.KeyType != st.KeyType {
-		t.Errorf("back to a CA: %+v %v", got, err)
+	if got.SourceProvider != ca || got.SolverProvider != dns || got.Current == nil || got.KeyType != got.Current.KeyType {
+		t.Errorf("back to a CA: %+v", got)
 	}
 	// One to buy, waiting with its CSR and no version yet, is issued by its
 	// new source at once.
