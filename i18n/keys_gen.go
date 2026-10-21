@@ -703,6 +703,7 @@ const (
 	CertsDeploymentStateRunning              Key = "certs.deployment.state.running"
 	CertsDeploymentTitle                     Key = "certs.deployment.title"
 	CertsDetailAlso                          Key = "certs.detail.also"
+	CertsDetailAlsoMore                      Key = "certs.detail.also_more"
 	CertsDetailDeployFailed                  Key = "certs.detail.deploy_failed"
 	CertsDetailDeployRetrying                Key = "certs.detail.deploy_retrying"
 	CertsDetailDeploys                       Key = "certs.detail.deploys"

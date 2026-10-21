@@ -711,6 +711,7 @@ export type MessageKey =
   | "certs.deployment.state.running"
   | "certs.deployment.title"
   | "certs.detail.also"
+  | "certs.detail.also_more"
   | "certs.detail.deploy_failed"
   | "certs.detail.deploy_retrying"
   | "certs.detail.deploys"

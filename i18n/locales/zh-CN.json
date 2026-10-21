@@ -913,6 +913,7 @@
     },
     "detail": {
       "also": "另含 {names}",
+      "also_more": "另含 {name} 等 {count, plural, other {# 个}}域名",
       "deploy_failed": "部署到 {target} 失败，不再自动重试",
       "deploy_retrying": "部署到 {target} 失败，稍后自动重试",
       "deploys": "部署",

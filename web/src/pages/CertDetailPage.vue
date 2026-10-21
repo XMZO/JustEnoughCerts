@@ -91,7 +91,15 @@ const chain = computed(() => detail.data.value?.chain ?? [])
 const current = computed(() => cert.value?.current ?? null)
 const life = computed(() => (cert.value ? certLife(cert.value) : null))
 const domain = computed(() => cert.value?.domains[0] ?? '')
-const also = computed(() => (cert.value && cert.value.domains.length > 1 ? intl.list(cert.value.domains.slice(1)) : ''))
+// The other names, or the first of many and how many, so that the page
+// still fits; all of them in the tooltip and under its information.
+const also = computed(() => {
+  const rest = cert.value?.domains.slice(1) ?? []
+  if (!rest.length) return ''
+  if (rest.length <= 3) return t('certs.detail.also', { names: intl.list(rest) })
+  return t('certs.detail.also_more', { name: rest[0] ?? '', count: rest.length })
+})
+const alsoAll = computed(() => (cert.value && cert.value.domains.length > 1 ? t('certs.detail.also', { names: intl.list(cert.value.domains.slice(1)) }) : ''))
 // The registrations of the domains it is under, while the watch module is on.
 const watching = useWatching()
 const domainList = useDomains(watching)
@@ -643,7 +651,7 @@ async function confirmDelete() {
       <StatusBadge v-if="cert" :state="cert.state" />
     </template>
     <template #subtitle>
-      <p v-if="also" class="m-0 text-ink-muted">{{ t('certs.detail.also', { names: also }) }}</p>
+      <p v-if="also" class="m-0 text-ink-muted" :title="alsoAll">{{ also }}</p>
     </template>
     <template v-if="cert" #actions>
       <JecButton @click="deleting = true"><Trash2 class="size-4" aria-hidden="true" />{{ t('certs.action.delete') }}</JecButton>
@@ -733,8 +741,8 @@ async function confirmDelete() {
       </section>
       <div class="flex items-center gap-3 sm:hidden">
         <StatusBadge :state="cert.state" />
-        <p v-if="also" class="m-0 min-w-0 truncate text-small text-ink-muted" :title="t('certs.detail.also', { names: also })">
-          {{ t('certs.detail.also', { names: also }) }}
+        <p v-if="also" class="m-0 min-w-0 truncate text-small text-ink-muted" :title="alsoAll">
+          {{ also }}
         </p>
       </div>
 
@@ -980,8 +988,15 @@ async function confirmDelete() {
               </dd>
               <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.domains') }}</dt>
               <dd class="m-0 flex min-w-0 items-start gap-1">
-                <span class="min-w-0 flex-1 [overflow-wrap:anywhere]" translate="no">
-                  <!-- Broken after a dot, where a name must be. -->
+                <!-- Broken after a dot, where a name must be; many of them scroll,
+                     so that the page still fits. -->
+                <span
+                  :class="['min-w-0 flex-1 [overflow-wrap:anywhere]', cert.domains.length > 6 ? 'max-h-36 overflow-y-auto' : '']"
+                  translate="no"
+                  :tabindex="cert.domains.length > 6 ? 0 : undefined"
+                  :role="cert.domains.length > 6 ? 'region' : undefined"
+                  :aria-label="cert.domains.length > 6 ? t('certs.field.domains') : undefined"
+                >
                   <span v-for="d in cert.domains" :key="d" class="block"
                     ><template v-for="(label, i) in d.split(/(?<=\.)/)" :key="i"><wbr v-if="i" />{{ label }}</template></span
                   >

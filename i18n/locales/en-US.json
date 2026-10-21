@@ -913,6 +913,7 @@
     },
     "detail": {
       "also": "Also covers {names}",
+      "also_more": "Also covers {name} and others, {count, plural, one {# name} other {# names}} in all",
       "deploy_failed": "Deploying to {target} failed; no more automatic attempts",
       "deploy_retrying": "Deploying to {target} failed; trying again later",
       "deploys": "Deployments",

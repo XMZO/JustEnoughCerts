@@ -298,6 +298,19 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'overview').toEqual([])
   await page.goto('./certificates')
   expect.soft(await problems(page), 'certificates').toEqual([])
+  // One with many names, a SAN certificate as for a set of sites: the list
+  // and its page take them in their boxes; then it goes again.
+  const many = Array.from({ length: 25 }, (_, i) => `site-number-${i + 1}.many.example.com`)
+  const manyRes = await page.request.post('api/v1/certs/certificates', { data: await selfSigned(many, -10, 80) })
+  expect(manyRes.status()).toBe(201)
+  const manyId = ((await manyRes.json()) as { id: number }).id
+  await page.reload()
+  expect.soft(await problems(page), 'certificates, one with many names').toEqual([])
+  await page.goto(`./certificates/${manyId}`)
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  expect.soft(await problems(page), 'a certificate with many names').toEqual([])
+  expect((await page.request.delete(`api/v1/certs/certificates/${manyId}`)).status()).toBeLessThan(300)
+  await page.goto('./certificates')
   // Every certificate with its key, from the header, or its menu on
   // phones: the password first, here a wrong one.
   if (info.project.name === 'phone') {
