@@ -153,15 +153,11 @@ interface Outcome {
   message: string
 }
 // The certificates a source with keys of its own holds, as the directory
-// of certbot: those not added with it yet, to pick rather than type, a
-// line each when adding several.
+// of certbot: those for domains no certificate of JEC has yet, whatever its
+// source, to pick rather than type, a line each when adding several.
 const held = useHeld(() => provider.value?.id, () => !!sourceType.value?.holds)
 const sameNames = (a: string[], b: string[]) => a.length === b.length && a.every((d) => b.includes(d))
-const unheld = computed(() =>
-  (held.data.value ?? []).filter(
-    (h) => !(certificates.data.value ?? []).some((c) => c.sourceProvider === provider.value?.id && sameNames(c.domains, h.domains)),
-  ),
-)
+const unheld = computed(() => (held.data.value ?? []).filter((h) => !(certificates.data.value ?? []).some((c) => sameNames(c.domains, h.domains))))
 const shownHeld = computed(() => unheld.value.slice(0, 24))
 const heldError = computed(() => {
   const err = held.error.value
