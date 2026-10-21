@@ -1178,7 +1178,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect((await download).suggestedFilename()).toMatch(/^jec-backup-\d{8}-\d{6}\.db$/)
   await expect(page.locator('dialog[open]')).toHaveCount(0)
   // The master key, which backups lack, once the password is confirmed.
-  await page.getByRole('button', { name: label('kernel.settings.secret_key_show') }).click()
+  await page.getByRole('button', { name: label('kernel.settings.secret_key_show_label') }).click()
   await expect(dialog).toBeVisible()
   await dialog.locator('#secret-key-password').fill('correct horse')
   await dialog.locator('button[type=submit]').click()

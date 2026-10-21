@@ -730,15 +730,6 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           </JecButton>
         </div>
       </div>
-      <div :class="[row, 'flex-wrap']">
-        <div class="min-w-0 flex-[1_1_12rem]">
-          <span class="block font-semibold">{{ t('kernel.settings.secret_key') }}</span>
-          <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.secret_key_help') }}</span>
-        </div>
-        <JecButton size="sm" class="ml-auto" @click="showingKey = true">
-          <KeyRound class="size-4" aria-hidden="true" />{{ t('kernel.settings.secret_key_show') }}
-        </JecButton>
-      </div>
       <div :class="row">
         <div class="min-w-0 flex-1">
           <label for="autoBackup" class="block font-semibold">{{ t('kernel.settings.auto_backup') }}</label>
@@ -824,8 +815,11 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
           <span class="block font-semibold">{{ t('kernel.settings.secret_key') }}</span>
           <span class="block text-caption leading-[18px] text-ink-muted">{{ t('kernel.settings.secret_key_help') }}</span>
         </div>
-        <span class="min-w-0 max-w-[60%] text-right text-small">
+        <span class="flex min-w-0 max-w-[60%] flex-wrap items-center justify-end gap-x-3 gap-y-1 text-right text-small">
           {{ t(system.data.value.secretKey === 'env' ? 'kernel.settings.secret_key_env' : 'kernel.settings.secret_key_file') }}
+          <JecButton size="sm" :aria-label="t('kernel.settings.secret_key_show_label')" @click="showingKey = true">
+            <KeyRound class="size-4" aria-hidden="true" />{{ t('kernel.settings.secret_key_show') }}
+          </JecButton>
         </span>
       </div>
     </section>
@@ -1047,7 +1041,7 @@ const control = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2
   <JecDialog v-model:open="showingKey" :title="t('kernel.settings.secret_key')" small>
     <form id="secret-key-form" class="flex flex-col gap-3" novalidate @submit.prevent="submitKey">
       <template v-if="secretKey.data.value">
-        <p class="m-0">{{ t(secretKey.data.value.from === 'env' ? 'kernel.settings.secret_key_env' : 'kernel.settings.secret_key_file') }}</p>
+        <p class="m-0">{{ t(secretKey.data.value.from === 'env' ? 'kernel.settings.secret_key_from_env' : 'kernel.settings.secret_key_from_file') }}</p>
         <div class="flex items-center gap-2">
           <code class="min-w-0 flex-1 rounded-sm bg-surface-sunken px-2 py-1 text-small [overflow-wrap:anywhere]" translate="no">{{
             secretKey.data.value.key

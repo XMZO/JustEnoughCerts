@@ -1134,7 +1134,12 @@ async function confirmDelete() {
 
   <JecDialog v-if="cert" v-model:open="editing" :title="t('certs.settings.title')" small>
     <form id="settings-form" class="flex flex-col gap-3" novalidate @submit.prevent="saveSettings">
-      <JecField id="renewBeforeDays" label="certs.settings.days" hint="certs.settings.days_help" :error="updateError.fields.value.renewBeforeDays">
+      <JecField
+        id="renewBeforeDays"
+        label="certs.settings.days"
+        :hint="sourceChoice ? 'certs.add.renew_days_help' : 'certs.settings.days_help'"
+        :error="updateError.fields.value.renewBeforeDays"
+      >
         <span class="flex items-center gap-2">
           <span class="w-24 flex-none">
             <JecInput

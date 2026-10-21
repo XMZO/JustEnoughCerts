@@ -647,16 +647,14 @@ type changes struct {
 // the key and state a failed issuance kept for an order at the old source
 // go, as does the solver of a source that needs none. The key type is the
 // new source's own, or, when the old one's was, that of the version in use,
-// as certbot's ECDSA keys, else that of the settings.
-func (s *service) changeSource(ctx context.Context, tx *sql.Tx, c *Certificate, source int64) error {
+// as certbot's ECDSA keys, else that of the settings. typ is the source's
+// type, looked up before tx began: a query of the pool inside tx could wait
+// for ever on connections that wait for tx.
+func (s *service) changeSource(ctx context.Context, tx *sql.Tx, c *Certificate, source int64, typ providers.Type) error {
 	if open, err := s.openIssuance(ctx, tx, c.ID); err != nil {
 		return err
 	} else if open != nil {
 		return errIssuing
-	}
-	typ, err := s.providers.Type(ctx, source)
-	if err != nil {
-		return err
 	}
 	solver := sql.NullInt64{Int64: c.SolverProvider, Valid: c.SolverProvider != 0 && typ.NeedsSolver}
 	keyType := c.KeyType
@@ -676,7 +674,7 @@ func (s *service) changeSource(ctx context.Context, tx *sql.Tx, c *Certificate, 
 		sourceProvider, source, solver, keyType, s.now().UnixMilli(), c.ID); err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, "UPDATE certs_issuances SET sealed_key = NULL, sealed_state = NULL WHERE certificate_id = ? AND state = 'failed'", c.ID)
+	_, err := tx.ExecContext(ctx, "UPDATE certs_issuances SET sealed_key = NULL, sealed_state = NULL WHERE certificate_id = ? AND state = 'failed'", c.ID)
 	return err
 }
 
@@ -686,6 +684,13 @@ type reminder struct{ on, note string }
 // update makes the changes ch to certificate id.
 func (s *service) update(ctx context.Context, id int64, ch changes) error {
 	days, targets, note, reuseKey, notifyTo := ch.days, ch.targets, ch.note, ch.reuseKey, ch.notifyTo
+	var sourceType providers.Type
+	if ch.source != nil {
+		var err error
+		if sourceType, err = s.providers.Type(ctx, *ch.source); err != nil {
+			return err
+		}
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -750,7 +755,7 @@ func (s *service) update(ctx context.Context, id int64, ch changes) error {
 	// its new source at once, once the rest is changed too.
 	issueNow := false
 	if ch.source != nil && (*ch.source != c.SourceProvider || c.Source != sourceProvider) {
-		if err := s.changeSource(ctx, tx, c, *ch.source); err != nil {
+		if err := s.changeSource(ctx, tx, c, *ch.source, sourceType); err != nil {
 			return err
 		}
 		issueNow = c.Current == nil
