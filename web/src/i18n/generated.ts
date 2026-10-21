@@ -3146,6 +3146,7 @@ export type MessageKey =
   | "watch.page.sites"
   | "watch.page.title"
   | "watch.page.unknown"
+  | "watch.site.error_detail"
   | "watch.site.incomplete"
   | "watch.state.expired"
   | "watch.state.expiring"

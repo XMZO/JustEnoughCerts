@@ -3152,6 +3152,11 @@ export interface components {
         };
         SiteBody: {
             /**
+             * @description For unreachable: the name resolves to no address, nothing takes the connection, or no TLS answer would do
+             * @enum {string}
+             */
+            cause?: "dns" | "connect" | "tls";
+            /**
              * Format: date-time
              * @description When the next check comes
              */

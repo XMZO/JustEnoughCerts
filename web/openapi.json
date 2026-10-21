@@ -3741,6 +3741,15 @@
       "SiteBody": {
         "additionalProperties": false,
         "properties": {
+          "cause": {
+            "description": "For unreachable: the name resolves to no address, nothing takes the connection, or no TLS answer would do",
+            "enum": [
+              "dns",
+              "connect",
+              "tls"
+            ],
+            "type": "string"
+          },
           "checkAt": {
             "description": "When the next check comes",
             "format": "date-time",

@@ -4254,6 +4254,7 @@
       "unknown": "Unknown"
     },
     "site": {
+      "error_detail": "As the connection failed: {error}",
       "incomplete": "Without the intermediates: some apps, Android devices and curl fail"
     },
     "state": {

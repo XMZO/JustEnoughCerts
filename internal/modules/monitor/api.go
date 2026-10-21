@@ -15,6 +15,7 @@ import (
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/reach"
 )
 
 // DomainCheckBody is what a domain served the last time it was checked.
@@ -150,16 +151,7 @@ func registerAPI(a huma.API, m *Module) {
 // causeOf tells, from the error of a connection, why a domain was
 // unreachable: dns when its name resolves to nothing, connect when its
 // port takes no connection, tls otherwise.
-func causeOf(err string) string {
-	switch {
-	case strings.Contains(err, "no such host"), strings.Contains(err, "lookup ") && strings.Contains(err, "server misbehaving"):
-		return "dns"
-	case strings.Contains(err, "connection refused"), strings.Contains(err, "i/o timeout"), strings.Contains(err, "no route to host"),
-		strings.Contains(err, "network is unreachable"), strings.Contains(err, "connection reset"):
-		return "connect"
-	}
-	return "tls"
-}
+func causeOf(err string) string { return reach.Cause(err) }
 
 // output tells what the monitor knows of certificate id.
 func (m *Module) output(ctx context.Context, id int64) (*certificateOutput, error) {

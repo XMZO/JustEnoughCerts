@@ -17,6 +17,7 @@ import (
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/reach"
 )
 
 // maxSites bounds the sites watched.
@@ -34,6 +35,7 @@ type SiteBody struct {
 	Names       []string   `json:"names"`
 	Fingerprint string     `json:"fingerprint,omitempty"`
 	Error       string     `json:"error,omitempty" doc:"What went wrong, as the TLS library said it, for invalid and unreachable"`
+	Cause       string     `json:"cause,omitempty" enum:"dns,connect,tls" doc:"For unreachable: the name resolves to no address, nothing takes the connection, or no TLS answer would do"`
 	Incomplete  bool       `json:"incomplete,omitempty" doc:"The site sends its certificate without the intermediates clients need: browsers on computers fetch them, many apps, Android and curl fail"`
 	CheckedAt   *time.Time `json:"checkedAt,omitempty"`
 	CheckAt     time.Time  `json:"checkAt" doc:"When the next check comes"`
@@ -177,6 +179,9 @@ func (m *Module) list(ctx context.Context, id int64) ([]SiteBody, error) {
 			return nil, err
 		}
 		s.Incomplete = incomplete == 1 && s.State != stateUnreachable
+		if s.State == stateUnreachable && s.Error != "" {
+			s.Cause = reach.Cause(s.Error)
+		}
 		if err := json.Unmarshal([]byte(names), &s.Names); err != nil || s.Names == nil {
 			s.Names = []string{}
 		}

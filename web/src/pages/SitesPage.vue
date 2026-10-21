@@ -54,6 +54,14 @@ const look = (s: Site) =>
     ? { icon: TriangleAlert, label: 'watch.state.incomplete' as MessageKey, badge: 'bg-warn-soft text-warn-ink', ink: 'text-warn-ink' }
     : looks[s.state]
 const address = (s: Site) => (s.port === 443 ? s.host : s.host.includes(':') ? `[${s.host}]:${s.port}` : `${s.host}:${s.port}`)
+// Why a site was not reached, in words, as the online check of a
+// certificate says it; what the TLS library said, as it said it, else.
+const reason = (s: Site) => {
+  if (s.cause === 'dns') return t('monitor.state.no_dns')
+  if (s.cause === 'connect') return t('monitor.state.no_connect', { port: s.port })
+  if (s.cause === 'tls') return t('monitor.state.unreachable', { port: s.port })
+  return s.error ?? ''
+}
 const day = 86_400_000
 // How long is left, or how long ago it ended.
 const until = (iso?: string) => {
@@ -240,16 +248,25 @@ async function confirmDrop() {
         </thead>
         <tbody>
           <tr v-for="s in sites.data.value" :key="s.id" class="align-top hover:bg-surface-sunken">
-            <td class="border-b border-line px-3 py-2 [overflow-wrap:anywhere]">
+            <td class="border-b border-line px-3 py-2 [overflow-wrap:break-word]">
               <span v-if="s.name" class="block font-semibold" translate="no">{{ s.name }}</span>
-              <span :class="['block', s.name ? 'text-caption text-ink-muted' : 'font-semibold']" translate="no">{{ address(s) }}</span>
+              <!-- Broken after a dot, where a name must be. -->
+              <span :class="['block', s.name ? 'text-caption text-ink-muted' : 'font-semibold']" translate="no"
+                ><template v-for="(label, i) in address(s).split(/(?<=\.)/)" :key="i"><wbr v-if="i" />{{ label }}</template></span
+              >
             </td>
             <td class="border-b border-line px-3 py-2">
               <span :class="['inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-semibold whitespace-nowrap', look(s).badge]">
                 <component :is="look(s).icon" class="size-3.5" aria-hidden="true" />{{ t(look(s).label) }}
               </span>
               <span v-if="s.incomplete" class="mt-1 block max-w-64 text-caption font-semibold text-warn-ink">{{ t('watch.site.incomplete') }}</span>
-              <span v-if="s.error" class="mt-1 block max-w-64 truncate text-caption text-ink-muted" :title="s.error" translate="no">{{ s.error }}</span>
+              <span
+                v-if="s.error"
+                class="mt-1 block max-w-64 truncate text-caption text-ink-muted"
+                :title="s.cause ? t('watch.site.error_detail', { error: s.error }) : s.error"
+                :translate="s.cause ? undefined : 'no'"
+                >{{ reason(s) }}</span
+              >
             </td>
             <td class="border-b border-line px-3 py-2 whitespace-nowrap">
               <template v-if="s.notAfter">
@@ -303,7 +320,13 @@ async function confirmDrop() {
             </template>
           </span>
           <span v-if="s.incomplete" class="text-caption font-semibold text-warn-ink">{{ t('watch.site.incomplete') }}</span>
-          <span v-if="s.error" class="truncate text-caption text-ink-muted" :title="s.error" translate="no">{{ s.error }}</span>
+          <span
+            v-if="s.error"
+            class="truncate text-caption text-ink-muted"
+            :title="s.cause ? t('watch.site.error_detail', { error: s.error }) : s.error"
+            :translate="s.cause ? undefined : 'no'"
+            >{{ reason(s) }}</span
+          >
         </span>
         <span class="flex flex-none">
           <JecButton size="sm" variant="ghost" :busy="checking === s.id" :aria-label="t('watch.page.check', { site: address(s) })" @click="checkNow(s)">
