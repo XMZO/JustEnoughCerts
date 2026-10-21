@@ -408,6 +408,7 @@ DNS 验证分成两种能力，实现方式不同：
 
 **面板的实现**（模块 `baota`、`onepanel`，M3，接口用法参考 certimate 里验证过的实现）：
 
+- cPanel（`cpanel.account`，模块 `cpanel`）：cPanel 地址（一般是 `https://<主机>:2083`）、用户名、API 令牌（cPanel → 安全 → 管理 API 令牌）、网站域名（留空为证书主域名，通配符去掉 `*.`）。经 UAPI：请求头 `Authorization: cpanel 用户名:令牌`，对每个网站 `POST /execute/SSL/install_ssl`（`domain`、`cert` 叶子证书、`key`、`cabundle` 中间证书），回答 `{"status": 0, "errors": [...]}` 时失败；测试连接调 `SSL/installed_hosts`。地址规则同宝塔（`http://` 只连内网、自签名按指纹）。cPanel 每个网站只装一张，不用删旧证书。只用替身测过（cPanel 是商业软件，本机跑不起来）。
 - 宝塔（`baota.site`，国际版 aaPanel 同样适用）：面板地址、接口密钥、网站名（逗号分隔）。对每个网站 `POST /site?action=SetSSL`（表单：`type=0`、`siteName`、`key` 私钥、`csr` 证书链），两个网站之间隔 3 秒，让面板重载 Web 服务器；签名是 `request_time` 和 `request_token = md5(时间 + md5(密钥))`，回答 `{"status": false, "msg": …}` 时失败，消息里有 IP 的提示加白名单。测试连接调 `/system?action=GetSystemTotal`。
 - 1Panel（`onepanel.certificate`）：面板地址、API 接口密钥、面板版本（v2 默认，v1 可选，决定 `/api/v2` 或 `/api/v1`）、证书 ID。每个新版本用 `POST …/websites/ssl/upload`（`sslID` 为设置的证书，`type=paste`，保留原来的描述）原地替换面板里那张证书的内容，用它的网站随之换上新证书；签名头 `1Panel-Token = md5("1panel" + 密钥 + 时间)`、`1Panel-Timestamp`，回答的 `code` 不是 2xx 时失败。测试连接列出面板里的证书和 ID（`…/websites/ssl/search`），方便填写。
 - 两者都是：私钥会经过面板接口，所以 `http://` 只能连内网（`httpx` 的 `PrivateOnly`，连接时检查地址）；`https://` 默认只连公网，内网要打开“允许内网地址”；面板用自签名证书时，测试连接报出它的 SHA-256 指纹，填进“面板证书指纹”后只信任这张证书（`httpx` 的 `Pin`），和 SSH 核对主机公钥一样。不跟随跳转。只用替身面板测过，还没有对真实面板验证。

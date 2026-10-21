@@ -1481,6 +1481,47 @@
       "ok": "Found the zone {zone}, with {count, plural, one {# custom certificate} other {# custom certificates}}."
     }
   },
+  "cpanel": {
+    "account": {
+      "description": "Installs each new certificate on websites of the account, which serve it at once.",
+      "name": "cPanel websites"
+    },
+    "error": {
+      "api": "cPanel refused: {message}",
+      "fingerprint": "Not a SHA-256 fingerprint: {fingerprint}",
+      "network": "Could not reach {host}.",
+      "pin": "The server's certificate does not have the fingerprint entered. If the server changed its certificate, check the new fingerprint and enter it.",
+      "plain": "{host} is on the public internet, where http:// would carry the private key in the clear. Use cPanel's https:// address.",
+      "private": "{host} is a private address. To reach it, turn on “Allow private addresses” in the advanced settings.",
+      "status": "cPanel's answer made no sense (HTTP {status}). Check its address, with port 2083.",
+      "token": "cPanel did not accept the API token of {user}. Check the user name and the token, and that it has not expired.",
+      "unverified": "JEC cannot verify the server's certificate, as with one of its own making. Check that its SHA-256 fingerprint is {fingerprint}, then enter it under Server certificate fingerprint in the advanced settings.",
+      "url": "Not a cPanel address: {url}"
+    },
+    "field": {
+      "allow_private": "Allow private addresses",
+      "allow_private_help": "For a server on this machine or on your network, over https://.",
+      "api_token": "API token",
+      "api_token_help": "cPanel → Security → Manage API Tokens: create one and copy it; it is shown once.",
+      "domains": "Websites",
+      "domains_help": "Their domains, separated by commas; left empty, the website of the certificate's primary domain.",
+      "fingerprint": "Server certificate fingerprint",
+      "fingerprint_help": "For a server with a certificate of its own making: its SHA-256 fingerprint, which the connection test gives. JEC then trusts that certificate only.",
+      "url": "cPanel address",
+      "url_help": "Such as https://server.example.com:2083, the address you sign in to cPanel at, without the path after it.",
+      "username": "cPanel user name"
+    },
+    "log": {
+      "install": "Installing the certificate on {domain}"
+    },
+    "module": {
+      "description": "Installs certificates on websites of a cPanel account, as on shared hosting, through UAPI.",
+      "name": "cPanel"
+    },
+    "test": {
+      "ok": "JEC can reach cPanel, which accepts the token of {user}; {count, plural, one {# website has} other {# websites have}} a certificate installed."
+    }
+  },
   "credentials": {
     "aliyun": {
       "access_key_id": "AccessKey ID",

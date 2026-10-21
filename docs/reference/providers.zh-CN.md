@@ -66,6 +66,7 @@
 | `aws.acm` | AWS Certificate Manager，供 CloudFront 与负载均衡使用 | 模拟器：moto |
 | `aws.cloudfront` | AWS CloudFront 分发：导入 us-east-1 的 ACM 并设为分发的证书 | 替身 |
 | `gcore.cdn` | Gcore CDN 资源 | 替身 |
+| `cpanel.account` | cPanel 账户的网站（经 UAPI） | 替身 |
 | `baota.site` | 宝塔面板（aaPanel）网站 | 真实软件：宝塔 11.0（官方 LNMP 镜像） |
 | `onepanel.certificate` | 1Panel 网站证书 | 真实软件：1Panel v1、v2（社区容器镜像） |
 | `onepanel.panel` | 1Panel 面板自己的 HTTPS 证书（随之启用 HTTPS） | 真实软件：1Panel v1、v2（社区容器镜像） |

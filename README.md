@@ -38,9 +38,9 @@ Minecraft mod JEI.
   delegation, each DNS provider tried on a domain before issuing; HTTP
   validation through website directories, answered by JEC itself, or
   answered at the edge of Alibaba Cloud ESA or Cloudflare.
-- **Deploy targets**: 36 types, including Alibaba Cloud (ESA, CDN, OSS,
+- **Deploy targets**: 37 types, including Alibaba Cloud (ESA, CDN, OSS,
   load balancers), Tencent Cloud (CDN, EdgeOne), Huawei Cloud (CDN, ELB),
-  Cloudflare, AWS (Certificate Manager, CloudFront), Gcore, BaoTa, 1Panel, SafeLine WAF,
+  Cloudflare, AWS (Certificate Manager, CloudFront), Gcore, cPanel, BaoTa, 1Panel, SafeLine WAF,
   Nginx Proxy Manager, Synology DSM, Proxmox VE, Portainer, Caddy, APISIX, Kong, local directories,
   SSH servers, Docker containers, Kubernetes and webhooks, in deploy
   windows if wished; servers JEC cannot reach pull their certificates

@@ -1481,6 +1481,47 @@
       "ok": "找到了站点 {zone}，有 {count, plural, other {# 张}}自定义证书。"
     }
   },
+  "cpanel": {
+    "account": {
+      "description": "把每张新证书安装到账户的网站上，随即生效。",
+      "name": "cPanel 网站"
+    },
+    "error": {
+      "api": "cPanel 拒绝了：{message}",
+      "fingerprint": "不是 SHA-256 指纹：{fingerprint}",
+      "network": "连不上 {host}。",
+      "pin": "服务器证书的指纹和填写的不一样。如果服务器换了证书，请核对新指纹后重新填写。",
+      "plain": "{host} 在公网上，用 http:// 会让私钥以明文经过公网。请用 cPanel 的 https:// 地址。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "status": "cPanel 的回应看不懂（HTTP {status}），请检查地址，端口一般是 2083。",
+      "token": "cPanel 不接受 {user} 的 API 令牌。请检查用户名和令牌，以及令牌是否已过期。",
+      "unverified": "JEC 验证不了服务器的证书（自签名证书时就会这样）。请核对它的 SHA-256 指纹是 {fingerprint}，然后填进高级设置里的“服务器证书指纹”。",
+      "url": "cPanel 地址不对：{url}"
+    },
+    "field": {
+      "allow_private": "允许内网地址",
+      "allow_private_help": "服务器在本机或内网、用 https:// 访问时打开。",
+      "api_token": "API 令牌",
+      "api_token_help": "cPanel → 安全 → 管理 API 令牌：新建后复制，只显示一次。",
+      "domains": "网站",
+      "domains_help": "网站的域名，多个用逗号分隔；留空时为证书主域名所在的网站。",
+      "fingerprint": "服务器证书指纹",
+      "fingerprint_help": "服务器用自签名证书时填写：它的 SHA-256 指纹，测试连接会给出。JEC 只信任这张证书。",
+      "url": "cPanel 地址",
+      "url_help": "比如 https://server.example.com:2083，即登录 cPanel 的地址，不带后面的路径。",
+      "username": "cPanel 用户名"
+    },
+    "log": {
+      "install": "给 {domain} 安装证书"
+    },
+    "module": {
+      "description": "通过 UAPI 给 cPanel 账户（常见于虚拟主机）的网站安装证书。",
+      "name": "cPanel"
+    },
+    "test": {
+      "ok": "JEC 能访问 cPanel，{user} 的令牌有效；已有 {count, plural, other {# 个}}网站安装了证书。"
+    }
+  },
   "credentials": {
     "aliyun": {
       "access_key_id": "AccessKey ID",
