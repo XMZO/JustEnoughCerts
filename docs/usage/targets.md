@@ -15,7 +15,7 @@ anything.
 |---|---|
 | Alibaba Cloud | ESA, CDN, DCDN, Certificate Management Service, OSS custom domains, CLB and ALB load balancers |
 | Other clouds | Tencent Cloud SSL Certificates (updating CDN, EdgeOne, CLB and other resources), Tencent Cloud CDN and EdgeOne directly, Huawei Cloud CDN and ELB, Qiniu Cloud CDN, Volcengine CDN, Baidu AI Cloud CDN, UPYUN CDN (experimental), Cloudflare custom certificates, AWS Certificate Manager, AWS CloudFront, Gcore CDN |
-| Panels and server software | BaoTa (aaPanel), 1Panel, SafeLine WAF, Nginx Proxy Manager, Synology DSM, Proxmox VE, Caddy (through its admin API) |
+| Panels and server software | BaoTa (aaPanel), 1Panel, SafeLine WAF, Nginx Proxy Manager, Synology DSM, Proxmox VE, Caddy (through its admin API), Apache APISIX (through its Admin API) |
 | Files and containers | Local directory, SSH server, Docker container, Kubernetes TLS Secret |
 | Custom | Webhook deployment, plugins |
 
@@ -32,7 +32,9 @@ of Alibaba Cloud ESA, for example, holds at most two custom certificates
 per site. Some targets, such as Cloudflare, Nginx Proxy Manager and Caddy,
 replace the same certificate in place. SafeLine WAF replaces its
 certificate for the same domains, or the one set by its ID; with none, it
-uploads one, for the sites to be given in SafeLine once.
+uploads one, for the sites to be given in SafeLine once. Apache APISIX
+keeps each certificate in an SSL object of its own, `jec-<certificate ID>`
+unless set, which serves the certificate's domains without binding.
 
 ## Targets that write files
 

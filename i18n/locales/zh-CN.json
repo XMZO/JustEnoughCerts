@@ -249,6 +249,47 @@
       "oss_ok": "存储空间 {bucket} 绑定了自定义域名 {domain}。"
     }
   },
+  "apisix": {
+    "error": {
+      "api": "APISIX 拒绝了：{message}",
+      "fingerprint": "不是 SHA-256 指纹：{fingerprint}",
+      "id": "SSL 对象 ID 不对：{id}",
+      "key": "APISIX 拒绝了：请核对 Admin Key，以及 allow_admin 是否允许 JEC 的地址。",
+      "network": "连不上 {host}。",
+      "pin": "Admin API 证书的指纹和填写的不一样。如果它换了证书，请核对新指纹后重新填写。",
+      "plain": "{host} 在公网上，用 http:// 会让私钥以明文经过公网。请用 https:// 地址。",
+      "private": "{host} 是内网地址。要连内网，请在高级设置里打开“允许内网地址”。",
+      "status": "APISIX 的回应看不懂（HTTP {status}），请检查 Admin API 地址。",
+      "unverified": "JEC 验证不了 Admin API 的证书（用自签名证书时就会这样）。请核对它的 SHA-256 指纹是 {fingerprint}，然后填进高级设置。",
+      "url": "Admin API 地址不对：{url}"
+    },
+    "field": {
+      "admin_key": "Admin Key",
+      "admin_key_help": "APISIX 的 config.yaml 里 deployment.admin.admin_key 中 admin 角色的 key。",
+      "allow_private": "允许内网地址",
+      "allow_private_help": "APISIX 在本机或内网、用 https:// 访问时打开。",
+      "fingerprint": "Admin API 证书指纹",
+      "fingerprint_help": "Admin API 经 HTTPS 使用自签名证书时填写：它的 SHA-256 指纹，测试连接会给出。JEC 只信任这张证书。",
+      "id": "SSL 对象 ID",
+      "id_help": "留空时为 jec-<证书 ID>。可用字母、数字、点、短横线和下划线，最多 64 个字符。",
+      "url": "Admin API 地址",
+      "url_help": "比如 http://127.0.0.1:9180。http:// 只能连本机或内网，因为私钥会以明文传输。"
+    },
+    "log": {
+      "put": "把证书放进 SSL 对象 {id}，用于 {names}"
+    },
+    "module": {
+      "description": "通过 Admin API 把证书放进 Apache APISIX 网关的 SSL 对象，网关按域名使用它们。",
+      "name": "Apache APISIX"
+    },
+    "ssl": {
+      "description": "把每张新证书放进 APISIX 的一个 SSL 对象（没有就新建，有就替换），按证书的域名（SNI）生效，不用手动绑定。",
+      "name": "APISIX SSL 对象"
+    },
+    "test": {
+      "ok": "连上了 Admin API：{count, plural, =0 {还没有 SSL 对象} other {共 # 个 SSL 对象}}。"
+    }
+  },
   "audit": {
     "column": {
       "account": "账户",

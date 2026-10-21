@@ -71,6 +71,7 @@
 | `safeline.certificate` | 雷池 WAF 证书，原地替换，用它的站点随之更新 | 真实软件：雷池 9.4 |
 | `npm.certificate` | Nginx Proxy Manager | 真实软件：NPM 2.16 |
 | `caddy.admin` | Caddy（经管理接口） | 真实软件：Caddy 2.11 |
+| `apisix.ssl` | Apache APISIX 的 SSL 对象（经 Admin API） | 真实软件：APISIX 3.19（etcd） |
 | `synology.dsm` | 群晖 DSM | 替身，参照 acme.sh 的部署脚本编写 |
 | `proxmox.node` | Proxmox VE 节点 | 替身 |
 | `kubernetes.secret` | Kubernetes TLS Secret | 真实软件：kube-apiserver 1.36（启用 RBAC） |
