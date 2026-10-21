@@ -73,6 +73,9 @@ func factory(_ context.Context, in providers.Instance) (any, error) {
 	} else {
 		opts.PublicOnly = in.Config["allow_private"] != "true"
 		opts.Pin = strings.TrimSpace(in.Config["fingerprint"])
+		// Should it serve a certificate a CA vouches for its name, as one
+		// JEC deployed, that is trusted too.
+		opts.Names = []string{u.Hostname()}
 	}
 	client, err := httpx.Client(opts)
 	if err != nil {
