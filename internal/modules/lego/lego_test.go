@@ -63,6 +63,17 @@ func TestCatalog(t *testing.T) {
 	secret := map[string]bool{}
 	for _, f := range typ.Fields {
 		secret[f.Key] = f.Secret
+		// Those a credential fills have its labels.
+		switch f.Key {
+		case "TENCENTCLOUD_SECRET_ID":
+			if f.Label != i18n.CredentialsTencentcloudSecretId || f.Doc != "" {
+				t.Errorf("secret ID: %+v", f)
+			}
+		case "TENCENTCLOUD_REGION":
+			if f.Label != "" || f.Doc == "" {
+				t.Errorf("region: %+v", f)
+			}
+		}
 	}
 	if !secret["TENCENTCLOUD_SECRET_ID"] || !secret["TENCENTCLOUD_SECRET_KEY"] || secret["TENCENTCLOUD_REGION"] {
 		t.Errorf("secret fields: %v", secret)

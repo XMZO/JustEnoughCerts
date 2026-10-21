@@ -121,7 +121,29 @@ func providerType(p catalogProvider) providers.Type {
 		cloudflareWays(&t)
 	}
 	t.Credential = credentialOf(p.Code)
+	labelCredential(&t)
 	return t
+}
+
+// labelCredential gives the fields a credential fills the labels of the
+// credential's kind, in the UI's language, as SecretId for Tencent Cloud,
+// in place of lego's variable names and English notes.
+func labelCredential(t *providers.Type) {
+	u := t.Credential
+	if u == nil {
+		return
+	}
+	for _, kf := range u.Kind.Fields {
+		key := kf.Key
+		if k, ok := u.Fields[kf.Key]; ok {
+			key = k
+		}
+		for i := range t.Fields {
+			if f := &t.Fields[i]; f.Key == key && f.Label == "" {
+				f.Label, f.Doc = kf.Label, ""
+			}
+		}
+	}
 }
 
 // cloudflareWays offers Cloudflare's two ways of signing in, as JEC's own
