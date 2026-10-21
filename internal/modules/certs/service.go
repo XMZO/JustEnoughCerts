@@ -703,10 +703,14 @@ func (s *service) update(ctx context.Context, id int64, ch changes) error {
 			return err
 		}
 	}
+	// A certificate without a version, as one whose CSR waits, is issued by
+	// its new source at once, once the rest is changed too.
+	issueNow := false
 	if ch.source != nil && (*ch.source != c.SourceProvider || c.Source != sourceProvider) {
 		if err := s.changeSource(ctx, tx, c, *ch.source); err != nil {
 			return err
 		}
+		issueNow = c.Current == nil
 	}
 	if ch.solver != nil {
 		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET solver_provider = ?, updated_at = ? WHERE id = ?",
@@ -737,10 +741,18 @@ func (s *service) update(ctx context.Context, id int64, ch changes) error {
 			return err
 		}
 	}
+	if issueNow {
+		if _, err := s.startIssuance(ctx, tx, id, reasonManual); err != nil {
+			return err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
 	s.deploying.kick()
+	if issueNow {
+		s.issuing.kick()
+	}
 	return nil
 }
 

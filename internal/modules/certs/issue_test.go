@@ -1403,6 +1403,18 @@ func TestChangeSource(t *testing.T) {
 	if err != nil || got.SourceProvider != ca || got.SolverProvider != dns || got.KeyType != st.KeyType {
 		t.Errorf("back to a CA: %+v %v", got, err)
 	}
+	// One to buy, waiting with its CSR and no version yet, is issued by its
+	// new source at once.
+	var bought CertificateBody
+	f.call(f.api.Post("/certificates/request", map[string]any{"domains": []string{"bought.example.com"}}), http.StatusCreated, &bought)
+	if got = patch(bought, map[string]any{"sourceProvider": ca, "solverProvider": dns}); got.State != stateIssuing {
+		t.Errorf("one to buy, now issued: %+v", got)
+	}
+	f.run()
+	if got = f.certificate(bought.ID); got.Current == nil || got.State != stateOK {
+		t.Errorf("one to buy, issued: %+v", got)
+	}
+
 	// The solver kept must do for the new source.
 	byWeb := patch(f.add(f.leaf(30, "web.example.com")), map[string]any{"sourceProvider": vendor, "solverProvider": web})
 	refused(byWeb, map[string]any{"sourceProvider": ca}, http.StatusUnprocessableEntity, "body.solverProvider", i18n.CertsErrorSolverChallenge)
