@@ -27,7 +27,7 @@
 
 ## 本机证书目录
 
-读取同一台机器上由 certbot 或 acme.sh 续期的证书与私钥，只读，不改动其文件。目录填写 certbot 的 `/etc/letsencrypt`，或 acme.sh 的主目录（如 `/root/.acme.sh`），JEC 按域名查找证书。目录中仍为旧证书时，6 小时后再次检查。在容器中使用时须挂载该目录，参见[安装与升级](../guide/installation.zh-CN.md#可选挂载)。
+读取同一台机器上由 certbot 或 acme.sh 续期的证书与私钥，只读，不改动其文件。目录填写 certbot 的 `/etc/letsencrypt`，或 acme.sh 的主目录（如 `/root/.acme.sh`），JEC 按域名查找证书。目录中仍为旧证书时，6 小时后再次检查。在容器中使用时须挂载该目录，参见[安装与升级](../guide/installation.zh-CN.md#可选挂载)。私钥通常只有 root 可读，授予 JEC 读取权限的方法参见[从 certbot 或 acme.sh 迁移](../guide/migration.zh-CN.md#保留原客户端)。
 
 ## 私有 CA
 

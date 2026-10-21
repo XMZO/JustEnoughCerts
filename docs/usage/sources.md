@@ -48,7 +48,9 @@ machine, read-only, without changing their files. Enter certbot's
 `/root/.acme.sh`); JEC finds the certificate by its domains. While the
 directory still holds the old certificate, JEC checks again six hours
 later. In a container, the directory must be mounted; see
-[Installation and upgrades](../guide/installation.md#optional-mounts).
+[Installation and upgrades](../guide/installation.md#optional-mounts). The
+keys are usually root's alone: to let JEC read them, see
+[Moving from certbot or acme.sh](../guide/migration.md#keeping-the-old-client).
 
 ## Private CA
 

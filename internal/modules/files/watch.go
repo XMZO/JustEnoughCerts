@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -128,8 +129,10 @@ func (w *watcher) Test(context.Context) (contracts.Message, error) {
 		Params: map[string]any{"directory": w.dir, "count": len(names), "domains": strings.Join(names, ", ")}}, nil
 }
 
+// denied says JEC may not read name, with JEC's group, which certbot's
+// keys may be given to read.
 func (w *watcher) denied(name string) error {
-	return &contracts.Problem{Key: i18n.FilesErrorWatchDenied, Params: map[string]any{"path": name}}
+	return &contracts.Problem{Key: i18n.FilesErrorWatchDenied, Params: map[string]any{"path": name, "group": strconv.Itoa(os.Getgid())}}
 }
 
 // scanned is what a scan found, and what kept it from looking further.

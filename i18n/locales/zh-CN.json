@@ -1766,7 +1766,7 @@
       "owner_unknown": "这台机器上没有叫 {name} 的用户或组；在容器里请写数字。",
       "read_only": "{directory} 对 JEC 是只读的：它位于只读挂载上，或不在 JEC 的 systemd 服务可写入的范围内。请以可写方式挂载，或通过 systemctl edit jec 添加 ReadWritePaths={directory}。",
       "relative": "目录必须是绝对路径：{directory}",
-      "watch_denied": "JEC 读不了 {path}：没有权限。certbot 和 acme.sh 的私钥通常只有它们的属主能读：可以让 JEC 以这个用户运行，比如 root（在 docker-compose.yml 里把 user 设为 0:0），或者用 certbot 的 --deploy-hook 复制一份到 JEC 能读的地方。",
+      "watch_denied": "JEC 读不了 {path}：没有权限。certbot 和 acme.sh 的私钥通常只有属主能读。可以把属组改成 JEC 的组（{group}）并加上组读权限，certbot 续期时会沿用：对它的 live 和 archive 目录执行 chgrp -R {group} 和 chmod -R g+rX。也可以让 JEC 以属主（如 root）运行。",
       "watch_empty": "在 {directory} 里没找到带私钥的证书。",
       "watch_missing": "目录 {directory} 不存在。用 Docker 时要把它挂载进容器。",
       "watch_none": "在 {directory} 里没找到 {domains} 的有效证书和私钥。请检查目录和域名；用 Docker 时检查目录有没有挂载进容器。",

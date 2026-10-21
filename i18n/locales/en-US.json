@@ -1766,7 +1766,7 @@
       "owner_unknown": "There is no user or group {name} on this machine; in a container, give numbers.",
       "read_only": "{directory} is read-only for JEC: it is on a read-only mount, or outside what JEC's systemd service may write. Mount it writable, or add ReadWritePaths={directory} with systemctl edit jec.",
       "relative": "The directory must be an absolute path: {directory}",
-      "watch_denied": "JEC cannot read {path}: permission denied. The keys of certbot and acme.sh are usually their owner's alone. Run JEC as that user, such as root (user 0:0 in docker-compose.yml), or have certbot's --deploy-hook copy them where JEC can read them.",
+      "watch_denied": "JEC cannot read {path}: permission denied. The keys of certbot and acme.sh are usually their owner's alone. Give them JEC's group, {group}, with group read, which certbot keeps at renewals: chgrp -R {group} and chmod -R g+rX on its live and archive directories. Or run JEC as their owner, such as root.",
       "watch_empty": "{directory} holds no certificate with its key.",
       "watch_missing": "The directory {directory} does not exist. With Docker, mount it into the container.",
       "watch_none": "{directory} holds no valid certificate with its key for {domains}. Check the directory and the domains, and with Docker that the directory is mounted into the container.",
