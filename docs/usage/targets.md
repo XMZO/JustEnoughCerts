@@ -20,7 +20,9 @@ anything.
 | Custom | Webhook deployment, plugins |
 
 The test status and vendor requirements of each target are listed in
-[Providers and test coverage](../reference/providers.md).
+[Providers and test coverage](../reference/providers.md), and the
+permissions the keys of cloud targets need in
+[Access keys and least privilege](../reference/permissions.md).
 
 ## Replaced certificates
 

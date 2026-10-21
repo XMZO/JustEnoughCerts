@@ -14,7 +14,7 @@
 | 文件与容器 | 本地目录、SSH 服务器、Docker 容器、Kubernetes TLS Secret |
 | 自定义 | Webhook 部署、插件 |
 
-各目标的测试情况与厂商条件见[服务商支持与测试情况](../reference/providers.zh-CN.md)。
+各目标的测试情况与厂商条件见[服务商支持与测试情况](../reference/providers.zh-CN.md)，云平台密钥所需的权限见[密钥与最小权限](../reference/permissions.zh-CN.md)。
 
 ## 旧证书的处理
 

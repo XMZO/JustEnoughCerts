@@ -125,6 +125,8 @@
 
 ## 厂商使用条件
 
+各云平台密钥所需的权限见[密钥与最小权限](permissions.zh-CN.md)。
+
 部分证书来源与部署目标须满足厂商的条件方可使用。证书颁发机构支持 ACME（需要账号时提供 External Account Binding）的，建议优先使用 ACME，或手动上传其签发的证书；厂商专有接口均为可选模块。
 
 - **Namecheap SSL Manager**（`namecheap.ssl_manager`，实验性）：仅适用于直接在 Namecheap 购买的证书。每张证书须在 Namecheap 控制台激活或重签时选择 Server-side automation，以获取有效期 24 小时的一次性令牌。仅支持单域名证书，签发的证书同时包含 `www`；Namecheap 通过网站文件验证主域名与 `www`。

@@ -132,6 +132,9 @@ These features are no provider types, but reach outside services too:
 
 ## Vendor requirements
 
+The permissions each cloud's keys need are listed in
+[Access keys and least privilege](permissions.md).
+
 Some sources and targets are available only on the vendor's terms. Where a
 CA supports ACME, with External Account Binding when it requires an
 account, prefer ACME or upload its certificates manually: the vendors' own
