@@ -10,13 +10,13 @@ reminders are sent before they expire.
 
 | Rule | Description |
 |---|---|
-| Renew now | Asked first; when the certificate was issued three times or more in the last seven days, the question says so, as CAs limit how often the same domains are issued (Let's Encrypt to five a week) |
 | Renewal window | A certificate enters its renewal window a number of days before it expires, 30 by default; the default is set under Renewal defaults on the Settings page, and each certificate can have its own under Renewal settings on its page |
 | Daily check time | Within the window, renewal starts at the daily check time, 02:00 by default, in the panel's time zone |
 | Urgent renewal | With seven days or fewer left, renewal starts at once, without waiting for the check time |
 | Short-lived certificates | The window is at most two thirds of the certificate's life, and urgency at most one third: a six-day certificate enters its window two days after it was issued, rather than as it comes |
 | CA advice | When the certificate authority advises an earlier renewal through ACME Renewal Information (ARI, RFC 9773), for example before a revocation, renewal starts at the advised time |
 | Revoked | When the certificate authority has revoked the current certificate, renewal starts at once; see below |
+| Renew now | Asked first; when the certificate was issued three times or more in the last seven days, the question says so, as CAs limit how often the same domains are issued (Let's Encrypt to five a week) |
 
 The certificate list and each certificate's page show the next renewal.
 The panel's time zone is chosen under Appearance on the Settings page, and
