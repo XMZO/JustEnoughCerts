@@ -1,0 +1,11 @@
+{
+  "status": "registered",
+  "domainName": "example.ca",
+  "registrarName": "Example Registrar Inc.",
+  "createdAt": "2000-01-10T00:00:00Z",
+  "expiresAt": "2027-01-10T00:00:00Z",
+  "updatedAt": "2026-02-01T12:00:00Z",
+  "statuses": ["clientTransferProhibited"],
+  "nameservers": ["ns1.example.ca", "ns2.example.ca"],
+  "dnssec": "unsigned"
+}

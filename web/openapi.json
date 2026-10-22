@@ -2944,6 +2944,61 @@
         ],
         "type": "object"
       },
+      "RegistrationBody": {
+        "additionalProperties": false,
+        "properties": {
+          "expiresAt": {
+            "description": "When the registration ends, as the registry told",
+            "format": "date-time",
+            "type": "string"
+          },
+          "failed": {
+            "description": "Nothing answered as it should, as opposed to a registry that tells no end: worth asking again soon",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "The registered domain looked up, in ASCII",
+            "type": "string"
+          },
+          "note": {
+            "description": "Why there is no end, as the lookup tells it",
+            "type": "string"
+          },
+          "registrar": {
+            "type": "string"
+          },
+          "server": {
+            "description": "The server that told it",
+            "type": "string"
+          },
+          "source": {
+            "description": "Where the end, or else the status, came from",
+            "enum": [
+              "rdap",
+              "whois",
+              "whoisWeb",
+              "dns"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "description": "What the registry, or else the DNS delegation, tells of the name",
+            "enum": [
+              "registered",
+              "unregistered",
+              "reserved",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "status",
+          "failed"
+        ],
+        "type": "object"
+      },
       "ReleaseBody": {
         "additionalProperties": false,
         "properties": {
@@ -9969,6 +10024,51 @@
         "tags": [
           "watch",
           "watch"
+        ]
+      }
+    },
+    "/whoice/domains/{name}": {
+      "get": {
+        "operationId": "whoice-domain",
+        "parameters": [
+          {
+            "description": "A domain or a name under it; the registered domain is looked up",
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "description": "A domain or a name under it; the registered domain is looked up",
+              "maxLength": 300,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Look up when a domain's registration ends, through RDAP, WHOIS, registries' web lookups and the DNS delegation",
+        "tags": [
+          "whoice",
+          "whoice"
         ]
       }
     }

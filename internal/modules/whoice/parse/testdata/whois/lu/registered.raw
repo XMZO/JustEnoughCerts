@@ -1,0 +1,8 @@
+domainname: example.lu
+domaintype: ACTIVE (PUBLIC)
+registrar-name: Example LU Registrar
+registrar-url: https://registrar.example.lu
+registered: 2004-05-06
+modified: 2026-05-06
+nserver: ns1.example.lu
+nserver: ns2.example.lu

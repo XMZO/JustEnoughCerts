@@ -1,0 +1,13 @@
+# Copyright (c) The Internet Infrastructure Foundation.
+state: active
+domain: example.se
+holder: EXAMPLE-SE
+created: 2000-01-10
+modified: 2026-02-01
+expires: 2027-01-10
+transferred: 2024-01-01
+nserver: ns1.example.se
+nserver: ns2.example.se
+dnssec: signed delegation
+registrar: Example Registrar AB
+status: ok

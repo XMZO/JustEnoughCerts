@@ -1,0 +1,14 @@
+Domain name: example.nl
+Status: active
+
+Registrar:
+Example Registrar B.V.
+
+DNSSEC: yes
+
+Domain nameservers:
+ns1.example.nl
+ns2.example.nl
+
+Creation Date: 2000-01-10
+Updated Date: 2026-02-01

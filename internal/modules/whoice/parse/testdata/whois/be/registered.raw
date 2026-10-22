@@ -1,0 +1,20 @@
+Domain:	example.be
+Status:	NOT AVAILABLE
+Registered:	Mon Jan 10 2000
+
+Registrant:
+	Not shown, please visit www.dnsbelgium.be for webbased whois.
+
+Registrar:
+	Name:	Example Registrar
+	Website:	https://www.example-registrar.be
+
+Nameservers:
+	ns1.example.be
+	ns2.example.be
+
+Keys:
+	keyTag:12345 flags:KSK protocol:3 algorithm:ECDSAP256SHA256 pubKey:abc123
+
+Flags:
+	clientTransferProhibited

@@ -1,0 +1,9 @@
+{
+  "status": "registered",
+  "domainName": "EXAMPLE.RU",
+  "registrarName": "EXAMPLE-RU",
+  "createdAt": "2000-01-10T12:00:00Z",
+  "expiresAt": "2027-01-10T12:00:00Z",
+  "statuses": ["REGISTERED", "DELEGATED", "VERIFIED"],
+  "nameservers": ["ns1.example.ru", "ns2.example.ru"]
+}

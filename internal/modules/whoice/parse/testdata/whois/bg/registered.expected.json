@@ -1,0 +1,7 @@
+{
+  "status": "registered",
+  "domainName": "example.bg",
+  "statuses": ["busy", "active"],
+  "nameservers": ["ns1.example.bg", "ns2.example.bg"],
+  "dnssec": "signed"
+}

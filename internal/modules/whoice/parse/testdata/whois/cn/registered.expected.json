@@ -1,0 +1,11 @@
+{
+  "status": "registered",
+  "domainName": "example.cn",
+  "registrarName": "Example Registrar",
+  "createdAt": "2003-03-17T12:00:00+08:00",
+  "expiresAt": "2027-03-17T12:00:00+08:00",
+  "statuses": ["ok"],
+  "nameservers": ["ns1.example.cn", "ns2.example.cn"],
+  "registrantEmail": "owner@example.cn",
+  "dnssec": "unsigned"
+}

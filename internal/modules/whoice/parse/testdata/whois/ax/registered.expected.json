@@ -1,0 +1,9 @@
+{
+  "status": "registered",
+  "domainName": "example.ax",
+  "registrarName": "Example AX Registrar",
+  "registrarUrl": "http://registrar.example.ax",
+  "createdAt": "2002-03-04",
+  "updatedAt": "2026-02-05",
+  "nameservers": ["ns1.example.ax", "ns2.example.ax"]
+}

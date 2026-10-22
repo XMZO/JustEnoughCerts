@@ -1,0 +1,22 @@
+{
+  "status": "registered",
+  "domainName": "loli.kz",
+  "registrarName": "ICPS",
+  "createdAt": "2018-03-22 11:55:21 (GMT+0:00)",
+  "updatedAt": "2023-04-06 08:40:24 (GMT+0:00)",
+  "statuses": ["clientTransferProhibited", "clientRenewProhibited"],
+  "nameservers": ["alice.ns.cloudflare.com", "dan.ns.cloudflare.com"],
+  "nameserverIps": {
+    "alice.ns.cloudflare.com": ["173.245.58.60"],
+    "dan.ns.cloudflare.com": ["173.245.59.108"]
+  },
+  "registrantName": "Yuanbo Zhu",
+  "registrantOrganization": "Private Person",
+  "registrantCountry": "CN",
+  "registrantProvince": "Shanghai",
+  "registrantCity": "BaoShan ShangHai",
+  "registrantAddress": "ShangDa Road,Nan 11,711",
+  "registrantPostalCode": "200444",
+  "registrantEmail": "pkblz0201@gmail.com",
+  "registrantPhone": "+16173299667"
+}

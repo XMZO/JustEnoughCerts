@@ -1,0 +1,12 @@
+domain:        EXAMPLE.RU
+nserver:       ns1.example.ru.
+nserver:       ns2.example.ru.
+state:         REGISTERED, DELEGATED, VERIFIED
+org:           Example Organization
+taxpayer-id:   0000000000
+registrar:     EXAMPLE-RU
+admin-contact: https://www.example-registrar.ru/whois
+created:       2000-01-10T12:00:00Z
+paid-till:     2027-01-10T12:00:00Z
+free-date:     2027-02-10
+source:        TCI

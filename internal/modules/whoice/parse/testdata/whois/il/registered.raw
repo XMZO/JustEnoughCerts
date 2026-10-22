@@ -1,0 +1,9 @@
+domain: example.il
+registrar name: Example IL Registrar
+registrar info: registrar.example.il
+validity: 01-01-2027
+changed: registrar.example 20250101 (changed)
+changed: registrar.example 20260202 (changed)
+nserver: ns1.example.il
+nserver: ns2.example.il
+

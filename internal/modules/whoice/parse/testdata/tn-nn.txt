@@ -1,0 +1,38 @@
+NIC Whois server for cTLDs : .tn , .تونس
+All rights reserved
+Copyright "Tunisian Internet Agency - https://whois.ati.tn
+Supported ccTLDs : .tn , .تونس
+Sectorial domains : .com.tn,.ens.tn,.fin.tn,.gov.tn,.ind.tn,.intl.tn,.nat.tn,.net.tn,.org.tn,.info.tn,.perso.tn,.tourism.tn,.mincom.tn
+
+Domain name.........: nn.tn
+Details:
+Creation date.......: 17-06-2026 18:55:01 GMT+1
+Domain status.......: TRANSFER_PROHIBITED
+Registrar...........: SAFOZI
+
+Owner Contact
+Name................: Kaname
+First name..........: Raana
+Address.............: Rue des Orangers 27, Cité El Khadra
+address2............: 
+City................: Tunis
+stateProvince.......: Tunis
+Zip code............: 1004
+Country.............: TN
+Phone...............: +216.71840721
+Fax.................: 
+Email...............: Kaname.Raana@outlook.jp
+
+Administrativ contact
+Name................: Kaname
+First name..........: Raana
+Email...............: Kaname.Raana@outlook.jp
+
+Technical contact
+Name................: Kaname
+Email...............: Kaname.Raana@outlook.jp
+dnssec..............: unsigned
+
+DNS servers
+Name................: jeff.ns.cloudflare.com.
+Name................: sloan.ns.cloudflare.com.

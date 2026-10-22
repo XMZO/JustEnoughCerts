@@ -3216,3 +3216,6 @@ export type MessageKey =
   | "wellknown.module.description"
   | "wellknown.module.name"
   | "wellknown.test.ok"
+  | "whoice.error.domain"
+  | "whoice.module.description"
+  | "whoice.module.name"

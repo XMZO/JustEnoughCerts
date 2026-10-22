@@ -1,0 +1,9 @@
+{
+  "status": "registered",
+  "domainName": "example.au",
+  "registrarName": "Example Registrar Pty Ltd",
+  "updatedAt": "2026-02-01T12:00:00Z",
+  "statuses": ["serverRenewProhibited", "clientUpdateProhibited"],
+  "nameservers": ["ns1.example.au", "ns2.example.au"],
+  "dnssec": "unsigned"
+}

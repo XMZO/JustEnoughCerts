@@ -123,7 +123,7 @@ These features are no provider types, but reach outside services too:
 |---|---|---|
 | [Offsite backups](../operations/backup.md#offsite-backups) | S3 compatible storage, WebDAV | Real software: the S3 interface of SeaweedFS, the WebDAV server of rclone; AWS S3, Cloudflare R2, Alibaba Cloud OSS, Tencent Cloud COS, Jianguoyun and others untested, as the UI says |
 | [Certificate transparency](../usage/transparency.md) | Cert Spotter | Real service, without an API key |
-| [Domain registrations](../usage/sites.md#domain-registrations) | RDAP and WHOIS of IANA and the registries | Real services |
+| [Domain registrations](../usage/sites.md#domain-registrations) | RDAP and WHOIS of IANA and the registries; with Whoice domain lookup, also registries' web lookups and the DNS delegation | Real services: among others `.com`, `.de`, `.jp`, `.cn`, `.ch`, `.pl`, `.cz`, `.fi`, `.kr`, `.br`, `.lk`, `.ni`, `.pa`, `.dz`, `.al`, `.uy`, `.li` |
 | Revocation checks, completing chains, missing intermediates | OCSP, CRLs and issuer addresses (AIA) in certificates | Real services: certificates of Let's Encrypt, Sectigo and others, and badssl.com's site without intermediates |
 | Try on DNS providers | Each DNS provider, through lego | Real software: RFC 2136 dynamic updates of BIND; other providers take the path of an issuance |
 | [Single sign-on](../operations/security.md#single-sign-on) | OpenID Connect providers | Real software: Dex |

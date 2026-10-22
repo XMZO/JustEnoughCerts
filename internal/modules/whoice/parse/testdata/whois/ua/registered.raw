@@ -1,0 +1,12 @@
+domain:           example.ua
+status:           ok
+status:           clientTransferProhibited
+created:          2000-01-10
+modified:         2026-02-01
+expires:          2027-01-10
+nserver:          ns1.example.ua
+nserver:          ns2.example.ua
+% registrar:
+organization:     Example Registrar LLC
+url:              https://www.example-registrar.ua
+status:           AutoRenewGracePeriod

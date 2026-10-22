@@ -1,0 +1,14 @@
+{
+  "status": "registered",
+  "domainName": "example.lv",
+  "registrarName": "Example LV Registrar",
+  "createdAt": "2005-06-07",
+  "statuses": ["active"],
+  "nameservers": ["ns1.example.lv", "ns2.example.lv"],
+  "registrantName": "Example LV Holder",
+  "registrantOrganization": "Example LV Org",
+  "registrantCountry": "LV",
+  "registrantAddress": "Example Street 7",
+  "registrantEmail": "holder@example.lv",
+  "registrantPhone": "+37100000000"
+}

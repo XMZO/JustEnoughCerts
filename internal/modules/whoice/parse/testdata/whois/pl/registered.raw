@@ -1,0 +1,14 @@
+DOMAIN NAME:           example.pl
+registrant type:       organization
+nameservers:           ns1.example.pl. [192.0.2.10]
+                       ns2.example.pl. [192.0.2.11]
+created:               2000.01.10 12:00:00
+last modified:         2026.02.01 10:11:12
+renewal date:          2027.01.10 12:00:00
+dnssec:                Signed
+
+REGISTRAR:
+Example Registrar Sp. z o.o.
+https://www.example-registrar.pl
+
+WHOIS database responses and Registrant data available at: https://dns.pl/en/whois

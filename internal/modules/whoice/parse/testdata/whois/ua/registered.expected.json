@@ -1,0 +1,10 @@
+{
+  "status": "registered",
+  "domainName": "example.ua",
+  "registrarName": "Example Registrar LLC",
+  "createdAt": "2000-01-10",
+  "expiresAt": "2027-01-10",
+  "updatedAt": "2026-02-01",
+  "statuses": ["ok", "clientTransferProhibited"],
+  "nameservers": ["ns1.example.ua", "ns2.example.ua"]
+}

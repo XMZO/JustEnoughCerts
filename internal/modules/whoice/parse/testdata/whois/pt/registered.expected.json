@@ -1,0 +1,14 @@
+{
+  "status": "registered",
+  "domainName": "example.pt",
+  "registrarName": "Example Registrar Portugal",
+  "createdAt": "03/02/2001 12:30:00",
+  "expiresAt": "03/02/2027 12:30:00",
+  "statuses": ["Registered"],
+  "nameservers": ["ns1.example.pt", "ns2.example.pt"],
+  "registrantName": "Example PT Holder",
+  "registrantCountry": "PT",
+  "registrantCity": "Lisboa",
+  "registrantAddress": "Rua Exemplo 10",
+  "registrantPostalCode": "1000-001"
+}

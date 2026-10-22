@@ -1754,6 +1754,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/whoice/domains/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Look up when a domain's registration ends, through RDAP, WHOIS, registries' web lookups and the DNS delegation */
+        get: operations["whoice-domain"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2842,6 +2859,32 @@ export interface components {
         RecoveryOutputBody: {
             /** @description Each signs in once in place of a code of the authenticator app; shown this once */
             recoveryCodes: string[];
+        };
+        RegistrationBody: {
+            /**
+             * Format: date-time
+             * @description When the registration ends, as the registry told
+             */
+            expiresAt?: string;
+            /** @description Nothing answered as it should, as opposed to a registry that tells no end: worth asking again soon */
+            failed: boolean;
+            /** @description The registered domain looked up, in ASCII */
+            name: string;
+            /** @description Why there is no end, as the lookup tells it */
+            note?: string;
+            registrar?: string;
+            /** @description The server that told it */
+            server?: string;
+            /**
+             * @description Where the end, or else the status, came from
+             * @enum {string}
+             */
+            source?: "rdap" | "whois" | "whoisWeb" | "dns";
+            /**
+             * @description What the registry, or else the DNS delegation, tells of the name
+             * @enum {string}
+             */
+            status: "registered" | "unregistered" | "reserved" | "unknown";
         };
         ReleaseBody: {
             /** @description The running version */
@@ -7324,6 +7367,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "whoice-domain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A domain or a name under it; the registered domain is looked up */
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationBody"];
+                };
             };
             /** @description Error */
             default: {

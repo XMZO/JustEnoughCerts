@@ -1,0 +1,9 @@
+{
+  "status": "registered",
+  "domainName": "example.bd",
+  "registrarName": "Example BD Registrar",
+  "createdAt": "03/04/2003",
+  "expiresAt": "03/04/2027",
+  "statuses": ["active"],
+  "nameservers": ["ns1.example.bd", "ns2.example.bd"]
+}

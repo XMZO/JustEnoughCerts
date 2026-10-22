@@ -1,0 +1,11 @@
+{
+  "status": "registered",
+  "domainName": "example.ee",
+  "registrarName": "Example Registrar OU",
+  "createdAt": "2000-01-10",
+  "expiresAt": "2027-01-10",
+  "updatedAt": "2026-02-01",
+  "statuses": ["ok"],
+  "nameservers": ["ns1.example.ee", "ns2.example.ee"],
+  "dnssec": "signed"
+}

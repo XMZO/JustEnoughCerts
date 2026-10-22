@@ -1,0 +1,6 @@
+domain:         example.at
+registrar:      Example Registrar GmbH
+changed:        20260201 12:00:00
+nserver:        ns1.example.at
+nserver:        ns2.example.at
+dnssec:         signed delegation

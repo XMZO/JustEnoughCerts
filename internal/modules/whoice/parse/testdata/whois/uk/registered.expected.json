@@ -1,0 +1,11 @@
+{
+  "status": "registered",
+  "domainName": "example.uk",
+  "registrarName": "Example Registrar Ltd",
+  "createdAt": "10-Jan-2000",
+  "expiresAt": "10-Jan-2027",
+  "updatedAt": "01-May-2025",
+  "statuses": ["Registered until expiry date"],
+  "nameservers": ["ns1.example.uk", "ns2.example.uk"],
+  "dnssec": "Signed"
+}

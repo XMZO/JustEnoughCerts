@@ -1,0 +1,8 @@
+{
+  "status": "registered",
+  "domainName": "example.eu",
+  "registrarName": "Example Registrar BV",
+  "statuses": [],
+  "nameservers": ["ns1.example.eu", "ns2.example.eu"],
+  "dnssec": "flags:KSK protocol:3 algorithm:ECDSA_P256_SHA256 pubKey:abc123"
+}

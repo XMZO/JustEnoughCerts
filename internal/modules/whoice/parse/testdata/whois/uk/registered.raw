@@ -1,0 +1,24 @@
+    Domain name:
+        example.uk
+
+    Data validation:
+        Nominet was able to match the registrant's name and address against a 3rd party data source.
+
+    Registrar:
+        Example Registrar Ltd [Tag = EXAMPLE]
+        URL: https://registrar.example.uk
+
+    Relevant dates:
+        Registered on: 10-Jan-2000
+        Expiry date:  10-Jan-2027
+        Last updated: 01-May-2025
+
+    Registration status:
+        Registered until expiry date.
+
+    Name servers:
+        ns1.example.uk
+        ns2.example.uk
+
+    DNSSEC:
+        Signed

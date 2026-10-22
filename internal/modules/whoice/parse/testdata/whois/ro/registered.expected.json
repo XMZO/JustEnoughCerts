@@ -1,0 +1,9 @@
+{
+  "status": "registered",
+  "domainName": "example.ro",
+  "registrarName": "Example Registrar SRL",
+  "createdAt": "2000-01-10",
+  "expiresAt": "2027-01-10",
+  "nameservers": ["ns1.example.ro", "ns2.example.ro"],
+  "dnssec": "Inactive"
+}

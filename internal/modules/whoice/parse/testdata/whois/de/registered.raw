@@ -1,0 +1,6 @@
+Domain: example.de
+Status: connect
+Changed: 2026-02-01T12:00:00+01:00
+Nserver: ns1.example.de
+Nserver: ns2.example.de
+DNSSEC: signed

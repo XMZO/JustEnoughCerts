@@ -1,0 +1,9 @@
+{
+  "status": "registered",
+  "domainName": "example.jp",
+  "createdAt": "2001-03-26",
+  "expiresAt": "2027-03-31",
+  "updatedAt": "2026-04-01T01:05:04+09:00",
+  "statuses": ["Active"],
+  "nameservers": ["ns1.example.jp", "ns2.example.jp"]
+}

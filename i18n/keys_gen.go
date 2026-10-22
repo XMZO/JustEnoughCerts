@@ -3208,4 +3208,7 @@ const (
 	WellknownModuleDescription               Key = "wellknown.module.description"
 	WellknownModuleName                      Key = "wellknown.module.name"
 	WellknownTestOk                          Key = "wellknown.test.ok"
+	WhoiceErrorDomain                        Key = "whoice.error.domain"
+	WhoiceModuleDescription                  Key = "whoice.module.description"
+	WhoiceModuleName                         Key = "whoice.module.name"
 )

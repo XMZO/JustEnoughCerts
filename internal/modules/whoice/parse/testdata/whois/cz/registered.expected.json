@@ -1,0 +1,10 @@
+{
+  "status": "registered",
+  "domainName": "example.cz",
+  "registrarName": "REG-EXAMPLE",
+  "createdAt": "10.01.2000 12:00:00",
+  "expiresAt": "10.01.2027",
+  "updatedAt": "01.02.2026 10:11:12",
+  "statuses": ["Sponsoring registrar change forbidden"],
+  "nameservers": ["ns1.example.cz", "ns2.example.cz"]
+}

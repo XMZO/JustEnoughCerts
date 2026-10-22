@@ -1,0 +1,11 @@
+{
+  "status": "registered",
+  "domainName": "example.fi",
+  "registrarName": "Example Registrar Oy",
+  "createdAt": "10.1.2000 12:00:00",
+  "expiresAt": "10.1.2027 12:00:00",
+  "updatedAt": "1.2.2026 10:11:12",
+  "statuses": ["Registered"],
+  "nameservers": ["ns1.example.fi", "ns2.example.fi"],
+  "dnssec": "signed"
+}

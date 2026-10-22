@@ -1,0 +1,9 @@
+Domain name: example.am
+Registrar: Example AM Registrar
+Status: active, registrar-lock
+Registered: 2001-02-03
+Last modified: 2026-01-04
+DNS servers (zone signed, 1 DS record):
+  ns1.example.am
+  ns2.example.am
+

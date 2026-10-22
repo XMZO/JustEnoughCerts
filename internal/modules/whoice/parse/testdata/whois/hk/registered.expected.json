@@ -1,0 +1,9 @@
+{
+  "status": "registered",
+  "domainName": "EXAMPLE.HK",
+  "registrarName": "Example Registrar Hong Kong Limited",
+  "createdAt": "10-01-2000",
+  "updatedAt": "01-02-2026",
+  "statuses": ["Active", "Complete"],
+  "nameservers": ["ns1.example.hk", "ns2.example.hk"]
+}

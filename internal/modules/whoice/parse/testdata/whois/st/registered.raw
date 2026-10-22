@@ -1,0 +1,10 @@
+domain: example.st
+registrar: Example ST Registrar
+url: registrar.example.st
+created-date: 2010-11-12
+expiration-date: 2027-11-12
+updated-date: 2026-03-04
+status: active, clientTransferProhibited
+name server: ns1.example.st
+name server: ns2.example.st
+

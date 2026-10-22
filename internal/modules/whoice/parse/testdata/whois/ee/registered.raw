@@ -1,0 +1,18 @@
+Domain:
+name:       example.ee
+status:     ok
+registered: 2000-01-10
+changed:    2026-02-01
+expire:     2027-01-10
+dnssec:     signed
+
+Registrant:
+name:       Example Organization
+
+Registrar:
+name:       Example Registrar OU
+url:        https://www.example-registrar.ee
+
+Nameserver:
+nserver:    ns1.example.ee
+nserver:    ns2.example.ee

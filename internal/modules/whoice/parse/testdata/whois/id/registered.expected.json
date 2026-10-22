@@ -1,0 +1,11 @@
+{
+  "status": "registered",
+  "domainName": "EXAMPLE.ID",
+  "registrarName": "Example Registrar Indonesia",
+  "createdAt": "10-Jan-2000 12:00:00 UTC",
+  "expiresAt": "10-Jan-2027 12:00:00 UTC",
+  "updatedAt": "01-Feb-2026 10:11:12 UTC",
+  "statuses": ["ok"],
+  "nameservers": ["ns1.example.id", "ns2.example.id"],
+  "dnssec": "signed"
+}

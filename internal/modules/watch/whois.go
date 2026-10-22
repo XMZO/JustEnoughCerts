@@ -75,7 +75,9 @@ func (r *rdap) whoisServer(ctx context.Context, domain string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("IANA's WHOIS: %w", err)
 		}
-		if m := regexp.MustCompile(`(?im)^whois:\s*(\S+)`).FindStringSubmatch(answer); m != nil {
+		// Blanks only: IANA leaves the line empty for a TLD without
+		// WHOIS (.al), which must not read as the line after it.
+		if m := regexp.MustCompile(`(?im)^whois:[ \t]*(\S+)`).FindStringSubmatch(answer); m != nil {
 			server = m[1]
 		}
 	}

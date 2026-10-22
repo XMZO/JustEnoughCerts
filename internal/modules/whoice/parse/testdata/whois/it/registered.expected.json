@@ -1,0 +1,12 @@
+{
+  "status": "registered",
+  "domainName": "example.it",
+  "registrarName": "Example Registrar S.p.A.",
+  "createdAt": "2000-01-10 00:00:00",
+  "expiresAt": "2027-01-10",
+  "updatedAt": "2026-03-01 12:15:02",
+  "statuses": ["ok", "autoRenewPeriod"],
+  "nameservers": ["ns1.example.it", "ns2.example.it"],
+  "dnssec": "yes",
+  "registrantCountry": "IT"
+}

@@ -1,0 +1,8 @@
+{
+  "status": "registered",
+  "domainName": "example.at",
+  "registrarName": "Example Registrar GmbH",
+  "updatedAt": "20260201 12:00:00",
+  "nameservers": ["ns1.example.at", "ns2.example.at"],
+  "dnssec": "signed delegation"
+}

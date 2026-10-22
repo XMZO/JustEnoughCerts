@@ -1,0 +1,19 @@
+[Domain]
+Domain: example.lv
+Status: active
+Registered: 2005-06-07
+
+[Holder]
+Name: Example LV Holder
+Organization: Example LV Org
+Country: LV
+Address: Example Street 7
+Email: holder@example.lv
+Phone: +37100000000
+
+[Registrar]
+Name: Example LV Registrar
+
+[Nservers]
+Nserver: ns1.example.lv
+Nserver: ns2.example.lv

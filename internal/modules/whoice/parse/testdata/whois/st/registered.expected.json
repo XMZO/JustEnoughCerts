@@ -1,0 +1,11 @@
+{
+  "status": "registered",
+  "domainName": "example.st",
+  "registrarName": "Example ST Registrar",
+  "registrarUrl": "http://registrar.example.st",
+  "createdAt": "2010-11-12",
+  "expiresAt": "2027-11-12",
+  "updatedAt": "2026-03-04",
+  "statuses": ["active", "clientTransferProhibited"],
+  "nameservers": ["ns1.example.st", "ns2.example.st"]
+}

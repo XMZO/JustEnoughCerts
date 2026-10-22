@@ -1,0 +1,10 @@
+{
+  "status": "registered",
+  "domainName": "example.pl",
+  "registrarName": "Example Registrar Sp. z o.o.",
+  "createdAt": "2000.01.10 12:00:00",
+  "expiresAt": "2027.01.10 12:00:00",
+  "updatedAt": "2026.02.01 10:11:12",
+  "nameservers": ["ns1.example.pl", "ns2.example.pl"],
+  "dnssec": "Signed"
+}

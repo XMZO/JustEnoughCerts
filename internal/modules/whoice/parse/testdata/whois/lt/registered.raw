@@ -1,0 +1,8 @@
+domain: example.lt
+registrar: Example LT Registrar
+status: registered
+registered: 2007-08-09
+expires: 2027-08-09
+nserver: ns1.example.lt
+nserver: ns2.example.lt
+

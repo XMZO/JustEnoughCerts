@@ -1,0 +1,7 @@
+{
+  "status": "registered",
+  "domainName": "example.il",
+  "registrarUrl": "http://registrar.example.il",
+  "updatedAt": "20260202",
+  "nameservers": ["ns1.example.il", "ns2.example.il"]
+}

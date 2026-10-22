@@ -1,11 +1,13 @@
 package watch
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"slices"
 	"sync"
 	"time"
@@ -220,6 +222,32 @@ func (m *Module) domainsDue(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
+// lookupMore asks module whoice, which knows more registries, about a
+// domain whose end the lookup here could not tell (lerr): its end, or why
+// it has none, as a registry without any lookup (.al) or whose WHOIS cannot
+// be asked from here (.uy). Where whoice is off or fails too, lerr stays.
+func (m *Module) lookupMore(ctx context.Context, name string, lerr error) (registration, error) {
+	var out struct {
+		ExpiresAt *time.Time `json:"expiresAt"`
+		Registrar string     `json:"registrar"`
+		Note      string     `json:"note"`
+		Failed    bool       `json:"failed"`
+	}
+	if m.call(ctx, via, http.MethodGet, "/whoice/domains/"+url.PathEscape(name), nil, &out) != nil || out.Failed {
+		return registration{}, lerr
+	}
+	if out.ExpiresAt == nil {
+		return registration{}, noEnd(out.Note)
+	}
+	return registration{expires: *out.ExpiresAt, registrar: out.Registrar}, nil
+}
+
+// noEnd is errNoEnd as module whoice tells why.
+type noEnd string
+
+func (e noEnd) Error() string      { return cmp.Or(string(e), errNoEnd.Error()) }
+func (noEnd) Is(target error) bool { return target == errNoEnd }
+
 // checkDomain looks up the registration of domain name now, stores what it
 // found and tells of an end that came closer.
 func (m *Module) checkDomain(ctx context.Context, name string) error {
@@ -234,6 +262,9 @@ func (m *Module) checkDomain(ctx context.Context, name string) error {
 		return err
 	}
 	reg, lerr := m.rdap.lookup(ctx, name)
+	if lerr != nil {
+		reg, lerr = m.lookupMore(ctx, name, lerr)
+	}
 	now := m.now()
 	tx, err := m.db.BeginTx(ctx, nil)
 	if err != nil {

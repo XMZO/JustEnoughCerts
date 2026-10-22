@@ -1,0 +1,10 @@
+{
+  "status": "registered",
+  "domainName": "example.kg",
+  "registrarName": "Example Registrar LLC",
+  "createdAt": "Tue Jan 10 12:00:00 2000",
+  "expiresAt": "Sun Jan 10 12:00:00 2027",
+  "updatedAt": "Mon Feb 01 10:11:12 2026",
+  "statuses": ["ACTIVE"],
+  "nameservers": ["ns1.example.kg", "ns2.example.kg"]
+}

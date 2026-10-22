@@ -1,0 +1,14 @@
+domain:      example.br
+owner:       Example Organization
+ownerid:     00.000.000/0001-00
+responsible: Example Admin
+country:     BR
+owner-c:     EXBRA
+tech-c:      EXBRA
+nserver:     ns1.example.br
+nserver:     ns2.example.br
+created:     19960522 #000000
+changed:     20240501
+expires:     20270522
+status:      published
+provider:    EXAMPLE (1)

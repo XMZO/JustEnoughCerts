@@ -1,0 +1,17 @@
+{
+  "status": "registered",
+  "domainName": "example.mx",
+  "registrarName": "Example Registrar Mexico",
+  "registrarUrl": "https://registrar.example.mx",
+  "createdAt": "2001-02-03",
+  "expiresAt": "2027-02-03",
+  "updatedAt": "2026-01-04",
+  "nameservers": ["ns1.example.mx", "ns2.example.mx"],
+  "registrantName": "Example Holder",
+  "registrantOrganization": "Example MX Org",
+  "registrantCountry": "MX",
+  "registrantProvince": "CDMX",
+  "registrantCity": "Mexico City",
+  "registrantAddress": "Avenida Ejemplo 123",
+  "registrantPostalCode": "01000"
+}

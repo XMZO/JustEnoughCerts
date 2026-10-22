@@ -1,0 +1,12 @@
+{
+  "status": "registered",
+  "domainName": "example.com",
+  "registrarName": "Example Registrar, Inc.",
+  "registrarIanaId": "376",
+  "createdAt": "1995-08-14T04:00:00Z",
+  "expiresAt": "2026-08-13T04:00:00Z",
+  "updatedAt": "2025-08-01T12:00:00Z",
+  "statuses": ["active", "client transfer prohibited"],
+  "nameservers": ["a.iana-servers.net", "b.iana-servers.net"],
+  "dnssec": "signed"
+}

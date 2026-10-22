@@ -1,0 +1,18 @@
+Domain: example.eu
+Script: LATIN
+
+Registrant:
+        NOT DISCLOSED!
+
+Registrar:
+        Name: Example Registrar BV
+        Website: https://www.example-registrar.eu
+
+Name servers:
+        ns1.example.eu
+        ns2.example.eu
+
+Keys:
+        flags:KSK protocol:3 algorithm:ECDSA_P256_SHA256 pubKey:abc123
+
+Please visit www.eurid.eu for more info.

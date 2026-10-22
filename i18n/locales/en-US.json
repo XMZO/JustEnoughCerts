@@ -4365,5 +4365,14 @@
     "test": {
       "ok": "{url} answered from the internet with JEC's file: the requests reach JEC."
     }
+  },
+  "whoice": {
+    "error": {
+      "domain": "Not a domain"
+    },
+    "module": {
+      "description": "Looks a domain up again where the expiry watch finds no end: more registries' RDAP and WHOIS servers and forms of query, the parsers of some 50 registries, a few registries' web lookups, and the DNS delegation where a registry has no lookup. From Whoice.",
+      "name": "Whoice domain lookup"
+    }
   }
 }

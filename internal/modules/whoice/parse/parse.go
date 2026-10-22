@@ -1,0 +1,65 @@
+// Package parse reads registries' RDAP and WHOIS answers: the generic
+// WHOIS parser, the RDAP parser and the parsers for the ccTLDs whose
+// WHOIS answers need their own reading. It is ported from Whoice
+// (github.com/XMZO/whoice), parser for parser; Time reads the dates the
+// parsers leave as the registries wrote them.
+package parse
+
+// Default returns a registry with every parser Whoice registers by default,
+// in the same order: among parsers of equal priority the first one wins.
+func Default() *Registry {
+	return NewRegistry(
+		RDAPParser{},
+		UKWHOISParser{},
+		JPWHOISParser{},
+		FRWHOISParser{},
+		CNWHOISParser{},
+		BRWHOISParser{},
+		ITWHOISParser{},
+		EUWHOISParser{},
+		BEWHOISParser{},
+		PLWHOISParser{},
+		CZWHOISParser{},
+		HUWHOISParser{},
+		SKWHOISParser{},
+		ROWHOISParser{},
+		MXWHOISParser{},
+		PTWHOISParser{},
+		QAWHOISParser{},
+		MDWHOISParser{},
+		LUWHOISParser{},
+		LVWHOISParser{},
+		AMWHOISParser{},
+		AXWHOISParser{},
+		BDWHOISParser{},
+		BNWHOISParser{},
+		GGWHOISParser{},
+		ILWHOISParser{},
+		LTWHOISParser{},
+		MOWHOISParser{},
+		RSWHOISParser{},
+		STWHOISParser{},
+		TNWHOISParser{},
+		UZWHOISParser{},
+		DEWHOISParser{},
+		NLWHOISParser{},
+		CAWHOISParser{},
+		AUWHOISParser{},
+		SEWHOISParser{},
+		FIWHOISParser{},
+		KRWHOISParser{},
+		ATWHOISParser{},
+		RUWHOISParser{},
+		EEWHOISParser{},
+		BGWHOISParser{},
+		KGWHOISParser{},
+		TRWHOISParser{},
+		HKWHOISParser{},
+		TWWHOISParser{},
+		SIWHOISParser{},
+		UAWHOISParser{},
+		IDWHOISParser{},
+		KZWHOISParser{},
+		WHOISParser{},
+	)
+}

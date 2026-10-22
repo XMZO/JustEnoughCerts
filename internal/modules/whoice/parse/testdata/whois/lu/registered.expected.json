@@ -1,0 +1,9 @@
+{
+  "status": "registered",
+  "registrarName": "Example LU Registrar",
+  "registrarUrl": "https://registrar.example.lu",
+  "createdAt": "2004-05-06",
+  "updatedAt": "2026-05-06",
+  "statuses": ["ACTIVE", "PUBLIC"],
+  "nameservers": ["ns1.example.lu", "ns2.example.lu"]
+}

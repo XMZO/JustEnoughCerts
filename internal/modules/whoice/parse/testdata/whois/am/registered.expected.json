@@ -1,0 +1,10 @@
+{
+  "status": "registered",
+  "domainName": "example.am",
+  "registrarName": "Example AM Registrar",
+  "createdAt": "2001-02-03",
+  "updatedAt": "2026-01-04",
+  "statuses": ["active", "registrar-lock"],
+  "nameservers": ["ns1.example.am", "ns2.example.am"],
+  "dnssec": "signed"
+}

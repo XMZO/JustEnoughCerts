@@ -1,0 +1,11 @@
+domain.............: example.fi
+status.............: Registered
+created............: 10.1.2000 12:00:00
+expires............: 10.1.2027 12:00:00
+modified...........: 1.2.2026 10:11:12
+Registrar
+registrar..........: Example Registrar Oy
+www................: https://www.example-registrar.fi
+nserver............: ns1.example.fi [OK]
+nserver............: ns2.example.fi [OK]
+dnssec.............: signed

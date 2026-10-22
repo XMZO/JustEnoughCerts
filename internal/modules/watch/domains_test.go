@@ -106,6 +106,14 @@ func newDomainFixture(t *testing.T) (*fixture, *registry, *[]certificate, *bool)
 	certs := &[]certificate{}
 	off := new(bool)
 	f.m.call = func(_ context.Context, via, method, path string, _, out any) error {
+		if name, ok := strings.CutPrefix(path, "/whoice/domains/"); ok && via == "watch" && method == http.MethodGet {
+			body, ok := f.more[name]
+			if !ok {
+				return &module.CallError{Status: http.StatusNotFound}
+			}
+			data, _ := json.Marshal(body)
+			return json.Unmarshal(data, out)
+		}
 		if via != "watch" || method != http.MethodGet || path != "/certs/certificates" {
 			t.Errorf("asked %s %s as %s", method, path, via)
 		}
@@ -346,6 +354,45 @@ func TestNoRDAP(t *testing.T) {
 	}
 	if _, err := f.m.rdap.lookup(t.Context(), "shop.net"); !errors.Is(err, errNoRDAP) {
 		t.Errorf("shop.net = %v", err)
+	}
+}
+
+// TestLookupMore: where the lookup here tells no end, module whoice is
+// asked: its end is taken, and its reason for none; while it is off or
+// fails, the lookup's own error stays.
+func TestLookupMore(t *testing.T) {
+	f, _, _, _ := newDomainFixture(t)
+	end := time.Date(2028, 5, 1, 0, 0, 0, 0, time.UTC)
+	f.more = map[string]map[string]any{
+		"shop.de":  {"name": "shop.de", "status": "registered", "expiresAt": end, "registrar": "Example GmbH", "failed": false},
+		"shop.net": {"name": "shop.net", "status": "registered", "note": "the net zone delegates it", "failed": false},
+	}
+	if reg, err := f.m.lookupMore(t.Context(), "shop.de", errNoEnd); err != nil || !reg.expires.Equal(end) || reg.registrar != "Example GmbH" {
+		t.Errorf("shop.de = %+v %v", reg, err)
+	}
+	if _, err := f.m.lookupMore(t.Context(), "shop.net", errNoRDAP); !errors.Is(err, errNoEnd) || err.Error() != "the net zone delegates it" {
+		t.Errorf("shop.net = %v", err)
+	}
+	failed := errors.New("WHOIS whois.nic.org.uy: connection refused")
+	if _, err := f.m.lookupMore(t.Context(), "shop.uy", failed); !errors.Is(err, failed) {
+		t.Errorf("whoice off = %v", err)
+	}
+	f.more["shop.uy"] = map[string]any{"name": "shop.uy", "status": "unknown", "note": "timeout", "failed": true}
+	if _, err := f.m.lookupMore(t.Context(), "shop.uy", failed); !errors.Is(err, failed) {
+		t.Errorf("whoice failed = %v", err)
+	}
+
+	// IANA names no WHOIS server for .al: no RDAP, rather than a server
+	// named "status:".
+	f.m.rdap.whois = func(_ context.Context, server, query string) (string, error) {
+		if server == "whois.iana.org" && query == "al" {
+			// IANA leaves the line empty for a TLD without WHOIS.
+			return "domain:       AL\nwhois:        \n\nstatus:       ACTIVE\n", nil
+		}
+		return fakeWhois(t.Context(), server, query)
+	}
+	if _, err := f.m.rdap.lookup(t.Context(), "shop.al"); !errors.Is(err, errNoRDAP) {
+		t.Errorf("shop.al without WHOIS = %v", err)
 	}
 }
 

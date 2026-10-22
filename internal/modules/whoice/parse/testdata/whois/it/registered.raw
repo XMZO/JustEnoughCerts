@@ -1,0 +1,20 @@
+Domain:             example.it
+Status:             ok / autoRenewPeriod
+Signed:             yes
+Created:            2000-01-10 00:00:00
+Last Update:        2026-03-01 12:15:02
+Expire Date:        2027-01-10
+
+Registrant
+  Organization:     Example Organization
+  Address:          Via Example 1
+  Country:          IT
+
+Registrar
+  Organization:     Example Registrar S.p.A.
+  Name:             EXAMPLE-REG
+  Web:              https://www.example-registrar.it
+
+Nameservers
+  ns1.example.it
+  ns2.example.it

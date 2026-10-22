@@ -1,0 +1,9 @@
+{
+  "status": "registered",
+  "domainName": "example.md",
+  "registrarName": "Example MD Registrar",
+  "createdAt": "2003-04-05",
+  "expiresAt": "2027-04-05",
+  "statuses": ["ok", "clientTransferProhibited"],
+  "nameservers": ["ns1.example.md", "ns2.example.md"]
+}

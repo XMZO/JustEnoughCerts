@@ -1,0 +1,8 @@
+domain: example.ax
+registrar: Example AX Registrar
+www: registrar.example.ax
+created: 2002-03-04
+modified: 2026-02-05
+nserver: ns1.example.ax
+nserver: ns2.example.ax
+

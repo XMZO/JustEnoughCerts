@@ -1,0 +1,7 @@
+domain:        example.si
+registrar:     Example Registrar d.o.o.
+nameserver:    ns1.example.si
+nameserver:    ns2.example.si
+status:        ok, clientTransferProhibited
+created:       2000-01-10
+expire:        2027-01-10

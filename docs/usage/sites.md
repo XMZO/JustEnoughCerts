@@ -48,7 +48,16 @@ such as `example.com`, do not count. Add a domain adds any other.
    IANA names where the TLD has no RDAP (as `.cn`, `.io` and `.co.uk`):
    once a day, and every 12 hours while it ends soon, to see a renewal
    early.
-2. On a certificate's page, the row Domain registration shows when the
+2. Where that tells no end, the module "Whoice domain lookup" looks
+   again, with what Whoice (github.com/XMZO/whoice) knows of registries:
+   RDAP and WHOIS servers IANA does not list, the forms of query some
+   registries want (as DENIC's), the parsers of some 50 registries'
+   answers, and the web lookups of registries without WHOIS (`.lk`, `.ni`,
+   `.pa` and others). Where a registry has no lookup at all (`.al`) or its
+   WHOIS cannot be reached (`.uy`), the delegation of the name in its parent
+   zone at least tells whether it is still registered. The module can be
+   switched off on the Modules page.
+3. On a certificate's page, the row Domain registration shows when the
    domains it is under end.
 
 | State | Meaning |
@@ -56,11 +65,11 @@ such as `example.com`, do not count. Add a domain adds any other.
 | OK | More than 30 days left |
 | Ends soon | 30 days or less left |
 | Ended | Past the end the registry told |
-| End not told | The registry of the TLD has neither RDAP nor WHOIS, or does not publish the end (as for `.de`); looked up again in 7 days |
+| End not told | The registry has no lookup, or does not publish the end (as for `.de`, `.ch` and `.li`); the reason shows beneath, with what the DNS delegation tells; looked up again in 7 days |
 | Lookup failed | The registry did not answer, or answered an error; the last result is kept, and the lookup tried again in 2 hours |
 
-Lookups go only to IANA and to the public RDAP and WHOIS servers of the
-registries, and carry only the domain.
+Lookups go only to IANA and to the public RDAP, WHOIS and web lookup
+servers and name servers of the registries, and carry only the domain.
 
 ## Notes
 

@@ -33,6 +33,8 @@ type fixture struct {
 	// served is what each address serves; an address missing does not answer.
 	served map[string][]*x509.Certificate
 	asked  []string
+	// more is what module whoice tells of a domain; one missing, it is off.
+	more map[string]map[string]any
 }
 
 func newFixture(t *testing.T) *fixture {

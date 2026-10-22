@@ -1,0 +1,11 @@
+{
+  "status": "registered",
+  "domainName": "example.se",
+  "registrarName": "Example Registrar AB",
+  "createdAt": "2000-01-10",
+  "expiresAt": "2027-01-10",
+  "updatedAt": "2026-02-01",
+  "statuses": ["ok"],
+  "nameservers": ["ns1.example.se", "ns2.example.se"],
+  "dnssec": "signed delegation"
+}

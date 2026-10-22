@@ -1,0 +1,9 @@
+{
+  "status": "registered",
+  "domainName": "example.be",
+  "registrarName": "Example Registrar",
+  "createdAt": "Mon Jan 10 2000",
+  "statuses": ["clientTransferProhibited"],
+  "nameservers": ["ns1.example.be", "ns2.example.be"],
+  "dnssec": "keyTag:12345 flags:KSK protocol:3 algorithm:ECDSAP256SHA256 pubKey:abc123"
+}

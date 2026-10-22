@@ -1,0 +1,17 @@
+domain:       example.cz
+registrant:   EXAMPLE-ORG
+admin-c:      EXAMPLE-ADMIN
+nsset:        EXAMPLE-NSSET
+registrar:    REG-EXAMPLE
+registered:   10.01.2000 12:00:00
+changed:      01.02.2026 10:11:12
+expire:       10.01.2027
+status:       Sponsoring registrar change forbidden
+
+nserver:      ns1.example.cz
+nserver:      ns2.example.cz
+
+contact:      EXAMPLE-ORG
+org:          Example Organization
+name:         Example Organization
+address:      Example Street 1

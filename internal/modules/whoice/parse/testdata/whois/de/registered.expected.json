@@ -1,0 +1,8 @@
+{
+  "status": "registered",
+  "domainName": "example.de",
+  "updatedAt": "2026-02-01T12:00:00+01:00",
+  "statuses": ["connect"],
+  "nameservers": ["ns1.example.de", "ns2.example.de"],
+  "dnssec": "signed"
+}

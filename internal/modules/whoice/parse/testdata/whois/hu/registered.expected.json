@@ -1,0 +1,9 @@
+{
+  "status": "registered",
+  "domainName": "example.hu",
+  "registrarName": "Example Registrar Kft.",
+  "createdAt": "2000-01-10 12:00:00",
+  "expiresAt": "2027-01-10 12:00:00",
+  "statuses": ["active"],
+  "nameservers": ["ns1.example.hu", "ns2.example.hu"]
+}
