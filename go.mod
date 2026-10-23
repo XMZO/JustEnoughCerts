@@ -20,7 +20,7 @@ require (
 	github.com/ncruces/go-sqlite3 v0.35.6
 	github.com/pquerna/otp v1.5.0
 	github.com/pressly/goose/v3 v3.29.0
-	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.193
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.195
 	github.com/volcengine/volc-sdk-golang v1.0.258
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/crypto v0.58.0
