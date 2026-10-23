@@ -885,7 +885,8 @@ async function confirmDelete() {
               <RouterLink :to="`/certificates/${id}/issuances/${lastRun.data.value.issuance.id}`" class="text-small">{{ t('certs.detail.full_log') }}</RouterLink>
             </div>
             <p v-if="runSummary" class="m-0 text-small text-ink-muted [overflow-wrap:anywhere]">{{ runSummary }}</p>
-            <IssuanceSteps :detail="lastRun.data.value" compact class="text-small" />
+            <!-- On phones the steps of one that went through add nothing to the line above. -->
+            <IssuanceSteps :detail="lastRun.data.value" compact :class="['text-small', lastRun.data.value.issuance.state === 'done' ? 'max-sm:hidden' : '']" />
           </div>
           <p v-if="issuances.isSuccess.value && !issuances.data.value?.length" class="m-0 text-small text-ink-muted">{{ t('certs.detail.no_issuances') }}</p>
           <ol v-if="earlier.length" class="m-0 max-h-48 list-none overflow-y-auto p-0 text-small xl:max-h-none xl:min-h-[4.5rem] xl:flex-[1_1_0]">
@@ -961,7 +962,7 @@ async function confirmDelete() {
                 type="button"
                 :aria-label="t('certs.reminder.edit')"
                 :title="t('certs.reminder.edit')"
-                class="-my-1 grid size-7 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
+                class="-my-1 grid size-7 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:-my-2 max-sm:size-9"
                 @click="editReminder"
               >
                 <Pencil class="size-3.5" aria-hidden="true" />
@@ -975,7 +976,7 @@ async function confirmDelete() {
                 type="button"
                 :aria-label="t('certs.memo.edit')"
                 :title="t('certs.memo.edit')"
-                class="-my-1 grid size-7 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
+                class="-my-1 grid size-7 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:-my-2 max-sm:size-9"
                 @click="editNote"
               >
                 <Pencil class="size-3.5" aria-hidden="true" />
@@ -1021,7 +1022,7 @@ async function confirmDelete() {
                 type="button"
                 :aria-label="t('certs.domains.edit')"
                 :title="t('certs.domains.edit')"
-                class="-my-1 grid size-7 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
+                class="-my-1 grid size-7 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:-my-2 max-sm:size-9"
                 @click="editDomains"
               >
                 <Pencil class="size-3.5" aria-hidden="true" />

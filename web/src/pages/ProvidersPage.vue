@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleCheck, FlaskConical, Pencil, PlugZap, Plus, Send, Trash2, TriangleAlert } from '@lucide/vue'
+import { CircleCheck, FlaskConical, LoaderCircle, Pencil, PlugZap, Plus, Send, Trash2, TriangleAlert } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
@@ -16,6 +16,7 @@ import JecDialog from '../components/JecDialog.vue'
 import PageHeader from '../components/PageHeader.vue'
 import CalendarFeed from '../components/CalendarFeed.vue'
 import ProviderDialog from '../components/ProviderDialog.vue'
+import RowMenu, { type MenuItem } from '../components/RowMenu.vue'
 import TryDnsDialog from '../components/TryDnsDialog.vue'
 import TypeTags from '../components/TypeTags.vue'
 import { useT, type MessageKey, type Params } from '../i18n'
@@ -28,7 +29,8 @@ import { fromMore } from '../shell'
 // targets or notifiers. Each card says what it is, what it is set to and
 // how many certificates use it, and tests it when its type can be; a
 // notifier's card says instead what it tells about and how its last note
-// went, and sends a test note.
+// went, and sends a test note. On phones the actions are in the card's
+// menu, so that a card takes a few lines rather than half the screen.
 const props = defineProps<{ kind: PageKind }>()
 
 const { t } = useT()
@@ -157,6 +159,18 @@ const cards = computed(() =>
     const uses = (certificates.data.value ?? []).filter(
       (c) => c.sourceProvider === p.id || c.solverProvider === p.id || c.targets.includes(p.id),
     ).length
+    const testable = notifiers.value ? !dispatchOff.value : !!summaryType?.testable
+    // A solver that adds records or puts files itself can be tried on a
+    // domain.
+    const triable = props.kind === 'solver' && !summaryType?.manual && !!summaryType
+    const menu: MenuItem[] = [
+      ...(testable
+        ? [{ key: 'test', label: t(notifiers.value ? 'notify.action.test' : 'kernel.providers.test'), icon: notifiers.value ? Send : PlugZap, run: () => void test(p.id) }]
+        : []),
+      ...(triable ? [{ key: 'try', label: t('kernel.providers.try'), icon: FlaskConical, run: () => (trying.value = p) }] : []),
+      { key: 'edit', label: t('kernel.action.edit'), icon: Pencil, run: () => (editing.value = p) },
+      { key: 'delete', label: t('kernel.action.delete'), icon: Trash2, danger: true, run: () => startDelete(p) },
+    ]
     return {
       provider: p,
       type: summaryType,
@@ -169,10 +183,9 @@ const cards = computed(() =>
       uses,
       events: notifiers.value ? events(p) : '',
       send: sends.data.value?.find((s) => s.notifier === p.id),
-      testable: notifiers.value ? !dispatchOff.value : !!summaryType?.testable,
-      // A solver that adds records or puts files itself can be tried on a
-      // domain.
-      triable: props.kind === 'solver' && !summaryType?.manual && !!summaryType,
+      testable,
+      triable,
+      menu,
       http: summaryType?.challenge === 'http',
     }
   }),
@@ -269,35 +282,30 @@ async function confirmDelete() {
     </section>
 
     <div v-else-if="cards.length" class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-3">
-      <article v-for="c in cards" :key="c.provider.id" class="flex min-w-0 flex-col gap-2 rounded-lg border border-line bg-surface-raised p-4">
-        <div class="flex min-w-0 flex-col gap-0.5">
-          <h2 class="m-0 truncate text-heading font-semibold" translate="no" :title="c.provider.name">{{ c.provider.name }}</h2>
-          <span class="flex min-w-0 items-center gap-1.5">
-            <span class="truncate text-small text-ink-muted" :translate="c.typeBrand ? 'no' : undefined" :title="c.typeLabel">{{ c.typeLabel }}</span>
-            <TypeTags :type="c.type" />
-          </span>
+      <article v-for="c in cards" :key="c.provider.id" class="flex min-w-0 flex-col gap-1.5 rounded-lg border border-line bg-surface-raised p-3 sm:gap-2 sm:p-4">
+        <div class="flex min-w-0 items-start gap-2">
+          <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+            <h2 class="m-0 truncate text-heading font-semibold" translate="no" :title="c.provider.name">{{ c.provider.name }}</h2>
+            <span class="flex min-w-0 items-center gap-1.5">
+              <span class="truncate text-small text-ink-muted" :translate="c.typeBrand ? 'no' : undefined" :title="c.typeLabel">{{ c.typeLabel }}</span>
+              <TypeTags :type="c.type" />
+            </span>
+          </div>
+          <div class="flex-none sm:hidden">
+            <RowMenu :label="t('kernel.action.more_for', { name: c.provider.name })" :items="c.menu" />
+          </div>
         </div>
-        <dl v-if="c.shown.length" class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-small">
-          <template v-for="s in c.shown" :key="s.key">
-            <!-- A long label wraps rather than push the card wider. -->
-            <dt class="max-w-40 text-ink-muted [overflow-wrap:anywhere]">
+        <!-- The settings run on as label and value, as many to a line as fit. -->
+        <dl v-if="c.shown.length" class="m-0 flex flex-wrap gap-x-4 gap-y-1 text-small">
+          <div v-for="s in c.shown" :key="s.key" class="flex max-w-full min-w-0 gap-1.5">
+            <dt class="max-w-40 flex-none truncate text-ink-muted" :title="s.label ? t(s.label) : s.key" :translate="s.label ? undefined : 'no'">
               <template v-if="s.label">{{ t(s.label) }}</template>
               <code v-else class="font-mono">{{ s.key }}</code>
             </dt>
-            <dd v-if="s.option" class="m-0 truncate" :title="t(s.option)">{{ t(s.option) }}</dd>
-            <dd v-else class="m-0 truncate" translate="no" :title="s.value">{{ s.value }}</dd>
-          </template>
+            <dd v-if="s.option" class="m-0 min-w-0 truncate" :title="t(s.option)">{{ t(s.option) }}</dd>
+            <dd v-else class="m-0 min-w-0 truncate" translate="no" :title="s.value">{{ s.value }}</dd>
+          </div>
         </dl>
-        <p
-          v-if="c.credential !== undefined"
-          class="m-0 truncate text-small text-ink-muted"
-          :title="t('kernel.providers.credential.card', { name: c.credential })"
-        >
-          {{ t('kernel.providers.credential.card', { name: c.credential }) }}
-        </p>
-        <p v-if="c.credential === undefined || c.secrets" class="m-0 text-small text-ink-muted">
-          {{ c.secrets ? t('kernel.providers.secrets_saved', { count: c.secrets }) : t('kernel.providers.no_secrets') }}
-        </p>
         <template v-if="notifiers">
           <p class="m-0 text-small text-ink-muted">{{ c.events }}</p>
           <!-- Until a test says how it went, the last note does. -->
@@ -312,21 +320,39 @@ async function confirmDelete() {
             <p v-else class="m-0 text-small text-danger-ink [overflow-wrap:anywhere]">{{ t('notify.card.failed', { error: errorText(c.send.error) }) }}</p>
           </template>
         </template>
-        <template v-else>
-          <p
-            v-if="c.status && !tested[c.provider.id]"
-            :class="['m-0 flex items-start gap-1.5 text-small [overflow-wrap:anywhere]', c.status.ok ? 'text-ok-ink' : 'text-warn-ink']"
+        <p
+          v-else-if="c.status && !tested[c.provider.id]"
+          :class="['m-0 flex items-start gap-1.5 text-small [overflow-wrap:anywhere]', c.status.ok ? 'text-ok-ink' : 'text-warn-ink']"
+        >
+          <component :is="c.status.ok ? CircleCheck : TriangleAlert" class="mt-0.5 size-4 flex-none" aria-hidden="true" />
+          <!-- What a test found that works, such as the address it reached, takes two lines at most; why one failed, all it needs. -->
+          <span :class="c.status.ok ? 'line-clamp-2' : ''" :title="c.status.ok ? c.status.text : undefined">
+            {{ c.status.text }} <time :datetime="c.status.at" class="text-ink-muted">{{ intl.dateTime(c.status.at) }}</time>
+          </span>
+        </p>
+        <!-- Where its secrets are and, but for a notifier, how many certificates use it, on one line while it fits. -->
+        <p class="m-0 text-small text-ink-muted">
+          <span
+            v-if="c.credential !== undefined"
+            class="inline-block max-w-full truncate align-bottom not-first:before:mx-1.5 not-first:before:content-['·']"
+            :title="t('kernel.providers.credential.card', { name: c.credential })"
           >
-            <component :is="c.status.ok ? CircleCheck : TriangleAlert" class="mt-0.5 size-4 flex-none" aria-hidden="true" />
-            <span>
-              {{ c.status.text }} <time :datetime="c.status.at" class="text-ink-muted">{{ intl.dateTime(c.status.at) }}</time>
-            </span>
-          </p>
-          <p class="m-0 text-small text-ink-muted">{{ t('kernel.providers.uses', { count: c.uses }) }}</p>
-        </template>
-        <p v-if="testPassed(c.provider.id)" role="status" class="m-0 text-small text-ok-ink [overflow-wrap:anywhere]">{{ testPassed(c.provider.id) }}</p>
+            {{ t('kernel.providers.credential.card', { name: c.credential }) }}
+          </span>
+          <span v-if="c.credential === undefined || c.secrets" class="inline-block max-w-full align-bottom not-first:before:mx-1.5 not-first:before:content-['·']">
+            {{ c.secrets ? t('kernel.providers.secrets_saved', { count: c.secrets }) : t('kernel.providers.no_secrets') }}
+          </span>
+          <span v-if="!notifiers" class="inline-block max-w-full align-bottom not-first:before:mx-1.5 not-first:before:content-['·']">
+            {{ t('kernel.providers.uses', { count: c.uses }) }}
+          </span>
+        </p>
+        <!-- On phones the test starts from the menu, so the card says it runs. -->
+        <p v-if="testing === c.provider.id" role="status" class="m-0 flex items-center gap-1.5 text-small text-ink-muted sm:hidden">
+          <LoaderCircle class="size-4 flex-none animate-spin" aria-hidden="true" />{{ t(notifiers ? 'notify.test.sending' : 'kernel.providers.testing') }}
+        </p>
+        <p v-else-if="testPassed(c.provider.id)" role="status" class="m-0 text-small text-ok-ink [overflow-wrap:anywhere]">{{ testPassed(c.provider.id) }}</p>
         <JecAlert v-else-if="testError(c.provider.id)" :code="testError(c.provider.id)!.code" :params="testError(c.provider.id)!.params" />
-        <div class="mt-auto flex flex-wrap gap-2 pt-1">
+        <div class="mt-auto flex flex-wrap gap-2 pt-1 max-sm:hidden">
           <JecButton v-if="c.testable" size="sm" :busy="testing === c.provider.id" @click="test(c.provider.id)">
             <component :is="notifiers ? Send : PlugZap" class="size-4" aria-hidden="true" />{{ t(notifiers ? 'notify.action.test' : 'kernel.providers.test') }}
           </JecButton>
@@ -337,9 +363,10 @@ async function confirmDelete() {
           <JecButton size="sm" variant="ghost" @click="startDelete(c.provider)"><Trash2 class="size-4" aria-hidden="true" />{{ t('kernel.action.delete') }}</JecButton>
         </div>
       </article>
+      <!-- On phones the header's button adds one. -->
       <button
         type="button"
-        class="flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-line-strong bg-transparent p-4 font-semibold text-ink-muted hover:bg-surface-sunken hover:text-ink"
+        class="flex min-h-32 cursor-pointer flex-col max-sm:hidden items-center justify-center gap-2 rounded-lg border border-dashed border-line-strong bg-transparent p-4 font-semibold text-ink-muted hover:bg-surface-sunken hover:text-ink"
         @click="adding = true"
       >
         <Plus class="size-5" aria-hidden="true" />{{ t(page.add) }}

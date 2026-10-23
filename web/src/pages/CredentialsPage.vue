@@ -9,6 +9,7 @@ import JecAlert from '../components/JecAlert.vue'
 import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
 import PageHeader from '../components/PageHeader.vue'
+import RowMenu, { type MenuItem } from '../components/RowMenu.vue'
 import { useT, type MessageKey } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import { fromMore } from '../shell'
@@ -16,6 +17,7 @@ import { fromMore } from '../shell'
 // The credentials (docs/design/boards/Credentials, PLAN.md 6.1): the keys
 // that several providers share. Each card tells what it is, shows the part
 // of it that tells it apart, which providers use it and when one last did.
+// On phones the actions are in the card's menu.
 const { t } = useT()
 const intl = useIntl()
 const list = useCredentials()
@@ -30,6 +32,10 @@ const cards = computed(() =>
       kindLabel: kind ? t(kind.name as MessageKey) : c.kind,
       hint: hint(kind, c),
       users: c.usedBy.map((u) => u.name),
+      menu: [
+        { key: 'edit', label: t('kernel.action.edit'), icon: Pencil, run: () => (editing.value = c) },
+        { key: 'delete', label: t('kernel.action.delete'), icon: Trash2, danger: true, run: () => startDelete(c) },
+      ] satisfies MenuItem[],
     }
   }),
 )
@@ -94,30 +100,34 @@ async function confirmDelete() {
     </section>
 
     <div v-else-if="cards.length" class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-3">
-      <article v-for="c in cards" :key="c.credential.id" class="flex min-w-0 flex-col gap-2 rounded-lg border border-line bg-surface-raised p-4">
+      <article v-for="c in cards" :key="c.credential.id" class="flex min-w-0 flex-col gap-1.5 rounded-lg border border-line bg-surface-raised p-3 sm:gap-2 sm:p-4">
         <div class="flex min-w-0 items-start gap-2">
           <KeyRound class="mt-1 size-4 flex-none text-ink-muted" aria-hidden="true" />
-          <div class="flex min-w-0 flex-col gap-0.5">
+          <div class="flex min-w-0 flex-1 flex-col gap-0.5">
             <h2 class="m-0 truncate text-heading font-semibold" translate="no" :title="c.credential.name">{{ c.credential.name }}</h2>
             <span class="flex min-w-0 flex-wrap gap-x-1.5 text-small text-ink-muted">
               <span class="truncate" :title="c.kindLabel">{{ c.kindLabel }}</span>
               <code v-if="c.hint" class="font-mono" translate="no">{{ c.hint }}</code>
             </span>
           </div>
+          <div class="flex-none sm:hidden">
+            <RowMenu :label="t('kernel.action.more_for', { name: c.credential.name })" :items="c.menu" />
+          </div>
         </div>
         <p v-if="!c.credential.available" class="m-0 flex items-start gap-1.5 text-small text-warn-ink">
           <TriangleAlert class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ t('kernel.credentials.unavailable') }}
         </p>
+        <!-- Who uses it and when one last did, on one line while it fits. -->
         <p class="m-0 text-small [overflow-wrap:anywhere]">
-          {{ c.users.length ? t('kernel.credentials.used_by', { names: intl.list(c.users) }) : t('kernel.credentials.unused') }}
+          <span class="mr-1.5">{{ c.users.length ? t('kernel.credentials.used_by', { names: intl.list(c.users) }) : t('kernel.credentials.unused') }}</span>
+          <span class="inline-block text-ink-muted before:mr-1.5 before:content-['·']">
+            <template v-if="c.credential.usedAt">
+              {{ t('kernel.credentials.last_used') }} <time :datetime="c.credential.usedAt">{{ intl.dateTime(c.credential.usedAt) }}</time>
+            </template>
+            <template v-else>{{ t('kernel.credentials.never_used') }}</template>
+          </span>
         </p>
-        <p class="m-0 text-small text-ink-muted">
-          <template v-if="c.credential.usedAt">
-            {{ t('kernel.credentials.last_used') }} <time :datetime="c.credential.usedAt">{{ intl.dateTime(c.credential.usedAt) }}</time>
-          </template>
-          <template v-else>{{ t('kernel.credentials.never_used') }}</template>
-        </p>
-        <div class="mt-auto flex flex-wrap gap-2 pt-1">
+        <div class="mt-auto flex flex-wrap gap-2 pt-1 max-sm:hidden">
           <JecButton size="sm" @click="editing = c.credential"><Pencil class="size-4" aria-hidden="true" />{{ t('kernel.action.edit') }}</JecButton>
           <JecButton size="sm" variant="ghost" @click="startDelete(c.credential)"><Trash2 class="size-4" aria-hidden="true" />{{ t('kernel.action.delete') }}</JecButton>
         </div>

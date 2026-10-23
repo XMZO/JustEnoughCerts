@@ -2083,6 +2083,7 @@
       "copied": "Copied",
       "delete": "Delete",
       "edit": "Edit",
+      "more_for": "More for {name}",
       "save": "Save"
     },
     "app": {
@@ -2384,6 +2385,7 @@
         "title": "Deploy targets"
       },
       "test": "Test",
+      "testing": "Testing…",
       "try": "Try",
       "try_added": "Record added:",
       "try_domain": "Domain",
@@ -3011,6 +3013,7 @@
       "valid_until": "Valid until {date}."
     },
     "test": {
+      "sending": "Sending a test…",
       "sent": "The test is on its way.",
       "text": "If this reached you, the channel is set up right.",
       "title": "A test note"

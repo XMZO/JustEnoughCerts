@@ -32,6 +32,11 @@ have several **instances**, such as two ACME accounts of different
 accounts. A certificate uploaded manually has no source and needs no
 validation method.
 
+Each instance shows as a card on its page, with its main settings, how its
+last test or deployment went and how many certificates use it. The card
+tests, edits and deletes it; on phones, these actions are in the ⋯ menu at
+the card's top right.
+
 ## Credentials
 
 A credential is a set of keys that can be shared, such as an Alibaba Cloud
