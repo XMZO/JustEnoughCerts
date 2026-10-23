@@ -728,6 +728,7 @@ const (
 	CertsDetailRunFailed                     Key = "certs.detail.run_failed"
 	CertsDetailRunRetrying                   Key = "certs.detail.run_retrying"
 	CertsDetailRunRunning                    Key = "certs.detail.run_running"
+	CertsDetailSettings                      Key = "certs.detail.settings"
 	CertsDetailShowLog                       Key = "certs.detail.show_log"
 	CertsDetailShowProgress                  Key = "certs.detail.show_progress"
 	CertsDetailTitle                         Key = "certs.detail.title"

@@ -938,6 +938,7 @@
       "run_failed": "{start} 开始，用时 {duration}，没有成功。",
       "run_retrying": "{start} 开始，没有成功，稍后自动重试。",
       "run_running": "{start} 开始，还在进行。",
+      "settings": "设置",
       "show_log": "查看日志",
       "show_progress": "查看进度",
       "title": "证书",

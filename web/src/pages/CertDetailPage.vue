@@ -72,10 +72,10 @@ import { summary, typeName } from '../providers/fields'
 
 // A certificate (docs/design/boards/CertDetail and CertDetailMobile, made
 // denser at the user's request so that it fits a screen): its validity,
-// then its deployments, online checks and issuances beside its details,
-// chain, renewal settings and versions, with the upload of a new version
-// and deletion. One with a source also shows its last run and can be
-// issued again at once.
+// then what happens to it (deployments with the online check, issuances)
+// beside what is set for it, then what it is, with its earlier versions,
+// with the upload of a new version and deletion. One with a source also
+// shows its last run and can be issued again at once.
 const props = defineProps<{ id: number }>()
 
 const { t } = useT()
@@ -322,6 +322,9 @@ async function saveTargets() {
   choosing.value = false
 }
 
+// Versions beside the one in use, which only then have a list: the one in
+// use alone is the information's, and the header downloads it.
+const earlierVersions = computed(() => versions.value.length > 1)
 // A version was replaced when the next newer one came.
 const history = computed(() =>
   versions.value.map((v, i) => ({
@@ -362,7 +365,7 @@ async function submitUpload() {
   uploading.value = false
 }
 
-// Renewal settings, in the validity bar, edited in a dialog.
+// Renewal settings, in the settings card, edited in a dialog.
 const rule = computed(() =>
   issued.value && certSettings.data.value
     ? t('certs.settings.renewal_value', { days: cert.value?.renewBeforeDays ?? 0, time: certSettings.data.value.checkTime })
@@ -670,7 +673,7 @@ async function confirmDelete() {
     </template>
   </PageHeader>
 
-  <div class="flex flex-col gap-3 px-4 pt-3 sm:mt-4 sm:gap-4 sm:p-0">
+  <div class="flex flex-col gap-3 px-4 pt-3 sm:mt-4 sm:gap-4 sm:p-0 xl:gap-3">
     <JecAlert v-if="loadError.error.value" :code="loadError.error.value.code" :params="loadError.error.value.params" />
     <JecAlert v-if="issueError.error.value" :code="issueError.error.value.code" :params="issueError.error.value.params" />
 
@@ -749,7 +752,7 @@ async function confirmDelete() {
       <section
         v-if="current"
         :aria-label="t('certs.detail.validity')"
-        class="flex flex-wrap items-end gap-x-6 gap-y-3 rounded-lg border border-line bg-surface-raised p-3 sm:p-4"
+        class="flex flex-wrap items-end gap-x-6 gap-y-3 rounded-lg border border-line bg-surface-raised p-3 sm:px-4"
       >
         <CertSlot v-if="current" :cert="cert" decorative class="hidden sm:grid" />
         <LifeBar v-if="life" :life="life" large class="min-w-0 flex-[2_1_200px]" />
@@ -778,35 +781,23 @@ async function confirmDelete() {
                   t('certs.renewal.why')
                 }}</a>
               </span>
-              <span class="mt-0.5 flex items-start gap-1 text-caption font-normal text-ink-muted">
-                <span class="min-w-0 [overflow-wrap:anywhere]">{{ rule }}</span>
-                <button
-                  type="button"
-                  :aria-label="t('certs.settings.edit')"
-                  :title="t('certs.settings.edit')"
-                  class="-my-1 grid size-6 flex-none cursor-pointer place-items-center rounded-sm border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:-my-2 max-sm:size-8"
-                  @click="edit"
-                >
-                  <Pencil class="size-3.5" aria-hidden="true" />
-                </button>
-              </span>
             </dd>
           </div>
         </dl>
       </section>
 
-      <!-- Where it is now (deployments, online checks), its history
-           (issuances, versions) and what it is (details, renewal settings):
-           from 768px the first two on the left, from 1280px each in a
-           column of its own, so that the page fits a screen. The last card
-           of each group stretches, so that the columns end together. -->
-      <div
-        class="grid gap-3 sm:gap-4 md:grid-cols-[minmax(0,1fr)_17rem] md:grid-rows-[auto_1fr] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_18rem] xl:grid-rows-1"
-      >
-        <div class="flex min-w-0 flex-col gap-3 sm:gap-4 md:col-start-1 md:row-start-1 [&>*:last-child]:flex-1">
-          <section aria-labelledby="deploys" class="flex flex-col gap-1.5 rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
+      <!-- What happens to it (deployments and online checks, issuances) and
+           what is set for it side by side, then what it is, with its
+           versions: from 1280px three cards in a row over the information,
+           from 768px two. Cards side by side stretch together; the lists that
+           grow fill what is left and scroll, so that the cards end together
+           and the page fits a screen. -->
+      <div class="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-3">
+        <!-- Where it goes and what the domains serve, in one card. -->
+        <div class="flex min-w-0 flex-col gap-2.5 rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
+          <section aria-labelledby="deploys" :class="['flex min-w-0 flex-col gap-1.5', deployRows.length > 2 ? 'xl:min-h-0 xl:flex-1' : '']">
             <div class="flex flex-wrap items-center justify-between gap-2">
-              <h2 id="deploys" class="m-0 text-heading sm:text-section-title font-semibold">{{ t('certs.detail.deploys') }}</h2>
+              <h2 id="deploys" class="m-0 text-heading font-semibold sm:text-section-title">{{ t('certs.detail.deploys') }}</h2>
               <div class="flex flex-wrap gap-2">
                 <JecButton v-if="cert.targets.length && current" size="sm" :busy="deploying === 0" @click="startDeployAll">
                   <Send class="size-4" aria-hidden="true" />{{ t('certs.action.deploy_now') }}
@@ -818,33 +809,45 @@ async function confirmDelete() {
             </div>
             <JecAlert v-if="deployError.error.value" :code="deployError.error.value.code" :params="deployError.error.value.params" />
             <p v-if="!cert.targets.length" class="m-0 text-small text-ink-muted">{{ t('certs.detail.no_targets') }}</p>
-            <!-- Where the card is narrow, a row's state goes under its
-                 target, and its button keeps only the icon. -->
-            <ol v-else class="@container m-0 list-none p-0 text-small">
+            <!-- Where the card is narrow, a row's button keeps only the icon.
+                 From 1280px three targets or more take what their row leaves,
+                 at least two of them, and scroll past that. -->
+            <ol
+              v-else
+              :class="[
+                '@container m-0 max-h-56 list-none overflow-y-auto p-0 text-small',
+                deployRows.length > 2 ? 'xl:max-h-none xl:min-h-[7.5rem] xl:flex-[1_1_0]' : '',
+              ]"
+            >
               <li v-for="r in deployRows" :key="r.target" class="flex items-center gap-2 border-b border-line last:border-b-0">
                 <component
                   :is="r.d ? RouterLink : 'div'"
                   :to="r.d ? `/certificates/${id}/deployments/${r.d.id}` : undefined"
-                  class="flex min-h-11 min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5 text-ink no-underline hover:text-ink"
+                  class="flex min-h-11 min-w-0 flex-1 items-center py-1.5 text-ink no-underline hover:text-ink"
                 >
-                  <span class="min-w-0 flex-[1_1_100%] [overflow-wrap:anywhere] @md:flex-[1_1_0]">
-                    <span class="font-semibold" translate="no">{{ r.label.name }}</span>
-                    <span class="ml-1.5 text-ink-muted" :translate="r.label.brand ? 'no' : undefined">{{ r.label.type }}</span>
+                  <span class="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                    <span class="block">
+                      <span class="font-semibold" translate="no">{{ r.label.name }}</span>
+                      <span class="ml-1.5 text-ink-muted" :translate="r.label.brand ? 'no' : undefined">{{ r.label.type }}</span>
+                    </span>
+                    <!-- How it went there, then where it puts the certificate. -->
+                    <span class="block text-caption text-ink-muted">
+                      <span v-if="r.d && scheduledAt(r.d)">
+                        {{ t('certs.deployment.scheduled') }} <time :datetime="scheduledAt(r.d)">{{ intl.dateTime(scheduledAt(r.d)!) }}</time>
+                      </span>
+                      <template v-else-if="r.d">
+                        <span :class="['text-small font-semibold', deployInk[r.d.state]]">{{ t(deploymentState(r.d)) }}</span>
+                        <time v-if="r.d.finishedAt" :datetime="r.d.finishedAt" class="ml-1.5 tabular-nums">{{ intl.dateTime(r.d.finishedAt) }}</time>
+                      </template>
+                      <span v-else>{{ t('certs.deployment.state.none') }}</span>
+                    </span>
                     <span v-if="r.shown.length" class="block text-caption text-ink-muted">
-                      <span v-for="s in r.shown" :key="s.key" class="not-first:before:mx-1.5 not-first:before:content-['·']">
+                      <span v-for="s in r.shown" :key="s.key" class="inline-block max-w-full not-first:before:mx-1.5 not-first:before:content-['·']">
                         <span v-if="s.label">{{ t('kernel.providers.setting', { label: t(s.label) }) }}</span>
                         <template v-if="s.option">{{ t(s.option) }}</template>
                         <span v-else translate="no">{{ s.value }}</span>
                       </span>
                     </span>
-                  </span>
-                  <span class="flex flex-none items-baseline gap-x-2 @md:flex-col @md:items-end">
-                    <span v-if="r.d && scheduledAt(r.d)" class="text-ink-muted">
-                      {{ t('certs.deployment.scheduled') }} <time :datetime="scheduledAt(r.d)">{{ intl.dateTime(scheduledAt(r.d)!) }}</time>
-                    </span>
-                    <span v-else-if="r.d" :class="['font-semibold', deployInk[r.d.state]]">{{ t(deploymentState(r.d)) }}</span>
-                    <span v-else class="text-ink-muted">{{ t('certs.deployment.state.none') }}</span>
-                    <time v-if="r.d?.finishedAt" :datetime="r.d.finishedAt" class="text-caption text-ink-muted tabular-nums">{{ intl.dateTime(r.d.finishedAt) }}</time>
                   </span>
                 </component>
                 <JecButton
@@ -861,276 +864,308 @@ async function confirmDelete() {
                 </JecButton>
               </li>
             </ol>
+            <!-- Servers that fetch it themselves, the other way to deploy. -->
+            <p v-if="current" class="m-0 flex flex-wrap items-center gap-x-1.5 text-small">
+              <span class="text-ink-muted">{{ t('certs.field.pull') }}</span>
+              <button type="button" class="cursor-pointer border-0 bg-transparent p-0 text-small text-brand underline underline-offset-2 hover:text-brand-hover" @click="pulling = true">
+                {{ t('certs.pull.set_up') }}
+              </button>
+            </p>
           </section>
-
-          <MonitorSection v-if="current" :id="cert.id" />
+          <MonitorSection v-if="current" :id="cert.id" :domains="cert.domains.length" />
         </div>
 
-        <div class="flex min-w-0 flex-col gap-3 sm:gap-4 md:col-start-1 md:row-start-2 xl:col-start-2 xl:row-start-1 [&>*:last-child]:flex-1">
-          <section v-if="issued" aria-labelledby="issuances" class="flex flex-col gap-2 rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
-            <h2 id="issuances" class="m-0 text-heading sm:text-section-title font-semibold">{{ t('certs.detail.issuances') }}</h2>
-            <div v-if="lastRun.data.value" class="flex flex-col gap-1.5 rounded-md border border-line px-3 py-2.5">
-              <div class="flex flex-wrap items-baseline justify-between gap-x-3">
-                <h3 class="m-0 text-body font-semibold">
-                  {{ t(lastRun.data.value.issuance.reason === 'renewal' ? 'certs.detail.last_renewal' : 'certs.detail.last_issuance') }}
-                </h3>
-                <RouterLink :to="`/certificates/${id}/issuances/${lastRun.data.value.issuance.id}`" class="text-small">{{ t('certs.detail.full_log') }}</RouterLink>
-              </div>
-              <p v-if="runSummary" class="m-0 text-small text-ink-muted [overflow-wrap:anywhere]">{{ runSummary }}</p>
-              <IssuanceSteps :detail="lastRun.data.value" compact class="text-small" />
+        <section v-if="issued" aria-labelledby="issuances" class="flex min-w-0 flex-col gap-2 rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
+          <h2 id="issuances" class="m-0 text-heading font-semibold sm:text-section-title">{{ t('certs.detail.issuances') }}</h2>
+          <div v-if="lastRun.data.value" class="flex flex-col gap-1.5 rounded-md border border-line px-3 py-2">
+            <div class="flex flex-wrap items-baseline justify-between gap-x-3">
+              <h3 class="m-0 text-body font-semibold">
+                {{ t(lastRun.data.value.issuance.reason === 'renewal' ? 'certs.detail.last_renewal' : 'certs.detail.last_issuance') }}
+              </h3>
+              <RouterLink :to="`/certificates/${id}/issuances/${lastRun.data.value.issuance.id}`" class="text-small">{{ t('certs.detail.full_log') }}</RouterLink>
             </div>
-            <p v-if="issuances.isSuccess.value && !issuances.data.value?.length" class="m-0 text-small text-ink-muted">{{ t('certs.detail.no_issuances') }}</p>
-            <ol v-if="earlier.length" class="m-0 max-h-48 list-none overflow-y-auto p-0 text-small">
-              <li v-for="is in earlier" :key="is.id" class="border-b border-line last:border-b-0">
-                <RouterLink
-                  :to="`/certificates/${id}/issuances/${is.id}`"
-                  class="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5 text-ink no-underline hover:text-ink"
-                >
-                  <time :datetime="is.createdAt" class="flex-none text-ink-muted tabular-nums">{{ intl.dateTime(is.createdAt) }}</time>
-                  <span class="min-w-[6rem] flex-1 [overflow-wrap:anywhere]">{{ t(reasonText[is.reason]) }}</span>
-                  <span :class="['flex-none font-semibold', is.state === 'done' ? 'text-ok-ink' : is.state === 'running' || is.state === 'waiting' || (is.state === 'pending' && !is.error) ? 'text-info-ink' : 'text-danger-ink']">
-                    {{ t(issuanceState(is)) }}
-                  </span>
-                </RouterLink>
-              </li>
-            </ol>
-          </section>
-          <section v-if="versions.length" aria-labelledby="versions" class="rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
-            <h2 id="versions" class="m-0 mb-1 text-heading sm:text-section-title font-semibold">{{ t('certs.history.title') }}</h2>
-            <ol class="m-0 max-h-60 list-none overflow-y-auto p-0 text-small">
-              <li v-for="h in history" :key="h.version.id" class="flex items-center gap-1 border-b border-line py-1.5 last:border-b-0">
-                <div class="min-w-0 flex-1">
-                  <div class="tabular-nums">{{ h.range }}</div>
-                  <div class="text-caption text-ink-muted">{{ h.note }}</div>
-                  <div v-if="h.version.revokedAt" class="flex items-start gap-1 font-semibold text-danger-ink">
-                    <ShieldX class="mt-0.5 size-4 flex-none" aria-hidden="true" />
-                    {{ t('certs.history.revoked', { date: intl.date(h.version.revokedAt), reason: t(reasonLabel(h.version.revokeReason)) }) }}
-                  </div>
-                  <div v-else-if="h.version.caRevokedAt" class="flex items-start gap-1 font-semibold text-danger-ink">
-                    <ShieldX class="mt-0.5 size-4 flex-none" aria-hidden="true" />
-                    {{ t('certs.history.ca_revoked', { date: intl.date(h.version.caRevokedAt), reason: t(caReasonText(h.version.caRevokeReason)) }) }}
-                  </div>
-                </div>
-                <button
-                  v-if="h.version.usable"
-                  type="button"
-                  :aria-label="t('certs.action.use_version', { range: h.range })"
-                  :title="t('certs.action.use_version', { range: h.range })"
-                  class="grid size-11 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink sm:size-8"
-                  @click="startRevert(h.version.id, h.range, h.version.notAfter)"
-                >
-                  <Undo2 class="size-4" aria-hidden="true" />
-                </button>
-                <button
-                  v-if="h.version.revocable"
-                  type="button"
-                  :aria-label="t('certs.action.revoke_version', { range: h.range })"
-                  :title="t('certs.action.revoke_version', { range: h.range })"
-                  class="grid size-11 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-danger-ink sm:size-8"
-                  @click="startRevoke(h.version.id, h.range)"
-                >
-                  <ShieldX class="size-4" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  :aria-label="t('certs.action.download_version', { range: h.range })"
-                  :title="t('certs.action.download_version', { range: h.range })"
-                  class="grid size-11 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink sm:size-8"
-                  @click="startDownload(h.version.id)"
-                >
-                  <Download class="size-4" aria-hidden="true" />
-                </button>
-              </li>
-            </ol>
-            <p v-if="sourceType?.revocable && !history.some((h) => h.version.revocable)" class="m-0 mt-1.5 text-caption text-ink-muted">{{ t('certs.history.revoke_hint') }}</p>
-          </section>
-
-        </div>
-
-        <div class="flex min-w-0 flex-col gap-3 sm:gap-4 md:col-start-2 md:row-span-2 md:row-start-1 xl:col-start-3 xl:row-span-1 [&>*:last-child]:flex-1">
-          <section aria-labelledby="info" class="rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
-            <div class="mb-1 flex flex-wrap items-baseline justify-between gap-x-3">
-              <h2 id="info" class="m-0 text-heading font-semibold sm:text-section-title">{{ t('certs.info.title') }}</h2>
-              <RouterLink :to="{ path: '/certificates/new', query: { from: id } }" class="text-small">{{ t('certs.action.add_like') }}</RouterLink>
-            </div>
-            <dl class="m-0 grid grid-cols-[fit-content(40%)_minmax(0,1fr)] gap-x-4 gap-y-0.5 text-small">
-              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.memo.title') }}</dt>
-              <dd class="m-0 flex min-w-0 items-start gap-1">
-                <span v-if="cert.note" class="line-clamp-3 min-w-0 flex-1 whitespace-pre-line [overflow-wrap:anywhere]" translate="no" :title="cert.note">{{
-                  cert.note
-                }}</span>
-                <span v-else class="min-w-0 flex-1 text-ink-muted">{{ t('certs.memo.none') }}</span>
-                <button
-                  type="button"
-                  :aria-label="t('certs.memo.edit')"
-                  :title="t('certs.memo.edit')"
-                  class="-my-1 grid size-7 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
-                  @click="editNote"
-                >
-                  <Pencil class="size-3.5" aria-hidden="true" />
-                </button>
-              </dd>
-              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.reminder.title') }}</dt>
-              <dd class="m-0 flex min-w-0 items-start gap-1">
-                <span v-if="cert.reminder" class="flex min-w-0 flex-1 flex-wrap gap-x-1.5 [overflow-wrap:anywhere]">
-                  <time :datetime="cert.reminder.on">{{ reminderDay(cert.reminder.on) }}</time>
-                  <span v-if="cert.reminder.note" translate="no">{{ cert.reminder.note }}</span>
-                  <span v-if="cert.reminder.sent" class="text-ink-muted">{{ t('certs.reminder.sent') }}</span>
+            <p v-if="runSummary" class="m-0 text-small text-ink-muted [overflow-wrap:anywhere]">{{ runSummary }}</p>
+            <IssuanceSteps :detail="lastRun.data.value" compact class="text-small" />
+          </div>
+          <p v-if="issuances.isSuccess.value && !issuances.data.value?.length" class="m-0 text-small text-ink-muted">{{ t('certs.detail.no_issuances') }}</p>
+          <ol v-if="earlier.length" class="m-0 max-h-48 list-none overflow-y-auto p-0 text-small xl:max-h-none xl:min-h-[4.5rem] xl:flex-[1_1_0]">
+            <li v-for="is in earlier" :key="is.id" class="border-b border-line last:border-b-0">
+              <RouterLink
+                :to="`/certificates/${id}/issuances/${is.id}`"
+                class="flex min-h-9 flex-wrap items-center gap-x-3 gap-y-0.5 py-1.5 text-ink no-underline hover:text-ink"
+              >
+                <time :datetime="is.createdAt" class="flex-none text-ink-muted tabular-nums">{{ intl.dateTime(is.createdAt) }}</time>
+                <span class="min-w-[6rem] flex-1 [overflow-wrap:anywhere]">{{ t(reasonText[is.reason]) }}</span>
+                <span :class="['flex-none font-semibold', is.state === 'done' ? 'text-ok-ink' : is.state === 'running' || is.state === 'waiting' || (is.state === 'pending' && !is.error) ? 'text-info-ink' : 'text-danger-ink']">
+                  {{ t(issuanceState(is)) }}
                 </span>
-                <span v-else class="min-w-0 flex-1 text-ink-muted">{{ t('certs.reminder.none') }}</span>
-                <button
-                  type="button"
-                  :aria-label="t('certs.reminder.edit')"
-                  :title="t('certs.reminder.edit')"
-                  class="-my-1 grid size-7 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
-                  @click="editReminder"
-                >
-                  <Pencil class="size-3.5" aria-hidden="true" />
-                </button>
-              </dd>
-              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.domains') }}</dt>
-              <dd class="m-0 flex min-w-0 items-start gap-1">
-                <!-- Broken after a dot, where a name must be; many of them scroll,
-                     so that the page still fits. -->
-                <span
-                  :class="['min-w-0 flex-1 [overflow-wrap:anywhere]', cert.domains.length > 6 ? 'max-h-36 overflow-y-auto' : '']"
-                  translate="no"
-                  :tabindex="cert.domains.length > 6 ? 0 : undefined"
-                  :role="cert.domains.length > 6 ? 'region' : undefined"
-                  :aria-label="cert.domains.length > 6 ? t('certs.field.domains') : undefined"
-                >
-                  <span v-for="d in cert.domains" :key="d" class="block"
-                    ><template v-for="(label, i) in d.split(/(?<=\.)/)" :key="i"><wbr v-if="i" />{{ label }}</template></span
-                  >
-                </span>
-                <button
-                  v-if="issued"
-                  type="button"
-                  :aria-label="t('certs.domains.edit')"
-                  :title="t('certs.domains.edit')"
-                  class="-my-1 grid size-7 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
-                  @click="editDomains"
-                >
-                  <Pencil class="size-3.5" aria-hidden="true" />
-                </button>
-              </dd>
-              <template v-if="registrations.length">
-                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('watch.domain.cert_row') }}</dt>
-                <dd class="m-0 flex min-w-0 flex-col gap-0.5">
-                  <RouterLink
-                    v-for="d in registrations"
-                    :key="d.name"
-                    to="/sites"
-                    :class="['[overflow-wrap:anywhere]', domainNeedsLook(d) ? 'font-semibold text-warn-ink' : 'text-ink']"
-                  >
-                    <span translate="no">{{ d.name }}</span>
-                    <template v-if="d.expiresAt">
-                      · <time :datetime="d.expiresAt">{{ intl.date(d.expiresAt) }}</time>
-                    </template>
-                    <template v-else> · {{ t(d.state === 'pending' ? 'watch.domain.state.pending' : 'watch.domain.state.unknown') }}</template>
-                  </RouterLink>
-                </dd>
-              </template>
-              <template v-if="details && details.subject && details.subject !== `CN=${cert.domains[0]}`">
-                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.subject') }}</dt>
-                <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ details.subject }}</dd>
-              </template>
-              <!-- The issuer, and the chain up from it, each with when it expires. -->
-              <template v-if="current">
-                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t(chain.length > 2 ? 'certs.chain.title' : 'certs.field.issuer') }}</dt>
-                <dd v-if="chain.length > 1" class="m-0 flex min-w-0 flex-col gap-0.5">
-                  <span v-for="(c, i) in chain.slice(1)" :key="i" class="[overflow-wrap:anywhere]">
-                    <span class="block" translate="no">{{ c.subject }}</span>
-                    <span class="block text-caption text-ink-muted">{{ t('certs.chain.expires', { date: intl.date(c.notAfter) }) }}</span>
-                  </span>
-                </dd>
-                <dd v-else class="m-0 [overflow-wrap:anywhere]" translate="no">{{ current.issuer }}</dd>
-              </template>
-              <template v-if="details?.validation">
-                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.validation_level') }}</dt>
-                <dd class="m-0 [overflow-wrap:anywhere]">{{ t(validationText[details.validation]) }}</dd>
-              </template>
-              <template v-if="details?.extKeyUsage.length">
-                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.uses') }}</dt>
-                <dd class="m-0 [overflow-wrap:anywhere]">{{ intl.list(details.extKeyUsage.map((u) => t(ekuText[u]))) }}</dd>
-              </template>
-              <template v-if="details">
-                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.transparency') }}</dt>
-                <dd class="m-0 [overflow-wrap:anywhere]">{{ details.scts ? t('certs.transparency.logged', { count: details.scts }) : t('certs.transparency.none') }}</dd>
-              </template>
-              <template v-if="details?.mustStaple">
-                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.must_staple') }}</dt>
-                <dd class="m-0 [overflow-wrap:anywhere]">{{ t('certs.must_staple.required') }}</dd>
-              </template>
-              <template v-if="details && (details.ocsp.length || details.crl.length || details.caIssuers.length)">
-                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.revocation') }}</dt>
-                <dd class="m-0 flex flex-wrap">
-                  <a
-                    v-for="l in revocationLinks"
-                    :key="l.href"
-                    :href="l.href"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="underline underline-offset-2 not-first:before:mx-1.5 not-first:before:text-ink-muted not-first:before:no-underline not-first:before:content-['·']"
-                    >{{ t(l.label) }}</a
-                  >
-                </dd>
-              </template>
-              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.source') }}</dt>
-              <dd v-if="issued" class="m-0 [overflow-wrap:anywhere]" translate="no">{{ sourceName ?? '' }}</dd>
-              <dd v-else class="m-0 [overflow-wrap:anywhere]">{{ t('certs.source.upload') }}</dd>
-              <template v-if="issued && cert.backupProvider">
-                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.backup') }}</dt>
-                <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ backupName ?? '' }}</dd>
-              </template>
-              <template v-if="issued && cert.solverProvider">
-                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.validation') }}</dt>
-                <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ solverName ?? '' }}</dd>
-              </template>
-              <!-- Without a version, the life bar that holds the settings' pencil is not there. -->
-              <template v-if="issued && !current">
-                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.settings.title') }}</dt>
-                <dd class="m-0 [overflow-wrap:anywhere]">
-                  <button type="button" class="cursor-pointer border-0 bg-transparent p-0 text-small text-brand underline underline-offset-2 hover:text-brand-hover" @click="edit">
-                    {{ t('certs.settings.edit') }}
-                  </button>
-                </dd>
-              </template>
+              </RouterLink>
+            </li>
+          </ol>
+        </section>
+
+        <!-- What people set for it, each with where to change it. -->
+        <section aria-labelledby="settings" :class="['flex min-w-0 flex-col gap-1.5 rounded-lg border border-line bg-surface-raised p-3 sm:p-4', issued ? 'md:col-span-2 xl:col-span-1' : 'xl:col-span-2']">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="settings" class="m-0 text-heading font-semibold sm:text-section-title">{{ t('certs.detail.settings') }}</h2>
+            <JecButton size="sm" variant="ghost" @click="edit">
+              <Pencil class="size-4" aria-hidden="true" />{{ t('certs.settings.edit') }}
+            </JecButton>
+          </div>
+          <dl
+            :class="[
+              'm-0 grid grid-cols-[fit-content(40%)_minmax(0,1fr)] gap-x-4 gap-y-1 text-small',
+              issued
+                ? 'md:grid-cols-[repeat(2,fit-content(9rem)_minmax(0,1fr))] xl:grid-cols-[fit-content(40%)_minmax(0,1fr)]'
+                : 'xl:grid-cols-[repeat(2,fit-content(9rem)_minmax(0,1fr))]',
+            ]"
+          >
+            <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.source') }}</dt>
+            <dd v-if="issued" class="m-0 [overflow-wrap:anywhere]" translate="no">{{ sourceName ?? '' }}</dd>
+            <dd v-else class="m-0 [overflow-wrap:anywhere]">{{ t('certs.source.upload') }}</dd>
+            <template v-if="issued && !ownKey && (cert.backupProvider || backups.some((p) => p.id !== cert?.sourceProvider))">
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.backup') }}</dt>
+              <dd v-if="cert.backupProvider" class="m-0 [overflow-wrap:anywhere]" translate="no">{{ backupName ?? '' }}</dd>
+              <dd v-else class="m-0 text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.add.backup_none') }}</dd>
+            </template>
+            <template v-if="issued && cert.solverProvider">
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.validation') }}</dt>
+              <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ solverName ?? '' }}</dd>
+            </template>
+            <template v-if="issued && !ownKey">
               <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.key') }}</dt>
-              <dd v-if="key" class="m-0 [overflow-wrap:anywhere]">{{ t(key.key, key.params) }}</dd>
-              <dd v-else class="m-0 [overflow-wrap:anywhere]">{{ t(keyText(cert.keyType).key, keyText(cert.keyType).params) }}</dd>
-              <template v-if="details">
-                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.signature') }}</dt>
-                <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ details.signatureAlgorithm }}</dd>
-              </template>
-              <template v-if="current">
-                <template v-for="h in hashes" :key="h.label">
-                  <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t(h.label) }}</dt>
-                  <dd class="m-0 flex min-w-0 items-start gap-1">
-                    <span class="min-w-0 flex-1 truncate font-mono text-caption leading-5" translate="no" :title="h.value">{{ h.value }}</span>
-                    <CopyButton :value="h.value" :label="h.copy" />
-                  </dd>
-                </template>
-                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.csr') }}</dt>
-                <dd class="m-0 [overflow-wrap:anywhere]">
-                  <button type="button" class="cursor-pointer border-0 bg-transparent p-0 text-small text-brand underline underline-offset-2 hover:text-brand-hover" @click="showingCsr = true">
-                    {{ t('certs.csr.show') }}
-                  </button>
-                </dd>
-                <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.pull') }}</dt>
-                <dd class="m-0 [overflow-wrap:anywhere]">
-                  <button type="button" class="cursor-pointer border-0 bg-transparent p-0 text-small text-brand underline underline-offset-2 hover:text-brand-hover" @click="pulling = true">
-                    {{ t('certs.pull.set_up') }}
-                  </button>
-                </dd>
-              </template>
-              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.notify') }}</dt>
-              <dd v-if="notifying.length" class="m-0 [overflow-wrap:anywhere]" translate="no">{{ intl.list(notifying) }}</dd>
-              <dd v-else class="m-0 [overflow-wrap:anywhere] text-ink-muted">{{ t('certs.settings.notify_none') }}</dd>
-            </dl>
-          </section>
+              <dd class="m-0 [overflow-wrap:anywhere]">
+                {{ t(keyText(cert.keyType).key, keyText(cert.keyType).params) }}
+                <span v-if="cert.reuseKey" class="text-ink-muted"> · {{ t('certs.settings.reuse_key') }}</span>
+              </dd>
+            </template>
+            <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t(issued ? 'certs.field.renewal' : 'certs.field.reminder') }}</dt>
+            <dd v-if="issued && cert.paused" class="m-0 font-semibold text-warn-ink">{{ t('certs.settings.paused_state') }}</dd>
+            <dd v-else class="m-0 [overflow-wrap:anywhere]">{{ rule }}</dd>
+            <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.settings.window') }}</dt>
+            <dd :class="['m-0 [overflow-wrap:anywhere]', cert.deployWindow ? '' : 'text-ink-muted']">
+              {{ t(windows.find((w) => w.value === cert?.deployWindow)?.label ?? 'certs.settings.window_any') }}
+            </dd>
+            <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.notify') }}</dt>
+            <dd v-if="notifying.length" class="m-0 [overflow-wrap:anywhere]" translate="no">{{ intl.list(notifying) }}</dd>
+            <dd v-else class="m-0 text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.settings.notify_none') }}</dd>
+            <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.reminder.title') }}</dt>
+            <dd class="m-0 flex min-w-0 items-start gap-1">
+              <span v-if="cert.reminder" class="flex min-w-0 flex-1 flex-wrap gap-x-1.5 [overflow-wrap:anywhere]">
+                <time :datetime="cert.reminder.on">{{ reminderDay(cert.reminder.on) }}</time>
+                <span v-if="cert.reminder.note" translate="no">{{ cert.reminder.note }}</span>
+                <span v-if="cert.reminder.sent" class="text-ink-muted">{{ t('certs.reminder.sent') }}</span>
+              </span>
+              <span v-else class="min-w-0 flex-1 text-ink-muted">{{ t('certs.reminder.none') }}</span>
+              <button
+                type="button"
+                :aria-label="t('certs.reminder.edit')"
+                :title="t('certs.reminder.edit')"
+                class="-my-1 grid size-7 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
+                @click="editReminder"
+              >
+                <Pencil class="size-3.5" aria-hidden="true" />
+              </button>
+            </dd>
+            <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.memo.title') }}</dt>
+            <dd class="m-0 flex min-w-0 items-start gap-1">
+              <span v-if="cert.note" class="line-clamp-3 min-w-0 flex-1 whitespace-pre-line [overflow-wrap:anywhere]" translate="no" :title="cert.note">{{ cert.note }}</span>
+              <span v-else class="min-w-0 flex-1 text-ink-muted">{{ t('certs.memo.none') }}</span>
+              <button
+                type="button"
+                :aria-label="t('certs.memo.edit')"
+                :title="t('certs.memo.edit')"
+                class="-my-1 grid size-7 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
+                @click="editNote"
+              >
+                <Pencil class="size-3.5" aria-hidden="true" />
+              </button>
+            </dd>
+          </dl>
+        </section>
 
-        </div>
+        <!-- What it is: its names and the facts of the version in use, two
+             to a row where the card is wide, the fingerprints whole on rows
+             of their own. -->
+        <section
+          aria-labelledby="info"
+          :class="['min-w-0 rounded-lg border border-line bg-surface-raised p-3 sm:p-4 md:col-span-2', earlierVersions ? 'xl:col-span-2' : 'xl:col-span-3']"
+        >
+          <div class="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3">
+            <h2 id="info" class="m-0 text-heading font-semibold sm:text-section-title">{{ t('certs.info.title') }}</h2>
+            <RouterLink :to="{ path: '/certificates/new', query: { from: id } }" class="text-small">{{ t('certs.action.add_like') }}</RouterLink>
+          </div>
+          <dl
+            :class="[
+              'm-0 grid grid-cols-[fit-content(40%)_minmax(0,1fr)] gap-x-4 gap-y-1 text-small sm:grid-cols-[repeat(2,fit-content(9rem)_minmax(0,1fr))]',
+              earlierVersions ? '' : 'xl:grid-cols-[repeat(3,fit-content(9rem)_minmax(0,1fr))]',
+            ]"
+          >
+            <dt class="text-ink-muted [overflow-wrap:anywhere] sm:col-start-1">{{ t('certs.field.domains') }}</dt>
+            <dd class="m-0 flex min-w-0 items-start gap-1 sm:col-[2/-1]">
+              <!-- Broken after a dot, where a name must be; many of them scroll,
+                   so that the page still fits. -->
+              <span
+                :class="['flex min-w-0 flex-1 flex-wrap gap-x-4 [overflow-wrap:anywhere]', cert.domains.length > 12 ? 'max-h-24 overflow-y-auto' : '']"
+                translate="no"
+                :tabindex="cert.domains.length > 12 ? 0 : undefined"
+                :role="cert.domains.length > 12 ? 'region' : undefined"
+                :aria-label="cert.domains.length > 12 ? t('certs.field.domains') : undefined"
+              >
+                <span v-for="d in cert.domains" :key="d" class="min-w-0"
+                  ><template v-for="(label, i) in d.split(/(?<=\.)/)" :key="i"><wbr v-if="i" />{{ label }}</template></span
+                >
+              </span>
+              <button
+                v-if="issued"
+                type="button"
+                :aria-label="t('certs.domains.edit')"
+                :title="t('certs.domains.edit')"
+                class="-my-1 grid size-7 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
+                @click="editDomains"
+              >
+                <Pencil class="size-3.5" aria-hidden="true" />
+              </button>
+            </dd>
+            <template v-if="details && details.subject && details.subject !== `CN=${cert.domains[0]}`">
+              <dt class="text-ink-muted [overflow-wrap:anywhere] sm:col-start-1">{{ t('certs.field.subject') }}</dt>
+              <dd class="m-0 [overflow-wrap:anywhere] sm:col-[2/-1]" translate="no">{{ details.subject }}</dd>
+            </template>
+            <!-- The issuer, and the chain up from it, each with when it expires. -->
+            <template v-if="current">
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t(chain.length > 2 ? 'certs.chain.title' : 'certs.field.issuer') }}</dt>
+              <dd v-if="chain.length > 1" class="m-0 flex min-w-0 flex-col">
+                <span v-for="(c, i) in chain.slice(1)" :key="i" class="[overflow-wrap:anywhere]">
+                  <span translate="no">{{ c.subject }}</span>
+                  <span class="ml-1.5 text-caption text-ink-muted">{{ t('certs.chain.expires', { date: intl.date(c.notAfter) }) }}</span>
+                </span>
+              </dd>
+              <dd v-else class="m-0 [overflow-wrap:anywhere]" translate="no">{{ current.issuer }}</dd>
+            </template>
+            <template v-if="details?.validation">
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.validation_level') }}</dt>
+              <dd class="m-0 [overflow-wrap:anywhere]">{{ t(validationText[details.validation]) }}</dd>
+            </template>
+            <template v-if="details?.extKeyUsage.length">
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.uses') }}</dt>
+              <dd class="m-0 [overflow-wrap:anywhere]">{{ intl.list(details.extKeyUsage.map((u) => t(ekuText[u]))) }}</dd>
+            </template>
+            <template v-if="details">
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.transparency') }}</dt>
+              <dd class="m-0 [overflow-wrap:anywhere]">{{ details.scts ? t('certs.transparency.logged', { count: details.scts }) : t('certs.transparency.none') }}</dd>
+            </template>
+            <template v-if="details?.mustStaple">
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.must_staple') }}</dt>
+              <dd class="m-0 [overflow-wrap:anywhere]">{{ t('certs.must_staple.required') }}</dd>
+            </template>
+            <template v-if="details && (details.ocsp.length || details.crl.length || details.caIssuers.length)">
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.revocation') }}</dt>
+              <dd class="m-0 flex flex-wrap">
+                <a
+                  v-for="l in revocationLinks"
+                  :key="l.href"
+                  :href="l.href"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="underline underline-offset-2 not-first:before:mx-1.5 not-first:before:text-ink-muted not-first:before:no-underline not-first:before:content-['·']"
+                  >{{ t(l.label) }}</a
+                >
+              </dd>
+            </template>
+            <template v-if="current">
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.key') }}</dt>
+              <dd class="m-0 [overflow-wrap:anywhere]">{{ t(key!.key, key!.params) }}</dd>
+            </template>
+            <template v-if="details">
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.signature') }}</dt>
+              <dd class="m-0 [overflow-wrap:anywhere]" translate="no">{{ details.signatureAlgorithm }}</dd>
+            </template>
+            <template v-if="registrations.length">
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('watch.domain.cert_row') }}</dt>
+              <dd class="m-0 flex min-w-0 flex-col">
+                <RouterLink
+                  v-for="d in registrations"
+                  :key="d.name"
+                  to="/sites"
+                  :class="['[overflow-wrap:anywhere]', domainNeedsLook(d) ? 'font-semibold text-warn-ink' : 'text-ink']"
+                >
+                  <span translate="no">{{ d.name }}</span>
+                  <template v-if="d.expiresAt">
+                    · <time :datetime="d.expiresAt">{{ intl.date(d.expiresAt) }}</time>
+                  </template>
+                  <template v-else> · {{ t(d.state === 'pending' ? 'watch.domain.state.pending' : 'watch.domain.state.unknown') }}</template>
+                </RouterLink>
+              </dd>
+            </template>
+            <template v-if="current">
+              <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.field.csr') }}</dt>
+              <dd class="m-0 [overflow-wrap:anywhere]">
+                <button type="button" class="cursor-pointer border-0 bg-transparent p-0 text-small text-brand underline underline-offset-2 hover:text-brand-hover" @click="showingCsr = true">
+                  {{ t('certs.csr.show') }}
+                </button>
+              </dd>
+              <template v-for="h in hashes" :key="h.label">
+                <dt class="text-ink-muted [overflow-wrap:anywhere] sm:col-start-1">{{ t(h.label) }}</dt>
+                <dd class="m-0 flex min-w-0 items-start gap-1 sm:col-[2/-1] [&>button]:-my-0.5">
+                  <span class="min-w-0 flex-1 font-mono text-caption leading-5 [overflow-wrap:anywhere]" translate="no">{{ h.value }}</span>
+                  <CopyButton :value="h.value" :label="h.copy" />
+                </dd>
+              </template>
+            </template>
+          </dl>
+        </section>
+
+        <!-- The versions before the one in use, which the information
+             describes: beside it, as long as it is. -->
+        <section v-if="earlierVersions" aria-labelledby="versions" class="flex min-w-0 flex-col rounded-lg border border-line bg-surface-raised p-3 sm:p-4 md:col-span-2 xl:col-span-1">
+          <h2 id="versions" class="m-0 mb-1 text-heading font-semibold sm:text-section-title">{{ t('certs.history.title') }}</h2>
+          <ol class="m-0 max-h-60 list-none overflow-y-auto p-0 text-small xl:max-h-none xl:min-h-[3.25rem] xl:flex-[1_1_0]">
+            <li v-for="h in history" :key="h.version.id" class="flex items-center gap-1 border-b border-line py-1.5 last:border-b-0">
+              <div class="min-w-0 flex-1">
+                <div class="tabular-nums">{{ h.range }}</div>
+                <div class="text-caption text-ink-muted">{{ h.note }}</div>
+                <div v-if="h.version.revokedAt" class="flex items-start gap-1 font-semibold text-danger-ink">
+                  <ShieldX class="mt-0.5 size-4 flex-none" aria-hidden="true" />
+                  {{ t('certs.history.revoked', { date: intl.date(h.version.revokedAt), reason: t(reasonLabel(h.version.revokeReason)) }) }}
+                </div>
+                <div v-else-if="h.version.caRevokedAt" class="flex items-start gap-1 font-semibold text-danger-ink">
+                  <ShieldX class="mt-0.5 size-4 flex-none" aria-hidden="true" />
+                  {{ t('certs.history.ca_revoked', { date: intl.date(h.version.caRevokedAt), reason: t(caReasonText(h.version.caRevokeReason)) }) }}
+                </div>
+              </div>
+              <button
+                v-if="h.version.usable"
+                type="button"
+                :aria-label="t('certs.action.use_version', { range: h.range })"
+                :title="t('certs.action.use_version', { range: h.range })"
+                class="grid size-11 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink sm:size-8"
+                @click="startRevert(h.version.id, h.range, h.version.notAfter)"
+              >
+                <Undo2 class="size-4" aria-hidden="true" />
+              </button>
+              <button
+                v-if="h.version.revocable"
+                type="button"
+                :aria-label="t('certs.action.revoke_version', { range: h.range })"
+                :title="t('certs.action.revoke_version', { range: h.range })"
+                class="grid size-11 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-danger-ink sm:size-8"
+                @click="startRevoke(h.version.id, h.range)"
+              >
+                <ShieldX class="size-4" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                :aria-label="t('certs.action.download_version', { range: h.range })"
+                :title="t('certs.action.download_version', { range: h.range })"
+                class="grid size-11 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink sm:size-8"
+                @click="startDownload(h.version.id)"
+              >
+                <Download class="size-4" aria-hidden="true" />
+              </button>
+            </li>
+          </ol>
+          <p v-if="sourceType?.revocable && !history.some((h) => h.version.revocable)" class="m-0 mt-1.5 text-caption text-ink-muted">{{ t('certs.history.revoke_hint') }}</p>
+        </section>
       </div>
       <div class="flex flex-wrap gap-2 sm:hidden">
         <JecButton v-if="issued" variant="primary" :busy="issueNow.isPending.value" class="flex-[1_1_auto]" @click="startIssue">

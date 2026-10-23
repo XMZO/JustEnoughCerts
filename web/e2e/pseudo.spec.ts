@@ -948,7 +948,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.keyboard.press('Escape')
   await expect(page.locator('dialog[open]')).toHaveCount(0)
   // Its renewal paused: said where the renewal goes, and in the settings.
-  await expect(page.getByText(label('certs.settings.paused_state'))).toBeVisible()
+  await expect(page.locator('section[aria-labelledby=settings]').getByText(label('certs.settings.paused_state'))).toBeVisible()
   await page.getByRole('button', { name: label('certs.settings.edit') }).click()
   await expect(page.locator('dialog[open]').getByLabel(label('certs.settings.paused'))).toBeChecked()
   expect.soft(await problems(page), 'the renewal settings, paused').toEqual([])

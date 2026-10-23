@@ -75,7 +75,7 @@ public key, completes the chain and adds each; certificates it has already
 stay as they are, and certificates without a key and files it cannot read
 are listed.
 
-A note, under the certificate's information on its page, says what the
+A note, under the settings on the certificate's page, says what the
 certificate is for or whose it is; the list shows it, searches it and
 exports it.
 
@@ -122,16 +122,25 @@ version in use.
 
 ## The certificate's page
 
-The certificate's page shows:
+The certificate's page shows, from the top:
 
 - the remaining validity, the issue and expiry dates, the validity period
   and the next renewal;
-- the deploy targets, with the result of the latest deployment to each;
-- the steps and duration of the last renewal, or of the latest issuance;
-- the result of the online check (see [Renewal](renewal.md#online-checks));
-- the versions and the certificate chain;
-- the certificate details (domains, issuer, source, key, serial number
-  and SHA-256 fingerprint) and the renewal settings.
+- Deployments: the deploy targets, with the result of the latest
+  deployment to each, the pull address, and the result of the online check
+  (see [Renewal](renewal.md#online-checks));
+- Issuances: the steps and duration of the last renewal, or of the latest
+  issuance, and the issuances before it;
+- Settings: the source, validation, key, renewal, deployment hours,
+  notifications, reminder and note; Edit the renewal settings changes the
+  first of them;
+- Certificate details: domains, chain, validation level, uses, Certificate
+  Transparency, revocation lookup, key, signature algorithm, domain
+  registration, CSR, and the whole serial number and fingerprints;
+- Versions: beside the details, once there are earlier ones.
+
+In a desktop browser, from 1280 × 800, the page usually fits a screen;
+many targets or earlier versions scroll within their card.
 
 ## Actions
 
@@ -149,7 +158,7 @@ The certificate's page shows:
 | Pause the renewal | In the renewal settings: the certificate is no longer issued by itself, only when you choose Issue now, and its end is still told. For a domain whose DNS moves, or that is going away; `paused` in the configuration file |
 | Go back to an earlier version | From the version history, makes an earlier version current again, if it has not expired or been revoked and is for the same domains, and deploys it to every target: for when a new version causes trouble, as a chain some clients do not take. The renewal then goes by its end |
 | Revoke | Has an earlier version revoked at its CA, from the version history, with a reason; the password is required first. See below |
-| Pull address | Under the certificate's information: a server JEC cannot reach, as one on a LAN or behind NAT, fetches the version in use with its private key itself, with curl; see below |
+| Pull address | Under Deployments: a server JEC cannot reach, as one on a LAN or behind NAT, fetches the version in use with its private key itself, with curl; see below |
 | Delete certificate | Deletes every version and private key of the certificate. Copies already deployed elsewhere are not affected |
 
 Each row of the certificate list also offers the common actions in a menu.
@@ -159,7 +168,7 @@ Each row of the certificate list also offers the common actions in a menu.
 A server JEC cannot reach can fetch the certificate itself, from time to
 time:
 
-1. Under the certificate's information on its page, choose Set up beside
+1. Under Deployments on the certificate's page, choose Set up beside
    Pull address, enter the password and make a key. The key shows once.
 2. On the server, run the commands the page gives from time to time, as
    hourly from cron:

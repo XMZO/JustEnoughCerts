@@ -938,6 +938,7 @@
       "run_failed": "Started {start}. Time taken: {duration}. It failed.",
       "run_retrying": "Started {start}. It failed; trying again later.",
       "run_running": "Started {start}; still under way.",
+      "settings": "Settings",
       "show_log": "See the log",
       "show_progress": "See the progress",
       "title": "Certificate",

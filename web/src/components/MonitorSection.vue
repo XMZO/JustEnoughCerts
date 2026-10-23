@@ -16,8 +16,9 @@ import JecInput from './JecInput.vue'
 // served the last time it was connected to, and whether without its
 // intermediates, with a way to check now; the
 // domains that served the same, as visitors from the same side see them,
-// share a row. It shows only while the module runs.
-const props = defineProps<{ id: number }>()
+// share a row. It shows only while the module runs, under the deployments
+// in their card.
+const props = defineProps<{ id: number; domains: number }>()
 const { t } = useT()
 const intl = useIntl()
 const on = useMonitorOn()
@@ -52,6 +53,8 @@ const ports = computed(() => monitor.data.value?.ports ?? [443])
 const otherPorts = computed(() => ports.value.length !== 1 || ports.value[0] !== 443)
 
 const body = computed(() => monitor.data.value)
+// Only wildcards, which cannot be connected to: nothing is checked, ever.
+const nothing = computed(() => !body.value?.results.length && (body.value?.skipped.length ?? 0) >= props.domains)
 const looks: Record<MonitorResult['state'], { icon: Component; tone: string }> = {
   ok: { icon: CircleCheck, tone: 'text-ok-ink' },
   old: { icon: TriangleAlert, tone: 'text-warn-ink' },
@@ -102,18 +105,22 @@ function line(r: MonitorResult): string {
 
 <template>
   <!-- The next check: beside the title where the card is wide, under the results where it is narrow. -->
-  <section v-if="on && body" aria-labelledby="monitor" class="@container flex flex-col gap-1.5 rounded-lg border border-line bg-surface-raised p-3 sm:p-4">
+  <section v-if="on && body" aria-labelledby="monitor" class="@container flex flex-col gap-1.5 border-t border-line pt-2.5">
     <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
       <h2 id="monitor" class="m-0 mr-auto text-heading font-semibold sm:text-section-title">{{ t('monitor.section.title') }}</h2>
       <span v-if="body.results.length && body.checkAt" class="hidden text-caption text-ink-muted @md:inline">
         {{ t('monitor.section.next_check') }} <time :datetime="body.checkAt">{{ intl.dateTime(body.checkAt) }}</time>
       </span>
-      <JecButton v-if="body.tracked" size="sm" :busy="checkNow.isPending.value" @click="checkNow.mutate()">
+      <JecButton v-if="body.tracked && !nothing" size="sm" :busy="checkNow.isPending.value" @click="checkNow.mutate()">
         <RefreshCw class="size-4" aria-hidden="true" />{{ t('monitor.action.check') }}
       </JecButton>
     </div>
     <JecAlert v-if="checkError.error.value" :code="checkError.error.value.code" :params="checkError.error.value.params" />
     <p v-if="!body.tracked" class="m-0 text-small text-ink-muted">{{ t('monitor.section.untracked') }}</p>
+    <p v-else-if="nothing" class="m-0 flex items-start gap-2 text-small text-ink-muted">
+      <Info class="mt-0.5 size-4 flex-none" aria-hidden="true" />
+      <span class="min-w-0 [overflow-wrap:anywhere]">{{ t('monitor.section.skipped', { domains: body.skipped.join(', ') }) }}</span>
+    </p>
     <template v-else>
       <p v-if="!body.results.length && body.checkAt" class="m-0 flex items-center gap-2 text-small text-ink-muted">
         <Clock class="size-4 flex-none" aria-hidden="true" />
@@ -144,18 +151,20 @@ function line(r: MonitorResult): string {
           </div>
         </li>
       </ul>
-      <p v-if="body.skipped.length" class="m-0 text-caption text-ink-muted">{{ t('monitor.section.skipped', { domains: body.skipped.join(', ') }) }}</p>
-      <p class="m-0 flex items-center gap-1.5 text-caption text-ink-muted">
-        <span>{{ t('monitor.ports.label') }}</span>
-        <data :value="ports.join(',')" :class="otherPorts ? 'font-semibold text-ink' : ''" translate="no">{{ ports.join(', ') }}</data>
-        <button
-          type="button"
-          :aria-label="t('monitor.ports.edit')"
-          class="grid size-6 cursor-pointer place-items-center rounded-sm border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
-          @click="editingPorts = true"
-        >
-          <Pencil class="size-3.5" aria-hidden="true" />
-        </button>
+      <p class="m-0 flex flex-wrap items-center gap-x-1.5 text-caption text-ink-muted">
+        <span v-if="body.skipped.length" class="mr-2.5">{{ t('monitor.section.skipped', { domains: body.skipped.join(', ') }) }}</span>
+        <span class="inline-flex items-center gap-1.5">
+          <span>{{ t('monitor.ports.label') }}</span>
+          <data :value="ports.join(',')" :class="otherPorts ? 'font-semibold text-ink' : ''" translate="no">{{ ports.join(', ') }}</data>
+          <button
+            type="button"
+            :aria-label="t('monitor.ports.edit')"
+            class="-my-1 grid size-6 cursor-pointer place-items-center rounded-sm border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
+            @click="editingPorts = true"
+          >
+            <Pencil class="size-3.5" aria-hidden="true" />
+          </button>
+        </span>
       </p>
       <p v-if="body.results.length && body.checkAt" class="m-0 text-caption text-ink-muted @md:hidden">
         {{ t('monitor.section.next_check') }} <time :datetime="body.checkAt">{{ intl.dateTime(body.checkAt) }}</time>

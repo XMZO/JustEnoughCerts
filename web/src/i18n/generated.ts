@@ -736,6 +736,7 @@ export type MessageKey =
   | "certs.detail.run_failed"
   | "certs.detail.run_retrying"
   | "certs.detail.run_running"
+  | "certs.detail.settings"
   | "certs.detail.show_log"
   | "certs.detail.show_progress"
   | "certs.detail.title"
