@@ -86,6 +86,7 @@ which is then not retried automatically.
 | Nginx | `ssl_certificate` to `fullchain.pem`, `ssl_certificate_key` to `privkey.pem` | `nginx -s reload` or `systemctl reload nginx` |
 | Apache | `SSLCertificateFile` to `fullchain.pem`, `SSLCertificateKeyFile` to `privkey.pem` | `systemctl reload apache2` (`httpd` on some systems) |
 | HAProxy | A combined file, such as `{domain}.pem`, in the directory of `crt` | `systemctl reload haproxy` |
+| Caddy | `tls <fullchain.pem> <privkey.pem>` in the Caddyfile (or the Caddy target, through the admin API, with no files) | `caddy reload --config /etc/caddy/Caddyfile --force`, which needs no root: without `--force` Caddy sees an unchanged configuration and keeps the old certificate (tried with Caddy 2.11.7) |
 | Traefik | `certFile` and `keyFile` in a file of the file provider's directory, under `tls.certificates` | `touch` that file: Traefik reloads on a change of its configuration, not of the certificate files (tried with Traefik 3.5) |
 
 ## Other notes

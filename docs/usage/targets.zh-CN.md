@@ -50,6 +50,7 @@
 | Nginx | `ssl_certificate` 指向 `fullchain.pem`，`ssl_certificate_key` 指向 `privkey.pem` | `nginx -s reload` 或 `systemctl reload nginx` |
 | Apache | `SSLCertificateFile` 指向 `fullchain.pem`，`SSLCertificateKeyFile` 指向 `privkey.pem` | `systemctl reload apache2`（部分系统为 `httpd`） |
 | HAProxy | 合并文件（如 `{domain}.pem`），放在 `crt` 指定的目录 | `systemctl reload haproxy` |
+| Caddy | Caddyfile 中写 `tls <fullchain.pem> <privkey.pem>`（也可改用经管理接口的 Caddy 目标，不写文件） | `caddy reload --config /etc/caddy/Caddyfile --force`，不需要 root；不加 `--force` 时 Caddy 认为配置未变，继续使用旧证书（以 Caddy 2.11.7 实测） |
 | Traefik | 在文件提供者（file provider）目录的配置文件中，于 `tls.certificates` 下写 `certFile` 与 `keyFile` | `touch` 该配置文件：Traefik 在配置文件变化时重新加载，证书文件变化不会触发（以 Traefik 3.5 实测） |
 
 ## 其他说明
