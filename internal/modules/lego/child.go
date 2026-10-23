@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/go-acme/lego/v5/challenge"
@@ -15,6 +17,7 @@ import (
 	"github.com/go-acme/lego/v5/providers/dns"
 
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/children"
+	"github.com/XMZO/JustEnoughCerts/internal/lib/dnscheck"
 )
 
 // The parent and its child exchange one JSON object per line: the child
@@ -77,6 +80,10 @@ func runChild(ctx context.Context, args []string, in io.Reader, out io.Writer, l
 		return 1
 	}
 
+	// lego follows every CNAME of _acme-challenge a recursive resolver
+	// answers; dnscheck.Follow tells, for each request, when not to: a
+	// wildcard's CNAME, or a stale one. Unless the settings turn it off.
+	own, _ := strconv.ParseBool(os.Getenv(noCNAME))
 	dec := json.NewDecoder(in)
 	for {
 		var req request
@@ -85,6 +92,9 @@ func runChild(ctx context.Context, args []string, in io.Reader, out io.Writer, l
 				return 0
 			}
 			return 1
+		}
+		if !own && (req.Op == "present" || req.Op == "cleanup") {
+			_ = os.Setenv(noCNAME, strconv.FormatBool(!dnscheck.Follow(ctx, req.Domain)))
 		}
 		var err error
 		switch req.Op {
@@ -104,6 +114,9 @@ func runChild(ctx context.Context, args []string, in io.Reader, out io.Writer, l
 		}
 	}
 }
+
+// noCNAME is lego's switch that stops it following CNAMEs.
+const noCNAME = "LEGO_DISABLE_CNAME_SUPPORT"
 
 // excluded are the providers JEC does not offer, as tools/legocatalog
 // leaves them out of the catalog.

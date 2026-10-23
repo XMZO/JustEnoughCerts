@@ -79,6 +79,7 @@ export type MessageKey =
   | "acme.log.remove_file_failed"
   | "acme.log.replaces_refused"
   | "acme.log.wait"
+  | "acme.log.wildcard_cname"
   | "acme.module.description"
   | "acme.module.name"
   | "acme.preflight.internal"

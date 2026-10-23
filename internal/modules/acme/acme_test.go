@@ -154,7 +154,15 @@ func (s *fakeSolver) CleanUp(_ context.Context, ch contracts.Challenge) error {
 func (*fakeSolver) Wait() (time.Duration, time.Duration) { return 2 * time.Minute, 5 * time.Second }
 func (*fakeSolver) Close() error                         { return nil }
 
+// noWildcards has no _acme-challenge get a wildcard's CNAME, for one test.
+func noWildcards(t *testing.T) {
+	saved := wildcardCNAME
+	wildcardCNAME = func(context.Context, string) bool { return false }
+	t.Cleanup(func() { wildcardCNAME = saved })
+}
+
 func TestDNSProvider(t *testing.T) {
+	noWildcards(t)
 	s := &fakeSolver{}
 	var logged []i18n.Key
 	p := &dnsProvider{solver: s, log: func(l contracts.LogLine) { logged = append(logged, l.Key) }}
@@ -236,6 +244,38 @@ func TestRegisterError(t *testing.T) {
 		if !errors.As(err, &p) || p.Key != tt.key || retry.IsPermanent(err) != tt.permanent {
 			t.Errorf("%s: %v, permanent %v", name, err, retry.IsPermanent(err))
 		}
+	}
+}
+
+// TestPrecheckWildcard: where _acme-challenge has a wildcard's CNAME, the
+// wait checks the name itself, not where lego follows the CNAME to.
+func TestPrecheckWildcard(t *testing.T) {
+	savedWildcard, savedVisible := wildcardCNAME, visible
+	t.Cleanup(func() { wildcardCNAME, visible = savedWildcard, savedVisible })
+	wildcardCNAME = func(_ context.Context, domain string) bool { return domain == "w.example.com" }
+	var asked []string
+	visible = func(_ context.Context, name, typ, value string) (bool, error) {
+		asked = append(asked, name+" "+typ+" "+value)
+		return true, nil
+	}
+	var logged []i18n.Key
+	p := &dnsProvider{solver: &fakeSolver{}, log: func(l contracts.LogLine) { logged = append(logged, l.Key) }, missed: map[string]bool{}}
+	for _, d := range []string{"w.example.com", "plain.example.com"} {
+		if err := p.Present(t.Context(), d, "t", "k"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	legoCheck := func(context.Context, string, string) (bool, error) { return true, nil }
+	for _, d := range []string{"*.w.example.com", "plain.example.com"} {
+		if ok, err := p.precheck(t.Context(), d, "cdn.example.net.", "v", legoCheck); !ok || err != nil {
+			t.Fatalf("%s: %v, %v", d, ok, err)
+		}
+	}
+	if !slices.Equal(asked, []string{"_acme-challenge.w.example.com. TXT v"}) {
+		t.Errorf("asked %v", asked)
+	}
+	if !slices.Contains(logged, i18n.AcmeLogWildcardCname) {
+		t.Errorf("logged %v", logged)
 	}
 }
 

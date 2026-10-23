@@ -6,6 +6,8 @@ package dnscheck
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
@@ -57,13 +59,112 @@ func Zone(ctx context.Context, name string) (string, error) {
 
 // Delegated returns the name that _acme-challenge under domain points to
 // through CNAMEs, where the record of an ACME challenge goes, as lego
-// follows them; empty when it points nowhere else.
+// follows them; empty when it points nowhere else, or when Follow says the
+// CNAME is not one to follow.
 func Delegated(ctx context.Context, domain string) string {
-	info := dns01.GetChallengeInfo(ctx, strings.TrimPrefix(strings.TrimSuffix(domain, "."), "*."), "")
+	name := strings.TrimPrefix(strings.TrimSuffix(domain, "."), "*.")
+	if !Follow(ctx, name) {
+		return ""
+	}
+	info := dns01.GetChallengeInfo(ctx, name, "")
 	if info.EffectiveFQDN == info.FQDN {
 		return ""
 	}
 	return dns01.UnFqdn(info.EffectiveFQDN)
+}
+
+// Follow reports whether a CNAME of _acme-challenge under domain is to be
+// followed to put its validation record, as lego follows every CNAME a
+// recursive resolver answers. It is not when the authoritative servers of
+// the zone answer none (a resolver may still have one cached), nor when
+// it comes from a wildcard (see Wildcard). When the servers cannot be
+// asked, lego's way stands.
+func Follow(ctx context.Context, domain string) bool {
+	target, wildcard, err := challengeCNAME(ctx, domain)
+	return err != nil || (target != "" && !wildcard)
+}
+
+// Wildcard reports whether the CNAME of _acme-challenge under domain comes
+// from a wildcard, as *.example.com CNAME cdn.example.net: the
+// authoritative servers answer a made-up name beside it with the same one.
+// Such a CNAME is no delegation; a record of _acme-challenge's own, in the
+// zone of domain, takes the wildcard's place, for the CA too.
+func Wildcard(ctx context.Context, domain string) bool {
+	target, wildcard, err := challengeCNAME(ctx, domain)
+	return err == nil && target != "" && wildcard
+}
+
+// authorities returns the authoritative servers of the zone of name, as
+// host:port to ask; tests replace it.
+var authorities = func(ctx context.Context, name string) ([]string, error) {
+	zone, err := Zone(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	return nameServers(ctx, zone)
+}
+
+// challengeCNAME asks the authoritative servers of the zone of domain for
+// the CNAME of _acme-challenge under it, and, when there is one, for that
+// of a made-up name beside it: the target, and whether both are the same.
+func challengeCNAME(ctx context.Context, domain string) (target string, wildcard bool, err error) {
+	name := strings.ToLower(strings.TrimPrefix(strings.TrimSuffix(domain, "."), "*."))
+	servers, err := authorities(ctx, name)
+	if err != nil {
+		return "", false, err
+	}
+	if target, err = cnameAt(ctx, "_acme-challenge."+name, servers); err != nil || target == "" {
+		return "", false, err
+	}
+	b := make([]byte, 6)
+	_, _ = rand.Read(b)
+	beside, err := cnameAt(ctx, "_jec-"+hex.EncodeToString(b)+"."+name, servers)
+	if err != nil {
+		return "", false, err
+	}
+	return target, beside == target, nil
+}
+
+// cnameAt returns the target of the CNAME of name, without a final dot,
+// as the first of servers that answers tells; empty when there is none.
+func cnameAt(ctx context.Context, name string, servers []string) (string, error) {
+	m := new(dns.Msg)
+	m.SetQuestion(dns.Fqdn(name), dns.TypeCNAME)
+	m.RecursionDesired = false
+	last := errors.New("dnscheck: no name server to ask")
+	for _, addr := range servers {
+		in, err := exchange(ctx, m, addr)
+		if err != nil {
+			last = err
+			continue
+		}
+		if in.Rcode != dns.RcodeSuccess && in.Rcode != dns.RcodeNameError {
+			last = fmt.Errorf("dnscheck: %s answers %s for the CNAME of %s", addr, dns.RcodeToString[in.Rcode], name)
+			continue
+		}
+		for _, rr := range in.Answer {
+			if v, ok := rr.(*dns.CNAME); ok && strings.EqualFold(v.Hdr.Name, dns.Fqdn(name)) {
+				return strings.ToLower(strings.TrimSuffix(v.Target, ".")), nil
+			}
+		}
+		return "", nil
+	}
+	return "", last
+}
+
+// exchange sends m to the server at addr, again over TCP when the answer
+// is truncated.
+func exchange(ctx context.Context, m *dns.Msg, addr string) (*dns.Msg, error) {
+	c := &dns.Client{Timeout: 5 * time.Second}
+	in, _, err := c.ExchangeContext(ctx, m, addr)
+	if err == nil && in.Truncated {
+		c.Net = "tcp"
+		in, _, err = c.ExchangeContext(ctx, m, addr)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("dnscheck: ask %s: %w", addr, err)
+	}
+	return in, nil
 }
 
 // Visible reports whether the authoritative servers of the zone of name
@@ -230,14 +331,9 @@ func answers(ctx context.Context, r record, addr string) (bool, error) {
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn(r.name), qtype)
 	m.RecursionDesired = false
-	c := &dns.Client{Timeout: 5 * time.Second}
-	in, _, err := c.ExchangeContext(ctx, m, addr)
-	if err == nil && in.Truncated {
-		c.Net = "tcp"
-		in, _, err = c.ExchangeContext(ctx, m, addr)
-	}
+	in, err := exchange(ctx, m, addr)
 	if err != nil {
-		return false, fmt.Errorf("dnscheck: ask %s: %w", addr, err)
+		return false, err
 	}
 	for _, rr := range in.Answer {
 		switch v := rr.(type) {
@@ -303,14 +399,9 @@ func targetAt(ctx context.Context, name string, subnet netip.Prefix, addr string
 		SourceNetmask: uint8(subnet.Bits()), //nolint:gosec // the length of a prefix is at most 128
 	})
 	m.Extra = append(m.Extra, opt)
-	c := &dns.Client{Timeout: 5 * time.Second}
-	in, _, err := c.ExchangeContext(ctx, m, addr)
-	if err == nil && in.Truncated {
-		c.Net = "tcp"
-		in, _, err = c.ExchangeContext(ctx, m, addr)
-	}
+	in, err := exchange(ctx, m, addr)
 	if err != nil {
-		return "", fmt.Errorf("dnscheck: ask %s: %w", addr, err)
+		return "", err
 	}
 	at := dns.Fqdn(name)
 	for range 10 { // the CNAMEs the server answers with

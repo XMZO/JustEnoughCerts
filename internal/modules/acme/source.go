@@ -81,7 +81,7 @@ func (s *source) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509
 		// lego asks the resolvers set for the name servers of a zone but the
 		// system's for their addresses, which those may not know.
 		p.check = func(ctx context.Context, fqdn, value string) (bool, error) {
-			return dnscheck.Visible(ctx, fqdn, "TXT", value)
+			return visible(ctx, fqdn, "TXT", value)
 		}
 	}
 	if req.Files != nil {
@@ -368,7 +368,14 @@ type dnsProvider struct {
 	mu      sync.Mutex
 	waiting bool            // the wait was logged
 	missed  map[string]bool // domains not seen yet, each logged once; false once seen
+	direct  map[string]bool // domains whose _acme-challenge has a wildcard's CNAME
 }
+
+// wildcardCNAME and visible look up DNS; tests replace them.
+var (
+	wildcardCNAME = dnscheck.Wildcard
+	visible       = dnscheck.Visible
+)
 
 func (p *dnsProvider) Present(ctx context.Context, domain, token, keyAuth string) error {
 	p.log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepChallenge, Key: i18n.AcmeLogPresent, Params: map[string]any{"domain": domain}})
@@ -378,6 +385,18 @@ func (p *dnsProvider) Present(ctx context.Context, domain, token, keyAuth string
 	p.log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepChallenge, Key: i18n.AcmeLogRecord, Params: map[string]any{
 		"name": "_acme-challenge." + domain, "value": base64.RawURLEncoding.EncodeToString(sum[:]),
 	}})
+	if !p.skipCheck && wildcardCNAME(ctx, domain) {
+		// The record goes in the zone of domain, beside the wildcard, whose
+		// CNAME lego, and the caches of resolvers, would still follow when
+		// checking it.
+		p.log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepChallenge, Key: i18n.AcmeLogWildcardCname, Params: map[string]any{"domain": domain}})
+		p.mu.Lock()
+		if p.direct == nil {
+			p.direct = map[string]bool{}
+		}
+		p.direct[domain] = true
+		p.mu.Unlock()
+	}
 	err := p.solver.Present(ctx, contracts.Challenge{Domain: domain, Token: token, KeyAuth: keyAuth})
 	var problem *contracts.Problem
 	if err != nil && !errors.As(err, &problem) {
@@ -423,6 +442,15 @@ func (p *dnsProvider) precheck(ctx context.Context, domain, fqdn, value string, 
 	}
 	if p.check != nil {
 		check = p.check
+	}
+	p.mu.Lock()
+	direct := p.direct[strings.TrimPrefix(domain, "*.")]
+	p.mu.Unlock()
+	if direct {
+		fqdn = "_acme-challenge." + strings.TrimPrefix(domain, "*.") + "."
+		check = func(ctx context.Context, fqdn, value string) (bool, error) {
+			return visible(ctx, fqdn, "TXT", value)
+		}
 	}
 	found, err := check(ctx, fqdn, value)
 	p.mu.Lock()

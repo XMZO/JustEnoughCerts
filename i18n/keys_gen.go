@@ -71,6 +71,7 @@ const (
 	AcmeLogRemoveFileFailed                  Key = "acme.log.remove_file_failed"
 	AcmeLogReplacesRefused                   Key = "acme.log.replaces_refused"
 	AcmeLogWait                              Key = "acme.log.wait"
+	AcmeLogWildcardCname                     Key = "acme.log.wildcard_cname"
 	AcmeModuleDescription                    Key = "acme.module.description"
 	AcmeModuleName                           Key = "acme.module.name"
 	AcmePreflightInternal                    Key = "acme.preflight.internal"

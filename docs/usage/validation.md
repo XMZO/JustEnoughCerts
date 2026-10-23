@@ -30,7 +30,10 @@ of up to 50) to pick, a list not yet tried with real accounts.
   provider; the validation record is then added under the name the CNAME
   points to. The certificate's DNS provider must then host the zone the
   CNAME points into; Try shows where the record went, and the account
-  check while adding a certificate looks at that zone.
+  check while adding a certificate looks at that zone. A CNAME that
+  `_acme-challenge` only gets from a wildcard (such as `*.example.com`
+  pointing to a CDN) is no delegation: JEC tells the two apart and adds
+  the record in the domain's own zone.
 - **Try**: Try, on each provider's card on the DNS page, does what an
   issuance would: it adds a TXT record at `_acme-challenge` under the
   domain given, waits up to 40 seconds for the authoritative DNS to answer

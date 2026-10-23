@@ -65,14 +65,16 @@ func useResolvers(t *testing.T, servers ...string) {
 }
 
 func TestNameServers(t *testing.T) {
-	useResolvers(t, serveRecords(t,
+	addr := serveRecords(t,
 		"example.com. 60 IN SOA kara.ns.cloudflare.com. dns.cloudflare.com. 1 7200 3600 1209600 60",
 		"example.com. 60 IN NS Kara.NS.Cloudflare.com.",
 		"example.com. 60 IN NS bob.ns.cloudflare.com.",
 		"_acme-challenge.other.example.com. 60 IN CNAME _acme-challenge.example.org.",
 		"example.org. 60 IN SOA f1g1ns1.dnspod.net. freednsadmin.dnspod.com. 1 3600 180 1209600 180",
 		"example.org. 60 IN NS f1g1ns1.dnspod.net.",
-	))
+	)
+	useResolvers(t, addr)
+	useAuthorities(t, addr)
 	for _, c := range []struct {
 		domain, zone string
 		hosts        []string

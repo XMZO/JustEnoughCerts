@@ -80,7 +80,8 @@
       "remove_file": "Removing the validation file for {domain}",
       "remove_file_failed": "Could not remove the validation file for {domain}; you can remove it from the website",
       "replaces_refused": "The CA does not take the order as the renewal of the current version: ordering again without saying so",
-      "wait": "Waiting for the records to show in DNS, at most {seconds, plural, one {# second} other {# seconds}}"
+      "wait": "Waiting for the records to show in DNS, at most {seconds, plural, one {# second} other {# seconds}}",
+      "wildcard_cname": "_acme-challenge.{domain} has a CNAME only through a wildcard, which is no delegation: the record goes in the zone of {domain}"
     },
     "module": {
       "description": "Gets certificates from any CA that speaks ACME, such as Let's Encrypt, ZeroSSL and Google Trust Services.",
