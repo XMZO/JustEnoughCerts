@@ -1607,6 +1607,7 @@ export type MessageKey =
   | "kernel.credentials.never_used"
   | "kernel.credentials.no_kinds"
   | "kernel.credentials.pick_first"
+  | "kernel.credentials.search"
   | "kernel.credentials.title"
   | "kernel.credentials.unavailable"
   | "kernel.credentials.unused"

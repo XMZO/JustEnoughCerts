@@ -34,8 +34,11 @@ validation method.
 
 Each instance shows as a card on its page, with its main settings, how its
 last test or deployment went and how many certificates use it. The card
-tests, edits and deletes it; on phones, these actions are in the ⋯ menu at
-the card's top right.
+tests, edits and deletes it. On phones, only providers in trouble (their
+last test or deployment failed) are cards, listed first; each of the others
+takes a row, which you tap to edit, with the other actions in its ⋯ menu. A
+page holds as many rows as the screen does, and a search shows once there
+are more than six. The Credentials page works the same way.
 
 ## Credentials
 

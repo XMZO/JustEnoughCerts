@@ -2151,6 +2151,7 @@
       "never_used": "Not used yet",
       "no_kinds": "No provider type takes credentials: switch the modules of clouds or SSH on, on the Modules page.",
       "pick_first": "Choose a kind of credential first.",
+      "search": "Search credentials",
       "title": "Credentials",
       "unavailable": "This kind of credential is of no use now: the modules that take it are off.",
       "unused": "No provider uses it yet",

@@ -25,8 +25,15 @@ async function pick(dialog: Locator, name: string): Promise<void> {
   await expect(dialog.locator('form [inert]')).toHaveCount(0)
 }
 
-// act runs an action of a provider's card: a button where the screen is
-// wide, an item of the card's menu on phones.
+// provider is a provider's card, or on phones, where only those in trouble
+// are cards, its row; the first one shown without a name.
+function provider(page: Page, name?: string): Locator {
+  const all = page.locator('article:visible, li[data-row]:visible')
+  return name ? all.filter({ hasText: name }) : all.first()
+}
+
+// act runs an action of a provider's card or row: a button where the
+// screen is wide, an item of its menu on phones.
 async function act(card: Locator, key: string): Promise<void> {
   await expect(card).toBeVisible()
   const menu = card.locator('button[aria-haspopup=menu]')
@@ -428,7 +435,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'domain validation with one').toEqual([])
   // Tried on a domain: not one; then one, which the provider, not there,
   // fails to add a record to.
-  await act(page.getByRole('article').first(), 'kernel.providers.try')
+  await act(provider(page), 'kernel.providers.try')
   await expect(dialog).toBeVisible()
   expect.soft(await problems(page), 'try a DNS provider').toEqual([])
   await dialog.locator('#try-domain').fill('nodot')
@@ -461,7 +468,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   })
   expect(webroot.status()).toBe(201)
   await page.reload()
-  await act(page.getByRole('article').filter({ hasText: 'e2e www' }), 'kernel.providers.try')
+  await act(provider(page, 'e2e www'), 'kernel.providers.try')
   await expect(dialog.getByText(label('kernel.providers.try_http_intro'))).toBeVisible()
   expect.soft(await problems(page), 'try a website directory').toEqual([])
   await page.keyboard.press('Escape')
@@ -506,7 +513,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   await dialog.locator('button[type=submit]').click()
   await expect(page.locator('dialog[open]')).toHaveCount(0)
   expect.soft(await problems(page), 'deploy targets with one').toEqual([])
-  await act(page.getByRole('article').filter({ hasText: 'e2e files' }), 'kernel.providers.test')
+  await act(provider(page, 'e2e files'), 'kernel.providers.test')
   await expect(page.getByRole('status')).toBeVisible()
   expect.soft(await problems(page), 'deploy targets: a test that passed').toEqual([])
 
@@ -567,7 +574,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'add a source: a directory to watch').toEqual([])
   await dialog.locator('button[type=submit]').click()
   await expect(page.locator('dialog[open]')).toHaveCount(0)
-  const watched = page.getByRole('article').filter({ hasText: 'e2e watch' })
+  const watched = provider(page, 'e2e watch')
   await act(watched, 'kernel.providers.test')
   await expect(watched.getByRole('status')).toBeVisible()
   expect.soft(await problems(page), 'sources: a directory watched').toEqual([])
@@ -586,7 +593,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'add a deploy target: saved, and a test that failed').toEqual([])
   await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
   await expect(page.locator('dialog[open]')).toHaveCount(0)
-  await act(page.getByRole('article').filter({ hasText: 'e2e relative' }), 'kernel.providers.test')
+  await act(provider(page, 'e2e relative'), 'kernel.providers.test')
   await expect(page.getByRole('alert')).toBeVisible()
   expect.soft(await problems(page), 'deploy targets: a test that failed').toEqual([])
   await page.goto('./certificates/2')
@@ -607,7 +614,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'certificates with one that could not be deployed').toEqual([])
   // The target's card tells how it fared last: the deployment, after the test.
   await page.goto('./targets')
-  const relative = page.getByRole('article').filter({ hasText: 'e2e relative' })
+  const relative = provider(page, 'e2e relative')
   await expect(relative.locator('p.text-warn-ink time')).toBeVisible()
   expect.soft(await problems(page), 'deploy targets, one of which failed').toEqual([])
   // Long data in the cards: a long name and a long path, with no place to
@@ -622,10 +629,10 @@ test('every page is translated and fits', async ({ page }, info) => {
   })
   expect(longNotifier.status()).toBe(201)
   await page.reload()
-  await expect(page.getByRole('article').filter({ hasText: long })).toBeVisible()
+  await expect(provider(page, long)).toBeVisible()
   expect.soft(await problems(page), 'deploy targets with long data').toEqual([])
   await page.goto('./notify')
-  await expect(page.getByRole('article').filter({ hasText: long })).toBeVisible()
+  await expect(provider(page, long)).toBeVisible()
   expect.soft(await problems(page), 'notifications with long data').toEqual([])
   for (const res of [longTarget, longNotifier]) {
     const { id } = (await res.json()) as { id: number }
@@ -652,7 +659,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   await dialog.locator('button[type=submit]').click()
   await expect(page.locator('dialog[open]')).toHaveCount(0)
   expect.soft(await problems(page), 'notifications with one').toEqual([])
-  await act(page.getByRole('article').filter({ hasText: 'e2e hook' }), 'notify.action.test')
+  await act(provider(page, 'e2e hook'), 'notify.action.test')
   await expect(page.getByRole('alert')).toBeVisible()
   expect.soft(await problems(page), 'a test that failed').toEqual([])
 
@@ -665,7 +672,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'add a channel: a script').toEqual([])
   await dialog.locator('button[type=submit]').click()
   await expect(page.locator('dialog[open]')).toHaveCount(0)
-  const script = page.locator('article', { hasText: 'e2e script' })
+  const script = provider(page, 'e2e script')
   await act(script, 'notify.action.test')
   await expect(script.getByRole('alert')).toHaveText(message('hooks.error.status_output', { status: '1', output: 'no route from notify.test' }))
   expect.soft(await problems(page), 'a script whose test failed').toEqual([])
@@ -809,7 +816,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'add a credential: an SSH key').toEqual([])
   await dialog.locator('button[type=submit]').click()
   await expect(page.locator('dialog[open]')).toHaveCount(0)
-  await expect(page.getByRole('heading', { name: 'e2e key' })).toBeVisible()
+  await expect(provider(page, 'e2e key')).toBeVisible()
   expect.soft(await problems(page), 'credentials with one').toEqual([])
   await page.goto('./targets')
   await page.getByRole('button', { name: label('kernel.providers.target.add') }).filter({ visible: true }).first().click()

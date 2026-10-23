@@ -15,10 +15,13 @@ import JecButton from '../components/JecButton.vue'
 import JecDialog from '../components/JecDialog.vue'
 import PageHeader from '../components/PageHeader.vue'
 import CalendarFeed from '../components/CalendarFeed.vue'
+import JecPager from '../components/JecPager.vue'
 import ProviderDialog from '../components/ProviderDialog.vue'
 import RowMenu, { type MenuItem } from '../components/RowMenu.vue'
+import SearchBox from '../components/SearchBox.vue'
 import TryDnsDialog from '../components/TryDnsDialog.vue'
 import TypeTags from '../components/TypeTags.vue'
+import { keepPlace, useFitRows } from '../fit'
 import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import { kindPages, summary, typeName, type PageKind } from '../providers/fields'
@@ -30,7 +33,8 @@ import { fromMore } from '../shell'
 // how many certificates use it, and tests it when its type can be; a
 // notifier's card says instead what it tells about and how its last note
 // went, and sends a test note. On phones the actions are in the card's
-// menu, so that a card takes a few lines rather than half the screen.
+// menu, so that a card takes a few lines rather than half the screen, and
+// only those in trouble are cards: the others are rows, a page at a time.
 const props = defineProps<{ kind: PageKind }>()
 
 const { t } = useT()
@@ -171,6 +175,8 @@ const cards = computed(() =>
       { key: 'edit', label: t('kernel.action.edit'), icon: Pencil, run: () => (editing.value = p) },
       { key: 'delete', label: t('kernel.action.delete'), icon: Trash2, danger: true, run: () => startDelete(p) },
     ]
+    const status = notifiers.value ? undefined : statusOf(p)
+    const send = sends.data.value?.find((s) => s.notifier === p.id)
     return {
       provider: p,
       type: summaryType,
@@ -179,10 +185,12 @@ const cards = computed(() =>
       shown: summary(fullType(p.type), p),
       secrets: p.secretKeys.length,
       credential: p.credentialId ? (credentials.data.value?.find((c) => c.id === p.credentialId)?.name ?? '') : undefined,
-      status: notifiers.value ? undefined : statusOf(p),
+      status,
       uses,
       events: notifiers.value ? events(p) : '',
-      send: sends.data.value?.find((s) => s.notifier === p.id),
+      send,
+      // What failed last, or a type no module offers now.
+      trouble: (!!types.data.value && !summaryType) || (notifiers.value ? send?.state === 'failed' : status?.ok === false),
       testable,
       triable,
       menu,
@@ -226,6 +234,53 @@ watch(
   },
   { immediate: true },
 )
+
+// On phones, as the user asked for when there are many: those in trouble
+// stay cards, first, and the others are rows of two lines, tapped to edit,
+// a page of them filling the screen (the page in the address), with a
+// search once there are more than a few. Wider screens show every card.
+const query = ref('')
+const found = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  if (!q) return cards.value
+  return cards.value.filter((c) =>
+    [c.provider.name, c.typeLabel, c.credential ?? '', ...c.shown.map((s) => (s.option ? t(s.option) : (s.value ?? '')))].some((v) =>
+      v.toLowerCase().includes(q),
+    ),
+  )
+})
+const troubled = computed(() => new Set(found.value.filter((c) => c.trouble).map((c) => c.provider.id)))
+const calm = computed(() => found.value.filter((c) => !c.trouble))
+const rows = ref<HTMLElement>()
+const after = ref<HTMLElement>()
+const size = useFitRows(rows, {
+  row: () => 57,
+  // Under the rows: the pager, what the page says last, its margin and the
+  // tab bar.
+  below: () => (after.value?.offsetHeight ?? 0) + 150,
+  min: 4,
+  again: () => cards.value,
+})
+const pageNo = computed({
+  get: () => Math.max(1, Number(route.query.page) || 1),
+  set: (p: number) => {
+    void router.replace({ query: { ...route.query, page: p > 1 ? String(p) : undefined } })
+    window.scrollTo({ top: 0 })
+  },
+})
+watch(query, () => {
+  if (pageNo.value > 1) pageNo.value = 1
+})
+watch(size, (n, o) => {
+  if (o && n !== o && pageNo.value > 1) pageNo.value = keepPlace(pageNo.value, o, n)
+})
+const pages = computed(() => Math.max(1, Math.ceil(calm.value.length / Math.max(1, size.value))))
+// Past the last page, as after some were deleted: the last one.
+const at = computed({
+  get: () => Math.min(pageNo.value, pages.value),
+  set: (p: number) => (pageNo.value = p),
+})
+const shownRows = computed(() => calm.value.slice((at.value - 1) * size.value, at.value * size.value))
 
 const deleting = ref<Provider>()
 const deleteOpen = computed({
@@ -281,8 +336,18 @@ async function confirmDelete() {
       <JecButton variant="primary" @click="adding = true"><Plus class="size-4" aria-hidden="true" />{{ t(page.add) }}</JecButton>
     </section>
 
-    <div v-else-if="cards.length" class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-3">
-      <article v-for="c in cards" :key="c.provider.id" class="flex min-w-0 flex-col gap-1.5 rounded-lg border border-line bg-surface-raised p-3 sm:gap-2 sm:p-4">
+    <SearchBox v-if="cards.length > 6" v-model="query" label="kernel.providers.search" class="sm:hidden" />
+    <p v-if="query && !found.length" class="m-0 text-ink-muted sm:hidden">{{ t('kernel.providers.no_match') }}</p>
+
+    <div
+      v-if="cards.length"
+      :class="['grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-3', troubled.size ? '' : 'max-sm:hidden']"
+    >
+      <article
+        v-for="c in cards"
+        :key="c.provider.id"
+        :class="['flex min-w-0 flex-col gap-1.5 rounded-lg border border-line bg-surface-raised p-3 sm:gap-2 sm:p-4', troubled.has(c.provider.id) ? '' : 'max-sm:hidden']"
+      >
         <div class="flex min-w-0 items-start gap-2">
           <div class="flex min-w-0 flex-1 flex-col gap-0.5">
             <h2 class="m-0 truncate text-heading font-semibold" translate="no" :title="c.provider.name">{{ c.provider.name }}</h2>
@@ -373,12 +438,57 @@ async function confirmDelete() {
       </button>
     </div>
 
-    <p v-if="types.data.value" class="m-0 text-small text-ink-muted">
-      {{ t(page.foot, { count: types.data.value.length }) }}
-      <RouterLink to="/modules" class="whitespace-nowrap underline underline-offset-2">{{ t('kernel.providers.manage_modules') }}</RouterLink>
-    </p>
+    <!-- Phones: the others, a row each, tapped to edit. -->
+    <div v-if="calm.length" class="flex flex-col gap-3 sm:hidden">
+      <ul ref="rows" class="m-0 list-none rounded-lg border border-line bg-surface-raised p-0">
+        <li v-for="c in shownRows" :key="c.provider.id" data-row class="flex min-w-0 flex-col border-b border-line px-3 last:border-b-0">
+          <div class="flex min-w-0 items-center gap-1">
+            <button
+              type="button"
+              class="flex min-h-14 min-w-0 flex-1 cursor-pointer flex-col justify-center gap-0.5 border-0 bg-transparent px-0 py-1.5 text-left text-ink"
+              @click="editing = c.provider"
+            >
+              <span class="flex min-w-0 items-center gap-1.5">
+                <span class="truncate font-semibold" translate="no" :title="c.provider.name">{{ c.provider.name }}</span>
+                <TypeTags :type="c.type" />
+              </span>
+              <!-- The type and settings give way to how it is used, each cut short with all of it in a tooltip. -->
+              <span class="flex min-w-0 text-small whitespace-nowrap text-ink-muted [&>*+*]:before:mx-1.5 [&>*+*]:before:content-['·']">
+                <span class="min-w-0 truncate" :translate="c.typeBrand ? 'no' : undefined" :title="c.typeLabel">{{ c.typeLabel }}</span>
+                <template v-for="s in c.shown" :key="s.key">
+                  <span v-if="s.option" class="min-w-0 truncate" :title="t(s.option)">{{ t(s.option) }}</span>
+                  <span v-else class="min-w-0 truncate" translate="no" :title="s.value">{{ s.value }}</span>
+                </template>
+                <span v-if="!notifiers" class="flex-none">{{ t('kernel.providers.uses', { count: c.uses }) }}</span>
+                <span v-else-if="!c.send" class="flex-none">{{ t('notify.card.never') }}</span>
+                <span v-else-if="c.send.state === 'sent'" class="flex-none">
+                  {{ t('notify.card.sent') }} <time :datetime="c.send.at">{{ intl.dateTime(c.send.at) }}</time>
+                </span>
+                <span v-else-if="c.send.state === 'held'" class="min-w-0 truncate" :title="t('notify.card.held')">
+                  {{ t('notify.card.held') }} <time v-if="c.send.sendAt" :datetime="c.send.sendAt">{{ intl.dateTime(c.send.sendAt) }}</time>
+                </span>
+              </span>
+            </button>
+            <RowMenu :label="t('kernel.action.more_for', { name: c.provider.name })" :items="c.menu" />
+          </div>
+          <p v-if="testing === c.provider.id" role="status" class="m-0 flex items-center gap-1.5 pb-2 text-small text-ink-muted">
+            <LoaderCircle class="size-4 flex-none animate-spin" aria-hidden="true" />{{ t(notifiers ? 'notify.test.sending' : 'kernel.providers.testing') }}
+          </p>
+          <p v-else-if="testPassed(c.provider.id)" role="status" class="m-0 pb-2 text-small text-ok-ink [overflow-wrap:anywhere]">{{ testPassed(c.provider.id) }}</p>
+          <JecAlert v-else-if="testError(c.provider.id)" class="mb-2" :code="testError(c.provider.id)!.code" :params="testError(c.provider.id)!.params" />
+        </li>
+      </ul>
+      <JecPager v-model="at" :pages="pages" />
+    </div>
 
-    <CalendarFeed v-if="notifiers" />
+    <div ref="after" class="flex flex-col gap-3 sm:gap-4">
+      <p v-if="types.data.value" class="m-0 text-small text-ink-muted">
+        {{ t(page.foot, { count: types.data.value.length }) }}
+        <RouterLink to="/modules" class="whitespace-nowrap underline underline-offset-2">{{ t('kernel.providers.manage_modules') }}</RouterLink>
+      </p>
+
+      <CalendarFeed v-if="notifiers" />
+    </div>
   </div>
 
   <ProviderDialog v-model:open="adding" :kind="kind" :title="t(page.add)" />

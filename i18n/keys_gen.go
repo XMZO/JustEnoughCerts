@@ -1599,6 +1599,7 @@ const (
 	KernelCredentialsNeverUsed               Key = "kernel.credentials.never_used"
 	KernelCredentialsNoKinds                 Key = "kernel.credentials.no_kinds"
 	KernelCredentialsPickFirst               Key = "kernel.credentials.pick_first"
+	KernelCredentialsSearch                  Key = "kernel.credentials.search"
 	KernelCredentialsTitle                   Key = "kernel.credentials.title"
 	KernelCredentialsUnavailable             Key = "kernel.credentials.unavailable"
 	KernelCredentialsUnused                  Key = "kernel.credentials.unused"
