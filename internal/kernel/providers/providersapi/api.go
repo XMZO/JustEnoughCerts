@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -285,6 +286,7 @@ type ZoneBody struct {
 	// NameServers and Served, for a type whose name servers are known.
 	NameServers []string `json:"nameServers,omitempty" doc:"The authoritative servers of the zone"`
 	Served      *bool    `json:"served,omitempty" doc:"Whether the zone's name servers are those of the type; missing when it could not be told"`
+	Via         string   `json:"via,omitempty" doc:"Where _acme-challenge under the domain points through a CNAME, when the zone is not held or served: the zone is that name's, the likely cause"`
 }
 
 type zonesOutput struct {
@@ -337,10 +339,23 @@ func zones(ctx context.Context, r *providers.Registry, id int64, domains []strin
 				b.Zone, b.NameServers, b.Served = zone, hosts, &served
 			}
 		}
+		// A zone neither the domain's nor above it is where a CNAME of
+		// _acme-challenge sends the record: the likely cause, told.
+		if ((b.Held != nil && !*b.Held) || (b.Served != nil && !*b.Served)) && !within(d, b.Zone) {
+			b.Via = delegated(zctx, d)
+		}
 		cancel()
 		out.Body.Domains = append(out.Body.Domains, b)
 	}
 	return out, nil
+}
+
+// within reports whether domain, a wildcard as *.example.com, is zone or
+// under it; not when zone is unknown.
+func within(domain, zone string) bool {
+	name := strings.ToLower(strings.TrimPrefix(strings.TrimSuffix(domain, "."), "*."))
+	zone = strings.ToLower(strings.TrimSuffix(zone, "."))
+	return zone != "" && (name == zone || strings.HasSuffix(name, "."+zone))
 }
 
 func test(ctx context.Context, r *providers.Registry, id int64) (*testOutput, error) {

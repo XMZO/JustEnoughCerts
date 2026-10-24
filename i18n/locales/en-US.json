@@ -36,6 +36,7 @@
       "directory_required": "Fill in the directory URL of the custom certificate authority.",
       "eab_required": "This certificate authority needs External Account Binding. Fill in the EAB Key ID and HMAC key of the account.",
       "present": "Could not add the record for {domain}. Check the DNS provider's credentials and permissions.",
+      "present_delegated": "Could not add the record for {domain}: _acme-challenge.{domain} is a CNAME to {via}, where the record goes. {kind, select, cloudflare {That is Cloudflare's delegation of validation for certificates of its own: while it stays, the domain cannot be proved through DNS. Validate it over HTTP instead, as with “Answered at Cloudflare's edge” (not for wildcards).} other {Check that the certificate's DNS provider manages the zone of that name.}}",
       "profile": "The CA offers no profile “{profile}”. It offers: {profiles}.",
       "propagation": "The records for {domains} never showed in DNS. Check that the DNS provider is the one that serves them.",
       "put_file": "Could not put the validation file for {domain} in place. Check the settings of the validation method.",
@@ -756,6 +757,7 @@
       "twin": "A certificate of JEC has these domains already:",
       "twin_lines": "{count, plural, one {# line has} other {# lines have}} the domains of a certificate in JEC already: {domains}.",
       "validation": "Domain validation",
+      "zone_delegated": "_acme-challenge.{domain} is a CNAME to {via}, where the validation record goes, and this DNS provider cannot manage it. {kind, select, cloudflare {That is Cloudflare's delegation of validation for certificates of its own: while it stays, the domain cannot be proved through DNS. Validate it over HTTP instead, as with “Answered at Cloudflare's edge” (not for wildcards).} other {Choose a DNS provider that manages it, or remove the CNAME.}}",
       "zone_missing": "{zone} is not in this DNS provider's account, so validating {domain} would fail. Choose another DNS provider, or check its account and keys.",
       "zones_held": "This account holds every domain.",
       "zones_untested": "This check is not yet tried with a real account: take it as a hint."
@@ -2177,6 +2179,7 @@
       "provider_in_use": "Certificates still use this, so it cannot be deleted. Change those certificates first.",
       "provider_test": "The test failed for a reason JEC cannot tell; the server's log has more.",
       "provider_try": "The provider did not add the record: {message}",
+      "provider_try_delegated": "_acme-challenge.{domain} is a CNAME to {via}, where the record goes, and the provider did not add it there. {kind, select, cloudflare {That is Cloudflare's delegation of validation for certificates of its own: while it stays, the domain cannot be proved through DNS. Validate it over HTTP instead, as with “Answered at Cloudflare's edge” (not for wildcards).} other {Check that this provider manages the zone of that name.}} The provider said: {message}",
       "provider_type_unknown": "This service is not available. The module it belongs to may be switched off.",
       "provider_untestable": "There is no test for this kind of provider.",
       "release_check": "Could not get the releases from GitHub. Check that JEC can reach api.github.com, through a proxy if need be.",

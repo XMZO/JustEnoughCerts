@@ -37,6 +37,9 @@ const (
 	tryVisible = 40 * time.Second
 	tryLook    = 4 * time.Second
 	tryCleanUp = 30 * time.Second
+	// tryWhere bounds the look-up of where the record was to go, after the
+	// provider failed to add it.
+	tryWhere = 10 * time.Second
 )
 
 // visible tells whether the authoritative servers of a name answer a
@@ -129,7 +132,10 @@ func try(ctx context.Context, r *providers.Registry, id int64, domain string) (*
 		cctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), tryCleanUp)
 		_ = solver.CleanUp(cctx, ch)
 		cancel()
-		return nil, putError(err)
+		wctx, cancel := context.WithTimeout(ctx, tryWhere)
+		via := delegated(wctx, name)
+		cancel()
+		return nil, putError(err, name, via)
 	}
 
 	vctx, cancel := context.WithTimeout(ctx, tryVisible)
@@ -160,8 +166,10 @@ func try(ctx context.Context, r *providers.Registry, id int64, domain string) (*
 }
 
 // putError is the error of a solver that failed to put what a trial
-// needs: the provider's own message, or what it said, as it said it.
-func putError(err error) error {
+// needs: the provider's own message, or what it said, as it said it. via
+// is where _acme-challenge under domain points through a CNAME, which
+// the provider could not reach, most likely: told first, as the cause.
+func putError(err error, domain, via string) error {
 	var p *contracts.Problem
 	if errors.As(err, &p) {
 		return testError(err)
@@ -170,7 +178,22 @@ func putError(err error) error {
 	if len(msg) > 500 {
 		msg = msg[:500] + "…"
 	}
+	if via != "" {
+		return api.NewError(http.StatusBadGateway, i18n.KernelErrorProviderTryDelegated, map[string]any{
+			"domain": domain, "via": via, "kind": delegation(via), "message": msg,
+		})
+	}
 	return api.NewError(http.StatusBadGateway, i18n.KernelErrorProviderTry, map[string]any{"message": msg})
+}
+
+// delegation names whose a delegation of _acme-challenge to via is, for
+// messages to tell what to do: "cloudflare" for Cloudflare's own, which
+// no DNS provider can add records to, or "other".
+func delegation(via string) string {
+	if dnscheck.CloudflareDCV(via) {
+		return "cloudflare"
+	}
+	return "other"
 }
 
 // fetchFor is how long a trial fetches a file until it answers; tests
@@ -226,7 +249,7 @@ func tryFile(ctx context.Context, p any, name string) (*tryOutput, error) {
 		cctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), tryCleanUp)
 		_ = solver.RemoveFile(cctx, f)
 		cancel()
-		return nil, putError(err)
+		return nil, putError(err, name, "")
 	}
 	vctx, cancel := context.WithTimeout(ctx, fetchFor)
 	for {

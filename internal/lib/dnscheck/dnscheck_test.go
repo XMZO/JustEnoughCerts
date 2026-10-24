@@ -88,3 +88,17 @@ func TestRecordName(t *testing.T) {
 		}
 	}
 }
+
+func TestCloudflareDCV(t *testing.T) {
+	for name, want := range map[string]bool{
+		"umi.li.d344984ae74e6f93.dcv.cloudflare.com":  true,
+		"umi.li.d344984ae74e6f93.DCV.cloudflare.com.": true,
+		"dcv.cloudflare.com":                          false,
+		"acme.example.net":                            false,
+		"x.dcv.cloudflare.com.example.net":            false,
+	} {
+		if got := CloudflareDCV(name); got != want {
+			t.Errorf("CloudflareDCV(%q) = %v", name, got)
+		}
+	}
+}

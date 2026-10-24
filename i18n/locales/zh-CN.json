@@ -36,6 +36,7 @@
       "directory_required": "请填写自定义证书颁发机构的目录地址。",
       "eab_required": "这家证书颁发机构要求 EAB。请在账号里填写 EAB Key ID 和 HMAC Key。",
       "present": "没能为 {domain} 添加验证记录。请检查 DNS 服务商的凭据和权限。",
+      "present_delegated": "没能为 {domain} 添加验证记录：_acme-challenge.{domain} 是 CNAME，指向 {via}，记录要加在那里。{kind, select, cloudflare {这是 Cloudflare 为自己签证书设的 DCV 委派，留着它就不能用 DNS 验证这个域名，请改用 HTTP 验证，例如“Cloudflare 边缘应答”（不能签通配符）。} other {请确认证书选的 DNS 服务商管理着它所在的区域。}}",
       "profile": "证书颁发机构没有“{profile}”这个证书配置。可用的配置：{profiles}。",
       "propagation": "等了很久，仍然查不到 {domains} 的验证记录。请确认 DNS 服务商管理的正是这些域名。",
       "put_file": "没能为 {domain} 放验证文件。请检查验证方式的设置。",
@@ -756,6 +757,7 @@
       "twin": "JEC 里已有使用这些域名的证书：",
       "twin_lines": "{count, plural, other {# 行}}与 JEC 里已有证书的域名相同：{domains}。",
       "validation": "域名验证",
+      "zone_delegated": "_acme-challenge.{domain} 是 CNAME，指向 {via}，验证记录要加在那里，而这个 DNS 服务商管不了它。{kind, select, cloudflare {这是 Cloudflare 为自己签证书设的 DCV 委派，留着它就不能用 DNS 验证这个域名，请改用 HTTP 验证，例如“Cloudflare 边缘应答”（不能签通配符）。} other {请换一个管理它的 DNS 服务商，或删掉这条 CNAME。}}",
       "zone_missing": "{zone} 不在这个 DNS 服务商的账号里，{domain} 的验证会失败。请换一个 DNS 服务商，或检查它的账号和密钥。",
       "zones_held": "这个账号管理着全部域名。",
       "zones_untested": "这项预检尚未用真实账号验证，结果仅供参考。"
@@ -2177,6 +2179,7 @@
       "provider_in_use": "还有证书在使用它，不能删除。请先修改这些证书。",
       "provider_test": "测试失败，原因不明，服务端日志里有详情。",
       "provider_try": "服务商没能添加记录：{message}",
+      "provider_try_delegated": "_acme-challenge.{domain} 是 CNAME，指向 {via}，记录要加在那里，服务商没能添加。{kind, select, cloudflare {这是 Cloudflare 为自己签证书设的 DCV 委派，留着它就不能用 DNS 验证这个域名，请改用 HTTP 验证，例如“Cloudflare 边缘应答”（不能签通配符）。} other {请确认这个服务商管理着它所在的区域。}}服务商的回答：{message}",
       "provider_type_unknown": "没有这项服务，它所属的模块可能已经停用。",
       "provider_untestable": "这种设置没有可做的测试。",
       "release_check": "没能从 GitHub 查到发布记录。请检查 JEC 能不能访问 api.github.com（需要时设置代理）。",

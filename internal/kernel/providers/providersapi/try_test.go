@@ -3,6 +3,7 @@ package providersapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -21,17 +22,22 @@ import (
 )
 
 // fakeSolver keeps the records it is asked for, failing to add them when
-// its instance is set to.
+// its instance is set to: with a message of its own, or, raw, with what
+// a provider said.
 type fakeSolver struct {
 	mu      *sync.Mutex
 	records map[string]string
 	fail    bool
+	raw     bool
 	cleaned *[]string
 }
 
 func (s *fakeSolver) Present(_ context.Context, ch contracts.Challenge) error {
 	if s.fail {
 		return &contracts.Problem{Key: i18n.KernelErrorProviderTest}
+	}
+	if s.raw {
+		return errors.New("zone dcv.cloudflare.com. not found")
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -92,7 +98,7 @@ func TestTry(t *testing.T) {
 	var cleaned []string
 	scope := reg.Scope("fake")
 	for _, typ := range []providers.Type{
-		{ID: "fake.dns", Kind: providers.Solver, Brand: "DNS", Fields: []providers.Field{{Key: "FAIL", Kind: providers.Switch}}},
+		{ID: "fake.dns", Kind: providers.Solver, Brand: "DNS", Fields: []providers.Field{{Key: "FAIL", Kind: providers.Switch}, {Key: "RAW", Kind: providers.Switch}}},
 		{ID: "fake.manual", Kind: providers.Solver, Brand: "Manual", Manual: true},
 		{ID: "fake.web", Kind: providers.Solver, Brand: "Web", Challenge: providers.ChallengeHTTP},
 		{ID: "fake.files", Kind: providers.Solver, Brand: "Files", Challenge: providers.ChallengeHTTP},
@@ -101,7 +107,7 @@ func TestTry(t *testing.T) {
 			if typ.ID == "fake.files" {
 				return &fakeFiles{mu: &mu, files: files}, nil
 			}
-			return &fakeSolver{mu: &mu, records: records, fail: in.Config["FAIL"] == "true", cleaned: &cleaned}, nil
+			return &fakeSolver{mu: &mu, records: records, fail: in.Config["FAIL"] == "true", raw: in.Config["RAW"] == "true", cleaned: &cleaned}, nil
 		}); err != nil {
 			t.Fatal(err)
 		}
@@ -126,8 +132,11 @@ func TestTry(t *testing.T) {
 		return typ == "TXT" && records[name] != "", nil
 	}
 	delegated = func(_ context.Context, domain string) string {
-		if domain == "delegated.example.com" {
+		switch domain {
+		case "delegated.example.com":
 			return "delegated.acme.example.net"
+		case "saas.example.com":
+			return "saas.example.com.0123abcd.dcv.cloudflare.com"
 		}
 		return ""
 	}
@@ -163,6 +172,19 @@ func TestTry(t *testing.T) {
 	resp = a.Post("/providers/"+failing+"/try", map[string]any{"domain": "example.com"})
 	if resp.Code != http.StatusBadGateway {
 		t.Errorf("a failing one = %d %s", resp.Code, resp.Body)
+	}
+	// What a provider said comes as it said it; first, when the record was
+	// to go through a CNAME, where, and whose that name is.
+	raw := create("fake.dns", map[string]string{"RAW": "true"})
+	for domain, want := range map[string]string{
+		"example.com":           `{"code":"kernel.error.provider_try","params":{"message":"zone dcv.cloudflare.com. not found"}}`,
+		"saas.example.com":      `{"code":"kernel.error.provider_try_delegated","params":{"domain":"saas.example.com","kind":"cloudflare","message":"zone dcv.cloudflare.com. not found","via":"saas.example.com.0123abcd.dcv.cloudflare.com"}}`,
+		"delegated.example.com": `{"code":"kernel.error.provider_try_delegated","params":{"domain":"delegated.example.com","kind":"other","message":"zone dcv.cloudflare.com. not found","via":"delegated.acme.example.net"}}`,
+	} {
+		resp = a.Post("/providers/"+raw+"/try", map[string]any{"domain": domain})
+		if resp.Code != http.StatusBadGateway || strings.TrimSpace(resp.Body.String()) != want {
+			t.Errorf("a raw failure on %s = %d %s", domain, resp.Code, resp.Body)
+		}
 	}
 	for _, c := range []struct {
 		id, domain string

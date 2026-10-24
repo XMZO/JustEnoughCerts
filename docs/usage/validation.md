@@ -34,6 +34,14 @@ of up to 50) to pick, a list not yet tried with real accounts.
   `_acme-challenge` only gets from a wildcard (such as `*.example.com`
   pointing to a CDN) is no delegation: JEC tells the two apart and adds
   the record in the domain's own zone.
+- **`_acme-challenge` taken by a CDN**: some CDNs have `_acme-challenge`
+  point to a name of theirs, for certificates of their own, as Cloudflare's
+  DCV delegation for custom hostnames does (to
+  `<domain>.<ID>.dcv.cloudflare.com`). Only the CDN can add records
+  there, so while that CNAME stays, the domain cannot be validated through
+  DNS: use HTTP validation, such as Answered at Cloudflare's edge below,
+  which rules out wildcards. The account check while adding a certificate, Try
+  and the issuance log say where the CNAME points.
 - **Try**: Try, on each provider's card on the DNS page, does what an
   issuance would: it adds a TXT record at `_acme-challenge` under the
   domain given, waits up to 40 seconds for the authoritative DNS to answer

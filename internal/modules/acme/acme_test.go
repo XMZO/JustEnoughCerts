@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"slices"
 	"sync"
@@ -131,17 +132,19 @@ func sameKey(a, b crypto.Signer) bool {
 	return a.Public().(interface{ Equal(crypto.PublicKey) bool }).Equal(b.Public())
 }
 
-// fakeSolver records what it is asked to do.
+// fakeSolver records what it is asked to do, failing to add records with
+// fail when set.
 type fakeSolver struct {
 	mu    sync.Mutex
 	calls []string
+	fail  error
 }
 
 func (s *fakeSolver) Present(_ context.Context, ch contracts.Challenge) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.calls = append(s.calls, "present "+ch.Domain)
-	return nil
+	return s.fail
 }
 
 func (s *fakeSolver) CleanUp(_ context.Context, ch contracts.Challenge) error {
@@ -243,6 +246,40 @@ func TestRegisterError(t *testing.T) {
 		var p *contracts.Problem
 		if !errors.As(err, &p) || p.Key != tt.key || retry.IsPermanent(err) != tt.permanent {
 			t.Errorf("%s: %v, permanent %v", name, err, retry.IsPermanent(err))
+		}
+	}
+}
+
+// TestPresentDelegated: a provider failing to add a record that goes
+// through a CNAME of _acme-challenge is told with where it goes, and
+// whose that name is.
+func TestPresentDelegated(t *testing.T) {
+	noWildcards(t)
+	saved := delegatedTo
+	t.Cleanup(func() { delegatedTo = saved })
+	delegatedTo = func(_ context.Context, domain string) string {
+		switch domain {
+		case "saas.example.com":
+			return "saas.example.com.0123abcd.dcv.cloudflare.com"
+		case "delegated.example.com":
+			return "delegated.acme.example.net"
+		}
+		return ""
+	}
+	p := &dnsProvider{solver: &fakeSolver{fail: errors.New("zone not found")}, log: func(contracts.LogLine) {}}
+	for domain, want := range map[string]map[string]any{
+		"example.com":           {"domain": "example.com"},
+		"saas.example.com":      {"domain": "saas.example.com", "via": "saas.example.com.0123abcd.dcv.cloudflare.com", "kind": "cloudflare"},
+		"delegated.example.com": {"domain": "delegated.example.com", "via": "delegated.acme.example.net", "kind": "other"},
+	} {
+		key := i18n.AcmeErrorPresentDelegated
+		if len(want) == 1 {
+			key = i18n.AcmeErrorPresent
+		}
+		var problem *contracts.Problem
+		err := p.Present(t.Context(), domain, "t", "k")
+		if !errors.As(err, &problem) || problem.Key != key || !maps.Equal(problem.Params, want) || problem.Err == nil {
+			t.Errorf("%s: %v", domain, err)
 		}
 	}
 }

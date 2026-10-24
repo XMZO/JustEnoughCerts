@@ -219,6 +219,15 @@ const zonesTold = computed(() => {
 const zones = useZones(solver, zoneDomains, () => needsSolver.value && zonesTold.value)
 const notHeld = computed(() => (zones.data.value ?? []).filter((z) => z.held === false))
 const elsewhere = computed(() => (zones.data.value ?? []).filter((z) => z.served === false && z.held !== false))
+// Of a zone that is not the domain's because _acme-challenge under it is a
+// CNAME elsewhere: where, and what to do, Cloudflare's own delegation for
+// its certificates by name.
+const delegatedNote = (z: { domain: string; via?: string }) =>
+  t('certs.add.zone_delegated', {
+    domain: z.domain.replace(/^\*\./, ''),
+    via: z.via ?? '',
+    kind: /\.dcv\.cloudflare\.com\.?$/i.test(z.via ?? '') ? 'cloudflare' : 'other',
+  })
 // The domains of the solver's account, to pick from rather than type: those
 // not chosen yet.
 const account = useAccountDomains(solver, () => needsSolver.value && !bulk.value && !!solverProvider.value && !!solverType(solverProvider.value)?.zones)
@@ -712,10 +721,10 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
               <component :is="solverTest.ok ? CircleCheck : TriangleAlert" class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ solverTest.text }}
             </p>
             <p v-for="z in notHeld" :key="z.domain" role="status" class="m-0 flex items-start gap-1.5 text-small text-warn-ink [overflow-wrap:anywhere]">
-              <TriangleAlert class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ t('certs.add.zone_missing', { domain: z.domain, zone: z.zone ?? '' }) }}
+              <TriangleAlert class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ z.via ? delegatedNote(z) : t('certs.add.zone_missing', { domain: z.domain, zone: z.zone ?? '' }) }}
             </p>
             <p v-for="z in elsewhere" :key="`ns-${z.domain}`" role="status" class="m-0 flex items-start gap-1.5 text-small text-warn-ink [overflow-wrap:anywhere]">
-              <TriangleAlert class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ t('certs.add.ns_other', { domain: z.domain, servers: intl.list(z.nameServers ?? []) }) }}
+              <TriangleAlert class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ z.via ? delegatedNote(z) : t('certs.add.ns_other', { domain: z.domain, servers: intl.list(z.nameServers ?? []) }) }}
             </p>
             <p v-if="allHeld" role="status" class="m-0 flex items-start gap-1.5 text-small text-ok-ink">
               <CircleCheck class="mt-0.5 size-4 flex-none" aria-hidden="true" />{{ t('certs.add.zones_held') }}

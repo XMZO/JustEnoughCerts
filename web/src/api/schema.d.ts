@@ -3645,6 +3645,8 @@ export interface components {
             nameServers?: string[];
             /** @description Whether the zone's name servers are those of the type; missing when it could not be told */
             served?: boolean;
+            /** @description Where _acme-challenge under the domain points through a CNAME, when the zone is not held or served: the zone is that name's, the likely cause */
+            via?: string;
             /** @description The zone of the domain, as its SOA says; missing when the DNS does not tell */
             zone?: string;
         };

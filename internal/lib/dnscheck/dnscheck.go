@@ -73,6 +73,14 @@ func Delegated(ctx context.Context, domain string) string {
 	return dns01.UnFqdn(info.EffectiveFQDN)
 }
 
+// CloudflareDCV reports whether target, where _acme-challenge points, is
+// Cloudflare's delegation of validation for certificates of its own, as
+// for a custom hostname: <name>.<id>.dcv.cloudflare.com. Cloudflare puts
+// the records there, so nobody else can prove the domain through DNS.
+func CloudflareDCV(target string) bool {
+	return strings.HasSuffix(strings.ToLower(strings.TrimSuffix(target, ".")), ".dcv.cloudflare.com")
+}
+
 // Follow reports whether a CNAME of _acme-challenge under domain is to be
 // followed to put its validation record, as lego follows every CNAME a
 // recursive resolver answers. It is not when the authoritative servers of

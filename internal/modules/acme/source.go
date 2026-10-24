@@ -371,10 +371,11 @@ type dnsProvider struct {
 	direct  map[string]bool // domains whose _acme-challenge has a wildcard's CNAME
 }
 
-// wildcardCNAME and visible look up DNS; tests replace them.
+// wildcardCNAME, visible and delegatedTo look up DNS; tests replace them.
 var (
 	wildcardCNAME = dnscheck.Wildcard
 	visible       = dnscheck.Visible
+	delegatedTo   = dnscheck.Delegated
 )
 
 func (p *dnsProvider) Present(ctx context.Context, domain, token, keyAuth string) error {
@@ -400,7 +401,19 @@ func (p *dnsProvider) Present(ctx context.Context, domain, token, keyAuth string
 	err := p.solver.Present(ctx, contracts.Challenge{Domain: domain, Token: token, KeyAuth: keyAuth})
 	var problem *contracts.Problem
 	if err != nil && !errors.As(err, &problem) {
-		err = &contracts.Problem{Key: i18n.AcmeErrorPresent, Params: map[string]any{"domain": domain}, Err: err}
+		problem = &contracts.Problem{Key: i18n.AcmeErrorPresent, Params: map[string]any{"domain": domain}, Err: err}
+		// A CNAME of _acme-challenge sends the record where the provider
+		// most likely cannot reach, as to Cloudflare's own delegation.
+		if !p.skipCheck {
+			if via := delegatedTo(ctx, domain); via != "" {
+				kind := "other"
+				if dnscheck.CloudflareDCV(via) {
+					kind = "cloudflare"
+				}
+				problem.Key, problem.Params = i18n.AcmeErrorPresentDelegated, map[string]any{"domain": domain, "via": via, "kind": kind}
+			}
+		}
+		err = problem
 	}
 	return err
 }
