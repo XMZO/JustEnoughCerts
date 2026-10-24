@@ -20,8 +20,8 @@ import (
 // Certificate transparency: the certificates logged for the registered
 // domains JEC holds certificates under are searched through Cert Spotter,
 // and one whose key JEC does not hold is told of, as one a CA issued to
-// someone else. What the first search of a domain finds was there before
-// and is only listed.
+// someone else. What was issued before the search was first switched on
+// was there before and is only listed.
 const (
 	ctEvery  = 6 * time.Hour      // between the searches of a domain
 	ctRetry  = time.Hour          // after a search failed
@@ -121,25 +121,32 @@ func (s *spotter) search(ctx context.Context, domain, after, key string) ([]spot
 	return page, nil
 }
 
-// ctSettings returns whether the search is on, and the API key if any.
-func (m *Module) ctSettings(ctx context.Context) (on bool, key string, err error) {
-	var enabled int64
+// ctOn is the search switched on: the API key if any, and since when.
+type ctOn struct {
+	key   string
+	since time.Time // first switched on: what was issued before was there before
+}
+
+// ctSettings returns the search's settings, or nil while it is off.
+func (m *Module) ctSettings(ctx context.Context) (*ctOn, error) {
+	var enabled, since int64
 	var sealed []byte
-	err = m.db.QueryRowContext(ctx, "SELECT enabled, api_key FROM watch_ct WHERE id = 1").Scan(&enabled, &sealed)
+	err := m.db.QueryRowContext(ctx, "SELECT enabled, api_key, since FROM watch_ct WHERE id = 1").Scan(&enabled, &sealed, &since)
 	if errors.Is(err, sql.ErrNoRows) {
-		return false, "", nil
+		return nil, nil
 	}
 	if err != nil || enabled == 0 {
-		return false, "", err
+		return nil, err
 	}
+	on := &ctOn{since: time.UnixMilli(since)}
 	if len(sealed) > 0 {
 		plain, err := m.secrets.Open(sealed, ctKeyContext)
 		if err != nil {
-			return false, "", err
+			return nil, err
 		}
-		key = string(plain)
+		on.key = string(plain)
 	}
-	return true, key, nil
+	return on, nil
 }
 
 // ctKeyContext binds the sealed API key to its use.
@@ -149,8 +156,8 @@ const ctKeyContext = "watch certificate transparency key"
 // are due, as many as Cert Spotter allows a run, then judges what was
 // found.
 func (m *Module) transparencyDue(ctx context.Context) error {
-	on, key, err := m.ctSettings(ctx)
-	if err != nil || !on {
+	on, err := m.ctSettings(ctx)
+	if err != nil || on == nil {
 		return err
 	}
 	if err := m.syncCT(ctx); err != nil {
@@ -173,14 +180,14 @@ func (m *Module) transparencyDue(ctx context.Context) error {
 		return err
 	}
 	budget := ctBudget
-	if key != "" {
+	if on.key != "" {
 		budget = ctKeyed
 	}
 	for _, name := range due {
 		if budget <= 0 {
 			break
 		}
-		used, err := m.searchCT(ctx, name, key, budget)
+		used, err := m.searchCT(ctx, name, on, budget)
 		budget -= used
 		if errors.Is(err, errRateLimited) {
 			break
@@ -263,7 +270,7 @@ func (m *Module) syncCT(ctx context.Context) error {
 // searchCT searches domain name with at most budget requests, stores what
 // it found and returns the requests it made. A search that has more pages
 // left stays due, to go on in the next run.
-func (m *Module) searchCT(ctx context.Context, name, key string, budget int) (int, error) {
+func (m *Module) searchCT(ctx context.Context, name string, on *ctOn, budget int) (int, error) {
 	var after string
 	var scanned int64
 	err := m.db.QueryRowContext(ctx, "SELECT last_id, scanned FROM watch_ct_domains WHERE name = ?", name).Scan(&after, &scanned)
@@ -277,7 +284,7 @@ func (m *Module) searchCT(ctx context.Context, name, key string, budget int) (in
 	used, end := 0, false
 	var serr error
 	for used < min(budget, ctPages) {
-		page, err := m.spotter.search(ctx, name, after, key)
+		page, err := m.spotter.search(ctx, name, after, on.key)
 		used++
 		if err != nil {
 			serr = err
@@ -297,13 +304,16 @@ func (m *Module) searchCT(ctx context.Context, name, key string, budget int) (in
 		return used, err
 	}
 	defer func() { _ = tx.Rollback() }()
-	state := ctNew
-	if scanned == 0 {
-		state = ctBaseline
-	}
 	for _, s := range found {
 		if s.ID == "" || !s.NotAfter.After(now) {
 			continue
+		}
+		// Found by the first search of its domain, which may be long after
+		// the search was switched on, as for a domain JEC holds certificates
+		// under only later: there before when issued before.
+		state := ctNew
+		if scanned == 0 && s.NotBefore.Before(on.since) {
+			state = ctBaseline
 		}
 		names := slices.Clone(s.DNSNames)
 		slices.Sort(names)

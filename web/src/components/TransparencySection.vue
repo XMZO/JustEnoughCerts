@@ -79,8 +79,8 @@ const lastSearch = computed(() => {
   return times.sort().at(-1)
 })
 
-// The certificates of the same names by the same issuer, the newest
-// first, as one row: told of if any is, and judged together.
+// The certificates of the same names by the same issuer as one row, with
+// the dates of the newest: told of if any is, and judged together.
 interface Kind {
   key: string
   latest: Spotted
@@ -97,6 +97,8 @@ const kinds = computed(() => {
     else {
       k.all.push(s)
       if (worse.indexOf(s.state) > worse.indexOf(k.state)) k.state = s.state
+      // The list comes those told of first: the newest may come later.
+      if (Date.parse(s.notBefore) > Date.parse(k.latest.notBefore)) k.latest = s
     }
   }
   return [...out.values()]

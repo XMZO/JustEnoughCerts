@@ -4157,7 +4157,7 @@
     },
     "ct": {
       "failed": ": the search failed:",
-      "foot": "Searched every 6 hours. What the first search finds is listed only; a certificate found later that JEC still does not recognize 2 hours on is told of through the notification channels set for it.",
+      "foot": "Searched every 6 hours. Certificates issued before it was switched on are listed only; one issued after, also under a domain added later, that JEC still does not recognize 2 hours on is told of through the notification channels set for it.",
       "ignore": "Ignore",
       "ignored": "{count, plural, one {# ignored.} other {# ignored.}}",
       "intro": "Every certificate a CA issues is logged in public certificate transparency logs. Switched on, JEC searches them through Cert Spotter, of SSLMate, for the certificates of the domains JEC holds certificates under, and tells of those JEC does not hold, as one issued to someone else. Switching it on sends those domains to Cert Spotter.",

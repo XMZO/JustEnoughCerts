@@ -3,17 +3,21 @@ package watch
 import (
 	"context"
 	"encoding/json"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/secrets"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 )
 
 // logs is a fake of Cert Spotter: the certificates of each domain, in the
@@ -248,12 +252,13 @@ func TestTransparency(t *testing.T) {
 		t.Fatalf("after ignoring: %+v", b)
 	}
 
-	// The trust taken back: what it covered is listed again, not told of.
+	// The trust taken back: what it covered is listed again, not told of,
+	// what was issued after the search was switched on as to look at.
 	resp := f.api.Post("/transparency/untrust", map[string]any{"names": []string{"shop.com", "*.shop.com"}, "issuer": "Google Trust Services"})
 	if resp.Code != http.StatusNoContent {
 		t.Fatalf("untrust = %d %s", resp.Code, resp.Body)
 	}
-	if b := f.ct(); !slices.Equal(listed(b), []string{"105 baseline", "101 baseline"}) || len(b.Trusted) != 0 {
+	if b := f.ct(); !slices.Equal(listed(b), []string{"105 unknown", "101 baseline"}) || len(b.Trusted) != 0 {
 		t.Fatalf("after untrusting: %v %+v", listed(b), b.Trusted)
 	}
 
@@ -290,5 +295,117 @@ func TestTransparency(t *testing.T) {
 	f.runCT()
 	if b := f.ct(); len(b.Domains) != 0 || len(b.Certificates) != 0 || b.Own != 0 {
 		t.Fatalf("after the certificate went: %+v", b)
+	}
+}
+
+// A domain JEC holds a certificate under only later: its first search
+// lists what was issued before the search was switched on, and tells of
+// what was issued after.
+func TestTransparencyDomainLater(t *testing.T) {
+	f, l, certs, keys := newCTFixture(t)
+	*certs = []certificate{{ID: 1, Domains: []string{"shop.com"}}}
+	if resp := f.api.Put("/transparency", map[string]any{"enabled": true}); resp.Code != http.StatusOK {
+		t.Fatalf("switch on = %d %s", resp.Code, resp.Body)
+	}
+	f.runCT()
+
+	// Switched off and on again, it is still on since the first time.
+	f.now = f.now.Add(24 * time.Hour)
+	for _, on := range []bool{false, true} {
+		if resp := f.api.Put("/transparency", map[string]any{"enabled": on}); resp.Code != http.StatusOK {
+			t.Fatalf("switch %v = %d %s", on, resp.Code, resp.Body)
+		}
+	}
+	var since int64
+	if err := f.m.db.QueryRow("SELECT since FROM watch_ct").Scan(&since); err != nil || since != start.UnixMilli() {
+		t.Fatalf("since %d %v, want %d", since, err, start.UnixMilli())
+	}
+
+	l.add("late.com", logged("200", "cdn1", "Google Trust Services", start.Add(-10*24*time.Hour), "late.com"))
+	l.add("late.com", logged("201", "other", "Sectigo", start.Add(24*time.Hour), "late.com"))
+	l.add("late.com", logged("202", "cccc", "Let's Encrypt", f.now, "late.com"))
+	(*keys)["cccc"] = 2
+	*certs = append(*certs, certificate{ID: 2, Domains: []string{"late.com"}})
+	f.now = f.now.Add(24 * time.Hour)
+	f.runCT()
+	if got := listed(f.ct()); !slices.Equal(got, []string{"201 new", "200 baseline"}) {
+		t.Fatalf("listed %v", got)
+	}
+	f.now = f.now.Add(ctGrace)
+	f.runCT()
+	b := f.ct()
+	if got := listed(b); !slices.Equal(got, []string{"201 unknown", "200 baseline"}) || b.Own != 1 {
+		t.Fatalf("listed %v, own %d", got, b.Own)
+	}
+	if told := f.spottedTold(); len(told) != 1 || told[0].Domain != "late.com" || told[0].Issuer != "Sectigo" {
+		t.Fatalf("told %+v", told)
+	}
+}
+
+// What searches before since was kept took for there before though issued
+// after the first certificate was found is judged again.
+func TestTransparencySinceMigration(t *testing.T) {
+	st, err := store.Open(t.Context(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	if _, err := st.Migrate(t.Context(), "kernel", migrations.FS); err != nil {
+		t.Fatal(err)
+	}
+	all := New().Migrations()
+	before := fstest.MapFS{}
+	for _, name := range []string{"00001_sites.sql", "00002_domains.sql", "00003_transparency.sql", "00004_site_chain.sql"} {
+		data, err := fs.ReadFile(all, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		before[name] = &fstest.MapFile{Data: data}
+	}
+	if _, err := st.Migrate(t.Context(), "watch", before); err != nil {
+		t.Fatal(err)
+	}
+	day := int64(24 * time.Hour / time.Millisecond)
+	on := start.UnixMilli()
+	db := st.DB()
+	if _, err := db.Exec("INSERT INTO watch_ct (id, enabled, updated_at) VALUES (1, 1, ?)", on+5*day); err != nil { // the key changed later
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		id, state     string
+		from, foundAt int64
+	}{
+		{"100", "baseline", on - 10*day, on + 10},
+		{"101", "unknown", on + day, on + day},
+		{"200", "baseline", on - 20*day, on + 3*day},
+		{"201", "baseline", on + 2*day, on + 3*day},
+	} {
+		if _, err := db.Exec(`INSERT INTO watch_ct_certificates (id, domain, names, issuer, issuer_dn, pubkey, sha256, not_before, not_after, state, certificate_id, found_at)
+			VALUES (?, 'x.com', '["x.com"]', 'CA', 'CN=CA', 'k', 's', ?, ?, ?, 0, ?)`, c.id, c.from, c.from+90*day, c.state, c.foundAt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := st.Migrate(t.Context(), "watch", all); err != nil {
+		t.Fatal(err)
+	}
+	var since int64
+	if err := db.QueryRow("SELECT since FROM watch_ct").Scan(&since); err != nil || since != on+10 {
+		t.Fatalf("since %d %v, want %d", since, err, on+10)
+	}
+	rows, err := db.Query("SELECT id, state FROM watch_ct_certificates ORDER BY id")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var got []string
+	for rows.Next() {
+		var id, state string
+		if err := rows.Scan(&id, &state); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, id+" "+state)
+	}
+	if want := []string{"100 baseline", "101 unknown", "200 baseline", "201 new"}; !slices.Equal(got, want) {
+		t.Fatalf("after the migration %v, want %v", got, want)
 	}
 }

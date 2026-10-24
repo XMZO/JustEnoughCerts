@@ -21,10 +21,11 @@ JEC searches each domain every 6 hours; "Search now" searches at once.
 
 ## The certificates found
 
-What the first search finds was there before: it is listed as "There
-before" and not told of. A certificate found later that JEC still does not
-recognize 2 hours on (time for JEC to store its own) is told of and listed
-as "To look at".
+A certificate issued (by its start date) before the search was first
+switched on was there before: it is listed as "There before" and not told
+of. One issued after, also under a domain JEC holds certificates under
+only later, that JEC still does not recognize 2 hours on (time for JEC to
+store its own) is told of and listed as "To look at".
 
 Certificates of the same names from the same issuer, as those a CDN or
 another tool renews again and again, make one row, with how many there

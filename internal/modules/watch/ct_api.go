@@ -31,7 +31,7 @@ type TransparencyBody struct {
 // TransparencyDomain is a domain searched.
 type TransparencyDomain struct {
 	Name      string     `json:"name"`
-	Scanned   bool       `json:"scanned" doc:"A search went to the end once; before, what is found is listed but not told of"`
+	Scanned   bool       `json:"scanned" doc:"A search went to the end once; till then, what is found that was issued before the search was first switched on is listed but not told of"`
 	CheckedAt *time.Time `json:"checkedAt,omitempty"`
 	CheckAt   time.Time  `json:"checkAt"`
 	Error     string     `json:"error,omitempty" doc:"Why the last search failed, as the search said it"`
@@ -47,7 +47,7 @@ type SpottedBody struct {
 	SHA256    string    `json:"sha256" doc:"SHA-256 of the certificate, lowercase hex"`
 	NotBefore time.Time `json:"notBefore"`
 	NotAfter  time.Time `json:"notAfter"`
-	State     string    `json:"state" enum:"new,baseline,unknown" doc:"new: found lately, told of soon unless it turns out to be JEC's; baseline: found by the first search, not told of; unknown: told of"`
+	State     string    `json:"state" enum:"new,baseline,unknown" doc:"new: found lately, told of soon unless it turns out to be JEC's; baseline: issued before the search was first switched on, not told of; unknown: told of, or to look at as no longer trusted"`
 	FoundAt   time.Time `json:"foundAt"`
 }
 
@@ -102,6 +102,9 @@ func registerTransparencyAPI(a huma.API, m *Module) {
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO watch_ct (id, enabled, updated_at) VALUES (1, ?, ?)
 			 ON CONFLICT (id) DO UPDATE SET enabled = excluded.enabled, updated_at = excluded.updated_at`, enabled, now); err != nil {
+			return nil, err
+		}
+		if _, err := tx.ExecContext(ctx, "UPDATE watch_ct SET since = ? WHERE id = 1 AND enabled = 1 AND since = 0", now); err != nil {
 			return nil, err
 		}
 		if in.Body.APIKey != nil {
@@ -179,7 +182,7 @@ func registerTransparencyAPI(a huma.API, m *Module) {
 	huma.Register(a, huma.Operation{
 		OperationID: "watch-transparency-untrust", Method: http.MethodPost, Path: "/transparency/untrust", Tags: tags, DefaultStatus: http.StatusNoContent,
 		Summary:     "Stop trusting the certificates for some names by an issuer",
-		Description: "The certificates found that it covered are listed again, without being told of.",
+		Description: "The certificates found that it covered are listed again, without being told of: as there before when issued before the search was first switched on, else as to look at.",
 	}, func(ctx context.Context, in *untrustInput) (*struct{}, error) {
 		names := slices.Clone(in.Body.Names)
 		slices.Sort(names)
@@ -196,8 +199,10 @@ func registerTransparencyAPI(a huma.API, m *Module) {
 		if n, _ := res.RowsAffected(); n == 0 {
 			return nil, api.NewError(http.StatusNotFound, i18n.KernelErrorNotFound, nil)
 		}
-		if _, err := tx.ExecContext(ctx, "UPDATE watch_ct_certificates SET state = ? WHERE names = ? AND issuer = ? AND state = ?",
-			ctBaseline, string(raw), in.Body.Issuer, ctTrusted); err != nil {
+		if _, err := tx.ExecContext(ctx,
+			`UPDATE watch_ct_certificates SET state = CASE WHEN not_before < (SELECT since FROM watch_ct WHERE id = 1) THEN ? ELSE ? END
+			 WHERE names = ? AND issuer = ? AND state = ?`,
+			ctBaseline, ctUnknown, string(raw), in.Body.Issuer, ctTrusted); err != nil {
 			return nil, err
 		}
 		return nil, tx.Commit()

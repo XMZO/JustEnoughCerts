@@ -1745,7 +1745,7 @@ export interface paths {
         put?: never;
         /**
          * Stop trusting the certificates for some names by an issuer
-         * @description The certificates found that it covered are listed again, without being told of.
+         * @description The certificates found that it covered are listed again, without being told of: as there before when issued before the search was first switched on, else as to look at.
          */
         post: operations["watch-transparency-untrust"];
         delete?: never;
@@ -3245,7 +3245,7 @@ export interface components {
             /** @description SHA-256 of the certificate, lowercase hex */
             sha256: string;
             /**
-             * @description new: found lately, told of soon unless it turns out to be JEC's; baseline: found by the first search, not told of; unknown: told of
+             * @description new: found lately, told of soon unless it turns out to be JEC's; baseline: issued before the search was first switched on, not told of; unknown: told of, or to look at as no longer trusted
              * @enum {string}
              */
             state: "new" | "baseline" | "unknown";
@@ -3350,7 +3350,7 @@ export interface components {
             /** @description Why the last search failed, as the search said it */
             error?: string;
             name: string;
-            /** @description A search went to the end once; before, what is found is listed but not told of */
+            /** @description A search went to the end once; till then, what is found that was issued before the search was first switched on is listed but not told of */
             scanned: boolean;
         };
         TransparencyInputBody: {
