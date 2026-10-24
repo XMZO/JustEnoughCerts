@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CircleCheck, Clock, EyeOff, ExternalLink, KeyRound, Plus, Radar, RefreshCw, ScanSearch, ShieldCheck, ShieldQuestion, Undo2 } from '@lucide/vue'
+import { CircleCheck, Clock, EyeOff, ExternalLink, FileSearch, KeyRound, Plus, Radar, RefreshCw, ScanSearch, ShieldCheck, ShieldQuestion, Undo2 } from '@lucide/vue'
 import { computed, ref, watch } from 'vue'
 
 import { useApiError } from '../api/errors'
@@ -16,6 +16,7 @@ import {
 import { useFitRows } from '../fit'
 import { useT, type MessageKey } from '../i18n'
 import { useIntl } from '../i18n/intl'
+import CopyButton from './CopyButton.vue'
 import JecAlert from './JecAlert.vue'
 import JecButton from './JecButton.vue'
 import JecDialog from './JecDialog.vue'
@@ -134,8 +135,22 @@ async function act(k: Kind, how: 'trust' | 'ignore') {
 const menu = (k: Kind): MenuItem[] => [
   ...(siteOf(k.latest) ? [{ key: 'watch', label: t('watch.ct.watch'), hint: t('watch.ct.watch_help'), icon: Radar, run: () => void watchIt(k) }] : []),
   { key: 'manage', label: t('watch.ct.manage'), hint: t('watch.ct.manage_help'), icon: Plus, to: { path: '/certificates/new', query: { domains: k.latest.names.join(',') } } },
-  { key: 'view', label: t('watch.ct.view'), icon: ExternalLink, run: () => void window.open(`https://crt.sh/?sha256=${k.latest.sha256}`, '_blank', 'noopener') },
+  { key: 'view', label: t('watch.ct.view'), icon: FileSearch, run: () => (viewing.value = k) },
 ]
+
+// The certificates of a row, to tell where they come from: each one's
+// issuer, dates and public key, which a server's certificate is told by as
+// the logs often hold only the precertificate; crt.sh for more, though it
+// takes hours or days to list a new one.
+const viewing = ref<Kind>()
+const viewOpen = computed({
+  get: () => viewing.value !== undefined,
+  set: (open) => {
+    if (!open) viewing.value = undefined
+  },
+})
+const viewed = computed(() => [...(viewing.value?.all ?? [])].sort((a, b) => Date.parse(b.notBefore) - Date.parse(a.notBefore)))
+const keyCommand = 'openssl x509 -in cert.pem -noout -pubkey | openssl pkey -pubin -outform der | sha256sum'
 async function drop(tr: TransparencyTrust) {
   try {
     await untrust.mutateAsync({ names: tr.names, issuer: tr.issuer })
@@ -268,5 +283,43 @@ async function saveKey(clear = false) {
       <JecButton @click="keyOpen = false">{{ t('kernel.action.cancel') }}</JecButton>
       <JecButton type="submit" form="ct-key-form" variant="primary" :busy="save.isPending.value" :disabled="!key">{{ t('kernel.action.save') }}</JecButton>
     </template>
+  </JecDialog>
+
+  <JecDialog v-model:open="viewOpen" :title="t('watch.ct.view_title', { count: viewed.length })" small>
+    <div v-if="viewing" class="flex flex-col gap-3">
+      <p class="m-0 font-semibold [overflow-wrap:anywhere]" translate="no">{{ names(viewing.latest) }}</p>
+      <ul class="m-0 flex list-none flex-col p-0">
+        <li v-for="s in viewed" :key="s.id" class="flex flex-col gap-1 border-t border-line py-2.5 text-small first:border-t-0 first:pt-0">
+          <span class="flex flex-wrap items-center gap-x-2">
+            <span :class="['inline-flex items-center rounded-sm px-1.5 font-semibold', looks[s.state].badge]">{{ t(looks[s.state].label) }}</span>
+            <span class="[overflow-wrap:anywhere]" translate="no">{{ s.issuerDn || s.issuer }}</span>
+          </span>
+          <span class="text-ink-muted">
+            <time :datetime="s.notBefore">{{ intl.dateTime(s.notBefore) }}</time>{{ t('watch.ct.to') }}<time :datetime="s.notAfter">{{
+              intl.dateTime(s.notAfter)
+            }}</time>
+          </span>
+          <span class="text-ink-muted">{{ t('watch.ct.found_at') }}<time :datetime="s.foundAt">{{ intl.dateTime(s.foundAt) }}</time></span>
+          <span class="text-ink-muted">{{ t('watch.ct.pubkey') }}</span>
+          <span class="flex items-start gap-1">
+            <code class="min-w-0 flex-1 font-mono text-caption break-all" translate="no">{{ s.pubkey }}</code>
+            <CopyButton :value="s.pubkey" label="watch.ct.pubkey_copy" />
+          </span>
+          <a
+            :href="`https://crt.sh/?spkisha256=${s.pubkey}`"
+            target="_blank"
+            rel="noopener"
+            class="inline-flex items-center gap-1 self-start text-ink underline"
+          >
+            <ExternalLink class="size-3.5" aria-hidden="true" />{{ t('watch.ct.crtsh') }}
+          </a>
+        </li>
+      </ul>
+      <p class="m-0 text-small text-ink-muted">{{ t('watch.ct.view_help') }}</p>
+      <span class="flex items-start gap-1">
+        <code class="min-w-0 flex-1 font-mono text-caption [overflow-wrap:anywhere]" translate="no">{{ keyCommand }}</code>
+        <CopyButton :value="keyCommand" label="watch.ct.command_copy" />
+      </span>
+    </div>
   </JecDialog>
 </template>

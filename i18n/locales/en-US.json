@@ -4156,8 +4156,11 @@
       "state": "State"
     },
     "ct": {
+      "command_copy": "Copy the command",
+      "crtsh": "Look it up on crt.sh",
       "failed": ": the search failed:",
       "foot": "Searched every 6 hours. Certificates issued before it was switched on are listed only; one issued after, also under a domain added later, that JEC still does not recognize 2 hours on is told of through the notification channels set for it.",
+      "found_at": "Found: ",
       "ignore": "Ignore",
       "ignored": "{count, plural, one {# ignored.} other {# ignored.}}",
       "intro": "Every certificate a CA issues is logged in public certificate transparency logs. Switched on, JEC searches them through Cert Spotter, of SSLMate, for the certificates of the domains JEC holds certificates under, and tells of those JEC does not hold, as one issued to someone else. Switching it on sends those domains to Cert Spotter.",
@@ -4174,6 +4177,8 @@
       "none": "No certificates found beyond those JEC holds.",
       "off": "Off",
       "on": "On",
+      "pubkey": "Public key SHA-256",
+      "pubkey_copy": "Copy the public key SHA-256",
       "search": "Search now",
       "state": {
         "baseline": "There before",
@@ -4191,6 +4196,8 @@
       "trusted_count": "{count, plural, one {# certificate} other {# certificates}}",
       "untrust": "Stop trusting",
       "view": "View",
+      "view_help": "crt.sh can take hours or days to list a new certificate, so one just found may not be there yet. To tell whether it is one of your own servers' (as Caddy or certbot obtain by themselves), run this command on the certificate file there and compare with the public key SHA-256 above. Transparency logs often hold only the precertificate, so compare the public key, not the certificate's fingerprint.",
+      "view_title": "{count, plural, one {# certificate} other {# certificates}}",
       "watch": "Watch the site",
       "watch_help": "Watch this name among the sites above: the certificate it serves and its end."
     },

@@ -3252,7 +3252,9 @@ export interface components {
             notAfter: string;
             /** Format: date-time */
             notBefore: string;
-            /** @description SHA-256 of the certificate, lowercase hex */
+            /** @description SHA-256 of the certificate's SubjectPublicKeyInfo, lowercase hex: the same for the precertificate, and what a server's certificate is told by */
+            pubkey: string;
+            /** @description SHA-256 of the certificate, lowercase hex; of its precertificate while only that was logged */
             sha256: string;
             /**
              * @description new: found lately, told of soon unless it turns out to be JEC's; baseline: issued before the search was first switched on, not told of; unknown: told of, or to look at as no longer trusted

@@ -38,7 +38,7 @@ as the window holds. For each row:
 | Ignore | The certificates of the row go from the list |
 | Watch the site (menu) | Watches one of its names among the [sites](sites.md) |
 | Hand to JEC (menu) | Adds a certificate for its names that JEC issues and renews |
-| View (menu) | Opens the latest certificate of the row on crt.sh |
+| View (menu) | Shows each certificate of the row: issuer, dates, when it was found and the SHA-256 of its public key, with a link to crt.sh (which can take hours or days to list a new certificate). To tell whether it is one of your own servers' certificates, as Caddy or certbot obtain by themselves, compare that key with `openssl x509 -in cert.pem -noout -pubkey \| openssl pkey -pubin -outform der \| sha256sum` there: the logs often hold only the precertificate, whose fingerprint differs from the certificate's |
 
 A certificate that nobody you know asked for may mean someone else
 controls the domain's DNS or website: find out how, and have the CA revoke

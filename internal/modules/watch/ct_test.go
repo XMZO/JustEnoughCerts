@@ -183,7 +183,7 @@ func TestTransparency(t *testing.T) {
 	if got := listed(b); !slices.Equal(got, []string{"101 baseline"}) {
 		t.Fatalf("listed %v", got)
 	}
-	if c := b.Certificates[0]; !slices.Equal(c.Names, []string{"*.shop.com", "shop.com"}) || c.Issuer != "Google Trust Services" || c.Domain != "shop.com" {
+	if c := b.Certificates[0]; !slices.Equal(c.Names, []string{"*.shop.com", "shop.com"}) || c.Issuer != "Google Trust Services" || c.Domain != "shop.com" || c.Pubkey != "cdn1" {
 		t.Fatalf("listed %+v", c)
 	}
 

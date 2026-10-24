@@ -44,7 +44,8 @@ type SpottedBody struct {
 	Names     []string  `json:"names"`
 	Issuer    string    `json:"issuer"`
 	IssuerDN  string    `json:"issuerDn"`
-	SHA256    string    `json:"sha256" doc:"SHA-256 of the certificate, lowercase hex"`
+	SHA256    string    `json:"sha256" doc:"SHA-256 of the certificate, lowercase hex; of its precertificate while only that was logged"`
+	Pubkey    string    `json:"pubkey" doc:"SHA-256 of the certificate's SubjectPublicKeyInfo, lowercase hex: the same for the precertificate, and what a server's certificate is told by"`
 	NotBefore time.Time `json:"notBefore"`
 	NotAfter  time.Time `json:"notAfter"`
 	State     string    `json:"state" enum:"new,baseline,unknown" doc:"new: found lately, told of soon unless it turns out to be JEC's; baseline: issued before the search was first switched on, not told of; unknown: told of, or to look at as no longer trusted"`
@@ -249,7 +250,7 @@ func (m *Module) transparency(ctx context.Context) (*transparencyOutput, error) 
 
 	counts := map[string]int{}
 	rows, err = m.db.QueryContext(ctx,
-		`SELECT id, domain, names, issuer, issuer_dn, sha256, not_before, not_after, state, found_at
+		`SELECT id, domain, names, issuer, issuer_dn, sha256, pubkey, not_before, not_after, state, found_at
 		 FROM watch_ct_certificates`)
 	if err != nil {
 		return nil, err
@@ -258,7 +259,7 @@ func (m *Module) transparency(ctx context.Context) (*transparencyOutput, error) 
 		var s SpottedBody
 		var names string
 		var notBefore, notAfter, found int64
-		if err := rows.Scan(&s.ID, &s.Domain, &names, &s.Issuer, &s.IssuerDN, &s.SHA256, &notBefore, &notAfter, &s.State, &found); err != nil {
+		if err := rows.Scan(&s.ID, &s.Domain, &names, &s.Issuer, &s.IssuerDN, &s.SHA256, &s.Pubkey, &notBefore, &notAfter, &s.State, &found); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}

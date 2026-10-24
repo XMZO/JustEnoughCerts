@@ -3934,8 +3934,12 @@
             "format": "date-time",
             "type": "string"
           },
+          "pubkey": {
+            "description": "SHA-256 of the certificate's SubjectPublicKeyInfo, lowercase hex: the same for the precertificate, and what a server's certificate is told by",
+            "type": "string"
+          },
           "sha256": {
-            "description": "SHA-256 of the certificate, lowercase hex",
+            "description": "SHA-256 of the certificate, lowercase hex; of its precertificate while only that was logged",
             "type": "string"
           },
           "state": {
@@ -3955,6 +3959,7 @@
           "issuer",
           "issuerDn",
           "sha256",
+          "pubkey",
           "notBefore",
           "notAfter",
           "state",

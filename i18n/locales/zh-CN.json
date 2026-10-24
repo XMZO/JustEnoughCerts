@@ -4156,8 +4156,11 @@
       "state": "状态"
     },
     "ct": {
+      "command_copy": "复制命令",
+      "crtsh": "在 crt.sh 上查找",
       "failed": " 查找失败：",
       "foot": "每 6 小时查找一次。开启前签发的证书只列出、不提醒；开启后签发的证书（包括之后才加入的域名下的）在 2 小时后仍认不出时，经设置了此事件的通知渠道提醒。",
+      "found_at": "发现时间：",
       "ignore": "忽略",
       "ignored": "已忽略 {count, plural, other {# 张}}。",
       "intro": "CA 签发的每张证书都会公开记录在证书透明度日志中。开启后，JEC 经 SSLMate 的 Cert Spotter 查找证书所在域名下的全部证书，发现不是 JEC 管理的证书时提醒，以便及时发现冒签。开启即表示同意把这些域名发送给 Cert Spotter。",
@@ -4174,6 +4177,8 @@
       "none": "没有发现 JEC 管理以外的证书。",
       "off": "未开启",
       "on": "已开启",
+      "pubkey": "公钥 SHA-256",
+      "pubkey_copy": "复制公钥 SHA-256",
       "search": "立即查找",
       "state": {
         "baseline": "开启前已有",
@@ -4191,6 +4196,8 @@
       "trusted_count": "{count, plural, other {# 张}}",
       "untrust": "取消信任",
       "view": "查看",
+      "view_help": "crt.sh 收录新证书可能要几个小时到几天，刚发现的证书在那里可能还查不到。要确认是不是自己服务器上的证书（如 Caddy、certbot 自动申请的），在服务器上对证书文件运行下面的命令，与上面的公钥 SHA-256 对照。证书透明度日志里常常只有预签证书，所以按公钥对照，不按证书指纹。",
+      "view_title": "{count, plural, other {# 张证书}}",
       "watch": "监控站点",
       "watch_help": "把这个域名加入上面的站点监控，跟踪它实际使用的证书和到期时间。"
     },

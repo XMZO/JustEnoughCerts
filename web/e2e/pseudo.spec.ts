@@ -769,7 +769,7 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'certificate transparency key').toEqual([])
   await dialog.getByRole('button', { name: label('kernel.action.cancel') }).click()
   const spotted = (id: string, state: string, names: string[], issuer: string) => ({
-    id, domain: 'e2e-shop.com', names, issuer, issuerDn: `C=US, O=${issuer}, CN=R1`, sha256: id.repeat(64).slice(0, 64),
+    id, domain: 'e2e-shop.com', names, issuer, issuerDn: `C=US, O=${issuer}, CN=R1`, sha256: id.repeat(64).slice(0, 64), pubkey: `${id}f`.repeat(32),
     notBefore: later(-3), notAfter: later(87), state, foundAt: later(-1),
   })
   await page.route('**/api/v1/watch/transparency', (route) =>
@@ -800,7 +800,12 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.getByRole('button', { name: message('watch.ct.more', { names: 'www.e2e-shop.com' }) }).click()
   await expect(page.getByRole('menuitem').first()).toBeVisible()
   expect.soft(await problems(page), 'certificate transparency: the menu of a row').toEqual([])
-  await page.keyboard.press('Escape')
+  // The certificates of the row, to tell where they come from.
+  await page.getByRole('menuitem', { name: label('watch.ct.view') }).click()
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByText('1f1f1f', { exact: false })).toBeVisible()
+  expect.soft(await problems(page), 'certificate transparency: the certificates of a row').toEqual([])
+  await dialog.getByRole('button', { name: label('kernel.action.close') }).click()
   await page.unroute('**/api/v1/watch/transparency')
 
   // Credentials: the page, a new one, and a provider that takes its keys
