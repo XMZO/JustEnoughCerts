@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
@@ -150,6 +151,24 @@ func TestDeployRetries(t *testing.T) {
 	f.runDeploys()
 	if d := f.certificate(c.ID).Deployments[0]; d.State != "done" {
 		t.Errorf("after the retry: %+v", d)
+	}
+}
+
+// TestDeployTimeout: an attempt cut short by its time limit says so,
+// whatever the target made of it, and is tried again later.
+func TestDeployTimeout(t *testing.T) {
+	f := newFixture(t)
+	f.svc.deploying.timeout = 50 * time.Millisecond
+	target := f.provider("fake.hook")
+	f.fake.deploy = func(ctx context.Context, _ contracts.DeployRequest) (contracts.DeployResult, error) {
+		<-ctx.Done()
+		return contracts.DeployResult{}, &contracts.Problem{Key: i18n.CertsErrorProviderUnavailable, Err: ctx.Err()}
+	}
+	c := f.uploadTo(f.leaf(90, "example.com"), target)
+	f.runDeploys()
+	d := f.certificate(c.ID).Deployments[0]
+	if d.State != "pending" || d.Error == nil || d.Error.Key != i18n.CertsErrorDeployTimeout || d.NextAt == nil {
+		t.Errorf("after the time ran out: %+v", d)
 	}
 }
 

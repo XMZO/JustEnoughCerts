@@ -70,14 +70,19 @@ never sees a partly written file.
   and `RENEWED_DOMAINS`. With the default file names, existing certbot
   deploy hooks work unchanged.
 - **SSH server**: the command, such as `systemctl reload nginx`, runs on
-  the server. The server needs a POSIX shell, and its host key must be
-  verified.
+  the server for at most five minutes, and its output goes to the
+  deployment log; writing the files may take at most two minutes. The
+  server needs a POSIX shell, and its host key must be verified.
 - **Docker container**: after writing, JEC sends the container a signal
   (`HUP` by default), restarts it, or does nothing. JEC needs access to the
   Docker socket or to a socket proxy.
 
 A non-zero exit status, a syntax error or a timeout fails the deployment,
-which is then not retried automatically.
+which is then not retried automatically; the error of a timeout names the
+command it stopped, such as a `systemctl reload` that waits on and on for
+the service to reload. An attempt to deploy takes at most ten minutes, and
+is stopped too when it takes longer, with the last line of the deployment
+log being the step it was stuck at.
 
 ### Common setups
 

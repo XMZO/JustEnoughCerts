@@ -166,6 +166,14 @@ func (c *conn) Test(ctx context.Context) (contracts.Message, error) {
 	return contracts.Message{Key: i18n.SshTestOk, Params: map[string]any{"user": c.user, "address": c.addr}}, nil
 }
 
+// How long the steps of a deployment may take: writing the files, and the
+// command run afterwards, which may wait for a service to reload, as
+// systemctl reload does; tests shorten them.
+var (
+	writeTimeout   = 2 * time.Minute
+	commandTimeout = 5 * time.Minute
+)
+
 // Deploy writes the files to temporary names, renames them over the old
 // ones in one command, and then runs the command set to run afterwards.
 // The files are overwritten, so there is nothing to remove later. The
@@ -205,8 +213,22 @@ func (s *server) Deploy(ctx context.Context, req contracts.DeployRequest) (contr
 	defer stop()
 
 	log(contracts.LogLine{Level: contracts.Info, Key: i18n.SshLogUpload, Params: map[string]any{"directory": dir}})
-	if out, err := run(client, "mkdir -p "+quote(dir), nil); err != nil {
-		return none, s.writeFailed(ctx, dir, out, err)
+	wctx, cancel := context.WithTimeout(ctx, writeTimeout)
+	defer cancel()
+	write := func(command string, stdin []byte) error {
+		out, err := run(wctx, client, command, stdin)
+		if err != nil && ctx.Err() == nil && wctx.Err() != nil {
+			return &contracts.Problem{Key: i18n.SshErrorWriteTimeout, Params: map[string]any{
+				"directory": dir, "address": s.addr, "minutes": int(writeTimeout / time.Minute),
+			}, Err: err}
+		}
+		if err != nil {
+			return s.writeFailed(ctx, dir, out, err)
+		}
+		return nil
+	}
+	if err := write("mkdir -p "+quote(dir), nil); err != nil {
+		return none, err
 	}
 	var moves []string
 	for _, f := range files {
@@ -216,24 +238,33 @@ func (s *server) Deploy(ctx context.Context, req contracts.DeployRequest) (contr
 		if s.owner != "" {
 			script += " && chown " + quote(s.owner) + " " + quote(tmp)
 		}
-		if out, err := run(client, script, f.Data); err != nil {
-			return none, s.writeFailed(ctx, dir, out, err)
+		if err := write(script, f.Data); err != nil {
+			return none, err
 		}
 		moves = append(moves, "mv -f "+quote(tmp)+" "+quote(path.Join(dir, f.Name)))
 	}
-	if out, err := run(client, strings.Join(moves, " && "), nil); err != nil {
-		return none, s.writeFailed(ctx, dir, out, err)
+	if err := write(strings.Join(moves, " && "), nil); err != nil {
+		return none, err
 	}
 
 	if s.command != "" {
 		log(contracts.LogLine{Level: contracts.Info, Key: i18n.SshLogCommand, Params: map[string]any{"command": s.command}})
-		out, err := run(client, s.command, nil)
+		cctx, cancel := context.WithTimeout(ctx, commandTimeout)
+		out, err := run(cctx, client, s.command, nil)
+		late := errors.Is(cctx.Err(), context.DeadlineExceeded)
+		cancel()
 		if len(out) > 0 {
 			log(contracts.LogLine{Level: contracts.Info, Key: i18n.SshLogOutput, Detail: string(tail(out))})
 		}
 		if err != nil {
 			if ctx.Err() != nil {
 				return none, ctx.Err()
+			}
+			if late {
+				// Running it again would most likely wait as long.
+				return none, retry.Permanent(&contracts.Problem{Key: i18n.SshErrorCommandTimeout, Params: map[string]any{
+					"command": s.command, "directory": dir, "minutes": int(commandTimeout / time.Minute),
+				}, Err: err})
 			}
 			var exit *gossh.ExitError
 			if errors.As(err, &exit) {
@@ -322,8 +353,13 @@ func (c *conn) writeFailed(ctx context.Context, dir string, out []byte, err erro
 }
 
 // run runs command in a session of its own, with stdin as its input, and
-// returns what it wrote to stdout and stderr.
-func run(c *gossh.Client, command string, stdin []byte) ([]byte, error) {
+// returns what it wrote to stdout and stderr. When ctx ends first, it
+// stops waiting, with ctx's error: the command is sent SIGTERM and the
+// session closed, though a server may let it go on.
+func run(ctx context.Context, c *gossh.Client, command string, stdin []byte) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	session, err := c.NewSession()
 	if err != nil {
 		return nil, err
@@ -334,8 +370,18 @@ func run(c *gossh.Client, command string, stdin []byte) ([]byte, error) {
 	if stdin != nil {
 		session.Stdin = bytes.NewReader(stdin)
 	}
-	err = session.Run(command)
-	return out.bytes(), err
+	if err := session.Start(command); err != nil {
+		return nil, err
+	}
+	done := make(chan error, 1)
+	go func() { done <- session.Wait() }()
+	select {
+	case err = <-done:
+		return out.bytes(), err
+	case <-ctx.Done():
+		_ = session.Signal(gossh.SIGTERM)
+		return out.bytes(), ctx.Err()
+	}
 }
 
 // output collects what a command writes, which comes from two goroutines,

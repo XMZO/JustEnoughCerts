@@ -380,6 +380,11 @@ func (s *service) attemptDeployment(ctx, attemptCtx context.Context, c *deployCl
 	if ctx.Err() != nil || errors.Is(err, errNotFound) {
 		return // stopping, or the certificate was deleted
 	}
+	if errors.Is(attemptCtx.Err(), context.DeadlineExceeded) {
+		// Whatever the target said, it was cut short: the last line of the
+		// log is the step it was at.
+		err = &contracts.Problem{Key: i18n.CertsErrorDeployTimeout, Params: map[string]any{"minutes": int(s.deploying.timeout / time.Minute)}, Err: err}
+	}
 	s.failDeployment(context.WithoutCancel(ctx), c, err, log)
 }
 

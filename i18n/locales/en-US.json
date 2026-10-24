@@ -983,6 +983,7 @@
       "bad_pfx": "This file cannot be read: it may be damaged, or not a PFX or P12 file.",
       "csr_source": "Only a certificate uploaded by hand takes a CSR; one with a source renews by itself.",
       "deploy_failed": "The deployment failed. The full log says why.",
+      "deploy_timeout": "The deployment was still going after {minutes, plural, one {# minute} other {# minutes}}, and was stopped; the last line of its log is the step it was stuck at.",
       "duplicate": "This certificate has been added already.",
       "encrypted_key": "The private key is protected by a passphrase. Remove it first, for example with openssl pkey -in key.pem -out plain.pem, then paste the key again.",
       "import_failed": "Adding this certificate failed; the log tells why.",
@@ -1833,7 +1834,7 @@
       "chown": "The files in {directory} could not be given to {owner}: JEC may not change owners unless it runs as root.",
       "command": "The command failed with status {status}; the log has its output.",
       "command_syntax": "The command is not valid shell: {error}",
-      "command_timeout": "The command was still running after {minutes, plural, one {# minute} other {# minutes}}, and was stopped.",
+      "command_timeout": "The command run after writing was still running after {minutes, plural, one {# minute} other {# minutes}}, and was stopped; the files are written.",
       "file_path": "The source asked for a file outside /.well-known/, which JEC does not write: {path}",
       "owner": "{owner} is no owner: write a user, user:group or :group.",
       "owner_unknown": "There is no user or group {name} on this machine; in a container, give numbers.",
@@ -3646,6 +3647,7 @@
     "error": {
       "auth": "{address} refused {user}: check the user, the key or the password.",
       "command": "The command failed with status {status}; the log has its output.",
+      "command_timeout": "The command {command} was still running after {minutes, plural, one {# minute} other {# minutes}}, and was stopped. The files are in {directory}; only the command did not finish. Run it on the server to see what it waits for (systemctl reload, for one, waits until the service has reloaded).",
       "connect": "Could not reach {address}.",
       "file_path": "The source asked for a file outside /.well-known/, which JEC does not write: {path}",
       "host_key": "The server's host key is not the one set (it showed {fingerprint}). If the server was reinstalled, update the setting; otherwise someone may pose as it, so hold off.",
@@ -3656,7 +3658,8 @@
       "owner": "{owner} is no owner: write a user, user:group or :group.",
       "passphrase": "The private key has a passphrase: set it in the advanced settings.",
       "relative": "The directory must be an absolute path: {directory}",
-      "write": "Could not write to {directory}: {output}"
+      "write": "Could not write to {directory}: {output}",
+      "write_timeout": "Writing to {directory} was still going after {minutes, plural, one {# minute} other {# minutes}}, and was stopped. Check the network to {address}."
     },
     "field": {
       "command": "Command to run afterwards",

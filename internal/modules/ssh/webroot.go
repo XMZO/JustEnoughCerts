@@ -110,7 +110,7 @@ func (w *webroot) run(ctx context.Context, dir, command string, stdin []byte) er
 	client := w.client
 	stop := context.AfterFunc(ctx, func() { _ = client.Close() })
 	defer stop()
-	if out, err := run(client, command, stdin); err != nil {
+	if out, err := run(ctx, client, command, stdin); err != nil {
 		var exit *gossh.ExitError
 		if !errors.As(err, &exit) {
 			_ = client.Close() // the connection broke: dial again next time

@@ -983,6 +983,7 @@
       "bad_pfx": "读不了这个文件：可能损坏了，或者不是 PFX / P12 格式。",
       "csr_source": "只有手动上传的证书才用 CSR；有证书来源的证书会自动续期。",
       "deploy_failed": "部署失败。完整日志里有原因。",
+      "deploy_timeout": "部署进行了 {minutes, plural, other {# 分钟}}还没完成，已停止；卡在哪一步见部署日志的最后一行。",
       "duplicate": "这张证书已经添加过了。",
       "encrypted_key": "私钥设置了密码。请先去掉密码，例如运行 openssl pkey -in key.pem -out plain.pem，再重新粘贴。",
       "import_failed": "添加这张证书时出错，详见运行日志。",
@@ -1833,7 +1834,7 @@
       "chown": "{directory} 里的文件改不成属于 {owner}：JEC 不以 root 运行时没有权限改属主。",
       "command": "命令执行失败，退出码 {status}，输出见日志。",
       "command_syntax": "命令的 shell 语法不对：{error}",
-      "command_timeout": "命令执行了 {minutes, plural, other {# 分钟}}还没结束，已停止。",
+      "command_timeout": "写入后执行的命令运行了 {minutes, plural, other {# 分钟}}还没结束，已停止；证书文件已经写好。",
       "file_path": "来源要放的文件不在 /.well-known/ 下，JEC 不会写：{path}",
       "owner": "{owner} 不是属主的写法：应该是 用户、用户:组 或 :组。",
       "owner_unknown": "这台机器上没有叫 {name} 的用户或组；在容器里请写数字。",
@@ -3646,6 +3647,7 @@
     "error": {
       "auth": "{address} 拒绝了 {user} 的登录，请检查用户名、私钥或密码。",
       "command": "命令执行失败，退出码 {status}，输出见日志。",
+      "command_timeout": "命令 {command} 运行了 {minutes, plural, other {# 分钟}}还没结束，已停止。证书文件已经写进 {directory}，只是这条命令没有完成：请在服务器上运行它，看它在等什么（比如 systemctl reload 会一直等到服务重载完成）。",
       "connect": "连不上 {address}。",
       "file_path": "来源要放的文件不在 /.well-known/ 下，JEC 不会写：{path}",
       "host_key": "服务器的主机公钥和设置的不一样（服务器出示的是 {fingerprint}）。服务器重装过就更新设置；否则可能有人冒充它，先别部署。",
@@ -3656,7 +3658,8 @@
       "owner": "{owner} 不是属主的写法：应该是 用户、用户:组 或 :组。",
       "passphrase": "私钥有口令保护，请在高级设置里填写口令。",
       "relative": "远程目录必须是绝对路径：{directory}",
-      "write": "没能写入 {directory}：{output}"
+      "write": "没能写入 {directory}：{output}",
+      "write_timeout": "写入 {directory} 用了 {minutes, plural, other {# 分钟}}还没完成，已停止。请检查到 {address} 的网络。"
     },
     "field": {
       "command": "写入后执行的命令",

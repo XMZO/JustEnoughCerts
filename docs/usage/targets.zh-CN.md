@@ -38,10 +38,10 @@
 ### 写入后执行命令
 
 - **本地目录**：由内置 shell（兼容 POSIX sh 与 Bash）在证书目录中执行，最长 5 分钟，输出记入部署日志。环境变量包括 `JEC_CERT_DIR`、`JEC_CERT_FILE`、`JEC_CHAIN_FILE`、`JEC_FULLCHAIN_FILE`、`JEC_KEY_FILE`（生成时另有 `JEC_COMBINED_FILE`、`JEC_PFX_FILE`）、`JEC_DOMAIN`、`JEC_DOMAINS`、`JEC_CERTIFICATE_ID`、`JEC_NOT_AFTER`，以及 certbot 部署钩子使用的 `RENEWED_LINEAGE`、`RENEWED_DOMAINS`。文件名未修改时，现有的 certbot 部署钩子可直接使用。
-- **SSH 服务器**：在服务器上执行所设置的命令，例如 `systemctl reload nginx`。服务器须提供 POSIX shell，主机公钥必须核对。
+- **SSH 服务器**：在服务器上执行所设置的命令，例如 `systemctl reload nginx`，最长 5 分钟，输出记入部署日志；写入文件最长 2 分钟。服务器须提供 POSIX shell，主机公钥必须核对。
 - **Docker 容器**：写入后向容器发送信号（默认 `HUP`）、重启容器或不做操作。JEC 须能访问 Docker 套接字或套接字代理。
 
-命令退出码非 0、语法错误或超时时，部署记为失败且不自动重试。
+命令退出码非 0、语法错误或超时时，部署记为失败且不自动重试；超时的错误会写明停在哪条命令，例如 `systemctl reload` 一直等不到服务重载完成。每次部署尝试最长 10 分钟，超出时同样停止，部署日志的最后一行即卡住的步骤。
 
 ### 常见配置
 

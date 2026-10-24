@@ -290,6 +290,39 @@ func TestDeployFailures(t *testing.T) {
 	}
 }
 
+// TestDeployTimeouts: writing the files and the command afterwards each
+// have a time limit, and say which ran out.
+func TestDeployTimeouts(t *testing.T) {
+	needShell(t)
+	key, pub := clientKey(t, "")
+	srv := newServer(t, pub)
+	root := t.TempDir()
+	savedWrite, savedCommand := writeTimeout, commandTimeout
+	t.Cleanup(func() { writeTimeout, commandTimeout = savedWrite, savedCommand })
+
+	commandTimeout = 200 * time.Millisecond
+	dir := filepath.Join(root, "star.example.com")
+	var log []contracts.LogLine
+	start := time.Now()
+	_, err := open(t, settings(srv, map[string]string{"directory": root, "command": "sleep 2"}), map[string]string{"private_key": key}).Deploy(t.Context(), request(t, &log))
+	var p *contracts.Problem
+	if !errors.As(err, &p) || p.Key != i18n.SshErrorCommandTimeout || p.Params["command"] != "sleep 2" || p.Params["directory"] != dir || !retry.IsPermanent(err) {
+		t.Errorf("a command that does not end: %v", err)
+	}
+	if time.Since(start) > 1500*time.Millisecond {
+		t.Errorf("waited %s for it", time.Since(start))
+	}
+	if _, err := os.Stat(filepath.Join(dir, "fullchain.pem")); err != nil {
+		t.Errorf("the files before it: %v", err)
+	}
+
+	writeTimeout = time.Nanosecond
+	_, err = open(t, settings(srv, map[string]string{"directory": root}), map[string]string{"private_key": key}).Deploy(t.Context(), request(t, &log))
+	if problemKey(err) != i18n.SshErrorWriteTimeout || retry.IsPermanent(err) {
+		t.Errorf("writing too slowly: %v", err)
+	}
+}
+
 func TestSignIn(t *testing.T) {
 	key, pub := clientKey(t, "")
 	srv := newServer(t, pub)
