@@ -231,22 +231,48 @@ func (m *Module) lookupMore(ctx context.Context, name string, lerr error) (regis
 		ExpiresAt *time.Time `json:"expiresAt"`
 		Registrar string     `json:"registrar"`
 		Note      string     `json:"note"`
+		Reason    string     `json:"reason"`
 		Failed    bool       `json:"failed"`
 	}
 	if m.call(ctx, via, http.MethodGet, "/whoice/domains/"+url.PathEscape(name), nil, &out) != nil || out.Failed {
 		return registration{}, lerr
 	}
 	if out.ExpiresAt == nil {
-		return registration{}, noEnd(out.Note)
+		return registration{}, noEnd{note: out.Note, reason: out.Reason}
 	}
 	return registration{expires: *out.ExpiresAt, registrar: out.Registrar}, nil
 }
 
-// noEnd is errNoEnd as module whoice tells why.
-type noEnd string
+// noEnd is errNoEnd as module whoice tells why: its words and which of
+// the causes it is.
+type noEnd struct{ note, reason string }
 
-func (e noEnd) Error() string      { return cmp.Or(string(e), errNoEnd.Error()) }
+func (e noEnd) Error() string      { return cmp.Or(e.note, errNoEnd.Error()) }
 func (noEnd) Is(target error) bool { return target == errNoEnd }
+
+// Why the end of a registration is not known, as the API tells it.
+const (
+	causeNoLookup = "no_lookup" // the registry has no RDAP or WHOIS to ask from here
+	causeNoName   = "no_name"   // it has no such name
+	causeNoEnd    = "no_end"    // it tells no end
+	causeNoAnswer = "no_answer" // none answered as it should
+)
+
+// causeOf is why lookup error err tells no end, "" when it is not one of
+// the causes above.
+func causeOf(err error) string {
+	var ne noEnd
+	if errors.As(err, &ne) && slices.Contains([]string{causeNoLookup, causeNoName, causeNoEnd, causeNoAnswer}, ne.reason) {
+		return ne.reason
+	}
+	switch {
+	case errors.Is(err, errNoRDAP):
+		return causeNoLookup
+	case errors.Is(err, errNoEnd):
+		return causeNoEnd
+	}
+	return ""
+}
 
 // checkDomain looks up the registration of domain name now, stores what it
 // found and tells of an end that came closer.
@@ -273,12 +299,12 @@ func (m *Module) checkDomain(ctx context.Context, name string) error {
 	defer func() { _ = tx.Rollback() }()
 	if lerr != nil {
 		// What was told before stays known.
-		state, next := stateFailed, now.Add(domainRetry)
+		state, next, cause := stateFailed, now.Add(domainRetry), ""
 		if errors.Is(lerr, errNoRDAP) || errors.Is(lerr, errNoEnd) {
-			state, next = stateUnknown, now.Add(domainUnknown)
+			state, next, cause = stateUnknown, now.Add(domainUnknown), causeOf(lerr)
 		}
-		_, err = tx.ExecContext(ctx, "UPDATE watch_domains SET state = ?, error = ?, checked_at = ?, check_at = ? WHERE name = ?",
-			state, cut(lerr.Error()), now.UnixMilli(), next.UnixMilli(), name)
+		_, err = tx.ExecContext(ctx, "UPDATE watch_domains SET state = ?, error = ?, cause = ?, checked_at = ?, check_at = ? WHERE name = ?",
+			state, cut(lerr.Error()), cause, now.UnixMilli(), next.UnixMilli(), name)
 		if err != nil {
 			return err
 		}
@@ -304,7 +330,7 @@ func (m *Module) checkDomain(ctx context.Context, name string) error {
 		notified = string(lvl)
 	}
 	_, err = tx.ExecContext(ctx,
-		`UPDATE watch_domains SET state = ?, expires_at = ?, registrar = ?, error = '', notified = ?, checked_at = ?, check_at = ?
+		`UPDATE watch_domains SET state = ?, expires_at = ?, registrar = ?, error = '', cause = '', notified = ?, checked_at = ?, check_at = ?
 		 WHERE name = ?`,
 		state, reg.expires.UnixMilli(), reg.registrar, notified, now.UnixMilli(), next.UnixMilli(), name)
 	if err != nil {

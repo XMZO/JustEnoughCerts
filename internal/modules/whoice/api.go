@@ -22,6 +22,7 @@ type RegistrationBody struct {
 	Source    string     `json:"source,omitempty" enum:"rdap,whois,whoisWeb,dns" doc:"Where the end, or else the status, came from"`
 	Server    string     `json:"server,omitempty" doc:"The server that told it"`
 	Note      string     `json:"note,omitempty" doc:"Why there is no end, as the lookup tells it"`
+	Reason    string     `json:"reason,omitempty" enum:"no_lookup,no_name,no_end,no_answer" doc:"Why there is no end: no_lookup: the registry has no RDAP or WHOIS to ask from here; no_name: it, or else the DNS delegation, has no such name; no_end: it tells no end; no_answer: none answered as it should"`
 	Failed    bool       `json:"failed" doc:"Nothing answered as it should, as opposed to a registry that tells no end: worth asking again soon"`
 }
 
@@ -46,7 +47,7 @@ func registerAPI(a huma.API, m *Module) {
 			return out, nil
 		}
 		out.Body.Status, out.Body.Registrar, out.Body.Source, out.Body.Server = string(r.Status), r.Registrar, string(r.Source), r.Server
-		out.Body.Note, out.Body.Failed = r.Note, r.Failed
+		out.Body.Note, out.Body.Reason, out.Body.Failed = r.Note, r.Reason, r.Failed
 		if !r.Expires.IsZero() {
 			out.Body.ExpiresAt = &r.Expires
 		}

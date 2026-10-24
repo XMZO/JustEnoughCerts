@@ -26,6 +26,7 @@ type DomainBody struct {
 	ExpiresAt    *time.Time `json:"expiresAt,omitempty" doc:"When the registration ends, as the registry told"`
 	Registrar    string     `json:"registrar,omitempty"`
 	Error        string     `json:"error,omitempty" doc:"Why the last lookup told no end, as the lookup said it"`
+	Cause        string     `json:"cause,omitempty" enum:"no_lookup,no_name,no_end,no_answer" doc:"Why the end is not known, when the state is unknown: no_lookup: the registry has no RDAP or WHOIS to ask from here; no_name: it has no such name; no_end: it tells no end; no_answer: none answered as it should"`
 	CheckedAt    *time.Time `json:"checkedAt,omitempty"`
 	CheckAt      time.Time  `json:"checkAt" doc:"When the next lookup comes"`
 }
@@ -160,7 +161,7 @@ func (m *Module) oneDomain(ctx context.Context, name string) (*domainOutput, err
 // sorted here, as databases order text by different rules.
 func (m *Module) domains(ctx context.Context, name string) ([]DomainBody, error) {
 	rows, err := m.db.QueryContext(ctx,
-		`SELECT name, manual, certificates, sites, state, expires_at, registrar, error, checked_at, check_at
+		`SELECT name, manual, certificates, sites, state, expires_at, registrar, error, cause, checked_at, check_at
 		 FROM watch_domains WHERE ? = '' OR name = ?`, name, name)
 	if err != nil {
 		return nil, err
@@ -172,7 +173,7 @@ func (m *Module) domains(ctx context.Context, name string) ([]DomainBody, error)
 		var manual, checkAt int64
 		var certs, sites string
 		var expires, checked sql.NullInt64
-		if err := rows.Scan(&d.Name, &manual, &certs, &sites, &d.State, &expires, &d.Registrar, &d.Error, &checked, &checkAt); err != nil {
+		if err := rows.Scan(&d.Name, &manual, &certs, &sites, &d.State, &expires, &d.Registrar, &d.Error, &d.Cause, &checked, &checkAt); err != nil {
 			return nil, err
 		}
 		d.Manual = manual == 1

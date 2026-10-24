@@ -46,12 +46,22 @@ type Result struct {
 	// Source and Server are where the end, or else the status, came from.
 	Source model.SourceName
 	Server string
-	// Note says why there is no end, as the registry or the lookup tells.
-	Note string
+	// Note says why there is no end, as the registry or the lookup tells,
+	// and Reason which of the reasons below it is.
+	Note   string
+	Reason string
 	// Failed is set when nothing answered as it should, as opposed to a
 	// registry that tells no end: worth asking again soon.
 	Failed bool
 }
+
+// Why a result has no end.
+const (
+	NoLookup = "no_lookup" // the registry has no RDAP or WHOIS to ask from here
+	NoName   = "no_name"   // the registry, or else the DNS delegation, has no such name
+	NoEnd    = "no_end"    // the registry tells no end
+	NoAnswer = "no_answer" // none answered as it should
+)
 
 // Lookup looks domains up.
 type Lookup struct {
@@ -134,15 +144,15 @@ func (l *Lookup) Domain(ctx context.Context, name string) (Result, error) {
 	// where nothing else did.
 	switch {
 	case !served && skippedWhois:
-		r.Note = fmt.Sprintf("the WHOIS of .%s cannot be asked from here, and it has no RDAP", tld(q.Suffix))
+		r.Note, r.Reason = fmt.Sprintf("the WHOIS of .%s cannot be asked from here, and it has no RDAP", tld(q.Suffix)), NoLookup
 	case !served:
-		r.Note = fmt.Sprintf("the registry of .%s publishes no WHOIS or RDAP service", tld(q.Suffix))
+		r.Note, r.Reason = fmt.Sprintf("the registry of .%s publishes no WHOIS or RDAP service", tld(q.Suffix)), NoLookup
 	case r.Status == model.StatusUnregistered:
-		r.Note = "the registry has no such name"
+		r.Note, r.Reason = "the registry has no such name", NoName
 	case r.Status != "":
-		r.Note = "the registry tells no expiration date"
+		r.Note, r.Reason = "the registry tells no expiration date", NoEnd
 	default:
-		r.Note, r.Failed = strings.Join(errs, "; "), true
+		r.Note, r.Reason, r.Failed = strings.Join(errs, "; "), NoAnswer, true
 	}
 	if r.Status == "" || r.Status == model.StatusUnknown {
 		d, err := l.delegation.check(ctx, q.RegisteredDomain)
@@ -154,7 +164,7 @@ func (l *Lookup) Domain(ctx context.Context, name string) (Result, error) {
 			if d.status == model.StatusRegistered {
 				r.Note += fmt.Sprintf("; the %s zone delegates it", d.zone)
 			} else {
-				r.Note += fmt.Sprintf("; the %s zone has no such name", d.zone)
+				r.Note, r.Reason = r.Note+fmt.Sprintf("; the %s zone has no such name", d.zone), NoName
 			}
 		}
 	}

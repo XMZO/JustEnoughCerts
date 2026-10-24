@@ -155,6 +155,18 @@ const domainLooks: Record<DomainState, { icon: typeof CircleCheck; label: Messag
   unknown: { icon: CircleHelp, label: 'watch.domain.state.unknown', badge: 'bg-surface-sunken text-ink-muted', ink: 'text-ink-muted' },
   failed: { icon: Unplug, label: 'watch.domain.state.failed', badge: 'bg-warn-soft text-warn-ink', ink: 'text-warn-ink' },
 }
+// Why an end is not known, in words, with what the lookup said in the
+// tooltip; a failed lookup's error as it said it.
+const causes: Record<NonNullable<Domain['cause']>, MessageKey> = {
+  no_lookup: 'watch.domain.cause.no_lookup',
+  no_name: 'watch.domain.cause.no_name',
+  no_end: 'watch.domain.cause.no_end',
+  no_answer: 'watch.domain.cause.no_answer',
+}
+const domainNote = (d: Domain) =>
+  d.cause
+    ? { text: t(causes[d.cause]), title: t('watch.domain.error_detail', { error: d.error ?? '' }), translate: undefined }
+    : { text: d.error ?? '', title: d.error ?? '', translate: 'no' as const }
 // The certificates under a domain, by their primary domain.
 const certificates = useCertificates()
 const certName = computed(() => new Map((certificates.data.value ?? []).map((c) => [c.id, c.domains[0] ?? ''])))
@@ -371,7 +383,9 @@ async function confirmDrop() {
               <span :class="['inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 font-semibold whitespace-nowrap', domainLooks[d.state].badge]">
                 <component :is="domainLooks[d.state].icon" class="size-3.5" aria-hidden="true" />{{ t(domainLooks[d.state].label) }}
               </span>
-              <span v-if="d.error" class="mt-1 block max-w-64 truncate text-caption text-ink-muted" :title="d.error" translate="no">{{ d.error }}</span>
+              <span v-if="d.error" class="mt-1 block max-w-64 truncate text-caption text-ink-muted" :title="domainNote(d).title" :translate="domainNote(d).translate">{{
+                domainNote(d).text
+              }}</span>
             </td>
             <td class="border-b border-line px-3 py-2 whitespace-nowrap">
               <template v-if="d.expiresAt">
@@ -432,7 +446,7 @@ async function confirmDrop() {
             </template>
           </span>
           <span v-if="d.registrar" class="truncate text-caption text-ink-muted" translate="no" :title="d.registrar">{{ d.registrar }}</span>
-          <span v-if="d.error" class="truncate text-caption text-ink-muted" :title="d.error" translate="no">{{ d.error }}</span>
+          <span v-if="d.error" class="truncate text-caption text-ink-muted" :title="domainNote(d).title" :translate="domainNote(d).translate">{{ domainNote(d).text }}</span>
         </span>
         <span class="flex flex-none">
           <JecButton size="sm" variant="ghost" :busy="lookingUp === d.name" :aria-label="t('watch.domain.check', { domain: d.name })" @click="lookUpNow(d)">

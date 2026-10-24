@@ -103,24 +103,25 @@ func TestDomain(t *testing.T) {
 		registrar string
 		source    model.SourceName
 		note      string
+		reason    string
 	}{
 		{name: "RDAP", in: "www.Shop.COM.", status: model.StatusRegistered, expires: at("2030-02-03 04:05:06"), registrar: "Example Registrar", source: model.SourceRDAP},
-		{name: "RDAP: no such name", in: "gone.com", status: model.StatusUnregistered, source: model.SourceRDAP, note: "the registry has no such name"},
+		{name: "RDAP: no such name", in: "gone.com", status: model.StatusUnregistered, source: model.SourceRDAP, note: "the registry has no such name", reason: NoName},
 		// CNNIC's times are China's.
 		{name: "WHOIS, read by the .cn parser", in: "shop.cn", status: model.StatusRegistered, expires: at("2029-03-17 04:48:36"), registrar: "Example Registrar", source: model.SourceWHOIS},
-		{name: "DENIC: its form of query, and no end", in: "shop.de", status: model.StatusRegistered, source: model.SourceRDAP, note: "the registry tells no expiration date"},
+		{name: "DENIC: its form of query, and no end", in: "shop.de", status: model.StatusRegistered, source: model.SourceRDAP, note: "the registry tells no expiration date", reason: NoEnd},
 		{name: "a registry's web lookup", in: "shop.lk", status: model.StatusRegistered, expires: at("2031-10-03 00:00:00"), source: model.SourceWHOISWeb},
 		{name: "a WHOIS that cannot be asked: the delegation", in: "ka.uy", status: model.StatusRegistered, source: model.SourceDNS,
-			note: "the WHOIS of .uy cannot be asked from here, and it has no RDAP; the uy zone delegates it"},
+			note: "the WHOIS of .uy cannot be asked from here, and it has no RDAP; the uy zone delegates it", reason: NoLookup},
 		{name: "no lookup at all: the delegation", in: "dig.al", status: model.StatusRegistered, source: model.SourceDNS,
-			note: "the registry of .al publishes no WHOIS or RDAP service; the al zone delegates it"},
+			note: "the registry of .al publishes no WHOIS or RDAP service; the al zone delegates it", reason: NoLookup},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			r, err := l.Domain(t.Context(), tt.in)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if r.Status != tt.status || !r.Expires.Equal(tt.expires) || r.Registrar != tt.registrar || r.Source != tt.source || r.Note != tt.note || r.Failed {
+			if r.Status != tt.status || !r.Expires.Equal(tt.expires) || r.Registrar != tt.registrar || r.Source != tt.source || r.Note != tt.note || r.Reason != tt.reason || r.Failed {
 				t.Errorf("got %+v", r)
 			}
 		})
@@ -133,7 +134,7 @@ func TestDomain(t *testing.T) {
 func TestDomainFailed(t *testing.T) {
 	l := newTestLookup(t, fakeDelegation(t, map[string][]string{"cn": {"dead.cnnic.cn"}}, nil))
 	r, err := l.Domain(t.Context(), "down.cn")
-	if err != nil || !r.Failed || r.Status != model.StatusUnknown || !strings.Contains(r.Note, "WHOIS whois.cnnic.cn: connection refused") {
+	if err != nil || !r.Failed || r.Status != model.StatusUnknown || !strings.Contains(r.Note, "WHOIS whois.cnnic.cn: connection refused") || r.Reason != NoAnswer {
 		t.Errorf("down.cn = %+v, %v", r, err)
 	}
 	if _, err := l.Domain(t.Context(), "dig.al"); err == nil || !strings.Contains(err.Error(), "publishes no WHOIS or RDAP service") {

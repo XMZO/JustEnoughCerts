@@ -1230,6 +1230,16 @@
       "DomainBody": {
         "additionalProperties": false,
         "properties": {
+          "cause": {
+            "description": "Why the end is not known, when the state is unknown: no_lookup: the registry has no RDAP or WHOIS to ask from here; no_name: it has no such name; no_end: it tells no end; no_answer: none answered as it should",
+            "enum": [
+              "no_lookup",
+              "no_name",
+              "no_end",
+              "no_answer"
+            ],
+            "type": "string"
+          },
           "certificates": {
             "description": "The certificates with names under the domain",
             "items": {
@@ -2962,6 +2972,16 @@
           },
           "note": {
             "description": "Why there is no end, as the lookup tells it",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why there is no end: no_lookup: the registry has no RDAP or WHOIS to ask from here; no_name: it, or else the DNS delegation, has no such name; no_end: it tells no end; no_answer: none answered as it should",
+            "enum": [
+              "no_lookup",
+              "no_name",
+              "no_end",
+              "no_answer"
+            ],
             "type": "string"
           },
           "registrar": {

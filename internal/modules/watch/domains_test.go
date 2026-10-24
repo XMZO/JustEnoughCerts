@@ -14,7 +14,9 @@ import (
 	"time"
 
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/migrations"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/module"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/store"
 )
 
 func TestRegistered(t *testing.T) {
@@ -198,11 +200,11 @@ func TestDomains(t *testing.T) {
 		!slices.Equal(d.Certificates, []int64{1}) || len(d.Sites) != 0 || d.Manual || d.CheckedAt == nil {
 		t.Errorf("shop.com = %+v", d)
 	}
-	if d := f.domain("shop.co.uk"); d.State != stateUnknown || d.ExpiresAt != nil || !strings.Contains(d.Error, "expiration") ||
+	if d := f.domain("shop.co.uk"); d.State != stateUnknown || d.ExpiresAt != nil || !strings.Contains(d.Error, "expiration") || d.Cause != causeNoEnd ||
 		!d.CheckAt.Equal(start.Add(domainUnknown)) {
 		t.Errorf("shop.co.uk = %+v", d)
 	}
-	if d := f.domain("other.com"); d.State != stateFailed || !strings.Contains(d.Error, "404") || len(d.Sites) != 1 ||
+	if d := f.domain("other.com"); d.State != stateFailed || !strings.Contains(d.Error, "404") || d.Cause != "" || len(d.Sites) != 1 ||
 		!d.CheckAt.Equal(start.Add(domainRetry)) {
 		t.Errorf("other.com = %+v", d)
 	}
@@ -365,13 +367,20 @@ func TestLookupMore(t *testing.T) {
 	end := time.Date(2028, 5, 1, 0, 0, 0, 0, time.UTC)
 	f.more = map[string]map[string]any{
 		"shop.de":  {"name": "shop.de", "status": "registered", "expiresAt": end, "registrar": "Example GmbH", "failed": false},
-		"shop.net": {"name": "shop.net", "status": "registered", "note": "the net zone delegates it", "failed": false},
+		"shop.net": {"name": "shop.net", "status": "registered", "note": "the net zone delegates it", "reason": "no_answer", "failed": false},
+		"shop.al":  {"name": "shop.al", "status": "unknown", "note": "the registry of .al publishes no WHOIS or RDAP service", "reason": "no_lookup", "failed": false},
 	}
 	if reg, err := f.m.lookupMore(t.Context(), "shop.de", errNoEnd); err != nil || !reg.expires.Equal(end) || reg.registrar != "Example GmbH" {
 		t.Errorf("shop.de = %+v %v", reg, err)
 	}
-	if _, err := f.m.lookupMore(t.Context(), "shop.net", errNoRDAP); !errors.Is(err, errNoEnd) || err.Error() != "the net zone delegates it" {
+	if _, err := f.m.lookupMore(t.Context(), "shop.net", errNoRDAP); !errors.Is(err, errNoEnd) || err.Error() != "the net zone delegates it" || causeOf(err) != causeNoAnswer {
 		t.Errorf("shop.net = %v", err)
+	}
+	if _, err := f.m.lookupMore(t.Context(), "shop.al", errNoRDAP); causeOf(err) != causeNoLookup {
+		t.Errorf("shop.al = %v, cause %q", err, causeOf(err))
+	}
+	if causeOf(errNoRDAP) != causeNoLookup || causeOf(errNoEnd) != causeNoEnd || causeOf(errors.New("timeout")) != "" {
+		t.Error("causes of the lookup's own errors")
 	}
 	failed := errors.New("WHOIS whois.nic.org.uy: connection refused")
 	if _, err := f.m.lookupMore(t.Context(), "shop.uy", failed); !errors.Is(err, failed) {
@@ -411,5 +420,55 @@ func TestParseWhois(t *testing.T) {
 	}
 	if _, err := parseWhois("Status: connect"); !errors.Is(err, errNoEnd) {
 		t.Errorf("no end: %v", err)
+	}
+}
+
+// The domains looked up before the cause was kept have it from the words
+// of their error.
+func TestDomainCauseMigration(t *testing.T) {
+	st, err := store.Open(t.Context(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	if _, err := st.Migrate(t.Context(), "kernel", migrations.FS); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Migrate(t.Context(), "watch", firstMigrations(t, 5)); err != nil {
+		t.Fatal(err)
+	}
+	db := st.DB()
+	for name, row := range map[string][2]string{
+		"nn.tn":    {stateUnknown, "the registry tells no expiration date"},
+		"shop.al":  {stateUnknown, "the registry of .al publishes no WHOIS or RDAP service"},
+		"shop.uy":  {stateUnknown, "the WHOIS of .uy cannot be asked from here, and it has no RDAP"},
+		"shop.net": {stateUnknown, "the registry of this TLD has no RDAP service"},
+		"gone.dz":  {stateUnknown, "WHOIS whois.nic.dz: timeout; the dz zone has no such name"},
+		"shop.com": {stateFailed, "rdap: 503 Service Unavailable"},
+	} {
+		if _, err := db.Exec(`INSERT INTO watch_domains (name, manual, certificates, sites, created_at, check_at, state, registrar, error, notified)
+			VALUES (?, 1, '[]', '[]', 0, 0, ?, '', ?, '')`, name, row[0], row[1]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := st.Migrate(t.Context(), "watch", New().Migrations()); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := db.Query("SELECT name, cause FROM watch_domains ORDER BY name")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var got []string
+	for rows.Next() {
+		var name, cause string
+		if err := rows.Scan(&name, &cause); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, name+" "+cause)
+	}
+	want := []string{"gone.dz no_name", "nn.tn no_end", "shop.al no_lookup", "shop.com ", "shop.net no_lookup", "shop.uy no_lookup"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("after the migration %v, want %v", got, want)
 	}
 }

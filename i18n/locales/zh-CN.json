@@ -4196,6 +4196,12 @@
     },
     "domain": {
       "add": "添加域名",
+      "cause": {
+        "no_answer": "注册局的查询没有给出可用的回答",
+        "no_end": "注册局不公开到期时间",
+        "no_lookup": "这个后缀的注册局没有可以查询的 RDAP 或 WHOIS 服务",
+        "no_name": "注册局查不到这个域名"
+      },
       "cert_row": "域名注册",
       "check": "立即查询 {domain}",
       "column": {
@@ -4207,6 +4213,7 @@
       "delete": "停止监控 {domain}",
       "delete_body": "JEC 不再查询这个域名的注册信息，域名本身不受影响。",
       "empty": "证书和监控的站点所在的域名会自动出现在这里，也可以手动添加其他域名。",
+      "error_detail": "原始信息：{error}",
       "field": {
         "name": "域名",
         "name_help": "如 example.com。填写子域名或网址时，监控它所在的注册域名。"

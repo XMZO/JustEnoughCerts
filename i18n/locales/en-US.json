@@ -4196,6 +4196,12 @@
     },
     "domain": {
       "add": "Add a domain",
+      "cause": {
+        "no_answer": "No registry lookup gave a usable answer",
+        "no_end": "The registry does not publish when it ends",
+        "no_lookup": "The registry of this suffix has no RDAP or WHOIS to ask",
+        "no_name": "The registry has no such name"
+      },
       "cert_row": "Domain registration",
       "check": "Look up {domain} now",
       "column": {
@@ -4207,6 +4213,7 @@
       "delete": "Stop watching {domain}",
       "delete_body": "JEC no longer looks up the registration of this domain. The domain itself is not affected.",
       "empty": "The domains of your certificates and watched sites appear here by themselves. Other domains can be added by hand.",
+      "error_detail": "As the lookup said: {error}",
       "field": {
         "name": "Domain",
         "name_help": "Such as example.com. For a subdomain or a URL, the registered domain it is under is watched."

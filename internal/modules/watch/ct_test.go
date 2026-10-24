@@ -353,16 +353,7 @@ func TestTransparencySinceMigration(t *testing.T) {
 	if _, err := st.Migrate(t.Context(), "kernel", migrations.FS); err != nil {
 		t.Fatal(err)
 	}
-	all := New().Migrations()
-	before := fstest.MapFS{}
-	for _, name := range []string{"00001_sites.sql", "00002_domains.sql", "00003_transparency.sql", "00004_site_chain.sql"} {
-		data, err := fs.ReadFile(all, name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		before[name] = &fstest.MapFile{Data: data}
-	}
-	if _, err := st.Migrate(t.Context(), "watch", before); err != nil {
+	if _, err := st.Migrate(t.Context(), "watch", firstMigrations(t, 4)); err != nil {
 		t.Fatal(err)
 	}
 	day := int64(24 * time.Hour / time.Millisecond)
@@ -385,7 +376,7 @@ func TestTransparencySinceMigration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := st.Migrate(t.Context(), "watch", all); err != nil {
+	if _, err := st.Migrate(t.Context(), "watch", New().Migrations()); err != nil {
 		t.Fatal(err)
 	}
 	var since int64
@@ -408,4 +399,24 @@ func TestTransparencySinceMigration(t *testing.T) {
 	if want := []string{"100 baseline", "101 unknown", "200 baseline", "201 new"}; !slices.Equal(got, want) {
 		t.Fatalf("after the migration %v, want %v", got, want)
 	}
+}
+
+// firstMigrations returns the module's first n migrations, to fill the
+// tables as an earlier version left them.
+func firstMigrations(t *testing.T, n int) fs.FS {
+	t.Helper()
+	all := New().Migrations()
+	names, err := fs.Glob(all, "*.sql")
+	if err != nil || len(names) < n {
+		t.Fatalf("migrations %v %v", names, err)
+	}
+	out := fstest.MapFS{}
+	for _, name := range names[:n] {
+		data, err := fs.ReadFile(all, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out[name] = &fstest.MapFile{Data: data}
+	}
+	return out
 }

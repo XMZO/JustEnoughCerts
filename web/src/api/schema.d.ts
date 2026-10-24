@@ -2242,6 +2242,11 @@ export interface components {
             total: number;
         };
         DomainBody: {
+            /**
+             * @description Why the end is not known, when the state is unknown: no_lookup: the registry has no RDAP or WHOIS to ask from here; no_name: it has no such name; no_end: it tells no end; no_answer: none answered as it should
+             * @enum {string}
+             */
+            cause?: "no_lookup" | "no_name" | "no_end" | "no_answer";
             /** @description The certificates with names under the domain */
             certificates: number[];
             /**
@@ -2872,6 +2877,11 @@ export interface components {
             name: string;
             /** @description Why there is no end, as the lookup tells it */
             note?: string;
+            /**
+             * @description Why there is no end: no_lookup: the registry has no RDAP or WHOIS to ask from here; no_name: it, or else the DNS delegation, has no such name; no_end: it tells no end; no_answer: none answered as it should
+             * @enum {string}
+             */
+            reason?: "no_lookup" | "no_name" | "no_end" | "no_answer";
             registrar?: string;
             /** @description The server that told it */
             server?: string;
