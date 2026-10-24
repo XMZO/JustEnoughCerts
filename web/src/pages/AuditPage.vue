@@ -89,6 +89,8 @@ const operations: Partial<Record<string, MessageKey>> = {
   'certs-deploy': 'audit.op.certs_deploy',
   'certs-save-settings': 'audit.op.certs_save_settings',
   'monitor-check': 'audit.op.monitor_check',
+  'monitor-ports': 'audit.op.monitor_ports',
+  'monitor-unchecked': 'audit.op.monitor_unchecked',
   'notify-test': 'audit.op.notify_test',
   'tokens-create': 'audit.op.tokens_create',
   'tokens-delete': 'audit.op.tokens_delete',

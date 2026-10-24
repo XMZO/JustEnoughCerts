@@ -42,6 +42,8 @@ type CertificateChecksBody struct {
 	CheckAt *time.Time        `json:"checkAt,omitempty" doc:"When its domains are checked next"`
 	Results []DomainCheckBody `json:"results" doc:"What each domain served the last time it was checked, in the order of the certificate's domains, and for a domain checked apart for mainland China and elsewhere, mainland China first"`
 	Skipped []string          `json:"skipped" doc:"Wildcard domains, which cannot be connected to"`
+	// Unchecked are those people turned the check off for.
+	Unchecked []string `json:"unchecked" doc:"Domains people turned the check off for, in the order of the certificate's domains: they are not connected to, and tell of nothing"`
 }
 
 // CheckTallyBody sums up the checks of a certificate.
@@ -64,6 +66,13 @@ type portsInput struct {
 	ID   int64 `path:"id"`
 	Body struct {
 		Ports []int `json:"ports" minItems:"1" maxItems:"10" doc:"Ports from 1 to 65535, as 443 and 993"`
+	}
+}
+
+type uncheckedInput struct {
+	ID   int64 `path:"id"`
+	Body struct {
+		Domains []string `json:"domains" maxItems:"100" doc:"Domains of the certificate, but wildcards, not to check; none to check every one"`
 	}
 }
 
@@ -124,6 +133,41 @@ func registerAPI(a huma.API, m *Module) {
 	})
 
 	huma.Register(a, huma.Operation{
+		OperationID: "monitor-unchecked", Method: http.MethodPut, Path: "/certificates/{id}/unchecked",
+		Summary:     "Set the domains of a certificate not to check, and check the others now",
+		Description: "For domains whose certificate is not this one's to serve, as one only reachable within a network: they are not connected to, and tell of nothing.",
+	}, func(ctx context.Context, in *uncheckedInput) (*certificateOutput, error) {
+		t, err := m.load(ctx, m.db, in.ID)
+		if errors.Is(err, errUnknown) {
+			return nil, api.NewError(http.StatusNotFound, i18n.MonitorErrorUnknown, nil)
+		}
+		if err != nil {
+			return nil, err
+		}
+		if len(t.domains) > 0 {
+			api.Subject(ctx, t.domains[0])
+		}
+		var off []string
+		for i, d := range in.Body.Domains {
+			d = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(d), "."))
+			if strings.HasPrefix(d, "*.") || !slices.Contains(t.domains, d) {
+				return nil, api.NewError(http.StatusUnprocessableEntity, i18n.KernelErrorInvalidRequest, nil).
+					WithField(fmt.Sprintf("body.domains[%d]", i), i18n.KernelErrorInvalidField)
+			}
+			if !slices.Contains(off, d) {
+				off = append(off, d)
+			}
+		}
+		if _, err := m.db.ExecContext(ctx, "UPDATE monitor_certificates SET unchecked = ? WHERE certificate_id = ?", strings.Join(off, ","), in.ID); err != nil {
+			return nil, err
+		}
+		if _, err := m.check(ctx, in.ID); err != nil {
+			return nil, err
+		}
+		return m.output(ctx, in.ID)
+	})
+
+	huma.Register(a, huma.Operation{
 		OperationID: "monitor-states", Method: http.MethodGet, Path: "/states",
 		Summary: "Sum up the checks of every certificate",
 	}, func(ctx context.Context, _ *struct{}) (*statesOutput, error) {
@@ -155,7 +199,7 @@ func causeOf(err string) string { return reach.Cause(err) }
 
 // output tells what the monitor knows of certificate id.
 func (m *Module) output(ctx context.Context, id int64) (*certificateOutput, error) {
-	out := &certificateOutput{Body: CertificateChecksBody{Results: []DomainCheckBody{}, Skipped: []string{}, Ports: []int{defaultPort}}}
+	out := &certificateOutput{Body: CertificateChecksBody{Results: []DomainCheckBody{}, Skipped: []string{}, Unchecked: []string{}, Ports: []int{defaultPort}}}
 	t, err := m.load(ctx, m.db, id)
 	if errors.Is(err, errUnknown) {
 		return out, nil
@@ -202,6 +246,10 @@ func (m *Module) output(ctx context.Context, id int64) (*certificateOutput, erro
 	for _, d := range t.domains {
 		if strings.HasPrefix(d, "*.") {
 			out.Body.Skipped = append(out.Body.Skipped, d)
+			continue
+		}
+		if !t.checks(d) {
+			out.Body.Unchecked = append(out.Body.Unchecked, d)
 			continue
 		}
 		for _, p := range t.ports {

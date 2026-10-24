@@ -94,11 +94,19 @@ actually served:
   1.0 or 1.1, which browsers dropped.
 
 A certificate deployed to a mail server or another service than a website
-can be checked on its ports instead: Ports checked, at the bottom of the
-Online check section, takes them separated by commas, such as `993, 465`.
-993 (IMAP), 995 (POP3) and 465 (SMTP) speak TLS at once; 25 and 587 are
-checked through SMTP's STARTTLS. Results for another port than 443 show as
-`domain:port`.
+can be checked on its ports instead: Online check settings, at the bottom
+of the Online check section, take them separated by commas, such as
+`993, 465`. 993 (IMAP), 995 (POP3) and 465 (SMTP) speak TLS at once; 25
+and 587 are checked through SMTP's STARTTLS. Results for another port than
+443 show as `domain:port`.
+
+The same settings turn the check off domain by domain, as for a name used
+only within a network, which cannot be reached from outside: such a
+domain is no longer connected to and tells of nothing, and the bottom of
+the Online check section lists it as not checked; new versions keep the
+setting. With every domain off, the section says so, and the same
+settings turn them on again. Wildcards cannot be connected to, and are
+never checked.
 
 Where the DNS of a domain answers by region, sending visitors from
 mainland China to Alibaba Cloud ESA and others to Cloudflare, say, JEC

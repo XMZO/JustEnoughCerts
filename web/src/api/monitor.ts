@@ -55,6 +55,19 @@ export function useSetPorts(id: MaybeRefOrGetter<number>) {
   })
 }
 
+/** Sets the domains of certificate id not to check, and checks the others. */
+export function useSetUnchecked(id: MaybeRefOrGetter<number>) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (domains: string[]) =>
+      unwrap(api.PUT('/monitor/certificates/{id}/unchecked', { params: { path: { id: toValue(id) } }, body: { domains } })),
+    onSuccess: (body) => {
+      client.setQueryData([...all, 'certificate', toValue(id)], body)
+      return client.invalidateQueries({ queryKey: [...all, 'states'] })
+    },
+  })
+}
+
 /** The sums of the checks of every certificate, by certificate ID. */
 export function useMonitorStates() {
   const on = useMonitorOn()

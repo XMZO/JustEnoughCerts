@@ -529,6 +529,59 @@ func TestPorts(t *testing.T) {
 	}
 }
 
+// TestUnchecked: a domain with the check turned off is not connected to,
+// shows apart and tells of nothing, through new versions too, until it is
+// turned on again.
+func TestUnchecked(t *testing.T) {
+	f := newFixture(t)
+	serve := f.m.serve
+	var dialed []string
+	f.m.serve = func(ctx context.Context, domain, address string, port int) (peer, error) {
+		f.mu.Lock()
+		dialed = append(dialed, domain)
+		f.mu.Unlock()
+		return serve(ctx, domain, address, port)
+	}
+	v1 := f.leaf(90, "example.com", "www.example.com")
+	f.tell(contracts.CertificateIssued, 1, v1)
+	f.serve("example.com", v1)
+	resp := f.api.Put("/certificates/1/unchecked", map[string]any{"domains": []string{"WWW.example.com.", "www.example.com"}})
+	var b CertificateChecksBody
+	if resp.Code != http.StatusOK || json.Unmarshal(resp.Body.Bytes(), &b) != nil {
+		t.Fatalf("unchecked = %d %s", resp.Code, resp.Body.String())
+	}
+	if !slices.Equal(b.Unchecked, []string{"www.example.com"}) || len(b.Results) != 1 || b.Results[0].Domain != "example.com" ||
+		!slices.Equal(b.Skipped, []string{"*.example.com"}) || slices.Contains(dialed, "www.example.com") {
+		t.Errorf("checked %+v, unchecked %v, dialed %v", b.Results, b.Unchecked, dialed)
+	}
+	// A new version keeps it off: the older one it serves tells of nothing.
+	f.serve("www.example.com", v1)
+	f.now = f.now.Add(24 * time.Hour)
+	v2 := f.leaf(90, "example.com", "www.example.com")
+	f.serve("example.com", v2)
+	f.tell(contracts.CertificateIssued, 2, v2)
+	f.now = f.now.Add(2 * time.Hour)
+	if _, err := f.m.check(t.Context(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if b := f.certificate(); !slices.Equal(b.Unchecked, []string{"www.example.com"}) || len(b.Results) != 1 || len(f.alerts()) != 0 {
+		t.Errorf("after a new version %+v, alerts %v", b, f.alerts())
+	}
+	// On again: checked at once.
+	resp = f.api.Put("/certificates/1/unchecked", map[string]any{"domains": []string{}})
+	if json.Unmarshal(resp.Body.Bytes(), &b) != nil || len(b.Unchecked) != 0 || len(b.Results) != 2 || b.Results[1].State != stateOld {
+		t.Errorf("on again %+v", b)
+	}
+	for _, bad := range []string{"*.example.com", "other.example.org"} {
+		if resp := f.api.Put("/certificates/1/unchecked", map[string]any{"domains": []string{bad}}); resp.Code != http.StatusUnprocessableEntity {
+			t.Errorf("%s = %d", bad, resp.Code)
+		}
+	}
+	if resp := f.api.Put("/certificates/9/unchecked", map[string]any{"domains": []string{}}); resp.Code != http.StatusNotFound {
+		t.Errorf("an unknown certificate = %d", resp.Code)
+	}
+}
+
 // The TLS version spoken and old versions still taken, for the version in
 // use only.
 func TestTLSVersions(t *testing.T) {

@@ -872,7 +872,7 @@ async function confirmDelete() {
               </button>
             </p>
           </section>
-          <MonitorSection v-if="current" :id="cert.id" :domains="cert.domains.length" />
+          <MonitorSection v-if="current" :id="cert.id" :domains="cert.domains" />
         </div>
 
         <section v-if="issued" aria-labelledby="issuances" class="flex min-w-0 flex-col gap-2 rounded-lg border border-line bg-surface-raised p-3 sm:p-4">

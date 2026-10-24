@@ -156,6 +156,14 @@ type tracked struct {
 	issuer string
 	// ports are those its domains are checked on.
 	ports []int
+	// unchecked are the domains people turned the check off for.
+	unchecked []string
+}
+
+// checks reports whether domain d of t is connected to: not a wildcard,
+// which cannot be, nor one people turned the check off for.
+func (t tracked) checks(d string) bool {
+	return !strings.HasPrefix(d, "*.") && !slices.Contains(t.unchecked, d)
 }
 
 // defaultPort is the one domains are checked on unless set otherwise.
@@ -191,10 +199,10 @@ func (m *Module) load(ctx context.Context, q interface {
 	t := tracked{id: id}
 	var domains string
 	var notAfter, since, checkAt int64
-	var ports string
+	var ports, unchecked string
 	err := q.QueryRowContext(ctx,
-		"SELECT domains, version_id, fingerprint, not_after, current_since, check_at, issuer, ports FROM monitor_certificates WHERE certificate_id = ?", id).
-		Scan(&domains, &t.version, &t.fingerprint, &notAfter, &since, &checkAt, &t.issuer, &ports)
+		"SELECT domains, version_id, fingerprint, not_after, current_since, check_at, issuer, ports, unchecked FROM monitor_certificates WHERE certificate_id = ?", id).
+		Scan(&domains, &t.version, &t.fingerprint, &notAfter, &since, &checkAt, &t.issuer, &ports, &unchecked)
 	if errors.Is(err, sql.ErrNoRows) {
 		return t, errUnknown
 	}
@@ -203,6 +211,11 @@ func (m *Module) load(ctx context.Context, q interface {
 	}
 	t.notAfter, t.currentSince, t.checkAt = time.UnixMilli(notAfter), time.UnixMilli(since), time.UnixMilli(checkAt)
 	t.ports = parsePorts(ports)
+	for d := range strings.SplitSeq(unchecked, ",") {
+		if d != "" {
+			t.unchecked = append(t.unchecked, d)
+		}
+	}
 	return t, json.Unmarshal([]byte(domains), &t.domains)
 }
 
@@ -255,9 +268,9 @@ func versionName(v uint16) string {
 // domain itself when "".
 type view struct{ name, address string }
 
-// check connects to each domain of certificate id, but wildcards, stores
-// what they served, tells of a domain that still serves an older
-// certificate once the grace is over, and sets the next check.
+// check connects to each domain of certificate id it checks, stores what
+// they served, tells of a domain that still serves an older certificate
+// once the grace is over, and sets the next check.
 func (m *Module) check(ctx context.Context, id int64) ([]result, error) {
 	t, err := m.load(ctx, m.db, id)
 	if err != nil {
@@ -265,7 +278,7 @@ func (m *Module) check(ctx context.Context, id int64) ([]result, error) {
 	}
 	var domains []string
 	for _, d := range t.domains {
-		if !strings.HasPrefix(d, "*.") {
+		if t.checks(d) {
 			domains = append(domains, d)
 		}
 	}

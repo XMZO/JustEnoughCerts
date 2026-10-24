@@ -487,13 +487,21 @@
           "tracked": {
             "description": "The monitor knows the version the certificate uses",
             "type": "boolean"
+          },
+          "unchecked": {
+            "description": "Domains people turned the check off for, in the order of the certificate's domains: they are not connected to, and tell of nothing",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           }
         },
         "required": [
           "tracked",
           "ports",
           "results",
-          "skipped"
+          "skipped",
+          "unchecked"
         ],
         "type": "object"
       },
@@ -4666,6 +4674,23 @@
         ],
         "type": "object"
       },
+      "UncheckedInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "domains": {
+            "description": "Domains of the certificate, but wildcards, not to check; none to check every one",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          }
+        },
+        "required": [
+          "domains"
+        ],
+        "type": "object"
+      },
       "UpdateCheckBody": {
         "additionalProperties": false,
         "properties": {
@@ -7939,6 +7964,59 @@
           }
         },
         "summary": "Set the ports the domains of a certificate are checked on, and check them now",
+        "tags": [
+          "monitor"
+        ]
+      }
+    },
+    "/monitor/certificates/{id}/unchecked": {
+      "put": {
+        "description": "For domains whose certificate is not this one's to serve, as one only reachable within a network: they are not connected to, and tell of nothing.",
+        "operationId": "monitor-unchecked",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UncheckedInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateChecksBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Set the domains of a certificate not to check, and check the others now",
         "tags": [
           "monitor"
         ]

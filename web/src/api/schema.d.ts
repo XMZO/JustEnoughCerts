@@ -972,6 +972,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/monitor/certificates/{id}/unchecked": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the domains of a certificate not to check, and check the others now
+         * @description For domains whose certificate is not this one's to serve, as one only reachable within a network: they are not connected to, and tell of nothing.
+         */
+        put: operations["monitor-unchecked"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/monitor/states": {
         parameters: {
             query?: never;
@@ -1984,6 +2004,8 @@ export interface components {
             skipped: string[];
             /** @description The monitor knows the version the certificate uses */
             tracked: boolean;
+            /** @description Domains people turned the check off for, in the order of the certificate's domains: they are not connected to, and tell of nothing */
+            unchecked: string[];
         };
         ChainEntry: {
             issuer: string;
@@ -3501,6 +3523,10 @@ export interface components {
         };
         TypesOutputBody: {
             types: components["schemas"]["TypeSummary"][];
+        };
+        UncheckedInputBody: {
+            /** @description Domains of the certificate, but wildcards, not to check; none to check every one */
+            domains: string[];
         };
         UpdateCheckBody: {
             /** @description JEC asks GitHub once a day for a newer release, and tells of one through the notification channels */
@@ -5713,6 +5739,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["PortsInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateChecksBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "monitor-unchecked": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UncheckedInputBody"];
             };
         };
         responses: {

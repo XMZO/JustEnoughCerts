@@ -3,7 +3,7 @@ import { CircleCheck, Clock, Info, Pencil, RefreshCw, TriangleAlert, Unplug } fr
 import { computed, ref, watch, type Component } from 'vue'
 
 import { useApiError } from '../api/errors'
-import { useCheckNow, useMonitor, useMonitorOn, useSetPorts, type MonitorResult } from '../api/monitor'
+import { useCheckNow, useMonitor, useMonitorOn, useSetPorts, useSetUnchecked, type MonitorResult } from '../api/monitor'
 import { useT, type MessageKey } from '../i18n'
 import { useIntl } from '../i18n/intl'
 import JecAlert from './JecAlert.vue'
@@ -18,7 +18,7 @@ import JecInput from './JecInput.vue'
 // domains that served the same, as visitors from the same side see them,
 // share a row. It shows only while the module runs, under the deployments
 // in their card.
-const props = defineProps<{ id: number; domains: number }>()
+const props = defineProps<{ id: number; domains: string[] }>()
 const { t } = useT()
 const intl = useIntl()
 const on = useMonitorOn()
@@ -26,35 +26,47 @@ const monitor = useMonitor(() => props.id)
 const checkNow = useCheckNow(() => props.id)
 const checkError = useApiError(computed(() => checkNow.error.value))
 
-// The ports the domains are checked on: 443, or those of a mail server.
-const editingPorts = ref(false)
+// The settings of the check: the ports the domains are checked on (443,
+// or those of a mail server), and the domains checked, all but those
+// people turned off, as names used only within a network.
+const editing = ref(false)
 const portsText = ref('')
 const setPorts = useSetPorts(() => props.id)
-const portsError = useApiError(computed(() => setPorts.error.value))
+const setUnchecked = useSetUnchecked(() => props.id)
+const settingsError = useApiError(computed(() => setUnchecked.error.value ?? setPorts.error.value))
 const portsInvalid = ref(false)
-watch(editingPorts, (now) => {
+const checkable = computed(() => props.domains.filter((d) => !d.startsWith('*.')))
+const checked = ref<string[]>([])
+watch(editing, (now) => {
   if (!now) return
   setPorts.reset()
+  setUnchecked.reset()
   portsInvalid.value = false
   portsText.value = (monitor.data.value?.ports ?? [443]).join(', ')
+  checked.value = checkable.value.filter((d) => !monitor.data.value?.unchecked.includes(d))
 })
-async function savePorts() {
+async function saveSettings() {
   const ports = portsText.value.split(/[\s,\uff0c]+/).filter(Boolean).map(Number)
   portsInvalid.value = !ports.length || ports.some((p) => !Number.isInteger(p) || p < 1 || p > 65535)
   if (portsInvalid.value) return
+  const off = checkable.value.filter((d) => !checked.value.includes(d))
+  const was = monitor.data.value
   try {
-    await setPorts.mutateAsync(ports)
+    if (off.join() !== (was?.unchecked ?? []).join()) await setUnchecked.mutateAsync(off)
+    if (ports.join() !== (was?.ports ?? [443]).join()) await setPorts.mutateAsync(ports)
   } catch {
     return // shown by the alert
   }
-  editingPorts.value = false
+  editing.value = false
 }
 const ports = computed(() => monitor.data.value?.ports ?? [443])
 const otherPorts = computed(() => ports.value.length !== 1 || ports.value[0] !== 443)
 
 const body = computed(() => monitor.data.value)
 // Only wildcards, which cannot be connected to: nothing is checked, ever.
-const nothing = computed(() => !body.value?.results.length && (body.value?.skipped.length ?? 0) >= props.domains)
+const nothing = computed(() => !body.value?.results.length && (body.value?.skipped.length ?? 0) >= props.domains.length)
+// Every other domain turned off: nothing is checked until one is on again.
+const allOff = computed(() => !nothing.value && !!body.value && body.value.unchecked.length >= checkable.value.length)
 const looks: Record<MonitorResult['state'], { icon: Component; tone: string }> = {
   ok: { icon: CircleCheck, tone: 'text-ok-ink' },
   old: { icon: TriangleAlert, tone: 'text-warn-ink' },
@@ -111,7 +123,7 @@ function line(r: MonitorResult): string {
       <span v-if="body.results.length && body.checkAt" class="hidden text-caption text-ink-muted @md:inline">
         {{ t('monitor.section.next_check') }} <time :datetime="body.checkAt">{{ intl.dateTime(body.checkAt) }}</time>
       </span>
-      <JecButton v-if="body.tracked && !nothing" size="sm" :busy="checkNow.isPending.value" @click="checkNow.mutate()">
+      <JecButton v-if="body.tracked && !nothing && !allOff" size="sm" :busy="checkNow.isPending.value" @click="checkNow.mutate()">
         <RefreshCw class="size-4" aria-hidden="true" />{{ t('monitor.action.check') }}
       </JecButton>
     </div>
@@ -120,6 +132,18 @@ function line(r: MonitorResult): string {
     <p v-else-if="nothing" class="m-0 flex items-start gap-2 text-small text-ink-muted">
       <Info class="mt-0.5 size-4 flex-none" aria-hidden="true" />
       <span class="min-w-0 [overflow-wrap:anywhere]">{{ t('monitor.section.skipped', { domains: body.skipped.join(', ') }) }}</span>
+    </p>
+    <p v-else-if="allOff" class="m-0 flex items-start gap-2 text-small text-ink-muted">
+      <Info class="mt-0.5 size-4 flex-none" aria-hidden="true" />
+      <span class="min-w-0 flex-1 [overflow-wrap:anywhere]">{{ t('monitor.section.all_off') }}</span>
+      <button
+        type="button"
+        :aria-label="t('monitor.settings.edit')"
+        class="-my-1 grid size-6 flex-none cursor-pointer place-items-center rounded-sm border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
+        @click="editing = true"
+      >
+        <Pencil class="size-3.5" aria-hidden="true" />
+      </button>
     </p>
     <template v-else>
       <p v-if="!body.results.length && body.checkAt" class="m-0 flex items-center gap-2 text-small text-ink-muted">
@@ -153,14 +177,15 @@ function line(r: MonitorResult): string {
       </ul>
       <p class="m-0 flex flex-wrap items-center gap-x-1.5 text-caption text-ink-muted">
         <span v-if="body.skipped.length" class="mr-2.5">{{ t('monitor.section.skipped', { domains: body.skipped.join(', ') }) }}</span>
+        <span v-if="body.unchecked.length" class="mr-2.5 [overflow-wrap:anywhere]">{{ t('monitor.section.unchecked', { domains: body.unchecked.join(', ') }) }}</span>
         <span class="inline-flex items-center gap-1.5">
           <span>{{ t('monitor.ports.label') }}</span>
           <data :value="ports.join(',')" :class="otherPorts ? 'font-semibold text-ink' : ''" translate="no">{{ ports.join(', ') }}</data>
           <button
             type="button"
-            :aria-label="t('monitor.ports.edit')"
+            :aria-label="t('monitor.settings.edit')"
             class="-my-1 grid size-6 cursor-pointer place-items-center rounded-sm border-0 bg-transparent text-ink-muted hover:bg-surface-sunken hover:text-ink max-sm:size-9"
-            @click="editingPorts = true"
+            @click="editing = true"
           >
             <Pencil class="size-3.5" aria-hidden="true" />
           </button>
@@ -172,17 +197,29 @@ function line(r: MonitorResult): string {
     </template>
   </section>
 
-  <JecDialog v-if="on && body?.tracked" v-model:open="editingPorts" :title="t('monitor.ports.title')">
-    <form id="ports-form" class="flex flex-col gap-3" novalidate @submit.prevent="savePorts">
+  <JecDialog v-if="on && body?.tracked" v-model:open="editing" :title="t('monitor.settings.title')">
+    <form id="monitor-form" class="flex flex-col gap-3" novalidate @submit.prevent="saveSettings">
       <p class="m-0 text-small text-ink-muted">{{ t('monitor.ports.intro') }}</p>
-      <JecAlert v-if="portsError.alert.value" :code="portsError.alert.value.code" :params="portsError.alert.value.params" />
+      <JecAlert v-if="settingsError.alert.value" :code="settingsError.alert.value.code" :params="settingsError.alert.value.params" />
       <JecField id="ports" label="monitor.ports.label" hint="monitor.ports.hint" :error="portsInvalid ? 'kernel.error.invalid_field' : undefined">
         <JecInput id="ports" v-model="portsText" inputmode="numeric" autocapitalize="none" spellcheck="false" :invalid="portsInvalid" translate="no" />
       </JecField>
+      <fieldset v-if="checkable.length" class="m-0 flex flex-col gap-1 border-0 p-0">
+        <legend class="mb-1 p-0 font-semibold">{{ t('monitor.settings.domains') }}</legend>
+        <span class="text-small text-ink-muted">{{ t('monitor.settings.domains_help') }}</span>
+        <div class="flex max-h-60 flex-col overflow-y-auto">
+          <label v-for="d in checkable" :key="d" class="flex min-h-9 cursor-pointer items-center gap-2">
+            <input v-model="checked" type="checkbox" :value="d" class="size-4 flex-none accent-brand" />
+            <span class="min-w-0 [overflow-wrap:anywhere]" translate="no">{{ d }}</span>
+          </label>
+        </div>
+      </fieldset>
     </form>
     <template #footer>
-      <JecButton @click="editingPorts = false">{{ t('kernel.action.cancel') }}</JecButton>
-      <JecButton type="submit" form="ports-form" variant="primary" :busy="setPorts.isPending.value">{{ t('kernel.action.save') }}</JecButton>
+      <JecButton @click="editing = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton type="submit" form="monitor-form" variant="primary" :busy="setPorts.isPending.value || setUnchecked.isPending.value">
+        {{ t('kernel.action.save') }}
+      </JecButton>
     </template>
   </JecDialog>
 </template>

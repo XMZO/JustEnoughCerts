@@ -339,6 +339,8 @@
       "credentials_delete": "删除凭据",
       "credentials_update": "修改凭据",
       "monitor_check": "立即线上检查",
+      "monitor_ports": "修改线上检查的端口",
+      "monitor_unchecked": "修改线上检查的域名",
       "notify_test": "发送测试通知",
       "offsite_save": "保存异地备份设置",
       "oidc_callback": "单点登录",
@@ -2793,18 +2795,24 @@
       "served_old": "线上还是旧证书"
     },
     "ports": {
-      "edit": "修改检查端口",
       "hint": "用逗号分隔，最多 10 个。",
       "intro": "线上检查连接每个域名的这些端口，核对上面的证书。网站用 443；邮件服务器可以加上 993（IMAP）、995（POP3）、465（SMTP），25 和 587 会经 STARTTLS 检查。",
-      "label": "检查端口",
-      "title": "检查端口"
+      "label": "检查端口"
     },
     "section": {
+      "all_off": "这张证书的域名都关闭了线上检查。",
       "next_check": "下次检查：",
       "pending": "还没检查，计划在",
       "skipped": "通配符域名不检查：{domains}",
       "title": "线上检查",
+      "unchecked": "不检查：{domains}",
       "untracked": "还没开始检查：巡检知道当前版本后就会自动检查。"
+    },
+    "settings": {
+      "domains": "检查的域名",
+      "domains_help": "不勾选的域名不再连接，也不会因为它发提醒，比如只在内网使用的名字。通配符域名无法连接，不在这里列出。",
+      "edit": "修改检查的端口和域名",
+      "title": "线上检查设置"
     },
     "state": {
       "incomplete": "缺少中间证书：部分 App、安卓设备和 curl 会验证失败，请部署完整证书链。",
