@@ -434,7 +434,7 @@ func TestSpottedNote(t *testing.T) {
 	}
 	if n := notes[0]; n.Title != "A certificate JEC does not hold, for example.com" ||
 		!strings.HasPrefix(n.Text, "Names: example.com, www.example.com\nIssued by Some CA, valid from 2026-10-17 to 2027-01-15.\n") ||
-		!strings.Contains(n.Text, "The certificate: https://crt.sh/?sha256=ab12\nDetails: https://jec.example.com/sites") {
+		!strings.Contains(n.Text, "The certificate: https://crt.sh/?sha256=ab12\nDetails: https://jec.example.com/transparency") {
 		t.Errorf("note %q\n%s", n.Title, n.Text)
 	}
 }

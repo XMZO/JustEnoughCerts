@@ -478,9 +478,9 @@ const inks = { ok: 'text-ink-muted', warn: 'font-semibold text-warn-ink', danger
                 <div class="font-semibold [overflow-wrap:anywhere]">{{ t('watch.overview.spotted', { count: spottedTodo.length }) }}</div>
                 <div class="text-small text-ink-muted [overflow-wrap:anywhere]" translate="no">{{ spottedNames }}</div>
               </div>
-              <JecButton variant="ghost" size="sm" to="/sites" class="max-sm:hidden">{{ t('watch.overview.open') }}</JecButton>
+              <JecButton variant="ghost" size="sm" to="/transparency" class="max-sm:hidden">{{ t('watch.overview.open') }}</JecButton>
             </div>
-            <RouterLink to="/sites" :aria-label="t('watch.overview.open')" class="-my-2.5 grid size-11 flex-none place-items-center text-ink-muted sm:hidden">
+            <RouterLink to="/transparency" :aria-label="t('watch.overview.open')" class="-my-2.5 grid size-11 flex-none place-items-center text-ink-muted sm:hidden">
               <ChevronRight class="size-4" aria-hidden="true" />
             </RouterLink>
           </div>

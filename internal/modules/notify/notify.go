@@ -575,7 +575,7 @@ func (s *service) accountNote(tag language.Tag, ev events.Event, d contracts.Sig
 // transparency logs that JEC does not hold.
 func (s *service) spottedNote(tag language.Tag, ev events.Event, d contracts.SpottedEvent) contracts.Note {
 	w := writer{s: s, tag: tag}
-	n := contracts.Note{Event: ev.Type, Time: ev.Time, Data: ev.Data, Link: s.link("/sites")}
+	n := contracts.Note{Event: ev.Type, Time: ev.Time, Data: ev.Data, Link: s.link("/transparency")}
 	n.Title = w.text(i18n.NotifyNoteSpottedTitle, i18n.Args{"domain": d.Domain})
 	lines := []string{
 		w.text(i18n.NotifyNoteSpottedNames, i18n.Args{"names": strings.Join(d.Names, ", ")}),
