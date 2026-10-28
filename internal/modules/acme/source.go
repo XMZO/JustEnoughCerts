@@ -165,15 +165,30 @@ func (s *source) RenewalInfo(ctx context.Context, leaf *x509.Certificate) (contr
 		return contracts.RenewalInfo{}, err
 	}
 	info, err := client.Certificate.GetRenewalInfo(ctx, leaf)
-	var pd *legoacme.ProblemDetails
 	switch {
-	case errors.Is(err, api.ErrNoARI), errors.As(err, &pd) && pd.HTTPStatus == http.StatusNotFound:
+	case noRenewalInfo(err):
 		return contracts.RenewalInfo{}, contracts.ErrNoRenewalInfo
 	case err != nil:
 		return contracts.RenewalInfo{}, err
 	}
 	return contracts.RenewalInfo{Start: info.SuggestedWindow.Start, End: info.SuggestedWindow.End,
 		ExplanationURL: info.ExplanationURL, RetryAfter: info.RetryAfter}, nil
+}
+
+// noRenewalInfo tells whether err is the CA giving no suggestions at all,
+// rather than not for now (429, 5xx): no ARI, a certificate it does not
+// know, or another refusal of the request itself, as SSL.com's, whose
+// directory names an endpoint that its gateway answers with 403.
+func noRenewalInfo(err error) bool {
+	var pd *legoacme.ProblemDetails
+	switch {
+	case errors.Is(err, api.ErrNoARI):
+		return true
+	case errors.As(err, &pd):
+		return pd.HTTPStatus >= 400 && pd.HTTPStatus < 500 &&
+			pd.HTTPStatus != http.StatusRequestTimeout && pd.HTTPStatus != http.StatusTooManyRequests
+	}
+	return false
 }
 
 // Revoke has the CA revoke leaf, which this account issued (RFC 8555 7.6),

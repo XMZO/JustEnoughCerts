@@ -14,6 +14,7 @@ import (
 	"time"
 
 	legoacme "github.com/go-acme/lego/v5/acme"
+	"github.com/go-acme/lego/v5/acme/api"
 	"github.com/go-acme/lego/v5/lego"
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
@@ -391,6 +392,26 @@ func TestRefusedReplaces(t *testing.T) {
 	} {
 		if got := refusedReplaces(err); got != want {
 			t.Errorf("%v: %v", err, got)
+		}
+	}
+}
+
+func TestNoRenewalInfo(t *testing.T) {
+	for _, c := range []struct {
+		err  error
+		none bool
+	}{
+		{api.ErrNoARI, true},
+		{&legoacme.ProblemDetails{HTTPStatus: http.StatusNotFound}, true},
+		// SSL.com: the directory names an endpoint that is not there.
+		{fmt.Errorf("ari: %w", &legoacme.ProblemDetails{HTTPStatus: http.StatusForbidden}), true},
+		{&legoacme.ProblemDetails{HTTPStatus: http.StatusTooManyRequests}, false},
+		{&legoacme.ProblemDetails{HTTPStatus: http.StatusServiceUnavailable}, false},
+		{errors.New("connection refused"), false},
+		{nil, false},
+	} {
+		if got := noRenewalInfo(c.err); got != c.none {
+			t.Errorf("noRenewalInfo(%v) = %v", c.err, got)
 		}
 	}
 }
