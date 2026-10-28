@@ -1341,10 +1341,10 @@ test('every page is translated and fits', async ({ page }, info) => {
   await dialog.locator('button[type=submit]').click()
   await expect(dialog.locator('code').filter({ hasText: 'jec_' })).toBeVisible()
   expect.soft(await problems(page), 'API tokens: a new one').toEqual([])
-  const remove = dialog.getByRole('button', { name: pseudoize('Delete ci') })
-  await remove.click()
+  await dialog.getByRole('button', { name: pseudoize('Delete ci') }).click()
   expect.soft(await problems(page), 'API tokens: delete, to confirm').toEqual([])
-  await remove.click()
+  // Asking, the button is named by what it says.
+  await dialog.getByRole('button', { name: label('kernel.tokens.delete_confirm') }).click()
   await expect(dialog.getByText(label('kernel.tokens.empty'))).toBeVisible()
   await dialog.getByRole('button', { name: label('kernel.action.close') }).last().click()
   await expect(dialog).toBeHidden()

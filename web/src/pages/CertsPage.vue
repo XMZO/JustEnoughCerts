@@ -154,7 +154,6 @@ interface Row {
   extra: string
   life: ReturnType<typeof certLife>
   lifeWords: string
-  label: string
   note: string
   /** Where new versions come from: a configured source by its name, or uploads. */
   source: string
@@ -222,7 +221,6 @@ const rows = computed<Row[]>(() =>
       extra: c.domains.length > 1 ? `+${c.domains.length - 1}` : '',
       life: l,
       lifeWords,
-      label: t('certs.cert.label', { domain, state: t(stateText[c.state]), life: lifeWords }),
       note: note(c),
       source: c.source === 'provider' ? (sources.data.value?.find((p) => p.id === c.sourceProvider)?.name ?? '') : t('certs.source.upload'),
       targets: c.targets.map((id) => targets.data.value?.find((p) => p.id === id)?.name ?? '').filter(Boolean),
@@ -708,7 +706,6 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
           <div v-for="r in attentionRows" :key="r.cert.id" role="listitem" class="border-b border-line last:border-b-0">
             <RouterLink
               :to="`/certificates/${r.cert.id}`"
-              :aria-label="t('certs.cert.label_note', { label: r.label, note: r.note })"
               class="grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5 text-ink no-underline hover:bg-surface-sunken hover:text-ink"
             >
               <component :is="itemLooks[r.cert.state].icon" :class="['size-5', itemLooks[r.cert.state].ink]" aria-hidden="true" />
@@ -740,7 +737,6 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
           <div v-for="r in healthyRows" :key="r.cert.id" role="listitem" class="grid min-w-0">
             <RouterLink
               :to="`/certificates/${r.cert.id}`"
-              :aria-label="r.label"
               class="grid min-w-0 gap-1.5 rounded-lg border border-line bg-surface-raised px-3 py-2.5 text-ink no-underline hover:bg-surface-sunken hover:text-ink"
             >
               <span class="truncate text-body font-semibold" translate="no" :title="intl.list(r.cert.domains)">

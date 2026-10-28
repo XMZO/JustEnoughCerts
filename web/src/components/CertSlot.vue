@@ -39,7 +39,8 @@ const fills = { ok: 'bg-ok-fill', warn: 'bg-warn-fill', danger: 'bg-danger-fill'
     ]"
     @click="decorative || $emit('select')"
   >
-    <span class="-translate-y-[3px]" translate="no" aria-hidden="true">{{ mono(cert.domains[0] ?? '') }}</span>
+    <!-- Drawn by CSS: two letters are a picture, not a name to speak. -->
+    <span class="-translate-y-[3px] before:content-[attr(data-mono)]" :data-mono="mono(cert.domains[0] ?? '')" aria-hidden="true" />
     <span
       v-if="life"
       class="absolute right-1.5 bottom-[5px] left-1.5 h-1 bg-bar-track p-px shadow-[0_0_0_1px_var(--bar-edge)] sm:right-[7px] sm:bottom-1.5 sm:left-[7px]"

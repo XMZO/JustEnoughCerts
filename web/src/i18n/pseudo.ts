@@ -6,6 +6,7 @@
 
 export const open = '⟦' // ⟦
 export const close = '⟧' // ⟧
+const pad = '×' // U+00D7, which the bundled Inter has
 
 const plain = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 const accented = 'áƀçďéƒğĥíĵķĺɱñóþʠŕšţúṽŵẋýžÁƁÇĎÉƑĞĤÍĴĶĹṀÑÓÞǪŔŠŢÚṼŴẊÝŽ'
@@ -14,12 +15,14 @@ const accents = new Map([...plain].map((c, i) => [c, [...accented][i] ?? c]))
 /** pseudoize turns rendered text into its pseudo-locale form. */
 export function pseudoize(text: string): string {
   const body = [...text].map((c) => accents.get(c) ?? c).join('')
-  // The extra length comes as short words, so that the text still wraps.
+  // The extra length comes as short words, so that the text still wraps,
+  // of a sign as wide as a letter that is not one, so that axe still finds
+  // the words of a button in its label (label-content-name-mismatch).
   let extra = Math.ceil([...text].length * 0.4)
   const words: string[] = []
   while (extra > 0) {
     const n = Math.min(extra, 5)
-    words.push('ẋ'.repeat(n))
+    words.push(pad.repeat(n))
     extra -= n + 1
   }
   return `${open}${body}${words.length ? ` ${words.join(' ')}` : ''}${close}`

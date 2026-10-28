@@ -684,7 +684,7 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
                 v-for="h in shownHeld"
                 :key="h.domains.join(' ')"
                 size="sm"
-                :aria-label="heldLabel(h)"
+                :title="heldLabel(h)"
                 class="max-w-full"
                 @click="pickHeld(h.domains)"
               >
@@ -734,7 +734,7 @@ const fieldError = (name: string): MessageKey | undefined => errors.fields.value
               <span class="text-small text-ink-muted">{{ t('certs.add.account_domains', { count: account.data.value?.total ?? 0 }) }}</span>
               <span class="text-caption text-ink-muted">{{ t('certs.add.account_domains_untested') }}</span>
               <span class="flex flex-wrap gap-1.5">
-                <JecButton v-for="d in offered" :key="d" size="sm" :aria-label="t('certs.add.pick_domain', { domain: d })" @click="pickDomain(d)">
+                <JecButton v-for="d in offered" :key="d" size="sm" :title="t('certs.add.pick_domain', { domain: d })" @click="pickDomain(d)">
                   <Plus class="size-4" aria-hidden="true" /><span translate="no">{{ d }}</span>
                 </JecButton>
               </span>

@@ -1243,7 +1243,7 @@ const field = 'h-9 rounded-md border border-line-strong bg-surface-raised px-2 t
             class="ml-auto flex-none"
             :variant="confirmDelete === tk.id ? 'danger' : 'ghost'"
             :busy="deleteToken.isPending.value && confirmDelete === tk.id"
-            :aria-label="t('kernel.tokens.delete', { name: tk.name })"
+            :aria-label="confirmDelete === tk.id ? undefined : t('kernel.tokens.delete', { name: tk.name })"
             :title="t('kernel.tokens.delete', { name: tk.name })"
             @click="removeToken(tk.id)"
           >
