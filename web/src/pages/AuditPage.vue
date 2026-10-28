@@ -78,6 +78,7 @@ const operations: Partial<Record<string, MessageKey>> = {
   'certs-export': 'audit.op.certs_export',
   'certs-revoke': 'audit.op.certs_revoke',
   'certs-retire': 'audit.op.certs_retire',
+  'certs-revoke-all': 'audit.op.certs_revoke_all',
   'certs-use-version': 'audit.op.certs_use_version',
   'certs-pull-key': 'audit.op.certs_pull_key',
   'certs-request': 'audit.op.certs_request',

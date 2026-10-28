@@ -196,3 +196,156 @@ func TestRetireOtherReason(t *testing.T) {
 		t.Errorf("revoking one: %+v", e)
 	}
 }
+
+func TestRevokeAll(t *testing.T) {
+	f := newFixture(t)
+	c, old, current := f.issueTwice()
+	path := "/certificates/" + strconv.FormatInt(c.ID, 10) + "/revoke"
+	body := func(reason, then string) map[string]any {
+		return map[string]any{"password": testPassword, "reason": reason, "then": then}
+	}
+
+	// The CA refuses the one in use: the renewal is not left paused.
+	f.fake.revoke = func(leaf *x509.Certificate, _ contracts.RevocationReason) error {
+		if fmt.Sprintf("%x", leaf.SerialNumber) == current.Serial {
+			return &contracts.Problem{Key: i18n.AcmeErrorRevoke, Params: map[string]any{"detail": "no"}}
+		}
+		return nil
+	}
+	if e := f.apiError(f.api.Post(path, body("cessation_of_operation", "pause")), http.StatusBadGateway); e.Code != string(i18n.AcmeErrorRevoke) {
+		t.Errorf("the CA refused: %+v", e)
+	}
+	if got := f.certificate(c.ID); got.Paused || got.State == stateRevoked {
+		t.Errorf("after a refusal: %+v", got)
+	}
+	f.fake.revoke = nil
+
+	// Paused, the certificate stays, its version in use revoked last.
+	var out struct {
+		Revoked int `json:"revoked"`
+	}
+	f.call(f.api.Post(path, body("cessation_of_operation", "pause")), http.StatusOK, &out)
+	want := []string{old.Serial + " 5", current.Serial + " 5"}
+	if out.Revoked != 1 || !slices.Equal(f.fake.revoked, want) {
+		t.Errorf("revoked %d: %v, want %v", out.Revoked, f.fake.revoked, want)
+	}
+	got := f.certificate(c.ID)
+	if !got.Paused || got.State != stateRevoked || got.RenewAt != nil || got.Current.RevokedAt == nil || got.Current.RevokeReason != "cessation_of_operation" {
+		t.Errorf("paused: %+v", got)
+	}
+	// Nor does the renewal start for it.
+	if err := f.svc.renew(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.certificate(c.ID); got.Issuance != nil && got.Issuance.State != issuanceDone {
+		t.Errorf("renewing a paused one: %+v", got.Issuance)
+	}
+	if e := f.apiError(f.api.Post(path, body("cessation_of_operation", "pause")), http.StatusConflict); e.Code != string(i18n.CertsErrorRevokeNone) {
+		t.Errorf("nothing left: %+v", e)
+	}
+
+	// Renewed: a new version comes at once.
+	c, _, current = f.issueTwice()
+	f.fake.revoked = nil
+	path = "/certificates/" + strconv.FormatInt(c.ID, 10) + "/revoke"
+	f.call(f.api.Post(path, body("key_compromise", "renew")), http.StatusOK, &out)
+	if out.Revoked != 2 || !slices.Contains(f.fake.revoked, current.Serial+" 1") {
+		t.Errorf("revoked %d: %v", out.Revoked, f.fake.revoked)
+	}
+	f.run()
+	if got := f.certificate(c.ID); got.Paused || got.Current.ID == current.ID || got.State == stateRevoked {
+		t.Errorf("renewed: %+v", got)
+	}
+
+	// Uploaded: nothing JEC can revoke, and nothing to issue it from.
+	up := f.add(f.leaf(90, "up.example.com"))
+	if e := f.apiError(f.api.Post("/certificates/"+strconv.FormatInt(up.ID, 10)+"/revoke", body("superseded", "pause")), http.StatusConflict); e.Code != string(i18n.CertsErrorRevokeNone) {
+		t.Errorf("uploaded: %+v", e)
+	}
+}
+
+func TestRevokeOld(t *testing.T) {
+	f := newFixture(t)
+	ctx := t.Context()
+	c, old, current := f.issueTwice()
+	check := func() {
+		t.Helper()
+		if err := f.svc.checkRevokeOld(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	revokedOld := func() *VersionBody {
+		t.Helper()
+		for _, v := range f.versionsOf(c.ID) {
+			if v.ID == old.ID {
+				return &v
+			}
+		}
+		t.Fatal("no old version")
+		return nil
+	}
+
+	// Off: the old one stays.
+	f.now = f.now.Add(2 * day)
+	check()
+	if len(f.fake.revoked) != 0 {
+		t.Fatalf("off: %v", f.fake.revoked)
+	}
+
+	// On, without targets: a day after the version in use came.
+	path := "/certificates/" + strconv.FormatInt(c.ID, 10)
+	var got CertificateBody
+	f.call(f.api.Patch(path, map[string]any{"revokeOld": true}), http.StatusOK, &got)
+	if !got.RevokeOld {
+		t.Fatalf("on: %+v", got)
+	}
+	// A CA that refuses the reason revokes for none; one that fails is
+	// asked again a day later.
+	f.fake.revoke = func(*x509.Certificate, contracts.RevocationReason) error {
+		return &contracts.Problem{Key: i18n.AcmeErrorRevoke, Params: map[string]any{"detail": "down"}}
+	}
+	check()
+	f.now = f.now.Add(time.Hour)
+	check()
+	if v := revokedOld(); v.RevokedAt != nil {
+		t.Fatalf("failed: %+v", v)
+	}
+	asked := 0
+	f.fake.revoke = func(_ *x509.Certificate, reason contracts.RevocationReason) error {
+		asked++
+		if reason != contracts.ReasonUnspecified {
+			return &contracts.Problem{Key: i18n.AcmeErrorRevokeReason, Err: contracts.ErrReasonRefused}
+		}
+		return nil
+	}
+	check()
+	if asked != 0 {
+		t.Fatalf("asked again within a day: %d", asked)
+	}
+	f.now = f.now.Add(day)
+	check()
+	if v := revokedOld(); asked != 2 || v.RevokedAt == nil || v.RevokeReason != "unspecified" {
+		t.Errorf("revoked: %+v, asked %d", v, asked)
+	}
+	if got := f.certificate(c.ID); got.Current.ID != current.ID || got.Current.RevokedAt != nil {
+		t.Errorf("the version in use: %+v", got.Current)
+	}
+
+	// With a target: only once the new version is deployed there.
+	f.fake.revoke = nil
+	f.fake.revoked = nil
+	target := f.provider("fake.hook")
+	f.call(f.api.Patch(path, map[string]any{"targets": []int64{target}}), http.StatusOK, nil)
+	f.runDeploys()
+	f.call(f.api.Post(path+"/issue"), http.StatusAccepted, nil)
+	f.run()
+	check()
+	if len(f.fake.revoked) != 0 {
+		t.Fatalf("before the deployment: %v", f.fake.revoked)
+	}
+	f.runDeploys()
+	check()
+	if want := []string{current.Serial + " 4"}; !slices.Equal(f.fake.revoked, want) {
+		t.Errorf("after the deployment: %v, want %v", f.fake.revoked, want)
+	}
+}

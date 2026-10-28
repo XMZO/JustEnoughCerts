@@ -31,10 +31,11 @@ type CertificateBody struct {
 	Reminder        *ReminderBody    `json:"reminder,omitempty" doc:"A day someone set to be reminded on, as to renew a subscription bought"`
 	ReuseKey        bool             `json:"reuseKey,omitempty" doc:"Renewals keep the private key of the version in use"`
 	Paused          bool             `json:"paused,omitempty" doc:"The renewal is paused: the certificate is issued only when someone asks"`
+	RevokeOld       bool             `json:"revokeOld,omitempty" doc:"Once a new version is deployed to every target, or a day after it came for a certificate without targets, the earlier ones still valid are revoked as superseded"`
 	DeployWindow    string           `json:"deployWindow,omitempty" doc:"The hours, in the panel's time zone, new versions are deployed in, as 1-5"`
 	NotifyTo        []int64          `json:"notifyTo" doc:"The notifiers its notes go to; empty for all"`
 	RenewBeforeDays int              `json:"renewBeforeDays" doc:"How many days before the end the certificate is renewed, or a reminder sent"`
-	State           string           `json:"state" enum:"ok,expiring,expired,issuing,deploying,failed,deploy_failed,revoked,awaiting" doc:"issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; awaiting: no version yet, and a CSR waits for its certificate; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)"`
+	State           string           `json:"state" enum:"ok,expiring,expired,issuing,deploying,failed,deploy_failed,revoked,awaiting" doc:"issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; awaiting: no version yet, and a CSR waits for its certificate; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (by its CA, or as someone asked JEC)"`
 	Current         *VersionBody     `json:"current,omitempty" doc:"The version in use"`
 	RenewAt         *time.Time       `json:"renewAt,omitempty" doc:"When the renewal of the current version starts, or started: for a certificate with a source"`
 	IssuedWeek      int              `json:"issuedWeek,omitempty" doc:"How many versions its sources issued in the last seven days, which CAs limit, as Let's Encrypt to five for the same domains"`
@@ -134,7 +135,7 @@ func certificateBody(c *Certificate, now time.Time, sch schedule) CertificateBod
 	b := CertificateBody{
 		ID: c.ID, Domains: c.Domains, Source: c.Source, SourceProvider: c.SourceProvider, BackupProvider: c.BackupProvider, SolverProvider: c.SolverProvider,
 		KeyType: c.KeyType, RenewBeforeDays: c.RenewBeforeDays, State: c.state(now), CreatedAt: c.CreatedAt, Note: c.Note, ReuseKey: c.ReuseKey, NotifyTo: c.NotifyTo,
-		Paused: c.Paused, DeployWindow: c.DeployWindow, IssuedWeek: c.IssuedWeek,
+		Paused: c.Paused, RevokeOld: c.RevokeOld, DeployWindow: c.DeployWindow, IssuedWeek: c.IssuedWeek,
 	}
 	if c.ReminderOn != "" {
 		b.Reminder = &ReminderBody{On: c.ReminderOn, Note: c.ReminderNote, Sent: c.ReminderSent}
@@ -270,6 +271,15 @@ type retireInput struct {
 	}
 }
 
+type revokeAllInput struct {
+	ID   int64 `path:"id"`
+	Body struct {
+		Password string `json:"password" minLength:"1" maxLength:"1024" doc:"The password of the signed-in account, asked again before revoking"`
+		Reason   string `json:"reason" enum:"unspecified,key_compromise,superseded,cessation_of_operation" doc:"Why, as RFC 5280 names it"`
+		Then     string `json:"then" enum:"pause,renew" doc:"pause: pause the renewal, as for a site that is no more; renew: issue the certificate again at once, as for a key that may have leaked"`
+	}
+}
+
 type retireOutput struct {
 	Body struct {
 		Revoked int `json:"revoked" doc:"How many versions were revoked"`
@@ -293,6 +303,7 @@ type updateInput struct {
 		ReuseKey        *bool         `json:"reuseKey,omitempty" doc:"Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out"`
 		NotifyTo        *[]int64      `json:"notifyTo,omitempty" maxItems:"50" doc:"The notifiers the certificate's notes go to; empty for all; unchanged if left out"`
 		Paused          *bool         `json:"paused,omitempty" doc:"Pause the renewal: the certificate is issued only when someone asks; unchanged if left out"`
+		RevokeOld       *bool         `json:"revokeOld,omitempty" doc:"Revoke the earlier versions once a new one is deployed to every target; unchanged if left out"`
 		SourceProvider  *int64        `json:"sourceProvider,omitempty" doc:"Another source, from the next issuance: an uploaded certificate is renewed from then on; with solverProvider unless the solver kept does for it; unchanged if left out. Refused while an issuance is under way."`
 		SolverProvider  *int64        `json:"solverProvider,omitempty" doc:"Another solver for a certificate with a source that needs one, from its next issuance; unchanged if left out"`
 		BackupProvider  *int64        `json:"backupProvider,omitempty" doc:"The source, of a type marked backup, that tries when an attempt with the certificate's own failed; 0 for none; unchanged if left out"`
@@ -469,7 +480,7 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 			}
 			rem = &reminder{on: r.On, note: r.Note}
 		}
-		ch := changes{days: in.Body.RenewBeforeDays, targets: targets, note: in.Body.Note, reuseKey: in.Body.ReuseKey, paused: in.Body.Paused, notifyTo: notifyTo, reminder: rem,
+		ch := changes{days: in.Body.RenewBeforeDays, targets: targets, note: in.Body.Note, reuseKey: in.Body.ReuseKey, paused: in.Body.Paused, revokeOld: in.Body.RevokeOld, notifyTo: notifyTo, reminder: rem,
 			source: in.Body.SourceProvider, solver: in.Body.SolverProvider, backup: backup, keyType: in.Body.KeyType, deployWindow: in.Body.DeployWindow}
 		if err := s.update(ctx, in.ID, ch); err != nil {
 			return nil, serviceError(err)
@@ -577,6 +588,24 @@ func registerAPI(a huma.API, s *service, confirm func(context.Context, string) e
 		out := &retireOutput{}
 		var err error
 		if out.Body.Revoked, err = s.retire(ctx, in.ID, in.Body.Reason); err != nil {
+			return nil, revokeError(err)
+		}
+		return out, nil
+	})
+
+	huma.Register(a, huma.Operation{
+		OperationID: "certs-revoke-all", Method: http.MethodPost, Path: "/certificates/{id}/revoke",
+		Summary: "Have every version its CA would still revoke revoked, the one in use last, and keep the certificate",
+		Description: "Once the password is confirmed; then pauses the renewal, or issues the certificate again at once. " +
+			"A version the CA does not revoke stops it, leaving the one in use valid if it had not come to it.",
+	}, func(ctx context.Context, in *revokeAllInput) (*retireOutput, error) {
+		s.named(ctx, in.ID)
+		if err := confirm(ctx, in.Body.Password); err != nil {
+			return nil, err
+		}
+		out := &retireOutput{}
+		var err error
+		if out.Body.Revoked, err = s.revokeAll(ctx, in.ID, in.Body.Reason, in.Body.Then); err != nil {
 			return nil, revokeError(err)
 		}
 		return out, nil
@@ -724,6 +753,8 @@ func revokeError(err error) error {
 		return api.NewError(http.StatusConflict, i18n.CertsErrorRevokeExpired, nil)
 	case errors.Is(err, errRevoked):
 		return api.NewError(http.StatusConflict, i18n.CertsErrorRevoked, nil)
+	case errors.Is(err, errNothingRevocable):
+		return api.NewError(http.StatusConflict, i18n.CertsErrorRevokeNone, nil)
 	case errors.Is(err, providers.ErrNotFound), errors.Is(err, providers.ErrUnavailable):
 		return api.NewError(http.StatusConflict, i18n.CertsErrorRevokeSourceGone, nil)
 	case errors.As(err, &problem):

@@ -33,6 +33,7 @@ import {
   useIssuances,
   useIssueNow,
   useRevoke,
+  useRevokeAll,
   useUseVersion,
   useSetDomains,
   useUpdateCertificate,
@@ -378,6 +379,9 @@ const days = ref('')
 const reuseKey = ref(false)
 // Pausing the renewal of a certificate with a source.
 const paused = ref(false)
+// Revoking the earlier versions once a new one is deployed, for a source
+// that revokes.
+const revokeOld = ref(false)
 // Another solver, as when the DNS moves, and another key type, from the
 // next issuance; the server checks the source takes them.
 const solverChoice = ref<number>(0)
@@ -420,6 +424,7 @@ function edit() {
   days.value = String(cert.value?.renewBeforeDays ?? 30)
   reuseKey.value = !!cert.value?.reuseKey
   paused.value = !!cert.value?.paused
+  revokeOld.value = !!cert.value?.revokeOld
   solverChoice.value = cert.value?.solverProvider ?? 0
   backupChoice.value = cert.value?.backupProvider ?? 0
   windowChoice.value = (cert.value?.deployWindow ?? '') as DeployWindow
@@ -500,6 +505,7 @@ async function saveSettings() {
       ...(sourceMoved.value ? { sourceProvider: sourceChoice.value } : {}),
       ...(chosenKeyKept.value ? { reuseKey: reuseKey.value } : {}),
       ...(sourceChoice.value ? { paused: paused.value } : {}),
+      ...(chosenType.value?.revocable ? { revokeOld: revokeOld.value } : {}),
       ...(chosenSolver.value && solverChoice.value && (sourceMoved.value || solverChoice.value !== cert.value?.solverProvider)
         ? { solverProvider: solverChoice.value }
         : {}),
@@ -583,6 +589,38 @@ async function submitRevoke() {
   revoking.value = null
 }
 
+// Revoking every version still valid, the one in use last, and keeping the
+// certificate: then its renewal pauses, as for a site that is no more, or
+// it is issued again at once, as for a key that may have leaked.
+const canRevokeAll = computed(() => issued.value && !!sourceType.value?.revocable && !!current.value && !current.value.revokedAt && !current.value.caRevokedAt)
+const revokingAll = ref(false)
+const revokeAllWays = [
+  { value: 'pause', label: 'certs.revoke_all.pause', help: 'certs.revoke_all.pause_help' },
+  { value: 'renew', label: 'certs.revoke_all.renew', help: 'certs.revoke_all.renew_help' },
+] as const satisfies readonly { value: string; label: MessageKey; help: MessageKey }[]
+const revokeAllThen = ref<'pause' | 'renew'>('pause')
+const revokeAllReason = ref<RevokeReason>('cessation_of_operation')
+const revokeAllPassword = ref('')
+const revokeAll = useRevokeAll(() => props.id)
+const revokeAllError = useApiError(revokeAll.error)
+watch(revokingAll, (open) => {
+  if (!open) return
+  revokeAllThen.value = 'pause'
+  revokeAllReason.value = 'cessation_of_operation'
+  revokeAllPassword.value = ''
+  revokeAll.reset()
+})
+// Each way has its usual reason, which can still be changed.
+watch(revokeAllThen, (then) => (revokeAllReason.value = then === 'pause' ? 'cessation_of_operation' : 'key_compromise'))
+async function submitRevokeAll() {
+  try {
+    await revokeAll.mutateAsync({ password: revokeAllPassword.value, reason: revokeAllReason.value, then: revokeAllThen.value })
+  } catch {
+    return // shown in the dialog
+  }
+  revokingAll.value = false
+}
+
 // Going back to an earlier version, once confirmed: it is deployed to every
 // target, and the renewal goes by it.
 const reverting = ref<{ id: number; range: string; notAfter: string } | null>(null)
@@ -658,6 +696,7 @@ async function confirmDelete() {
     </template>
     <template v-if="cert" #actions>
       <JecButton @click="deleting = true"><Trash2 class="size-4" aria-hidden="true" />{{ t('certs.action.delete') }}</JecButton>
+      <JecButton v-if="canRevokeAll" @click="revokingAll = true"><ShieldX class="size-4" aria-hidden="true" />{{ t('certs.action.revoke_all') }}</JecButton>
       <JecButton v-if="current" @click="startDownload(current.id)">
         <Download class="size-4" aria-hidden="true" />{{ t('certs.action.download') }}
       </JecButton>
@@ -733,13 +772,22 @@ async function confirmDelete() {
           <JecButton size="sm" variant="ghost" :busy="dropRequest.isPending.value" @click="dropRequest.mutate(undefined)">{{ t('certs.request.drop') }}</JecButton>
         </span>
       </section>
-      <section v-else-if="current?.caRevokedAt" role="status" class="flex flex-wrap gap-x-3 gap-y-2 rounded-lg border border-line bg-danger-soft px-4 py-3">
+      <section
+        v-else-if="current?.caRevokedAt || current?.revokedAt"
+        role="status"
+        class="flex flex-wrap gap-x-3 gap-y-2 rounded-lg border border-line bg-danger-soft px-4 py-3"
+      >
         <ShieldX class="mt-0.5 size-5 flex-none text-danger-ink" aria-hidden="true" />
         <div class="flex min-w-0 flex-[1_1_240px] flex-col gap-0.5">
-          <strong class="text-danger-ink [overflow-wrap:anywhere]">
+          <strong v-if="current.revokedAt" class="text-danger-ink [overflow-wrap:anywhere]">
+            {{ t('certs.history.revoked', { date: intl.date(current.revokedAt), reason: t(reasonLabel(current.revokeReason)) }) }}
+          </strong>
+          <strong v-else-if="current.caRevokedAt" class="text-danger-ink [overflow-wrap:anywhere]">
             {{ t('certs.history.ca_revoked', { date: intl.date(current.caRevokedAt), reason: t(caReasonText(current.caRevokeReason)) }) }}
           </strong>
-          <span class="text-small [overflow-wrap:anywhere]">{{ t(issued ? 'certs.detail.revoked_renewing' : 'certs.detail.revoked_upload') }}</span>
+          <span class="text-small [overflow-wrap:anywhere]">
+            {{ t(!issued ? 'certs.detail.revoked_upload' : cert.paused ? 'certs.detail.revoked_paused' : 'certs.detail.revoked_renewing') }}
+          </span>
         </div>
       </section>
       <div class="flex items-center gap-3 sm:hidden">
@@ -942,7 +990,9 @@ async function confirmDelete() {
             </template>
             <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t(issued ? 'certs.field.renewal' : 'certs.field.reminder') }}</dt>
             <dd v-if="issued && cert.paused" class="m-0 font-semibold text-warn-ink">{{ t('certs.settings.paused_state') }}</dd>
-            <dd v-else class="m-0 [overflow-wrap:anywhere]">{{ rule }}</dd>
+            <dd v-else class="m-0 [overflow-wrap:anywhere]">
+              {{ rule }}<span v-if="issued && cert.revokeOld" class="text-ink-muted"> · {{ t('certs.settings.revoke_old') }}</span>
+            </dd>
             <dt class="text-ink-muted [overflow-wrap:anywhere]">{{ t('certs.settings.window') }}</dt>
             <dd :class="['m-0 [overflow-wrap:anywhere]', cert.deployWindow ? '' : 'text-ink-muted']">
               {{ t(windows.find((w) => w.value === cert?.deployWindow)?.label ?? 'certs.settings.window_any') }}
@@ -1178,6 +1228,9 @@ async function confirmDelete() {
         <JecButton v-if="!issued && !request" class="flex-[1_1_auto]" @click="requesting = true">
           <FilePlus class="size-4" aria-hidden="true" />{{ t('certs.request.new') }}
         </JecButton>
+        <JecButton v-if="canRevokeAll" class="flex-[1_1_auto]" @click="revokingAll = true">
+          <ShieldX class="size-4" aria-hidden="true" />{{ t('certs.action.revoke_all') }}
+        </JecButton>
         <JecButton class="flex-[1_1_auto]" @click="deleting = true"><Trash2 class="size-4" aria-hidden="true" />{{ t('certs.action.delete') }}</JecButton>
       </div>
     </template>
@@ -1268,6 +1321,13 @@ async function confirmDelete() {
         <span class="min-w-0">
           <span class="block font-semibold">{{ t('certs.settings.reuse_key') }}</span>
           <span class="block text-small text-ink-muted">{{ t('certs.settings.reuse_key_help') }}</span>
+        </span>
+      </label>
+      <label v-if="chosenType?.revocable" class="flex cursor-pointer items-start gap-2">
+        <input v-model="revokeOld" type="checkbox" class="mt-1 size-4 flex-none accent-brand" />
+        <span class="min-w-0">
+          <span class="block font-semibold">{{ t('certs.settings.revoke_old') }}</span>
+          <span class="block text-small text-ink-muted">{{ t('certs.settings.revoke_old_help') }}</span>
         </span>
       </label>
       <JecAlert v-if="updateError.alert.value" :code="updateError.alert.value.code" :params="updateError.alert.value.params" />
@@ -1454,6 +1514,44 @@ async function confirmDelete() {
       <JecButton @click="revokeOpen = false">{{ t('kernel.action.cancel') }}</JecButton>
       <JecButton type="submit" form="revoke-form" variant="danger" :busy="revoke.isPending.value" :disabled="!revokePassword">
         <ShieldX class="size-4" aria-hidden="true" />{{ t('certs.action.revoke') }}
+      </JecButton>
+    </template>
+  </JecDialog>
+
+  <JecDialog v-if="cert" v-model:open="revokingAll" :title="t('certs.revoke_all.title', { domain })" small>
+    <form id="revoke-all-form" class="flex flex-col gap-3" novalidate @submit.prevent="submitRevokeAll">
+      <p class="m-0">{{ t('certs.revoke_all.body') }}</p>
+      <fieldset class="m-0 flex flex-col gap-2 border-0 p-0">
+        <legend class="mb-1 p-0 font-semibold">{{ t('certs.revoke_all.then') }}</legend>
+        <label v-for="w in revokeAllWays" :key="w.value" class="flex cursor-pointer items-start gap-2">
+          <input v-model="revokeAllThen" type="radio" name="revoke-all-then" :value="w.value" class="mt-1 size-4 flex-none accent-brand" />
+          <span class="min-w-0">
+            <span class="block font-semibold">{{ t(w.label) }}</span>
+            <span class="block text-small text-ink-muted">{{ t(w.help) }}</span>
+          </span>
+        </label>
+      </fieldset>
+      <JecField id="revoke-all-reason" label="certs.revoke.reason">
+        <select id="revoke-all-reason" v-model="revokeAllReason" class="h-9 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-ink max-sm:h-11">
+          <option v-for="r in reasons" :key="r.value" :value="r.value">{{ t(r.label) }}</option>
+        </select>
+      </JecField>
+      <JecField id="revoke-all-password" label="kernel.account.confirm_password" :error="revokeAllError.fields.value.password">
+        <JecInput
+          id="revoke-all-password"
+          v-model="revokeAllPassword"
+          type="password"
+          autocomplete="current-password"
+          :invalid="!!revokeAllError.fields.value.password"
+          required
+        />
+      </JecField>
+      <JecAlert v-if="revokeAllError.alert.value" :code="revokeAllError.alert.value.code" :params="revokeAllError.alert.value.params" />
+    </form>
+    <template #footer>
+      <JecButton @click="revokingAll = false">{{ t('kernel.action.cancel') }}</JecButton>
+      <JecButton type="submit" form="revoke-all-form" variant="danger" :busy="revokeAll.isPending.value" :disabled="!revokeAllPassword">
+        <ShieldX class="size-4" aria-hidden="true" />{{ t('certs.action.revoke_all') }}
       </JecButton>
     </template>
   </JecDialog>

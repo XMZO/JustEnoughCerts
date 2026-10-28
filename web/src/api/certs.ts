@@ -356,6 +356,17 @@ export function useRetire(id: MaybeRefOrGetter<number>) {
   )
 }
 
+/**
+ * useRevokeAll has every version of certificate id its CA would still
+ * revoke revoked, the one in use last, and keeps the certificate: then
+ * pauses its renewal, or issues it again at once.
+ */
+export function useRevokeAll(id: MaybeRefOrGetter<number>) {
+  return useCertsMutation((body: { password: string; reason: RevokeReason; then: 'pause' | 'renew' }) =>
+    unwrap(api.POST('/certs/certificates/{id}/revoke', { params: { path: { id: toValue(id) } }, body })),
+  )
+}
+
 /** useUseVersion goes back to an earlier version of certificate id, which is deployed to every target. */
 export function useUseVersion(id: MaybeRefOrGetter<number>) {
   return useCertsMutation((version: number) =>

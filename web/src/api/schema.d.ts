@@ -521,6 +521,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certs/certificates/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Have every version its CA would still revoke revoked, the one in use last, and keep the certificate
+         * @description Once the password is confirmed; then pauses the renewal, or issues the certificate again at once. A version the CA does not revoke stops it, leaving the one in use valid if it had not come to it.
+         */
+        post: operations["certs-revoke-all"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/certs/certificates/{id}/versions": {
         parameters: {
             query?: never;
@@ -1967,6 +1987,8 @@ export interface components {
             renewalWindow?: components["schemas"]["RenewalBody"];
             /** @description Renewals keep the private key of the version in use */
             reuseKey?: boolean;
+            /** @description Once a new version is deployed to every target, or a day after it came for a certificate without targets, the earlier ones still valid are revoked as superseded */
+            revokeOld?: boolean;
             /**
              * Format: int64
              * @description The solver provider instance that proves control of the domains
@@ -1983,7 +2005,7 @@ export interface components {
              */
             sourceProvider?: number;
             /**
-             * @description issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; awaiting: no version yet, and a CSR waits for its certificate; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)
+             * @description issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; awaiting: no version yet, and a CSR waits for its certificate; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (by its CA, or as someone asked JEC)
              * @enum {string}
              */
             state: "ok" | "expiring" | "expired" | "issuing" | "deploying" | "failed" | "deploy_failed" | "revoked" | "awaiting";
@@ -2998,6 +3020,20 @@ export interface components {
              */
             revoked: number;
         };
+        RevokeAllInputBody: {
+            /** @description The password of the signed-in account, asked again before revoking */
+            password: string;
+            /**
+             * @description Why, as RFC 5280 names it
+             * @enum {string}
+             */
+            reason: "unspecified" | "key_compromise" | "superseded" | "cessation_of_operation";
+            /**
+             * @description pause: pause the renewal, as for a site that is no more; renew: issue the certificate again at once, as for a key that may have leaked
+             * @enum {string}
+             */
+            then: "pause" | "renew";
+        };
         RevokeInputBody: {
             /** @description The password of the signed-in account, asked again before revoking */
             password: string;
@@ -3592,6 +3628,8 @@ export interface components {
             renewBeforeDays?: number;
             /** @description Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out */
             reuseKey?: boolean;
+            /** @description Revoke the earlier versions once a new one is deployed to every target; unchanged if left out */
+            revokeOld?: boolean;
             /**
              * Format: int64
              * @description Another solver for a certificate with a source that needs one, from its next issuance; unchanged if left out
@@ -4824,6 +4862,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["RetireInputBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetireOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-revoke-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevokeAllInputBody"];
             };
         };
         responses: {

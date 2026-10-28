@@ -963,7 +963,8 @@ test('every page is translated and fits', async ({ page }, info) => {
   await expect(page.getByText(label('monitor.tls.legacy'))).toBeVisible()
   const versionRows = page.locator('section[aria-labelledby=versions] li')
   await expect(versionRows).toHaveCount(3)
-  await expect(page.getByText(label('certs.detail.revoked_renewing'))).toBeVisible()
+  // Revoked and paused: renewed only when asked.
+  await expect(page.getByText(label('certs.detail.revoked_paused'))).toBeVisible()
   expect.soft(await problems(page), 'versions, one revocable and one revoked; an online check').toEqual([])
   // The ports the domains are checked on, and the domains: one turned off.
   await page.getByRole('button', { name: label('monitor.settings.edit') }).click()
@@ -1015,6 +1016,26 @@ test('every page is translated and fits', async ({ page }, info) => {
   await page.getByRole('button', { name: label('certs.action.renew_now') }).first().click()
   await expect(page.locator('dialog[open] [role=status]')).toBeVisible()
   expect.soft(await problems(page), 'renew one issued often').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  // A source that revokes: the earlier versions can go once a new one is
+  // deployed.
+  await page.getByRole('button', { name: label('certs.settings.edit') }).click()
+  await expect(page.locator('dialog[open]').getByLabel(label('certs.settings.revoke_old'))).not.toBeChecked()
+  expect.soft(await problems(page), 'the renewal settings of one that can be revoked').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  // Revoking it all and keeping it, then a new one at once, with its usual
+  // reason; the server, not knowing the versions, refuses.
+  await page.getByRole('button', { name: label('certs.action.revoke_all') }).first().click()
+  await expect(page.locator('#revoke-all-password')).toBeVisible()
+  expect.soft(await problems(page), 'revoke a certificate').toEqual([])
+  await page.locator('dialog[open]').getByRole('radio', { name: label('certs.revoke_all.renew') }).check()
+  await expect(page.locator('#revoke-all-reason')).toHaveValue('key_compromise')
+  await page.locator('#revoke-all-password').fill('correct horse')
+  await page.locator('button[form=revoke-all-form]').click()
+  await expect(page.locator('dialog[open]').getByRole('alert')).toBeVisible()
+  expect.soft(await problems(page), 'revoke a certificate, refused').toEqual([])
   await page.keyboard.press('Escape')
   await expect(page.locator('dialog[open]')).toHaveCount(0)
   await page.unroute(detailRoute)

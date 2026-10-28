@@ -53,7 +53,7 @@ const (
 	stateDeploying    = "deploying"
 	stateFailed       = "failed"
 	stateDeployFailed = "deploy_failed"
-	stateRevoked      = "revoked"  // its CA revoked the current version
+	stateRevoked      = "revoked"  // the current version is revoked: by its CA, or at JEC's request
 	stateAwaiting     = "awaiting" // no version yet, but a CSR waiting for its certificate
 )
 
@@ -147,6 +147,9 @@ type Certificate struct {
 	// Paused stops the renewal: the certificate is issued only when
 	// someone asks.
 	Paused bool
+	// RevokeOld has the earlier versions revoked once a new one is
+	// deployed (revoke.go).
+	RevokeOld bool
 	// DeployWindow holds the hours new versions are deployed in, as
 	// "1-6"; "" for any time.
 	DeployWindow string
@@ -189,6 +192,9 @@ type Version struct {
 	// and RevokeReason the reason it gave (revoke.go).
 	RevokedAt    time.Time
 	RevokeReason string
+	// RevokeTried is when JEC last failed to have the version revoked as
+	// an earlier one (revoke.go), zero if it has not.
+	RevokeTried time.Time
 	// CARevokedAt is when its CA revoked the version, as OCSP or the CRL
 	// told, zero while it has not, with the reason code of RFC 5280;
 	// StatusCheck is when to ask again (revocation.go).
@@ -242,7 +248,7 @@ func (c *Certificate) state(now time.Time) string {
 	switch left := c.Current.NotAfter.Sub(now); {
 	case left <= 0:
 		return stateExpired
-	case !c.Current.CARevokedAt.IsZero():
+	case !c.Current.CARevokedAt.IsZero(), !c.Current.RevokedAt.IsZero():
 		return stateRevoked
 	case left <= window:
 		return stateExpiring
@@ -437,10 +443,10 @@ type querier interface {
 
 const selectCertificates = `SELECT c.id, c.domains, c.source, c.source_provider, c.solver_provider, c.key_type,
 	c.renew_before_days, c.created_at, c.note, c.reuse_key, c.notify_to, c.paused, c.deploy_window,
-	c.reminder_on, c.reminder_note, c.reminder_sent, c.backup_provider,
+	c.reminder_on, c.reminder_note, c.reminder_sent, c.backup_provider, c.revoke_old,
 	v.id, v.origin, v.names, v.serial, v.fingerprint, v.issuer, v.key_type, v.not_before, v.not_after, v.chain, v.created_at,
 	v.source_provider, v.renewal_start, v.renewal_end, v.renewal_at, v.renewal_explanation, v.renewal_check,
-	v.ca_revoked_at, v.ca_revoke_reason, v.status_check,
+	v.ca_revoked_at, v.ca_revoke_reason, v.status_check, v.revoked_at, v.revoke_reason,
 	(SELECT created_at FROM certs_csr WHERE certificate_id = c.id),
 	` + issuanceColumns + `
 	FROM certs_certificates c LEFT JOIN certs_versions v ON v.id = c.current_version_id
@@ -491,20 +497,21 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 			id                                                                      sql.NullInt64
 			origin, names, serial, fingerprint, issuer, keyType, chain, explanation sql.NullString
 			notBefore, notAfter, created, source, start, end, at, check             sql.NullInt64
-			caRevoked, caReason, statusCheck                                        sql.NullInt64
+			caRevoked, caReason, statusCheck, revoked                               sql.NullInt64
+			revokeReason                                                            sql.NullString
 		}
 		var csrAt sql.NullInt64
 		var is issuanceRow
-		var reuseKey, paused, reminderSent int64
+		var reuseKey, paused, reminderSent, revokeOld int64
 		var notifyTo string
 		dest := []any{&c.ID, &domains, &c.Source, &sourceProvider, &solverProvider, &c.KeyType, &c.RenewBeforeDays, &created, &c.Note, &reuseKey, &notifyTo, &paused, &c.DeployWindow,
-			&c.ReminderOn, &c.ReminderNote, &reminderSent, &backupProvider,
+			&c.ReminderOn, &c.ReminderNote, &reminderSent, &backupProvider, &revokeOld,
 			&v.id, &v.origin, &v.names, &v.serial, &v.fingerprint, &v.issuer, &v.keyType, &v.notBefore, &v.notAfter, &v.chain, &v.created,
-			&v.source, &v.start, &v.end, &v.at, &v.explanation, &v.check, &v.caRevoked, &v.caReason, &v.statusCheck, &csrAt}
+			&v.source, &v.start, &v.end, &v.at, &v.explanation, &v.check, &v.caRevoked, &v.caReason, &v.statusCheck, &v.revoked, &v.revokeReason, &csrAt}
 		if err := rows.Scan(append(dest, is.dest()...)...); err != nil {
 			return nil, err
 		}
-		c.ReuseKey, c.Paused, c.ReminderSent = reuseKey == 1, paused == 1, reminderSent == 1
+		c.ReuseKey, c.Paused, c.ReminderSent, c.RevokeOld = reuseKey == 1, paused == 1, reminderSent == 1, revokeOld == 1
 		if csrAt.Valid {
 			c.CSRAt = time.UnixMilli(csrAt.Int64).UTC()
 		}
@@ -533,6 +540,9 @@ func (s *service) query(ctx context.Context, q querier, query string, args ...an
 			}
 			if v.caRevoked.Valid {
 				c.Current.CARevokedAt = time.UnixMilli(v.caRevoked.Int64).UTC()
+			}
+			if v.revoked.Valid {
+				c.Current.RevokedAt, c.Current.RevokeReason = time.UnixMilli(v.revoked.Int64).UTC(), v.revokeReason.String
 			}
 			if v.start.Valid && v.end.Valid && v.at.Valid {
 				c.Current.Renewal = &RenewalWindow{Start: time.UnixMilli(v.start.Int64).UTC(), End: time.UnixMilli(v.end.Int64).UTC(),
@@ -594,7 +604,7 @@ func (s *service) attachIssued(ctx context.Context, q querier, certs []*Certific
 func (s *service) versions(ctx context.Context, id int64) ([]*Version, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT id, origin, names, serial, fingerprint, issuer, key_type, not_before, not_after, chain, created_at,
-		 source_provider, revoked_at, revoke_reason, ca_revoked_at, ca_revoke_reason
+		 source_provider, revoked_at, revoke_reason, ca_revoked_at, ca_revoke_reason, revoke_tried
 		 FROM certs_versions WHERE certificate_id = ? ORDER BY created_at DESC, id DESC`, id)
 	if err != nil {
 		return nil, err
@@ -605,13 +615,16 @@ func (s *service) versions(ctx context.Context, id int64) ([]*Version, error) {
 		v := &Version{}
 		var names string
 		var notBefore, notAfter, created int64
-		var revoked, caRevoked sql.NullInt64
+		var revoked, caRevoked, tried sql.NullInt64
 		if err := rows.Scan(&v.ID, &v.Origin, &names, &v.Serial, &v.Fingerprint, &v.Issuer, &v.KeyType,
-			&notBefore, &notAfter, &v.Chain, &created, &v.SourceProvider, &revoked, &v.RevokeReason, &caRevoked, &v.CARevokeReason); err != nil {
+			&notBefore, &notAfter, &v.Chain, &created, &v.SourceProvider, &revoked, &v.RevokeReason, &caRevoked, &v.CARevokeReason, &tried); err != nil {
 			return nil, err
 		}
 		if revoked.Valid {
 			v.RevokedAt = time.UnixMilli(revoked.Int64).UTC()
+		}
+		if tried.Valid {
+			v.RevokeTried = time.UnixMilli(tried.Int64).UTC()
 		}
 		if caRevoked.Valid {
 			v.CARevokedAt = time.UnixMilli(caRevoked.Int64).UTC()
@@ -633,6 +646,7 @@ type changes struct {
 	targets          []int64
 	note             *string
 	reuseKey, paused *bool
+	revokeOld        *bool
 	notifyTo         *[]int64
 	source           *int64
 	solver, backup   *int64
@@ -786,6 +800,16 @@ func (s *service) update(ctx context.Context, id int64, ch changes) error {
 		}
 		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET paused = ?, updated_at = ? WHERE id = ?",
 			paused, s.now().UnixMilli(), id); err != nil {
+			return err
+		}
+	}
+	if ch.revokeOld != nil {
+		revokeOld := 0
+		if *ch.revokeOld {
+			revokeOld = 1
+		}
+		if _, err := tx.ExecContext(ctx, "UPDATE certs_certificates SET revoke_old = ?, updated_at = ? WHERE id = ?",
+			revokeOld, s.now().UnixMilli(), id); err != nil {
 			return err
 		}
 	}

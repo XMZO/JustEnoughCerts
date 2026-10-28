@@ -157,7 +157,8 @@ many targets or earlier versions scroll within their card.
 | Deploy window | In the renewal settings, the hours new versions go to the targets in, as 01:00 to 05:00 in the panel's time zone, to reload no server by day; the online check counts from then. Deploying by hand starts at once; `deploy_window` in the configuration file |
 | Pause the renewal | In the renewal settings: the certificate is no longer issued by itself, only when you choose Issue now, and its end is still told. For a domain whose DNS moves, or that is going away; `paused` in the configuration file |
 | Go back to an earlier version | From the version history, makes an earlier version current again, if it has not expired or been revoked and is for the same domains, and deploys it to every target: for when a new version causes trouble, as a chain some clients do not take. The renewal then goes by its end |
-| Revoke | Has an earlier version revoked at its CA, from the version history, with a reason; the password is required first. See below |
+| Revoke | Has an earlier version revoked at its CA, from the version history; or every version still valid, keeping the certificate, with Revoke at the top of the page. A reason and the password are required first. See below |
+| Revoke earlier versions | In the renewal settings: once a new version is deployed to every target (a day after it comes, without targets), the earlier ones still valid are revoked, see below; `revoke_old` in the configuration file |
 | Pull address | Under Deployments: a server JEC cannot reach, as one on a LAN or behind NAT, fetches the version in use with its private key itself, with curl; see below |
 | Delete certificate | Deletes every version and private key of the certificate. Copies already deployed elsewhere are not affected |
 
@@ -194,7 +195,8 @@ use. The CA then lists it as
 revoked, and clients that check revocation stop trusting it; this cannot
 be undone. To revoke the version in use, for example when its private key
 has leaked, choose **Issue now** first, and revoke the old version once
-the new one is deployed: the sites never serve a revoked certificate.
+the new one is deployed: the sites never serve a revoked certificate. To
+revoke it at once, use Revoke at the top of the page, below.
 
 | Reason | When |
 |---|---|
@@ -202,6 +204,27 @@ the new one is deployed: the sites never serve a revoked certificate.
 | Its private key has leaked | The private key was exposed; JEC uses a new key for every version |
 | Its domains are no longer in use | The domains were given up |
 | No particular reason | None of the above |
+
+To revoke every version and keep the certificate, choose **Revoke** at the
+top of the page: after a reason and the password, every version still
+valid is revoked, the one in use last, and the certificate stays in JEC.
+Then either:
+
+| Afterwards | When |
+|---|---|
+| Pause the renewal | The site is no more, but the certificate and its history are kept; issue it by hand when needed |
+| Issue a new one now | The private key may have leaked: the new certificate has a new key and is deployed to every target as usual; until then, the sites serve the revoked one |
+
+Should the CA refuse a version, it stops there: the version in use stays
+valid if it had not come to it, and the renewal is not paused.
+
+With **Revoke earlier versions** in the renewal settings, once a new
+version is deployed to every target, JEC revokes the versions before it
+that are still valid, those there when it was turned on included, as
+superseded. A certificate without targets has them revoked a day after
+the new version comes, for the servers that pull it or read it from a
+directory. A CA that does not take that reason gets none; a failure is
+tried again a day later.
 
 When a site is no more, **Also revoke it at the CA** in the delete dialog,
 after the password, revokes every version still valid, the one in use

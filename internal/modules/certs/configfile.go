@@ -55,6 +55,9 @@ type certificateEntry struct {
 	// Paused stops the renewal of a certificate with a source; left out,
 	// it stays as it is.
 	Paused *bool `yaml:"paused,omitempty"`
+	// RevokeOld revokes the earlier versions once a new one is deployed;
+	// left out, it stays as it is.
+	RevokeOld *bool `yaml:"revoke_old,omitempty"`
 	// DeployWindow holds the hours new versions are deployed in, as "1-5",
 	// "" for any time; left out, it stays as it is.
 	DeployWindow *string `yaml:"deploy_window,omitempty"`
@@ -190,6 +193,9 @@ func (s *service) exportCertificates(ctx context.Context, _ configfile.Export) (
 		}
 		if c.Paused {
 			e.Paused = &c.Paused
+		}
+		if c.RevokeOld {
+			e.RevokeOld = &c.RevokeOld
 		}
 		if c.DeployWindow != "" {
 			e.DeployWindow = &c.DeployWindow
@@ -380,6 +386,9 @@ func (s *service) addCertificate(ctx context.Context, ci *certImport, e certific
 	}
 	if e.Paused != nil {
 		c.Paused = *e.Paused
+	}
+	if e.RevokeOld != nil {
+		c.RevokeOld = *e.RevokeOld
 	}
 	if e.DeployWindow != nil {
 		c.DeployWindow = *e.DeployWindow
@@ -632,6 +641,17 @@ func (s *service) changeCertificate(ctx context.Context, ci *certImport, e certi
 		}
 		if _, err := ci.tx.ExecContext(ctx, "UPDATE certs_certificates SET paused = ?, updated_at = ? WHERE id = ?",
 			paused, s.now().UnixMilli(), c.ID); err != nil {
+			return it, err
+		}
+	}
+	if e.RevokeOld != nil && *e.RevokeOld != c.RevokeOld {
+		changed = true
+		revokeOld := 0
+		if *e.RevokeOld {
+			revokeOld = 1
+		}
+		if _, err := ci.tx.ExecContext(ctx, "UPDATE certs_certificates SET revoke_old = ?, updated_at = ? WHERE id = ?",
+			revokeOld, s.now().UnixMilli(), c.ID); err != nil {
 			return it, err
 		}
 	}

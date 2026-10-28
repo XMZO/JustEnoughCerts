@@ -326,6 +326,7 @@
       "certs_request_csr": "Make a new CSR",
       "certs_retire": "Revoke and delete a certificate",
       "certs_revoke": "Revoke a certificate version",
+      "certs_revoke_all": "Revoke a certificate",
       "certs_save_settings": "Change the renewal defaults",
       "certs_set_domains": "Changed the domains of a certificate",
       "certs_update": "Change a certificate",
@@ -667,6 +668,7 @@
       "renew_now": "Renew now",
       "retry": "Try again",
       "revoke": "Revoke",
+      "revoke_all": "Revoke",
       "revoke_version": "Revoke the version valid {range}",
       "save": "Save certificate",
       "upload": "Upload new certificate",
@@ -934,6 +936,7 @@
       "no_issuances": "No issuances yet.",
       "no_targets": "No targets chosen yet.",
       "retrying": "The issuance failed; trying again later",
+      "revoked_paused": "Its renewal is paused: issue a new version to use it again.",
       "revoked_renewing": "JEC is issuing a new one, which it deploys as usual.",
       "revoked_upload": "It has no source for JEC to issue a new one from: upload a new one soon, or choose a source in its renewal settings.",
       "run_deploy_failed": "Started {start}. Time taken: {duration}. Issued, but a deployment failed.",
@@ -1005,6 +1008,7 @@
       "provider_unavailable": "A provider this certificate uses is not available; its module may be off. Retries go on once the module is back.",
       "revoke_current": "This is the version in use. Issue or upload a new version first, then revoke this one.",
       "revoke_expired": "This version has expired, and certificate authorities do not revoke expired certificates.",
+      "revoke_none": "No version can be revoked: they have expired, are revoked already, or come from a source that does not revoke.",
       "revoke_source": "JEC can only revoke versions that a source which supports it, such as an ACME account, issued. Revoke other certificates where you got them.",
       "revoke_source_gone": "The source that issued this version was deleted, or its module is off, so JEC cannot have it revoked.",
       "revoked": "This version has been revoked already.",
@@ -1063,7 +1067,7 @@
       "current": "Current",
       "range": "{from} to {to}",
       "replaced": "Replaced on {date}",
-      "revoke_hint": "To revoke the version in use, issue a new version first; once it is deployed, revoke the old one here.",
+      "revoke_hint": "To revoke the version in use, use Revoke at the top of the page; or issue a new version first and, once it is deployed, revoke the old one here.",
       "revoked": "Revoked on {date}: {reason}",
       "title": "Versions"
     },
@@ -1299,6 +1303,15 @@
       "reason_unspecified": "No particular reason",
       "title": "Revoke this version"
     },
+    "revoke_all": {
+      "body": "The certificate authority revokes every version still valid, the one in use last; the certificate stays in JEC. Sites still serving it fail at once. This cannot be undone.",
+      "pause": "Pause the renewal",
+      "pause_help": "For a site that is no more: JEC keeps the certificate and its history, and issues it again only when you ask.",
+      "renew": "Issue a new one now",
+      "renew_help": "For a private key that may have leaked: the new certificate has a new key and is deployed to every target as usual.",
+      "then": "Afterwards",
+      "title": "Revoke {domain}?"
+    },
     "runs": {
       "action": {
         "all": "All actions",
@@ -1368,6 +1381,8 @@
       "renewal_value": "{days, plural, one {# day} other {# days}} before it ends, looked at daily at {time}",
       "reuse_key": "Keep the private key on renewal",
       "reuse_key_help": "New certificates keep the private key in use, so the public key stays: as an app that pins it, or a TLSA record (DANE), needs. Otherwise a new key each time is safer; a revoked certificate gets a new one.",
+      "revoke_old": "Revoke earlier versions",
+      "revoke_old_help": "Once a new version is deployed to every target (a day after it comes, without targets), the earlier ones still valid are revoked as superseded.",
       "solver": "Validation",
       "solver_help": "From the next issuance on, as when the domain's DNS moves to another provider.",
       "source": "Source",

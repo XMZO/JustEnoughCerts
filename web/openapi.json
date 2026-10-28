@@ -398,6 +398,10 @@
             "description": "Renewals keep the private key of the version in use",
             "type": "boolean"
           },
+          "revokeOld": {
+            "description": "Once a new version is deployed to every target, or a day after it came for a certificate without targets, the earlier ones still valid are revoked as superseded",
+            "type": "boolean"
+          },
           "solverProvider": {
             "description": "The solver provider instance that proves control of the domains",
             "format": "int64",
@@ -417,7 +421,7 @@
             "type": "integer"
           },
           "state": {
-            "description": "issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; awaiting: no version yet, and a CSR waits for its certificate; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (its CA revoked it)",
+            "description": "issuing: an issuance is under way; failed: the latest issuance failed or is waiting to retry; deploy_failed: the latest deployment to a target failed or is waiting to retry; deploying: a deployment is under way; awaiting: no version yet, and a CSR waits for its certificate; otherwise by the current version: ok, expiring (within renewBeforeDays of the end), expired, or revoked (by its CA, or as someone asked JEC)",
             "enum": [
               "ok",
               "expiring",
@@ -3244,6 +3248,41 @@
         ],
         "type": "object"
       },
+      "RevokeAllInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "password": {
+            "description": "The password of the signed-in account, asked again before revoking",
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why, as RFC 5280 names it",
+            "enum": [
+              "unspecified",
+              "key_compromise",
+              "superseded",
+              "cessation_of_operation"
+            ],
+            "type": "string"
+          },
+          "then": {
+            "description": "pause: pause the renewal, as for a site that is no more; renew: issue the certificate again at once, as for a key that may have leaked",
+            "enum": [
+              "pause",
+              "renew"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "password",
+          "reason",
+          "then"
+        ],
+        "type": "object"
+      },
       "RevokeInputBody": {
         "additionalProperties": false,
         "properties": {
@@ -4824,6 +4863,10 @@
           },
           "reuseKey": {
             "description": "Keep the private key of the version in use for renewals, as a pinned key or a TLSA record needs; unchanged if left out",
+            "type": "boolean"
+          },
+          "revokeOld": {
+            "description": "Revoke the earlier versions once a new one is deployed to every target; unchanged if left out",
             "type": "boolean"
           },
           "solverProvider": {
@@ -6613,6 +6656,59 @@
           }
         },
         "summary": "Have every version its CA would still revoke revoked, the one in use included, then delete the certificate",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/certificates/{id}/revoke": {
+      "post": {
+        "description": "Once the password is confirmed; then pauses the renewal, or issues the certificate again at once. A version the CA does not revoke stops it, leaving the one in use valid if it had not come to it.",
+        "operationId": "certs-revoke-all",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeAllInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetireOutputBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Have every version its CA would still revoke revoked, the one in use last, and keep the certificate",
         "tags": [
           "certs"
         ]

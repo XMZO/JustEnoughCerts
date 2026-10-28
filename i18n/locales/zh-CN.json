@@ -326,6 +326,7 @@
       "certs_request_csr": "生成新的 CSR",
       "certs_retire": "吊销并删除证书",
       "certs_revoke": "吊销证书版本",
+      "certs_revoke_all": "吊销证书",
       "certs_save_settings": "修改续期默认值",
       "certs_set_domains": "修改证书的域名",
       "certs_update": "修改证书设置",
@@ -667,6 +668,7 @@
       "renew_now": "立即续期",
       "retry": "重试",
       "revoke": "吊销",
+      "revoke_all": "吊销",
       "revoke_version": "吊销有效期为 {range} 的版本",
       "save": "保存证书",
       "upload": "上传新证书",
@@ -934,6 +936,7 @@
       "no_issuances": "还没有签发记录。",
       "no_targets": "还没有选部署目标。",
       "retrying": "签发失败，稍后自动重试",
+      "revoked_paused": "自动续期已暂停：要继续使用，请签发新版本。",
       "revoked_renewing": "JEC 正在重新签发，新证书会照常部署。",
       "revoked_upload": "这张证书没有来源，JEC 不会重新签发：请尽快上传新证书，或在续期设置中选择证书来源。",
       "run_deploy_failed": "{start} 开始，用时 {duration}，签好了，但有部署失败。",
@@ -1005,6 +1008,7 @@
       "provider_unavailable": "证书用到的服务现在不能用，它所属的模块可能已经停用。模块重新启用后会继续重试。",
       "revoke_current": "这是正在使用的版本。请先签发或上传新版本，再吊销这一版。",
       "revoke_expired": "这一版已经过期，证书颁发机构不吊销过期的证书。",
+      "revoke_none": "没有可以吊销的版本：都已过期、已经吊销，或者来源不支持吊销。",
       "revoke_source": "JEC 只能吊销由支持吊销的来源（如 ACME 账号）签发的版本。其他证书请在获取它的地方吊销。",
       "revoke_source_gone": "签发这一版的来源已被删除或其模块已停用，JEC 无法吊销它。",
       "revoked": "这一版已经吊销过了。",
@@ -1063,7 +1067,7 @@
       "current": "当前",
       "range": "{from} 至 {to}",
       "replaced": "{date} 被替换",
-      "revoke_hint": "要吊销正在使用的版本，请先签发新版本，部署完成后再在这里吊销旧版本。",
+      "revoke_hint": "要吊销正在使用的版本，请用页面顶部的“吊销”；或先签发新版本，部署完成后再在这里吊销旧版本。",
       "revoked": "{date} 吊销：{reason}",
       "title": "历史版本"
     },
@@ -1299,6 +1303,15 @@
       "reason_unspecified": "不说明原因",
       "title": "吊销此版本"
     },
+    "revoke_all": {
+      "body": "证书颁发机构会吊销所有仍有效的版本（正在使用的最后吊销），证书仍留在 JEC 里。仍在使用它的网站会立即出错。此操作无法撤销。",
+      "pause": "暂停自动续期",
+      "pause_help": "用于不再使用的网站：证书和记录都保留，需要时再手动签发。",
+      "renew": "立即重新签发",
+      "renew_help": "用于私钥可能已泄露：新证书换用新私钥，照常部署到所有目标。",
+      "then": "之后",
+      "title": "吊销 {domain}？"
+    },
     "runs": {
       "action": {
         "all": "全部操作",
@@ -1368,6 +1381,8 @@
       "renewal_value": "到期前 {days, plural, other {# 天}}，每天 {time} 检查",
       "reuse_key": "续期时沿用私钥",
       "reuse_key_help": "新证书继续用现在的私钥，公钥不变：App 固定了公钥、或发布了 TLSA 记录（DANE）时需要。其余情况每次换新私钥更安全；证书被吊销后会换新私钥。",
+      "revoke_old": "吊销旧版本",
+      "revoke_old_help": "新版本部署到所有目标后（没有部署目标时为签发 1 天后），以“已有新证书取代它”吊销仍有效的旧版本。",
       "solver": "验证方式",
       "solver_help": "从下一次签发起使用，例如域名的 DNS 换了服务商时。",
       "source": "证书来源",
