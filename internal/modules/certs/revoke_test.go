@@ -170,3 +170,29 @@ func TestRetire(t *testing.T) {
 	}
 	f.apiError(f.api.Get("/certificates/"+strconv.FormatInt(c.ID, 10)), http.StatusNotFound)
 }
+
+func TestRetireOtherReason(t *testing.T) {
+	f := newFixture(t)
+	c, old, current := f.issueTwice()
+	// A CA that refuses cessation_of_operation, as ZeroSSL did.
+	f.fake.revoke = func(_ *x509.Certificate, reason contracts.RevocationReason) error {
+		if reason != contracts.ReasonUnspecified {
+			return &contracts.Problem{Key: i18n.AcmeErrorRevokeReason, Err: contracts.ErrReasonRefused}
+		}
+		return nil
+	}
+	var out struct {
+		Revoked int `json:"revoked"`
+	}
+	f.call(f.api.Post("/certificates/"+strconv.FormatInt(c.ID, 10)+"/retire", map[string]any{"password": testPassword}), http.StatusOK, &out)
+	want := []string{old.Serial + " 0", current.Serial + " 0"}
+	if out.Revoked != 2 || !slices.Equal(f.fake.revoked, want) {
+		t.Errorf("revoked %d: %v, want %v", out.Revoked, f.fake.revoked, want)
+	}
+
+	// Revoking one version, the reason is the user's to change.
+	c, old, _ = f.issueTwice()
+	if e := f.apiError(f.api.Post(revokePath(c, old), map[string]any{"password": testPassword, "reason": "superseded"}), http.StatusBadGateway); e.Code != string(i18n.AcmeErrorRevokeReason) {
+		t.Errorf("revoking one: %+v", e)
+	}
+}

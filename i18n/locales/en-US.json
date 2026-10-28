@@ -897,7 +897,7 @@
     "delete": {
       "body": "JEC deletes this certificate with every version and private key. Copies already deployed elsewhere stay where they are.",
       "revoke": "Also revoke it at the CA",
-      "revoke_help": "For a site that is no more: every version still valid, the one in use included, is revoked as no longer used, then deleted. Sites still serving it fail at once.",
+      "revoke_help": "For a site that is no more: every version still valid, the one in use included, is revoked as no longer used (with no reason given if the CA does not take that one), then deleted. Sites still serving it fail at once.",
       "title": "Delete {domain}?"
     },
     "deployment": {

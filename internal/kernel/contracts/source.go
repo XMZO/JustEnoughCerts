@@ -105,9 +105,14 @@ var ErrNoRenewalInfo = errors.New("contracts: the CA makes no suggestions about 
 // Revocable.
 type Revoker interface {
 	// Revoke asks the CA to revoke leaf, which the source issued, for
-	// reason. A certificate the CA has revoked already is no error.
+	// reason. A certificate the CA has revoked already is no error; a
+	// reason the CA does not take is ErrReasonRefused, wrapped.
 	Revoke(ctx context.Context, leaf *x509.Certificate, reason RevocationReason) error
 }
+
+// ErrReasonRefused is a Revoker's CA refusing the reason it was given,
+// though it may revoke for another.
+var ErrReasonRefused = errors.New("contracts: the CA does not take this reason for revoking")
 
 // RevocationReason is why a certificate is revoked: a reason code of RFC
 // 5280 5.3.1 that CAs take from subscribers.

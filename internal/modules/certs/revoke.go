@@ -134,9 +134,11 @@ func (s *service) revokeVersion(ctx context.Context, id int64, v *Version, code 
 // retire has every version of certificate id that its CA would still
 // revoke revoked, for reason, the one in use included, then deletes the
 // certificate: for a site that is no more. It returns how many it had
-// revoked. A version the CA does not revoke stops it, before anything is
-// deleted and before the one in use is revoked; one whose source is gone,
-// or does not revoke, is left as it is.
+// revoked. A CA that does not take the reason revokes for none given
+// instead, since nobody is there to choose another; a version the CA
+// does not revoke at all stops it, before anything is deleted and before
+// the one in use is revoked; one whose source is gone, or does not
+// revoke, is left as it is.
 func (s *service) retire(ctx context.Context, id int64, reason string) (int, error) {
 	code, ok := revocationReasons[reason]
 	if !ok {
@@ -157,7 +159,12 @@ func (s *service) retire(ctx context.Context, id int64, reason string) (int, err
 		if t, err := typeOf(v.SourceProvider); err != nil || !t.Revocable {
 			continue
 		}
-		if err := s.revokeVersion(ctx, id, v, code); err != nil {
+		err := s.revokeVersion(ctx, id, v, code)
+		if errors.Is(err, contracts.ErrReasonRefused) && code != contracts.ReasonUnspecified {
+			s.log.Info("the CA does not take the reason: revoking for none", "certificate", id, "version", v.ID, "reason", code.String())
+			err = s.revokeVersion(ctx, id, v, contracts.ReasonUnspecified)
+		}
+		if err != nil {
 			return revoked, err
 		}
 		revoked++

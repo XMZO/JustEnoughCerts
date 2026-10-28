@@ -205,8 +205,9 @@ the new one is deployed: the sites never serve a revoked certificate.
 
 When a site is no more, **Also revoke it at the CA** in the delete dialog,
 after the password, revokes every version still valid, the one in use
-last, as no longer in use, then deletes the certificate. Should the CA
-refuse one, nothing is deleted and the version in use stays valid.
+last, as no longer in use, then deletes the certificate. A CA that does
+not take that reason, as ZeroSSL, gets none. Should the CA refuse one,
+nothing is deleted and the version in use stays valid.
 
 Certificates from other sources, such as uploads or vendors' services,
 are revoked where they were obtained.

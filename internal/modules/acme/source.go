@@ -178,14 +178,19 @@ func (s *source) RenewalInfo(ctx context.Context, leaf *x509.Certificate) (contr
 
 // Revoke has the CA revoke leaf, which this account issued (RFC 8555 7.6),
 // signing the request with the account's key. One the CA has revoked
-// already is no error.
+// already is no error. An unspecified reason goes without a reason code,
+// which every CA takes; some refuse even code 0.
 func (s *source) Revoke(ctx context.Context, leaf *x509.Certificate, reason contracts.RevocationReason) error {
 	client, _, err := s.connect(ctx, func(contracts.LogLine) {})
 	if err != nil {
 		return err
 	}
-	code := uint(reason)
-	err = client.Certificate.RevokeWithReason(ctx, cryptox.EncodeCertificates(leaf), &code)
+	var code *uint
+	if reason != contracts.ReasonUnspecified {
+		c := uint(reason)
+		code = &c
+	}
+	err = client.Certificate.RevokeWithReason(ctx, cryptox.EncodeCertificates(leaf), code)
 	var pd *legoacme.ProblemDetails
 	switch {
 	case err == nil:
@@ -193,7 +198,7 @@ func (s *source) Revoke(ctx context.Context, leaf *x509.Certificate, reason cont
 	case errors.As(err, &pd) && pd.Type == legoacme.AlreadyRevokedErrorType:
 		return nil
 	case errors.As(err, &pd) && pd.Type == legoacme.BadRevocationReasonErrorType:
-		return &contracts.Problem{Key: i18n.AcmeErrorRevokeReason, Err: err}
+		return &contracts.Problem{Key: i18n.AcmeErrorRevokeReason, Err: fmt.Errorf("%w: %w", contracts.ErrReasonRefused, err)}
 	case errors.As(err, &pd):
 		return &contracts.Problem{Key: i18n.AcmeErrorRevoke, Params: map[string]any{"detail": pd.Detail}, Err: err}
 	}
