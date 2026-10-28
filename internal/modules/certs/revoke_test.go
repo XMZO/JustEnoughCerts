@@ -243,6 +243,16 @@ func TestRevokeAll(t *testing.T) {
 	if e := f.apiError(f.api.Post(path, body("cessation_of_operation", "pause")), http.StatusConflict); e.Code != string(i18n.CertsErrorRevokeNone) {
 		t.Errorf("nothing left: %+v", e)
 	}
+	// Each told of: the earlier one, then the one in use, paused.
+	var told []contracts.Revocation
+	for _, e := range f.events() {
+		if e.typ == contracts.CertificateRevoked && e.data.CertificateID == c.ID {
+			told = append(told, *e.data.Revocation)
+		}
+	}
+	if len(told) != 2 || !told[0].Requested || !told[0].Earlier || told[1].Earlier || !told[1].Paused || told[1].Reason != 5 {
+		t.Errorf("told %+v", told)
+	}
 
 	// Renewed: a new version comes at once.
 	c, _, current = f.issueTwice()
@@ -329,6 +339,15 @@ func TestRevokeOld(t *testing.T) {
 	}
 	if got := f.certificate(c.ID); got.Current.ID != current.ID || got.Current.RevokedAt != nil {
 		t.Errorf("the version in use: %+v", got.Current)
+	}
+	var told []contracts.CertificateEvent
+	for _, e := range f.events() {
+		if e.typ == contracts.CertificateRevoked {
+			told = append(told, e.data)
+		}
+	}
+	if len(told) != 1 || told[0].VersionID != old.ID || told[0].Username != "" || !told[0].Revocation.Earlier || told[0].Revocation.Reason != 0 {
+		t.Errorf("told %+v", told)
 	}
 
 	// With a target: only once the new version is deployed there.

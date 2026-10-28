@@ -356,13 +356,37 @@ func (s *service) note(ctx context.Context, tag language.Tag, ev events.Event, d
 		}
 	case contracts.CertificateRevoked:
 		n.Title = w.text(i18n.NotifyNoteRevokedTitle, i18n.Args{"domain": domain})
-		if r := d.Revocation; r != nil {
-			lines = append(lines, w.text(i18n.NotifyNoteRevokedWhen, i18n.Args{"date": w.day(r.At), "reason": w.text(contracts.RevocationReasonText(r.Reason), nil)}))
-			if r.Renewing {
-				lines = append(lines, w.text(i18n.NotifyNoteRevokedRenewing, nil))
-			} else {
-				lines = append(lines, w.text(i18n.NotifyNoteRevokedManual, nil))
+		r := d.Revocation
+		if r == nil {
+			break
+		}
+		if r.Requested {
+			// JEC asked the CA, as someone did or as set to.
+			n.Title = w.text(i18n.NotifyNoteRevokedTitleRequested, i18n.Args{"domain": domain})
+			if r.Earlier {
+				n.Title = w.text(i18n.NotifyNoteRevokedTitleEarlier, i18n.Args{"domain": domain})
 			}
+		}
+		lines = append(lines, w.text(i18n.NotifyNoteRevokedWhen, i18n.Args{"date": w.day(r.At), "reason": w.text(contracts.RevocationReasonText(r.Reason), nil)}))
+		switch {
+		case !r.Requested:
+		case d.Username != "":
+			lines = append(lines, w.text(i18n.NotifyNoteRevokedBy, i18n.Args{"username": d.Username}))
+		case r.Earlier:
+			lines = append(lines, w.text(i18n.NotifyNoteRevokedAuto, nil))
+		}
+		switch {
+		case r.Deleted:
+			lines = append(lines, w.text(i18n.NotifyNoteRevokedDeleted, nil))
+			n.Link = ""
+		case r.Earlier:
+			lines = append(lines, w.text(i18n.NotifyNoteEnds, i18n.Args{"date": w.day(d.NotAfter)}))
+		case r.Renewing:
+			lines = append(lines, w.text(i18n.NotifyNoteRevokedRenewing, nil))
+		case r.Paused:
+			lines = append(lines, w.text(i18n.NotifyNoteRevokedPaused, nil))
+		default:
+			lines = append(lines, w.text(i18n.NotifyNoteRevokedManual, nil))
 		}
 	case contracts.CertificateReminder:
 		n.Title = w.text(i18n.NotifyNoteReminderTitle, i18n.Args{"domain": domain})

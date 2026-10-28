@@ -510,6 +510,46 @@ func TestRevokedNote(t *testing.T) {
 	}
 }
 
+func TestRevokedRequestedNote(t *testing.T) {
+	f := newFixture(t)
+	en := f.notifier("ops", map[string]string{"locale": "en-US"}) // on by default
+	for i, c := range []struct {
+		username string
+		r        contracts.Revocation
+	}{
+		{"", contracts.Revocation{Earlier: true}},
+		{"admin", contracts.Revocation{Paused: true}},
+		{"admin", contracts.Revocation{Deleted: true}},
+	} {
+		c.r.At, c.r.Reason, c.r.Requested = start.Add(-time.Hour), 4, true
+		d := contracts.CertificateEvent{CertificateID: 3, Domains: []string{"example.com"}, VersionID: 9, NotAfter: start.Add(60 * 24 * time.Hour),
+			Username: c.username, Revocation: &c.r}
+		raw, _ := json.Marshal(d)
+		ev := events.Event{ID: int64(i + 1), Type: contracts.CertificateRevoked, Source: "certs", Subject: "3", Data: raw, Time: start}
+		if err := f.svc.handle(t.Context(), ev); err != nil {
+			t.Fatal(err)
+		}
+	}
+	notes := f.notes(en)
+	if len(notes) != 3 {
+		t.Fatalf("notes %v", notes)
+	}
+	// An earlier version, revoked as set to once a newer was deployed.
+	if n := notes[0]; n.Title != "An earlier certificate of example.com was revoked" ||
+		!strings.HasPrefix(n.Text, "Revoked on 2026-10-17; reason: a newer certificate replaces it.\nThe new version is deployed") || !strings.Contains(n.Text, "2026-12-16") {
+		t.Errorf("note %q\n%s", n.Title, n.Text)
+	}
+	// The one in use, by someone, its renewal paused.
+	if n := notes[1]; n.Title != "The certificate of example.com was revoked" ||
+		!strings.Contains(n.Text, "admin had it revoked in JEC.\nIts renewal is paused") || n.Link == "" {
+		t.Errorf("note %q\n%s", n.Title, n.Text)
+	}
+	// Deleted afterwards: nothing to link to.
+	if n := notes[2]; !strings.Contains(n.Text, "deleted from JEC") || n.Link != "" {
+		t.Errorf("note %q %q\n%s", n.Title, n.Link, n.Text)
+	}
+}
+
 func TestReminderNote(t *testing.T) {
 	f := newFixture(t)
 	en := f.notifier("ops", map[string]string{"locale": "en-US"}) // on by default

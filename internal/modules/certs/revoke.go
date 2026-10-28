@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strconv"
 	"time"
 
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/contracts"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
@@ -103,12 +105,13 @@ func (s *service) revoke(ctx context.Context, id, version int64, reason string) 
 	if err := revocable(c, v, s.now(), s.typeCache(ctx)); err != nil {
 		return err
 	}
-	return s.revokeVersion(ctx, id, v, code)
+	return s.revokeVersion(ctx, c, v, code, contracts.Revocation{Earlier: true})
 }
 
-// revokeVersion has version v of certificate id revoked at the CA of the
-// source that issued it, for code, and records it.
-func (s *service) revokeVersion(ctx context.Context, id int64, v *Version, code contracts.RevocationReason) error {
+// revokeVersion has version v of certificate c revoked at the CA of the
+// source that issued it, for code, records it and tells of it
+// (contracts.CertificateRevoked), with what then says becomes of c.
+func (s *service) revokeVersion(ctx context.Context, c *Certificate, v *Version, code contracts.RevocationReason, then contracts.Revocation) error {
 	chain, err := cryptox.ParseCertificates([]byte(v.Chain))
 	if err != nil {
 		return err
@@ -123,13 +126,34 @@ func (s *service) revokeVersion(ctx context.Context, id int64, v *Version, code 
 	if err := revoker.Revoke(ctx, chain[0], code); err != nil {
 		return err
 	}
-	if _, err := s.db.ExecContext(ctx, "UPDATE certs_versions SET revoked_at = ?, revoke_reason = ? WHERE id = ?",
-		s.now().UnixMilli(), code.String(), v.ID); err != nil {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
 		return err
 	}
-	s.log.Info("revoked a version", "certificate", id, "version", v.ID, "serial", v.Serial, "reason", code.String())
+	defer func() { _ = tx.Rollback() }()
+	now := s.now()
+	if _, err := tx.ExecContext(ctx, "UPDATE certs_versions SET revoked_at = ?, revoke_reason = ? WHERE id = ?",
+		now.UnixMilli(), code.String(), v.ID); err != nil {
+		return err
+	}
+	then.At, then.Reason, then.Requested = now, int(code), true
+	user, _ := auth.UserFrom(ctx)
+	err = s.events.PublishTx(ctx, tx, contracts.CertificateRevoked, strconv.FormatInt(c.ID, 10), contracts.CertificateEvent{
+		CertificateID: c.ID, Domains: c.Domains, VersionID: v.ID, Fingerprint: v.Fingerprint, NotAfter: v.NotAfter,
+		Username: user.Username, Revocation: &then,
+	})
+	if err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	s.log.Info("revoked a version", "certificate", c.ID, "version", v.ID, "serial", v.Serial, "reason", code.String())
 	return nil
 }
+
+// isCurrent tells whether v is the version c uses.
+func isCurrent(c *Certificate, v *Version) bool { return c.Current != nil && v.ID == c.Current.ID }
 
 // stillRevocable tells whether JEC can still have version v revoked at
 // its CA: one a source that revokes issued, not revoked yet, not expired.
@@ -142,14 +166,14 @@ func stillRevocable(v *Version, now time.Time, typeOf func(id int64) (providers.
 	return err == nil && t.Revocable
 }
 
-// revokeAnyReason has version v of certificate id revoked for code, or,
+// revokeAnyReason has version v of certificate c revoked for code, or,
 // should its CA not take that reason, for none given: when nobody is
 // there to choose another.
-func (s *service) revokeAnyReason(ctx context.Context, id int64, v *Version, code contracts.RevocationReason) error {
-	err := s.revokeVersion(ctx, id, v, code)
+func (s *service) revokeAnyReason(ctx context.Context, c *Certificate, v *Version, code contracts.RevocationReason, then contracts.Revocation) error {
+	err := s.revokeVersion(ctx, c, v, code, then)
 	if errors.Is(err, contracts.ErrReasonRefused) && code != contracts.ReasonUnspecified {
-		s.log.Info("the CA does not take the reason: revoking for none", "certificate", id, "version", v.ID, "reason", code.String())
-		err = s.revokeVersion(ctx, id, v, contracts.ReasonUnspecified)
+		s.log.Info("the CA does not take the reason: revoking for none", "certificate", c.ID, "version", v.ID, "reason", code.String())
+		err = s.revokeVersion(ctx, c, v, contracts.ReasonUnspecified, then)
 	}
 	return err
 }
@@ -167,6 +191,10 @@ func (s *service) retire(ctx context.Context, id int64, reason string) (int, err
 	if !ok {
 		return 0, fmt.Errorf("certs: no revocation reason %q", reason)
 	}
+	c, err := s.load(ctx, s.db, id)
+	if err != nil {
+		return 0, err
+	}
 	versions, err := s.versions(ctx, id)
 	if err != nil {
 		return 0, err
@@ -179,7 +207,7 @@ func (s *service) retire(ctx context.Context, id int64, reason string) (int, err
 		if !stillRevocable(v, now, typeOf) {
 			continue
 		}
-		if err := s.revokeAnyReason(ctx, id, v, code); err != nil {
+		if err := s.revokeAnyReason(ctx, c, v, code, contracts.Revocation{Earlier: !isCurrent(c, v), Deleted: true}); err != nil {
 			return revoked, err
 		}
 		revoked++
@@ -237,13 +265,17 @@ func (s *service) revokeAll(ctx context.Context, id int64, reason, then string) 
 	}
 	revoked := 0
 	for _, v := range versions {
-		current := c.Current != nil && v.ID == c.Current.ID
+		current := isCurrent(c, v)
 		if current && pause {
 			if err := setPaused(true); err != nil {
 				return revoked, err
 			}
 		}
-		if err := s.revokeVersion(ctx, id, v, code); err != nil {
+		told := contracts.Revocation{Earlier: true}
+		if current {
+			told = contracts.Revocation{Paused: then == thenPause || c.Paused, Renewing: then == thenRenew}
+		}
+		if err := s.revokeVersion(ctx, c, v, code, told); err != nil {
 			if current && pause {
 				err = errors.Join(err, setPaused(false))
 			}
@@ -318,7 +350,7 @@ func (s *service) checkRevokeOld(ctx context.Context) error {
 			if v.ID == cur.ID || !v.CreatedAt.Before(cur.CreatedAt) || now.Sub(v.RevokeTried) < revokeOldRetry || !stillRevocable(v, now, typeOf) {
 				continue
 			}
-			err := s.revokeAnyReason(ctx, c.ID, v, contracts.ReasonSuperseded)
+			err := s.revokeAnyReason(ctx, c, v, contracts.ReasonSuperseded, contracts.Revocation{Earlier: true})
 			switch {
 			case err == nil:
 			case ctx.Err() != nil:

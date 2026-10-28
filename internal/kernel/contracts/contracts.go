@@ -30,9 +30,11 @@ const (
 	// Reminder set.
 	CertificateReminder = "certificate.reminder"
 	// CertificateRevoked: the CA of the current version revoked it, as its
-	// OCSP responder or CRL told; one with a source is renewed at once.
-	// Payload CertificateEvent with VersionID, Fingerprint, NotAfter and
-	// Revocation set.
+	// OCSP responder or CRL told, and one with a source is renewed at once;
+	// or JEC had the CA revoke a version (Revocation.Requested), as someone
+	// asked, with Username, or as set to once a newer is deployed. Payload
+	// CertificateEvent with VersionID, Fingerprint, NotAfter and Revocation
+	// set.
 	CertificateRevoked = "certificate.revoked"
 	// CertificateDeleted: a certificate and all its versions were deleted.
 	// Payload CertificateEvent without a version.
@@ -273,6 +275,15 @@ type Revocation struct {
 	At       time.Time `json:"at"`
 	Reason   int       `json:"reason"`   // the reason code of RFC 5280: 1 key compromise, 4 superseded, …
 	Renewing bool      `json:"renewing"` // the certificate has a source, which issues a new version at once
+	// Requested tells that JEC had the CA revoke the version; otherwise
+	// the CA did so itself, as its OCSP responder or CRL told.
+	Requested bool `json:"requested,omitempty"`
+	// Earlier tells that the version is not the one in use.
+	Earlier bool `json:"earlier,omitempty"`
+	// Paused tells that the renewal of the certificate is paused, and
+	// Deleted that the certificate is deleted afterwards.
+	Paused  bool `json:"paused,omitempty"`
+	Deleted bool `json:"deleted,omitempty"`
 }
 
 // Check tells what a domain of a certificate served when the monitor

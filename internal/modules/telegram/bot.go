@@ -223,9 +223,16 @@ func (b *bot) noteButton(n contracts.Note) (button, bool) {
 	}
 	var d struct {
 		CertificateID int64 `json:"certificateId"`
+		Revocation    *struct {
+			Deleted bool `json:"deleted"`
+		} `json:"revocation"`
 	}
 	if json.Unmarshal(n.Data, &d) != nil || d.CertificateID == 0 {
 		return button{}, false
+	}
+	if d.Revocation != nil && d.Revocation.Deleted {
+		// Revoked and deleted: nothing left to open but the menu.
+		return button{Text: label(iconHome, i18n.TelegramButtonMenu), Data: viewNew + ":" + viewMain}, true
 	}
 	return button{Text: label(iconLock, i18n.TelegramButtonCertificate), Data: viewNew + ":" + viewCert + ":" + strconv.FormatInt(d.CertificateID, 10)}, true
 }

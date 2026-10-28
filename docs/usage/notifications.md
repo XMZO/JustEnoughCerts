@@ -17,7 +17,7 @@ message at once.
 | A reminder set on a certificate comes due (see [Certificates](certificates.md)) | On |
 | Old certificate still served (found by the online check) | On |
 | Certificate served without its intermediates (likewise) | On |
-| The CA revoked a certificate (see [Revocation checks](renewal.md#revocation-checks)) | On |
+| A certificate is revoked: by its CA (see [Revocation checks](renewal.md#revocation-checks)), or by JEC, as you asked or as set to revoke earlier versions (see [Revoking](certificates.md#revoking)) | On |
 | A watched site's certificate ends soon or ended (see [Expiry watch](sites.md)) | On |
 | A domain registration ends soon or ended (likewise) | On |
 | A certificate JEC does not hold shows up in certificate transparency logs (see [Certificate transparency](transparency.md), when switched on) | On |
