@@ -103,6 +103,14 @@ such as PositiveSSL:
 Single-domain RSA certificates only. The complete steps for verifying it
 are in [Testing with real accounts](../development/testing.md).
 
+A Namecheap certificate is usable only with the private key of the CSR it
+was issued for. Deleting the certificate from JEC deletes that key as
+well: when it is added again, the issuance cannot use the certificate
+already at Namecheap, and its log says so. Reissue the certificate in the
+Namecheap dashboard with Server-side automation, then click **Check now**
+on the issuance page; otherwise the issuance waits for Namecheap's next
+certificate.
+
 ## Plugins
 
 Plugins can provide new certificate sources, both sources that issue from

@@ -291,11 +291,34 @@ func (s *service) issue(ctx context.Context, id int64) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	s.ask(issuance, true) // before the commit, so no claim misses it
 	if err := tx.Commit(); err != nil {
+		s.ask(issuance, false)
 		return 0, err
 	}
 	s.issuing.kick()
 	return issuance, nil
+}
+
+// ask marks issuance as asked for by a person, or unmarks it.
+func (s *service) ask(issuance int64, on bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if on {
+		s.asked[issuance] = true
+	} else {
+		delete(s.asked, issuance)
+	}
+}
+
+// takeAsked reports whether a person asked for issuance since the last
+// call to its source, and clears that.
+func (s *service) takeAsked(issuance int64) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	asked := s.asked[issuance]
+	delete(s.asked, issuance)
+	return asked
 }
 
 // claimed is an issuance an attempt was started for, or continued for
@@ -417,6 +440,7 @@ func (s *service) attempt(ctx, attemptCtx context.Context, c *claimed) {
 // obtain gets a new certificate for the certificate of c from its source,
 // with the issuance's private key, which its first attempt makes.
 func (s *service) obtain(ctx context.Context, cl *claimed, log func(contracts.LogLine)) (*cryptox.Bundle, error) {
+	asked := s.takeAsked(cl.id)
 	c, err := s.load(ctx, s.db, cl.certificateID)
 	if err != nil {
 		return nil, err
@@ -448,7 +472,7 @@ func (s *service) obtain(ctx context.Context, cl *claimed, log func(contracts.Lo
 	if !ok {
 		return nil, retry.Permanent(fmt.Errorf("provider %d is no source", cl.source))
 	}
-	req := contracts.IssueRequest{Domains: c.Domains, Log: log, Replaces: replaced(c, cl.source)}
+	req := contracts.IssueRequest{Domains: c.Domains, Log: log, Replaces: replaced(c, cl.source), Asked: asked}
 	if c.SolverProvider != 0 {
 		solver, err := openProvider[io.Closer](ctx, s.providers, c.SolverProvider)
 		if err != nil {

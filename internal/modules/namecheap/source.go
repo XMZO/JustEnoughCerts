@@ -189,7 +189,7 @@ func (s *sslManager) Issue(ctx context.Context, req contracts.IssueRequest) ([]*
 		return nil, explain(err)
 	}
 	now := s.m.now().Unix()
-	if fingerprint != "" && fingerprint == o.Fingerprint && now-o.Looked < int64(relook/time.Second) {
+	if !req.Asked && fingerprint != "" && fingerprint == o.Fingerprint && now-o.Looked < int64(relook/time.Second) {
 		return nil, o.wait() // nothing changed at the vendor
 	}
 	o.Fingerprint, o.Looked = fingerprint, now
@@ -227,11 +227,16 @@ func (s *sslManager) Issue(ctx context.Context, req contracts.IssueRequest) ([]*
 			return nil, o.wait()
 		case stateIssued:
 			chain, err := s.download(ctx, sess, cert, req, pub, &o, log)
-			if errors.Is(err, errOtherKey) {
+			switch {
+			case errors.Is(err, errEarlier):
 				o.note(log, "issued:"+cert.ID, contracts.LogLine{Level: contracts.Info, Step: contracts.StepOrder, Key: i18n.NamecheapLogNext, Params: map[string]any{"domain": domain}})
 				return nil, o.wait()
-			}
-			if err != nil {
+			case errors.Is(err, errOtherKey):
+				// Such as the certificate's before it was deleted from JEC,
+				// with its key: only a reissue brings one for this key soon.
+				o.note(log, "elsewhere:"+cert.ID, contracts.LogLine{Level: contracts.Warn, Step: contracts.StepOrder, Key: i18n.NamecheapLogOtherKey, Params: map[string]any{"domain": domain}})
+				return nil, o.wait()
+			case err != nil:
 				return nil, o.keep(err)
 			}
 			return chain, nil
@@ -502,9 +507,24 @@ func (m *Module) fetch(ctx context.Context, address string) ([]byte, error) {
 	return data, nil
 }
 
-// errOtherKey: the vendor's certificate is for another key than the
-// issuance's, such as the one before, which this issuance is to replace.
-var errOtherKey = errors.New("namecheap: the certificate is for another key")
+// errEarlier: the vendor's certificate is the one before, which the
+// issuance is to replace, or one for its key. errOtherKey: it is for some
+// other key than the issuance's, which JEC does not have.
+var (
+	errEarlier  = errors.New("namecheap: the certificate is the one before")
+	errOtherKey = errors.New("namecheap: the certificate is for another key")
+)
+
+// otherKey is the error for a vendor's certificate whose RSA modulus has
+// the SHA-1 modulus, which is not the issuance's.
+func otherKey(modulus string, replaces *x509.Certificate) error {
+	if replaces != nil {
+		if pub, ok := replaces.PublicKey.(*rsa.PublicKey); ok && strings.EqualFold(modulus, modulusSHA1(pub)) {
+			return errEarlier
+		}
+	}
+	return errOtherKey
+}
 
 // download returns cert with its chain, if it is for the issuance's key,
 // once the files of its validation are off the website. It tells Namecheap
@@ -513,7 +533,7 @@ var errOtherKey = errors.New("namecheap: the certificate is for another key")
 func (s *sslManager) download(ctx context.Context, sess *session, cert *certificate, req contracts.IssueRequest, pub *rsa.PublicKey, o *order, log func(contracts.LogLine)) ([]*x509.Certificate, error) {
 	mine := cert.ID == o.Cert
 	if !mine && cert.ModulusSHA1 != "" && !strings.EqualFold(cert.ModulusSHA1, modulusSHA1(pub)) {
-		return nil, errOtherKey
+		return nil, otherKey(cert.ModulusSHA1, req.Replaces)
 	}
 	data, err := sess.pem(ctx, sess.access, cert.ID)
 	if err != nil {
@@ -523,9 +543,19 @@ func (s *sslManager) download(ctx context.Context, sess *session, cert *certific
 	if err != nil {
 		return nil, fmt.Errorf("namecheap: the certificate: %w", err)
 	}
+	// A renewal that keeps the key is for the same key as the one before.
+	if !mine && req.Replaces != nil && slices.ContainsFunc(certs, req.Replaces.Equal) {
+		return nil, errEarlier
+	}
 	b, err := cryptox.NewBundle(certs, req.Key)
 	switch {
 	case errors.Is(err, cryptox.ErrKeyMismatch) && !mine:
+		// The leaf is among the certificates, in whatever order.
+		for _, c := range certs {
+			if pub, ok := c.PublicKey.(*rsa.PublicKey); ok && errors.Is(otherKey(modulusSHA1(pub), req.Replaces), errEarlier) {
+				return nil, errEarlier
+			}
+		}
 		return nil, errOtherKey
 	case errors.Is(err, cryptox.ErrKeyMismatch):
 		return nil, retry.Permanent(&contracts.Problem{Key: i18n.NamecheapErrorKeyMismatch, Err: err})

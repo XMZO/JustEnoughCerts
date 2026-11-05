@@ -2176,6 +2176,7 @@ const (
 	NamecheapLogNone                         Key = "namecheap.log.none"
 	NamecheapLogNotOurs                      Key = "namecheap.log.not_ours"
 	NamecheapLogNotServed                    Key = "namecheap.log.not_served"
+	NamecheapLogOtherKey                     Key = "namecheap.log.other_key"
 	NamecheapLogPutFile                      Key = "namecheap.log.put_file"
 	NamecheapLogRecordLeft                   Key = "namecheap.log.record_left"
 	NamecheapLogRecordWait                   Key = "namecheap.log.record_wait"

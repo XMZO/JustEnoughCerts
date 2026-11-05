@@ -124,10 +124,11 @@ func decode(t *testing.T, data []byte) []byte {
 func TestIssueNextCertificate(t *testing.T) {
 	f := newFixture(t)
 	old, key := rsaKeys()[1], rsaKeys()[0]
-	// The vendor's certificate is the one before, for another key.
-	f.vendor.add("c0", "example.com", stateIssued, f.vendor.ca.Leaf(t, old, time.Now().Add(-time.Hour), time.Now().AddDate(0, 0, 20), "example.com"))
-	_, wait, err := f.issue(key, nil)
-	if err != nil || wait == nil || !slices.Contains(f.logKeys(), i18n.NamecheapLogNext) {
+	// The vendor's certificate is the one before, which the issuance renews.
+	before := f.vendor.ca.Leaf(t, old, time.Now().Add(-time.Hour), time.Now().AddDate(0, 0, 20), "example.com")
+	f.vendor.add("c0", "example.com", stateIssued, before)
+	_, wait, err := f.attempt(contracts.IssueRequest{Key: key, Files: f.site, Replaces: before})
+	if err != nil || wait == nil || !slices.Contains(f.logKeys(), i18n.NamecheapLogNext) || slices.Contains(f.logKeys(), i18n.NamecheapLogOtherKey) {
 		t.Fatalf("with the old certificate only: %v %v", err, f.logKeys())
 	}
 	if slices.Contains(f.vendor.called(), "/certificates/readPEMFormatted") {
@@ -149,6 +150,59 @@ func TestIssueNextCertificate(t *testing.T) {
 	if err != nil || !key.PublicKey.Equal(chain[0].PublicKey) {
 		t.Fatalf("issued: %v", err)
 	}
+}
+
+// A renewal that keeps the key does not take the one before for its own.
+func TestIssueNextCertificateSameKey(t *testing.T) {
+	f := newFixture(t)
+	key := rsaKeys()[0]
+	before := f.vendor.ca.Leaf(t, key, time.Now().Add(-time.Hour), time.Now().AddDate(0, 0, 20), "example.com")
+	f.vendor.add("c0", "example.com", stateIssued, before)
+	chain, wait, err := f.attempt(contracts.IssueRequest{Key: key, Files: f.site, Replaces: before})
+	if err != nil || chain != nil || wait == nil || !slices.Contains(f.logKeys(), i18n.NamecheapLogNext) {
+		t.Fatalf("with the old certificate only: %v %v %v", chain, err, f.logKeys())
+	}
+	f.vendor.with(func() {
+		if len(f.vendor.confirmed) != 0 {
+			t.Errorf("confirmed %v", f.vendor.confirmed)
+		}
+	})
+}
+
+// The vendor's certificate is for a key JEC lost, as when the certificate
+// was deleted from JEC: the log says to reissue, and a look a person asks
+// for finds the reissue at once, though the status did not change.
+func TestIssueOtherKey(t *testing.T) {
+	f := newFixture(t)
+	lost, key := rsaKeys()[1], rsaKeys()[0]
+	f.vendor.add("c0", "example.com", stateIssued, f.vendor.ca.Leaf(t, lost, time.Now().Add(-time.Hour), time.Now().AddDate(0, 0, 20), "example.com"))
+	_, wait, err := f.issue(key, nil)
+	if err != nil || wait == nil || !slices.Contains(f.logKeys(), i18n.NamecheapLogOtherKey) || slices.Contains(f.logKeys(), i18n.NamecheapLogNext) {
+		t.Fatalf("with a certificate for another key: %v %v", err, f.logKeys())
+	}
+	f.logMu.Lock()
+	level := f.logged[len(f.logged)-1].Level
+	f.logMu.Unlock()
+	if level != contracts.Warn {
+		t.Errorf("level %s", level)
+	}
+
+	// The reissue, without a change of the status.
+	f.vendor.with(func() {
+		f.vendor.certs = append([]*vendorCert{{id: "c1", domain: "example.com", state: stateAwaitingCSR}}, f.vendor.certs...)
+	})
+	before := len(f.vendor.called())
+	if _, wait, err = f.issue(key, wait.State); err != nil || wait == nil || slices.Contains(f.vendor.called()[before:], "/certificates/list") {
+		t.Fatalf("a look of its own: %v, calls %v", err, f.vendor.called()[before:])
+	}
+	if _, wait, err = f.attempt(contracts.IssueRequest{Key: key, Files: f.site, State: wait.State, Asked: true}); err != nil || wait == nil {
+		t.Fatalf("a look asked for: %v", err)
+	}
+	f.vendor.with(func() {
+		if f.vendor.find("c1").csr == nil {
+			t.Error("no CSR for the reissue")
+		}
+	})
 }
 
 func TestIssueWaitsForSomething(t *testing.T) {

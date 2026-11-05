@@ -2184,6 +2184,7 @@ export type MessageKey =
   | "namecheap.log.none"
   | "namecheap.log.not_ours"
   | "namecheap.log.not_served"
+  | "namecheap.log.other_key"
   | "namecheap.log.put_file"
   | "namecheap.log.record_left"
   | "namecheap.log.record_wait"

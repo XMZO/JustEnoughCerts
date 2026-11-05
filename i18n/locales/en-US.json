@@ -2882,6 +2882,7 @@
       "none": "Namecheap has no certificate for {domain} yet. JEC keeps looking.",
       "not_ours": "The CSR of Namecheap's certificate did not come from this issuance. Reissue it in Namecheap's panel and JEC carries on.",
       "not_served": "{url} does not serve the validation file from here, so the CA may not get it either. Check the CDN and the website.",
+      "other_key": "Namecheap's newest certificate for {domain} was issued for another private key, such as that of a certificate deleted from JEC, so JEC cannot use it. Reissue it in Namecheap's panel (choosing Server-side automation), then click “Check now” and JEC carries on; otherwise it waits for Namecheap to ready the next one.",
       "put_file": "Putting the validation file {path} on {domain}",
       "record_left": "The {type} record {name} is no longer needed; you can remove it at the DNS provider",
       "record_wait": "The authoritative DNS servers of the domain do not answer the validation record {names} yet; checking again later",

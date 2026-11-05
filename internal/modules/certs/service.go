@@ -98,15 +98,19 @@ type service struct {
 
 	issuing   *queue[claimed]
 	deploying *queue[deployClaim]
-	mu        sync.Mutex                    // guards running
+	mu        sync.Mutex                    // guards running and asked
 	running   map[runKey]context.CancelFunc // the attempts under way
+	// asked holds the issuances a person asked for since their last call
+	// to the source, which then looks at once (IssueRequest.Asked). It is
+	// a hint only, so it lives in memory.
+	asked map[int64]bool
 }
 
 func newService(db *sql.DB, ev *events.Scope, box *secrets.Scope, prov *providers.Scope, log *slog.Logger, now func() time.Time) *service {
 	s := &service{
 		db: db, events: ev, secrets: box, providers: prov, log: log, now: now, zone: func() *time.Location { return time.Local },
 		issuing: newQueue[claimed](maxRunning, attemptTimeout), deploying: newQueue[deployClaim](maxDeploying, deployTimeout),
-		running: map[runKey]context.CancelFunc{},
+		running: map[runKey]context.CancelFunc{}, asked: map[int64]bool{},
 	}
 	q := s.issuing
 	q.resume, q.claim, q.attempt = s.resume, s.claim, s.attempt

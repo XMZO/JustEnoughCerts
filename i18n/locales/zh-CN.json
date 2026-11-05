@@ -2882,6 +2882,7 @@
       "none": "Namecheap 上还没有 {domain} 的证书，JEC 会定时查看。",
       "not_ours": "Namecheap 上这张证书的 CSR 不是这次签发交的。在 Namecheap 面板重签后，JEC 会接着做。",
       "not_served": "从这里访问 {url} 拿不到验证文件，证书颁发机构可能也拿不到。请检查 CDN 和网站的设置。",
+      "other_key": "Namecheap 上 {domain} 最新的证书是为别的私钥签发的（比如在 JEC 里删掉的证书），JEC 用不了它。在 Namecheap 面板重签（选 Server-side automation）后点“立即查看”，JEC 会接着做；不重签就要等 Namecheap 准备下一张。",
       "put_file": "在 {domain} 放验证文件 {path}",
       "record_left": "{type} 记录 {name} 已经用不到了，可以到 DNS 服务商那里删除",
       "record_wait": "还没从域名的权威 DNS 服务器查到验证记录 {names}，稍后再查",

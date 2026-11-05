@@ -768,6 +768,27 @@ func TestIssueWaits(t *testing.T) {
 	}
 }
 
+// Only the call a person asked for, as with "check now", is Asked.
+func TestIssueAsked(t *testing.T) {
+	f := newFixture(t)
+	calls := f.vendor(time.Hour, time.Hour, time.Hour, time.Hour)
+	c := f.issueNew("example.com")
+	f.run()
+	f.now = *f.certificate(c.ID).Issuance.NextAt
+	f.run()
+	f.call(f.api.Post("/certificates/"+strconv.FormatInt(c.ID, 10)+"/issue"), http.StatusAccepted, nil)
+	f.run()
+	f.now = *f.certificate(c.ID).Issuance.NextAt
+	f.run()
+	var asked []bool
+	for _, call := range *calls {
+		asked = append(asked, call.Asked)
+	}
+	if !slices.Equal(asked, []bool{false, false, true, false}) {
+		t.Errorf("asked %v", asked)
+	}
+}
+
 func TestIssueTakesOver(t *testing.T) {
 	f := newFixture(t)
 	f.vendor(time.Hour)

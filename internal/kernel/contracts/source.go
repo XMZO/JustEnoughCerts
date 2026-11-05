@@ -66,6 +66,10 @@ type IssueRequest struct {
 	// State is what the source kept when the last attempt of this issuance
 	// ended in a Wait; nil before that.
 	State []byte
+	// Asked is set when a person asked for this call, as with "check now"
+	// on a waiting issuance: a source that skips looking while nothing
+	// seems to change at its vendor looks anyway.
+	Asked bool
 	// Replaces is the leaf of the version this issuance renews, when the
 	// same source issued it: an ACME order says which certificate it
 	// replaces (RFC 9773). Nil otherwise.

@@ -69,6 +69,8 @@ openssl req -x509 -new -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes \
 
 仅支持单域名的 RSA 证书。完整的验证步骤见[真实账号测试指南](../development/testing.zh-CN.md)。
 
+Namecheap 的证书只能与签发时所交 CSR 的私钥配合使用。在 JEC 中删除证书会一并删除该私钥，重新添加后，签发无法使用 Namecheap 上已有的证书，日志中会予以提示。此时应在 Namecheap 控制台重签证书并选择 Server-side automation，再在签发页点击“立即查看”；否则签发将等待 Namecheap 的下一张证书。
+
 ## 插件
 
 插件可提供新的证书来源，包括依据 CSR 签发证书的来源与提供现成证书的来源，参见[插件](../development/plugins.zh-CN.md)。
