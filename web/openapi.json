@@ -4227,7 +4227,7 @@
         "additionalProperties": false,
         "properties": {
           "certificates": {
-            "description": "The certificates found that are not JEC's, not trusted and not ignored, the newest first",
+            "description": "The certificates found that are not JEC's, not trusted and not ignored, the newest first; none while the search is off, which nothing then tells of",
             "items": {
               "$ref": "#/components/schemas/SpottedBody"
             },

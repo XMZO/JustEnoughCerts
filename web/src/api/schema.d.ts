@@ -3395,7 +3395,7 @@ export interface components {
             tokens: components["schemas"]["TokenBody"][];
         };
         TransparencyBody: {
-            /** @description The certificates found that are not JEC's, not trusted and not ignored, the newest first */
+            /** @description The certificates found that are not JEC's, not trusted and not ignored, the newest first; none while the search is off, which nothing then tells of */
             certificates: components["schemas"]["SpottedBody"][];
             /** @description The registered domains searched: those JEC holds certificates under */
             domains: components["schemas"]["TransparencyDomain"][];

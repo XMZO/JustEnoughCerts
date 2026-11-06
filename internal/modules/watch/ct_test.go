@@ -223,6 +223,21 @@ func TestTransparency(t *testing.T) {
 		t.Fatalf("told %d times", n)
 	}
 
+	// Switched off, what was found is listed nowhere, as needing someone
+	// or else; on again, it is back.
+	if resp := f.api.Put("/transparency", map[string]any{"enabled": false}); resp.Code != http.StatusOK {
+		t.Fatalf("switch off = %d %s", resp.Code, resp.Body)
+	}
+	if b := f.ct(); b.Enabled || len(b.Certificates) != 0 || b.Own != 2 {
+		t.Fatalf("while off: %+v", b)
+	}
+	if resp := f.api.Put("/transparency", map[string]any{"enabled": true}); resp.Code != http.StatusOK {
+		t.Fatalf("switch on again = %d %s", resp.Code, resp.Body)
+	}
+	if got := listed(f.ct()); !slices.Equal(got, []string{"103 unknown", "101 baseline"}) {
+		t.Fatalf("on again, listed %v", got)
+	}
+
 	// The CDN's names and issuer trusted: its renewal is not told of.
 	if resp := f.api.Post("/transparency/certificates/101/trust"); resp.Code != http.StatusNoContent {
 		t.Fatalf("trust = %d %s", resp.Code, resp.Body)

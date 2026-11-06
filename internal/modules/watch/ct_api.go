@@ -22,7 +22,7 @@ type TransparencyBody struct {
 	Enabled      bool                    `json:"enabled"`
 	HasKey       bool                    `json:"hasKey" doc:"A Cert Spotter API key is saved"`
 	Domains      []TransparencyDomain    `json:"domains" doc:"The registered domains searched: those JEC holds certificates under"`
-	Certificates []SpottedBody           `json:"certificates" doc:"The certificates found that are not JEC's, not trusted and not ignored, the newest first"`
+	Certificates []SpottedBody           `json:"certificates" doc:"The certificates found that are not JEC's, not trusted and not ignored, the newest first; none while the search is off, which nothing then tells of"`
 	Own          int                     `json:"own" doc:"How many of the certificates found are JEC's"`
 	Ignored      int                     `json:"ignored"`
 	Trusted      []TransparencyTrustBody `json:"trusted" doc:"The names and issuers trusted, with how many certificates found each covers"`
@@ -282,6 +282,13 @@ func (m *Module) transparency(ctx context.Context) (*transparencyOutput, error) 
 	}
 	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
 		return nil, err
+	}
+	if !b.Enabled {
+		// Switched off, they are kept for when it is on again, but listed
+		// nowhere: the overview counted them as needing someone, and
+		// Telegram and the weekly digest told of them, while the page
+		// showed none.
+		b.Certificates = []SpottedBody{}
 	}
 	// Those told of first, then the newest.
 	rank := map[string]int{ctUnknown: 0, ctNew: 1, ctBaseline: 2}

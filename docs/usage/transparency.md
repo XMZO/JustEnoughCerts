@@ -19,6 +19,10 @@ public key that none of JEC's certificates has. Off by default.
 
 JEC searches each domain every 6 hours; "Search now" searches at once.
 
+Switching it off stops the searches. The certificates found are kept but
+not shown, here or as needing attention on the overview, in Telegram or
+in the weekly digest; switching it on again brings them back.
+
 ## The certificates found
 
 A certificate issued (by its start date) before the search was first
