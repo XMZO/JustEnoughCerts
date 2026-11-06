@@ -77,13 +77,6 @@ func (s *source) Issue(ctx context.Context, req contracts.IssueRequest) ([]*x509
 	}
 
 	p := &dnsProvider{solver: req.Solver, log: log, skipCheck: s.m.skipPropagation, missed: map[string]bool{}}
-	if dnscheck.Custom() {
-		// lego asks the resolvers set for the name servers of a zone but the
-		// system's for their addresses, which those may not know.
-		p.check = func(ctx context.Context, fqdn, value string) (bool, error) {
-			return visible(ctx, fqdn, "TXT", value)
-		}
-	}
 	if req.Files != nil {
 		if err := client.Challenge.SetHTTP01Provider(&fileProvider{files: req.Files, log: log}); err != nil {
 			return nil, err
@@ -379,11 +372,18 @@ func explain(err error, unseen []string) error {
 
 // dnsProvider answers lego's DNS-01 challenges through a contracts.Solver,
 // and checks that the answers show before lego tells the CA.
+//
+// The checks ask the authoritative servers only, never a recursive
+// resolver about _acme-challenge (see dnscheck.Visible): one asked while
+// the record is not on every server yet caches that there is no such name,
+// and a CA validating through the same resolver then finds nothing, for
+// minutes. Google Trust Services validates through Google Public DNS,
+// which many servers use, and lego's own check polls the system's
+// resolvers.
 type dnsProvider struct {
 	solver    contracts.Solver
 	log       func(contracts.LogLine)
-	skipCheck bool               // trust the records to show, as for tests
-	check     dns01.PreCheckFunc // in place of lego's, when set
+	skipCheck bool // trust the records to show, as for tests
 
 	mu      sync.Mutex
 	waiting bool            // the wait was logged
@@ -403,8 +403,9 @@ func (p *dnsProvider) Present(ctx context.Context, domain, token, keyAuth string
 	// The record itself, for people to check, or to add by hand (RFC 8555
 	// section 8.4).
 	sum := sha256.Sum256([]byte(keyAuth))
+	value := base64.RawURLEncoding.EncodeToString(sum[:])
 	p.log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepChallenge, Key: i18n.AcmeLogRecord, Params: map[string]any{
-		"name": "_acme-challenge." + domain, "value": base64.RawURLEncoding.EncodeToString(sum[:]),
+		"name": "_acme-challenge." + domain, "value": value,
 	}})
 	if !p.skipCheck && wildcardCNAME(ctx, domain) {
 		// The record goes in the zone of domain, beside the wildcard, whose
@@ -435,7 +436,41 @@ func (p *dnsProvider) Present(ctx context.Context, domain, token, keyAuth string
 		}
 		err = problem
 	}
+	if err == nil && !p.skipCheck {
+		p.settle(ctx, domain, value)
+	}
 	return err
+}
+
+// maxSettle bounds the wait of settle; lego's own wait comes after.
+const maxSettle = 2 * time.Minute
+
+// settle waits, once the answer for domain is added, until the
+// authoritative servers have it, for at most the solver's timeout or
+// maxSettle: lego next asks a recursive resolver for the CNAME of
+// _acme-challenge, which should find the record there by then.
+func (p *dnsProvider) settle(ctx context.Context, domain, value string) {
+	timeout, interval := p.Timeout() // logs the wait
+	p.mu.Lock()
+	direct := p.direct[domain]
+	p.mu.Unlock()
+	name := "_acme-challenge." + domain
+	if !direct {
+		if via := delegatedTo(ctx, domain); via != "" {
+			name = via
+		}
+	}
+	deadline := time.Now().Add(min(timeout, maxSettle))
+	for {
+		if found, _ := visible(ctx, name, "TXT", value); found || time.Now().After(deadline) {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(interval):
+		}
+	}
 }
 
 // CleanUp removes an answer. lego only logs a failure, so it shows in the
@@ -463,29 +498,25 @@ func (p *dnsProvider) Timeout() (time.Duration, time.Duration) {
 	return timeout, interval
 }
 
-// precheck wraps lego's check that an answer shows in DNS: it stops the
+// precheck checks that an answer shows in DNS, in place of lego's check,
+// which asks recursive resolvers too: it asks the authoritative servers of
+// fqdn, where lego follows the CNAMEs of _acme-challenge to. It stops the
 // wait once ctx is done, which lego's own wait does not notice, and logs
 // the first miss of each domain.
-func (p *dnsProvider) precheck(ctx context.Context, domain, fqdn, value string, check dns01.PreCheckFunc) (bool, error) {
+func (p *dnsProvider) precheck(ctx context.Context, domain, fqdn, value string, _ dns01.PreCheckFunc) (bool, error) {
 	if err := ctx.Err(); err != nil {
 		return true, err
 	}
 	if p.skipCheck {
 		return true, nil
 	}
-	if p.check != nil {
-		check = p.check
-	}
 	p.mu.Lock()
 	direct := p.direct[strings.TrimPrefix(domain, "*.")]
 	p.mu.Unlock()
 	if direct {
 		fqdn = "_acme-challenge." + strings.TrimPrefix(domain, "*.") + "."
-		check = func(ctx context.Context, fqdn, value string) (bool, error) {
-			return visible(ctx, fqdn, "TXT", value)
-		}
 	}
-	found, err := check(ctx, fqdn, value)
+	found, err := visible(ctx, fqdn, "TXT", value)
 	p.mu.Lock()
 	_, missedBefore := p.missed[domain]
 	p.missed[domain] = !found

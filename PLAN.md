@@ -533,7 +533,7 @@ DNS 验证分成两种能力，实现方式不同：
 
 - lego 没有通用的、不经过环境变量的配置方式：每家都有自己的 `Config` 结构，统一的入口 `NewDNSChallengeProviderByName` 只读环境变量，有几家甚至在 `Present` 时才读。所以**每家服务商都在子进程里运行**：同一个 `jec` 二进制以内部子命令启动，环境变量只放这家服务商需要的键（不继承 JEC 自己的环境，`JEC_SECRET_KEY` 不会传过去，也不允许 `_FILE` 结尾的键去读任意文件），通过 stdin / stdout 交换 JSON 完成 `Present` 和 `CleanUp`。一次签发用同一个子进程，因为有的服务商（如 Cloudflare）在 `Present` 和 `CleanUp` 之间要记住记录 ID。这样不需要全局锁，某家服务商出问题也只影响它自己的子进程。
 - 表单所需的信息（名称、官网、凭据键、附加配置键和说明）在构建时从 lego 模块目录里的 `providers/dns/<code>/<code>.toml` 生成，嵌进程序。TOML 不标明哪些键必填，所以凭据键默认按必填、按保密处理，附加键按可选处理。
-- 传播检查用 lego 的：先跟随 CNAME，再要求递归解析器和权威服务器都查到 TXT（v5 默认两者都要）。递归解析器可以设置；没有 `/etc/resolv.conf` 的环境要显式指定（如 223.5.5.5、119.29.29.29、1.1.1.1）。
+- 传播检查用 JEC 自己的（`dnscheck.Visible`）：只问权威服务器，不用 lego 的（lego v5 默认还要递归解析器也查到 TXT）。验证记录加上之前和传播期间，不向任何递归解析器问 `_acme-challenge` 这个名字：解析服务器问不到时会按 SOA 缓存“没有这个名字”（RFC 2308，DNSPod 是 180 秒），CA 经同一个解析服务器验证时就查不到。2026-11-07 用户在 Google Trust Services 签 `*.anby.cc`（DNSPod）时连续失败就是这样：服务器的解析服务器是 8.8.8.8，GTS 也经 Google 公共 DNS 验证，lego 的提供者在 `Present` 里从 `_acme-challenge.anby.cc` 起逐级查 SOA 找区域、lego 的检查又反复向 8.8.8.8 查 TXT。所以：区域从记录名的上一级找（`recordServers`；记录名本身是单独委派的区域时，上一级的服务器会给出转介，这时才问它自己）；子进程在提供者 `Present` 之前用权威服务器把区域放进 lego 的缓存（`dnscheck.PrimeZone`，只在不跟随 CNAME 时）；ACME 的 `Present` 在记录出现在权威服务器上之后才返回（最多 2 分钟），因为 lego 接着会向递归解析器查一次 `_acme-challenge` 的 CNAME。递归解析器可以设置（`JEC_DNS_RESOLVERS`）；没有 `/etc/resolv.conf` 的环境要显式指定（如 223.5.5.5、119.29.29.29、1.1.1.1）。
 - 体积：带上全部服务商，程序约 69 MiB、压缩后约 23 MiB（2026-10 实测：lego 核心 +2.2 MiB，三家常用 +4.2 MiB，全部 +53.6 MiB）。这和 8.3 的预期一致，加入时按实测提高预算。
 
 **ACME 来源**（模块 `acme`，来源类）：

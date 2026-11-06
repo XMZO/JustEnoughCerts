@@ -93,8 +93,19 @@ func runChild(ctx context.Context, args []string, in io.Reader, out io.Writer, l
 			}
 			return 1
 		}
-		if !own && (req.Op == "present" || req.Op == "cleanup") {
-			_ = os.Setenv(noCNAME, strconv.FormatBool(!dnscheck.Follow(ctx, req.Domain)))
+		if req.Op == "present" || req.Op == "cleanup" {
+			follow := !own && dnscheck.Follow(ctx, req.Domain)
+			if !own {
+				_ = os.Setenv(noCNAME, strconv.FormatBool(!follow))
+			}
+			if !follow {
+				// The providers find the zone by asking a resolver about
+				// _acme-challenge itself, before its record is there; the
+				// resolver, which may be the CA's, then caches that there
+				// is none. The zone found from the authoritative servers
+				// goes first; lego's own way stays for a failure.
+				_ = dnscheck.PrimeZone(ctx, "_acme-challenge."+req.Domain)
+			}
 		}
 		var err error
 		switch req.Op {

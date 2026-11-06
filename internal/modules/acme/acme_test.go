@@ -3,12 +3,15 @@ package acme
 import (
 	"context"
 	"crypto"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
 	"net/http"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -165,13 +168,38 @@ func noWildcards(t *testing.T) {
 	t.Cleanup(func() { wildcardCNAME = saved })
 }
 
+// shown has every record show at once on the authoritative servers, as
+// visible asks, for one test, and returns what it asked.
+func shown(t *testing.T) *[]string {
+	t.Helper()
+	savedVisible, savedDelegated := visible, delegatedTo
+	t.Cleanup(func() { visible, delegatedTo = savedVisible, savedDelegated })
+	var mu sync.Mutex
+	asked := &[]string{}
+	visible = func(_ context.Context, name, typ, value string) (bool, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		*asked = append(*asked, name+" "+typ+" "+value)
+		return true, nil
+	}
+	delegatedTo = func(context.Context, string) string { return "" }
+	return asked
+}
+
 func TestDNSProvider(t *testing.T) {
 	noWildcards(t)
+	asked := shown(t)
 	s := &fakeSolver{}
 	var logged []i18n.Key
 	p := &dnsProvider{solver: s, log: func(l contracts.LogLine) { logged = append(logged, l.Key) }}
 	if err := p.Present(t.Context(), "example.com", "t", "k"); err != nil {
 		t.Fatal(err)
+	}
+	// It waits for the record on the authoritative servers before lego
+	// goes on, which asks a resolver for the CNAME of _acme-challenge.
+	sum := sha256.Sum256([]byte("k"))
+	if want := "_acme-challenge.example.com TXT " + base64.RawURLEncoding.EncodeToString(sum[:]); !slices.Equal(*asked, []string{want}) {
+		t.Errorf("asked %v", *asked)
 	}
 	if err := p.CleanUp(t.Context(), "example.com", "t", "k"); err != nil {
 		t.Fatal(err)
@@ -181,7 +209,7 @@ func TestDNSProvider(t *testing.T) {
 	}
 	p.Timeout() // logs the wait once
 	if !slices.Equal(s.calls, []string{"present example.com", "cleanup example.com"}) ||
-		!slices.Equal(logged, []i18n.Key{i18n.AcmeLogPresent, i18n.AcmeLogRecord, i18n.AcmeLogCleanup, i18n.AcmeLogWait}) {
+		!slices.Equal(logged, []i18n.Key{i18n.AcmeLogPresent, i18n.AcmeLogRecord, i18n.AcmeLogWait, i18n.AcmeLogCleanup}) {
 		t.Errorf("calls %v, log %v", s.calls, logged)
 	}
 }
@@ -288,14 +316,10 @@ func TestPresentDelegated(t *testing.T) {
 // TestPrecheckWildcard: where _acme-challenge has a wildcard's CNAME, the
 // wait checks the name itself, not where lego follows the CNAME to.
 func TestPrecheckWildcard(t *testing.T) {
-	savedWildcard, savedVisible := wildcardCNAME, visible
-	t.Cleanup(func() { wildcardCNAME, visible = savedWildcard, savedVisible })
+	savedWildcard := wildcardCNAME
+	t.Cleanup(func() { wildcardCNAME = savedWildcard })
 	wildcardCNAME = func(_ context.Context, domain string) bool { return domain == "w.example.com" }
-	var asked []string
-	visible = func(_ context.Context, name, typ, value string) (bool, error) {
-		asked = append(asked, name+" "+typ+" "+value)
-		return true, nil
-	}
+	all := shown(t)
 	var logged []i18n.Key
 	p := &dnsProvider{solver: &fakeSolver{}, log: func(l contracts.LogLine) { logged = append(logged, l.Key) }, missed: map[string]bool{}}
 	for _, d := range []string{"w.example.com", "plain.example.com"} {
@@ -303,13 +327,14 @@ func TestPrecheckWildcard(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	legoCheck := func(context.Context, string, string) (bool, error) { return true, nil }
 	for _, d := range []string{"*.w.example.com", "plain.example.com"} {
-		if ok, err := p.precheck(t.Context(), d, "cdn.example.net.", "v", legoCheck); !ok || err != nil {
+		if ok, err := p.precheck(t.Context(), d, "cdn.example.net.", "v", nil); !ok || err != nil {
 			t.Fatalf("%s: %v, %v", d, ok, err)
 		}
 	}
-	if !slices.Equal(asked, []string{"_acme-challenge.w.example.com. TXT v"}) {
+	// What precheck asked, after what the waits of Present did.
+	asked := slices.DeleteFunc(slices.Clone(*all), func(a string) bool { return !strings.HasSuffix(a, " v") })
+	if !slices.Equal(asked, []string{"_acme-challenge.w.example.com. TXT v", "cdn.example.net. TXT v"}) {
 		t.Errorf("asked %v", asked)
 	}
 	if !slices.Contains(logged, i18n.AcmeLogWildcardCname) {
@@ -317,15 +342,56 @@ func TestPrecheckWildcard(t *testing.T) {
 	}
 }
 
+// quickSolver waits briefly, for tests of the waits.
+type quickSolver struct{ fakeSolver }
+
+func (*quickSolver) Wait() (time.Duration, time.Duration) {
+	return 300 * time.Millisecond, 10 * time.Millisecond
+}
+
+func TestPresentSettles(t *testing.T) {
+	noWildcards(t)
+	shown(t)
+	misses := 3
+	var mu sync.Mutex
+	visible = func(context.Context, string, string, string) (bool, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		misses--
+		return misses < 0, nil
+	}
+	p := &dnsProvider{solver: &quickSolver{}, log: func(contracts.LogLine) {}, missed: map[string]bool{}}
+	if err := p.Present(t.Context(), "example.com", "t", "k"); err != nil || misses != -1 {
+		t.Fatalf("until the record shows: %v, %d misses left", err, misses)
+	}
+
+	// A record that does not show is left to lego's wait, which fails.
+	visible = func(context.Context, string, string, string) (bool, error) { return false, nil }
+	start := time.Now()
+	if err := p.Present(t.Context(), "example.org", "t", "k"); err != nil {
+		t.Fatal(err)
+	}
+	if took := time.Since(start); took < 300*time.Millisecond || took > 5*time.Second {
+		t.Errorf("waited %v", took)
+	}
+}
+
 func TestPrecheck(t *testing.T) {
 	var logged []contracts.LogLine
 	p := &dnsProvider{solver: &fakeSolver{}, log: func(l contracts.LogLine) { logged = append(logged, l) }, missed: map[string]bool{}}
-	visible := false
-	check := func(context.Context, string, string) (bool, error) {
-		if visible {
+	saved := visible
+	t.Cleanup(func() { visible = saved })
+	shows := false
+	visible = func(context.Context, string, string, string) (bool, error) {
+		if shows {
 			return true, nil
 		}
 		return false, errors.New("NXDOMAIN")
+	}
+	// lego's own check, which asks recursive resolvers too, is not used.
+	check := func(context.Context, string, string) (bool, error) {
+		t.Error("lego's check was used")
+		return true, nil
 	}
 	for range 3 {
 		if ok, err := p.precheck(t.Context(), "a.example.com", "_acme-challenge.a.example.com.", "v", check); ok || err == nil {
@@ -338,7 +404,7 @@ func TestPrecheck(t *testing.T) {
 	if got := p.unseen(); !slices.Equal(got, []string{"a.example.com"}) {
 		t.Errorf("unseen %v", got)
 	}
-	visible = true
+	shows = true
 	if ok, err := p.precheck(t.Context(), "a.example.com", "_acme-challenge.a.example.com.", "v", check); !ok || err != nil {
 		t.Errorf("a visible record: %v, %v", ok, err)
 	}
@@ -352,13 +418,7 @@ func TestPrecheck(t *testing.T) {
 	if ok, err := p.precheck(ctx, "b.example.com", "_acme-challenge.b.example.com.", "v", check); !ok || !errors.Is(err, context.Canceled) {
 		t.Errorf("after the stop: %v, %v", ok, err)
 	}
-	// A check of its own, as with resolvers set, comes before lego's.
-	p.check = func(context.Context, string, string) (bool, error) { return true, nil }
-	visible = false
-	if ok, err := p.precheck(t.Context(), "d.example.com", "_acme-challenge.d.example.com.", "v", check); !ok || err != nil {
-		t.Errorf("the check of its own: %v, %v", ok, err)
-	}
-	p.check = nil
+	shows = false
 	p.skipCheck = true
 	if ok, err := p.precheck(t.Context(), "c.example.com", "_acme-challenge.c.example.com.", "v", check); !ok || err != nil {
 		t.Errorf("skipping the check: %v, %v", ok, err)

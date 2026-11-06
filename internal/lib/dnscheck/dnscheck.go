@@ -178,17 +178,73 @@ func exchange(ctx context.Context, m *dns.Msg, addr string) (*dns.Msg, error) {
 // Visible reports whether the authoritative servers of the zone of name
 // answer the record of typ, TXT or CNAME, with value. Each server that
 // answers must have it; one that does not answer is skipped, unless none
-// does.
+// does. No resolver is asked about name (see recordServers).
 func Visible(ctx context.Context, name, typ, value string) (bool, error) {
-	zone, err := Zone(ctx, name)
-	if err != nil {
-		return false, err
-	}
-	servers, err := nameServers(ctx, zone)
+	servers, err := recordServers(ctx, name)
 	if err != nil {
 		return false, err
 	}
 	return visibleAt(ctx, record{name, typ, value}, servers)
+}
+
+// PrimeZone finds the zone of name, the name of a record about to be
+// added, from its authoritative servers, as Visible does, and keeps it in
+// the cache of lego (dns01.DefaultClient), where lego's DNS providers look
+// before they ask a resolver about name.
+func PrimeZone(ctx context.Context, name string) error {
+	servers, err := recordServers(ctx, name)
+	if err != nil {
+		return err
+	}
+	_, err = dns01.DefaultClient().FindZoneByFqdnCustom(ctx, dns.Fqdn(name), servers)
+	return err
+}
+
+// recordServers returns the authoritative servers of the zone a record of
+// name goes in, as host:port to ask. It finds the zone from the parent of
+// name, so that no resolver is asked about name itself: a resolver asked
+// before the record is on every server caches that there is no such name,
+// for as long as the zone's SOA says (RFC 2308), and a CA validating
+// through the same resolver finds nothing. Google Trust Services validates
+// through Google Public DNS, which many servers use as theirs. When name
+// is a zone of its own, delegated by NS records, the parent's servers say
+// so, and name's own are asked instead.
+func recordServers(ctx context.Context, name string) ([]string, error) {
+	name = strings.ToLower(strings.TrimSuffix(name, "."))
+	_, parent, ok := strings.Cut(name, ".")
+	if !ok || !strings.Contains(parent, ".") {
+		return authorities(ctx, name)
+	}
+	servers, err := authorities(ctx, parent)
+	if err != nil {
+		return nil, err
+	}
+	if zoneCut(ctx, name, servers) {
+		return authorities(ctx, name)
+	}
+	return servers, nil
+}
+
+// zoneCut reports whether the first of servers that answers refers name to
+// name servers of its own.
+func zoneCut(ctx context.Context, name string, servers []string) bool {
+	m := new(dns.Msg)
+	m.SetQuestion(dns.Fqdn(name), dns.TypeSOA)
+	m.RecursionDesired = false
+	for _, addr := range servers {
+		in, err := exchange(ctx, m, addr)
+		if err != nil {
+			continue
+		}
+		if in.Authoritative {
+			return false // the servers answer for name themselves
+		}
+		return slices.ContainsFunc(in.Ns, func(rr dns.RR) bool {
+			ns, ok := rr.(*dns.NS)
+			return ok && strings.EqualFold(ns.Hdr.Name, dns.Fqdn(name))
+		})
+	}
+	return false
 }
 
 // NameServers returns the zone the validation records of domain go in,
