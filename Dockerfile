@@ -33,7 +33,7 @@ FROM --platform=$BUILDPLATFORM node:24-alpine AS web
 WORKDIR /src/web
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable
-COPY web/package.json web/pnpm-lock.yaml ./
+COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 # The UI reads the locale files and the design tokens from outside web/.
 COPY i18n/locales /src/i18n/locales

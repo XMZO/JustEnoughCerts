@@ -33,7 +33,7 @@
 
 | 类型 | 说明 | 测试方式 |
 |---|---|---|
-| `lego.*` | lego 支持的 221 家 DNS 服务商 | 替身，测试 JEC 运行服务商的子进程；服务商实现由 lego 提供 |
+| `lego.*` | lego 支持的 227 家 DNS 服务商 | 替身，测试 JEC 运行服务商的子进程；服务商实现由 lego 提供 |
 | `lego.tencentcloud`、`lego.alidns`、`lego.cloudflare`、`lego.huaweicloud`（任意记录、测试连接、区域预检） | 证书厂商验证所需的 TXT、CNAME 记录，列出账号的域名，核对账号是否管理某个域名，均经 JEC 自带的客户端 | 替身（华为云经其 SDK） |
 | `manual.dns` | 手动添加的 DNS 记录 | 模拟的 DNS 查询 |
 | `files.webroot` | 本机网站目录 | 文件系统 |

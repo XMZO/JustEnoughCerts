@@ -2723,7 +2723,7 @@
       "test_settings": "These settings cannot be tested: JEC tests API keys only, not an ECS instance role, say."
     },
     "module": {
-      "description": "Proves control of a domain by adding a TXT record at any of 221 DNS providers, through lego.",
+      "description": "Proves control of a domain by adding a TXT record at any of 227 DNS providers, through lego.",
       "name": "DNS providers (lego)"
     },
     "name": {

@@ -14,7 +14,7 @@ is added, only the methods its source can use are offered.
 
 ## DNS providers
 
-Through [lego](https://github.com/go-acme/lego), JEC supports 221 DNS
+Through [lego](https://github.com/go-acme/lego), JEC supports 227 DNS
 providers, whose form fields match lego's environment variables. Tencent
 Cloud DNSPod, Alibaba Cloud DNS, Cloudflare and Huawei Cloud DNS also
 support credentials and connection tests (which list the domains the

@@ -42,7 +42,7 @@ and servers, and renews them before they expire.
   completed; [certbot and acme.sh](migration.md) on the same machine;
   Alibaba Cloud and Tencent Cloud certificate services; a private CA;
   Namecheap SSL Manager (experimental).
-- [Domain validation](../usage/validation.md): the 221 DNS providers of
+- [Domain validation](../usage/validation.md): the 227 DNS providers of
   lego, arbitrary records, manual records, website directories, answers by
   JEC itself and answers at the edge of Alibaba Cloud ESA or Cloudflare.
 - [Deploy targets](../usage/targets.md): 37 types, covering clouds such as

@@ -75,7 +75,7 @@ var (
 	}
 	popular = []string{
 		"cloudflare", "route53", "gcloud", "azuredns", "digitalocean", "linode", "vultr", "hetzner",
-		"ovh", "gandiv5", "godaddy", "namecheap", "spaceship", "porkbun", "namedotcom", "namesilo",
+		"ovh", "gandiv5", "godaddyv3", "namecheap", "spaceship", "porkbun", "namedotcom", "namesilo",
 		"dynadot", "desec", "duckdns", "netlify", "vercel", "bunny", "ns1",
 	}
 	selfHosted = []string{"pdns", "dnsupdate", "acmedns", "httpreq"}
@@ -179,6 +179,7 @@ var nameServers = map[string][]string{
 	"gandiv5":      {"gandi.net"},
 	"gcloud":       {"googledomains.com"},
 	"godaddy":      {"domaincontrol.com"},
+	"godaddyv3":    {"domaincontrol.com"},
 	"hetzner":      {"hetzner.com", "hetzner.de"},
 	"huaweicloud":  {"huaweicloud-dns.com", "huaweicloud-dns.cn", "huaweicloud-dns.net", "huaweicloud-dns.org"},
 	"hurricane":    {"he.net"},
@@ -190,6 +191,7 @@ var nameServers = map[string][]string{
 	"namecheap":    {"registrar-servers.com"},
 	"namesilo":     {"dnsowl.com"},
 	"netcup":       {"netcup.net"},
+	"netcupv1":     {"netcup.net"},
 	"netlify":      {"nsone.net"},
 	"ns1":          {"nsone.net"},
 	"ovh":          {"ovh.net", "ovh.ca", "anycast.me"},

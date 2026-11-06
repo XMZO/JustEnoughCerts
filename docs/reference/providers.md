@@ -40,7 +40,7 @@ accounts are welcome.
 
 | Type | Description | Tested with |
 |---|---|---|
-| `lego.*` | The 221 DNS providers of lego | Fake, for the subprocess JEC runs them in; the providers themselves are lego's |
+| `lego.*` | The 227 DNS providers of lego | Fake, for the subprocess JEC runs them in; the providers themselves are lego's |
 | `lego.tencentcloud`, `lego.alidns`, `lego.cloudflare`, `lego.huaweicloud` (any record, test, zone check) | The TXT and CNAME records of vendors' validations, the list of the account's domains, and whether the account holds a domain, all through JEC's own clients | Fake (Huawei Cloud's through its SDK) |
 | `manual.dns` | DNS records added manually | Fake resolver |
 | `files.webroot` | A website directory on this machine | The file system |

@@ -33,7 +33,7 @@ Minecraft mod JEI.
   or acme.sh renews on the same machine; the certificate services of
   Alibaba Cloud and Tencent Cloud; a private CA of your own; Namecheap SSL
   Manager (experimental).
-- **Domain validation**: the 221 DNS providers of
+- **Domain validation**: the 227 DNS providers of
   [lego](https://github.com/go-acme/lego), manual records and CNAME
   delegation, each DNS provider tried on a domain before issuing; HTTP
   validation through website directories, answered by JEC itself, or

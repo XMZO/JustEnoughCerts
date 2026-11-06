@@ -9,3 +9,11 @@ ignoredBuiltDependencies:
 auditConfig:
   ignoreGhsas:
     - GHSA-vfj7-8cjw-p6xm
+
+# glob and minimatch have advisories (GHSA-3g3m-2fjr-6pw4,
+# GHSA-g3hv-75wg-m249) that only their new majors fix, which the lint and
+# test tools that use them (ESLint plugins, js-beautify) do not ask for yet;
+# they work with those as well. Drop the entries once they ask for them.
+overrides:
+  glob: ^14.0.2
+  minimatch: ^11.0.1
