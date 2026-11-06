@@ -2,6 +2,10 @@ module github.com/XMZO/JustEnoughCerts
 
 go 1.26.0
 
+// Plain TCP, as before Go 1.24, which made listeners take Multipath TCP
+// where the kernel has it; Go 1.27 keeps that default.
+godebug multipathtcp=0
+
 require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.2.4

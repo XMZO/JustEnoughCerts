@@ -40,7 +40,7 @@ CA/Browser Forum 的 SC-081 提案把证书最长有效期逐年缩短：2026-03
 
 - **所有功能模块化、可插拔**（见 4.2）：内核只保留最基础的部分，其余功能都是独立模块，增加或删除一个功能不影响其他部分。
 - 来源、验证、部署、通知四类都做成**可插拔的 Provider**，新增一种来源或目标不需要改核心代码，也不需要改前端。
-- **尽量覆盖市面上的证书和 DNS 服务商**（见 5.3）：证书来源以通用的 ACME + EAB 为主，支持 ACME 的 CA 都能直接用；DNS 服务商借助 lego 一次覆盖 221 家（lego v5.5.2 共 223 家，去掉 `manual` 和 `exec`）。
+- **尽量覆盖市面上的证书和 DNS 服务商**（见 5.3）：证书来源以通用的 ACME + EAB 为主，支持 ACME 的 CA 都能直接用；DNS 服务商借助 lego 一次覆盖 227 家（lego v5.6.0 共 229 家，去掉 `manual` 和 `exec`）。
 - **国际化严格独立**（见第 7 节）：每种语言一个文件，代码里不写死任何界面文字；先实现简体中文和英文；测试设 i18n 门禁。
 - **好看、能在各种屏幕上用**的 Web 界面：手机、平板、桌面都能顺畅操作，支持深色模式。
 - **一个 `docker-compose.yml` 就能部署**，也提供原生二进制文件。
@@ -90,7 +90,7 @@ flowchart LR
     Reg --> M3[巡检 / 钩子 / 外部插件 / 审计 …]
   end
   M2 --> NC[ACME CA / 厂商证书 API]
-  M2 --> DNS[221 家 DNS 服务商]
+  M2 --> DNS[227 家 DNS 服务商]
   M2 --> ESA[阿里云 ESA / CDN / 服务器 …]
 ```
 
@@ -98,7 +98,7 @@ flowchart LR
 
 | 部分 | 选择 | 理由 |
 |---|---|---|
-| 后端语言 | **Go** | lego（ACME + 221 家 DNS）和各家云平台的 SDK 都是 Go；标准库自带 x509；单个静态二进制，交叉编译方便 |
+| 后端语言 | **Go** | lego（ACME + 227 家 DNS）和各家云平台的 SDK 都是 Go；标准库自带 x509；单个静态二进制，交叉编译方便 |
 | HTTP | `chi` 路由 + `huma` | huma 能从 Go 代码直接生成 OpenAPI 文档，前端类型和 CLI 都可以由此生成 |
 | 数据库 | **SQLite**，可选 **PostgreSQL** | SQLite 不需要额外服务，驱动用纯 Go 的 `ncruces/go-sqlite3`（M0 实测后选定，见 8.3）；设了 `JEC_DATABASE_URL` 就用 PostgreSQL（pgx，见 8.5） |
 | 迁移 | `goose` | 启动时自动迁移；每个模块带自己的迁移文件，随二进制嵌入 |
@@ -357,7 +357,7 @@ type Target interface {
 
 DNS 验证分成两种能力，实现方式不同：
 
-**① ACME DNS-01（添加 `_acme-challenge` TXT 记录）**：直接复用 lego。lego v5.5.2 有 **223 家**服务商（2026-10 核对源码），去掉需要在终端里手动操作的 `manual` 和执行外部程序的 `exec`，**221 家可用**。注意 lego v5 删除了旧的 `dnspod`（DNSPod Token），DNSPod 要用腾讯云 API 密钥（`tencentcloud`，SecretId / SecretKey）。界面按地区分组展示，常用的放前面：
+**① ACME DNS-01（添加 `_acme-challenge` TXT 记录）**：直接复用 lego。lego v5.6.0 有 **229 家**服务商（2026-11 核对源码；v5.5.2 是 223 家），去掉需要在终端里手动操作的 `manual` 和执行外部程序的 `exec`，**227 家可用**。注意 lego v5 删除了旧的 `dnspod`（DNSPod Token），DNSPod 要用腾讯云 API 密钥（`tencentcloud`，SecretId / SecretKey）。界面按地区分组展示，常用的放前面：
 
 - **国内**：阿里云 DNS、阿里云 ESA、腾讯云 / DNSPod、腾讯云 EdgeOne、华为云、百度智能云、京东云、火山引擎、西部数码、新网、DNS.LA、雨云、UCloud、时代互联
 - **国际**：Cloudflare、AWS Route 53、Google Cloud DNS、Azure DNS、DigitalOcean、Linode、Vultr、Hetzner、OVH、Gandi、GoDaddy、Namecheap、Spaceship、Porkbun、Name.com、NameSilo、Dynadot、deSEC、DuckDNS、Netlify、Vercel、Bunny、NS1 等
@@ -808,6 +808,7 @@ services:
 **手段**：
 
 - **编译参数**：`CGO_ENABLED=0`、`-trimpath`、`-ldflags "-s -w"`（去掉符号表和调试信息）。这些只影响程序文件大小，不影响运行性能。
+- **运行时设置**：`go.mod` 里 `godebug multipathtcp=0`，监听和连接都用普通 TCP。Go 1.24 起监听默认开 Multipath TCP（内核支持时），1.27 没有改；GODEBUG 的默认值按 `go.mod` 的 `go` 版本定，不随编译用的 Go 升级而变（2026-11-07 用户要求关掉）。
 - **依赖控制**：体积大头是各家云平台的 SDK。规则：
   1. 和 lego 共用同一份依赖，不重复引入第二套。
   2. 官方 SDK 太重时，自己用轻量的签名实现直接调 HTTP API：阿里云 V3 签名、腾讯云 TC3、AWS SigV4 各写一份，供所有 Provider 共用。不过带上 lego 的全部服务商后，阿里云、腾讯云、AWS 等 SDK 本来就在程序里，这时直接复用 lego 已经依赖的 SDK（如 ESA 2024-09-10 版），自己写签名反而不省体积。
@@ -999,7 +1000,7 @@ JustEnoughCerts/
 | 阶段 | 内容 | 完成标准 |
 |---|---|---|
 | **M0 骨架** | 仓库、CI、发布流水线、`scratch` 镜像、体积检查；内核与模块注册表、模块脚手架；**i18n 模块和全部门禁**（从第一行界面文字开始就不允许硬编码）；空的前端、登录和初始化向导（中英文）；SQLite（含驱动选型实测） | 打一个 `v0.0.1` 标签，能自动产出全部二进制和镜像，`docker compose up` 能打开中英文登录页，i18n 门禁和体积检查在 CI 里生效 |
-| **M1 最小可用** | 证书模块、状态机、调度器；手动上传和导入；ACME（任意 CA + EAB）+ lego 的 221 家 DNS；阿里云 ESA、本地文件、SSH、Webhook 部署；Telegram、邮件、Webhook 通知；总览和证书页 | 用免费证书完整跑通“签发 → 部署到 ESA → 删除旧证书 → 到期自动续” |
+| **M1 最小可用** | 证书模块、状态机、调度器；手动上传和导入；ACME（任意 CA + EAB）+ lego 的 221 家 DNS（现在 227 家）；阿里云 ESA、本地文件、SSH、Webhook 部署；Telegram、邮件、Webhook 通知；总览和证书页 | 用免费证书完整跑通“签发 → 部署到 ESA → 删除旧证书 → 到期自动续” |
 | **M2 厂商来源与付费证书** | 厂商来源的通用框架（提交后等 CA 审核，跨多次检查才取回证书，等待期间加密保存私钥）；第一个实现是 Namecheap SSL Manager（实验性，JEC 扮演它的客户端，见 5.6）；HTTP 文件验证（写到源站的网站目录、经 SSH 写到远程服务器，或由 JEC 自己应答）；导入已有的付费证书；逐家验证商业 CA 的 ACME + EAB（含 Namecheap ACME 上线后） | 第 1 节的验收场景全自动跑通一个周期 |
 | **M3 扩展** | 国内云平台证书来源（取回签发的证书、向阿里云申请证书、腾讯云免费证书都已完成）；DNS 记录管理层（任意记录增删，5.3.2 ②）和手动验证（都已完成）；5.3.3 里的更多部署目标和面板；更多通知渠道；外部插件、钩子、YAML 导入导出（都已完成）；线上巡检（已完成） | 不改核心代码，写一个外部插件接入新平台（e2e 里的 shell 脚本插件）；停用任意模块后其余功能正常（`cmd/jec` 的 `TestEverySwitchOff` 在运行中逐个停用全部可停用的模块，检查清单、各类服务商类型、证书列表和系统信息照常，再打开回来） |
 | **M4 打磨** | 两步验证、审计日志、PWA、翻译指南（`docs/development/translating.md`）、OIDC、文档站（都已完成）、服务商兼容表（已有 `docs/reference/providers.md`：每个服务商测到了哪一步） | 发布 `v1.0.0` |

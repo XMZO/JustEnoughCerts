@@ -38,7 +38,7 @@
 - **Namecheap SSL Manager**（M2 的第一个厂商来源，`PLAN.md` 5.6）：Namecheap 给直客的服务器端自动化工具，闭源，后端 externalautossl.service.spaceship.com。账户面板激活或重签时选 “Server-side automation”，得到安装命令和一次性令牌（24 小时有效）；装好后靠 cron 自动取得每一张 200 天的证书。私钥和 CSR 在本地生成，HTTP 文件验证，目前只支持单域名证书。JEC 扮演它的客户端，做成实验模块，默认关闭。协议已从官方客户端 v1.15.10 静态分析出来（没有运行它），写在 `PLAN.md` 5.6：全是 POST + JSON + Bearer 令牌，注册、刷新令牌、按域名列证书、交 CSR、取 HTTP 验证、报告已放好、下载 PEM、确认安装；还有几点要用真实账号试。
 - **Namecheap 官方 API**（暂无计划：SSL Manager 已能自动取得证书）：`namecheap.ssl.reissue` / `ssl.activate` / `ssl.getInfo`，域名验证用 `DNSDCValidation=CNAME`。开通门槛：账号里有 20 个域名，或余额 $50，或近两年消费满 $50；必须设置 IPv4 白名单。重签后证书 ID 会变。
 - **阿里云 ESA API（2024-09-10 版）**：`SetCertificate`（Type=upload）、`ListCertificates`、`DeleteCertificate`。免费版每个站点最多 2 张自定义证书，所以部署新证书后要删旧证书。RAM 子账号最小权限：`esa:ListSites`、`ListCertificates`、`SetCertificate`、`DeleteCertificate`。
-- **通用路线**：以 ACME + EAB（RFC 8555）为核心，大多数 CA 都支持；lego v5.5.2 内置 223 个 DNS 服务商（去掉 `manual`、`exec` 后 221 个可用）。lego v5 删除了旧的 `dnspod`，DNSPod 用腾讯云 API 密钥（`tencentcloud`）。厂商专有 API（如 Namecheap）是可选模块。
+- **通用路线**：以 ACME + EAB（RFC 8555）为核心，大多数 CA 都支持；lego v5.6.0 内置 229 个 DNS 服务商（去掉 `manual`、`exec` 后 227 个可用）。lego v5 删除了旧的 `dnspod`，DNSPod 用腾讯云 API 密钥（`tencentcloud`）。厂商专有 API（如 Namecheap）是可选模块。
 - **lego 的坑**（`PLAN.md` 5.5）：DNS 服务商只能靠环境变量配置，所以放在子进程里跑；全部服务商会让程序涨到约 69 MiB；lego 会改写传入的 `http.Client`；依赖里已有阿里云 ESA 2024-09-10 版的 Go SDK（`github.com/go-acme/esa-20240910/v3`），ESA 部署目标可以直接用。
 
 ## 进度
@@ -178,8 +178,8 @@
 ## 工程约定
 
 - 代码、注释、脚本、部署文件都用英文；中文只出现在语言文件和文档里（i18n 门禁会扫描）。命令行输出和运维日志按 `PLAN.md` 7.3 算开发者日志，用英文。
-- 依赖的安全：Dependabot 的安全告警和安全更新已打开（2026-10-22），版本更新每周一次（`.github/dependabot.yml`）；`.github/workflows/audit.yml` 每周跑 govulncheck 和 web、文档站的 `pnpm audit`，还没有修复版本的公告写进该目录 `pnpm-workspace.yaml` 的 `auditConfig.ignoreGhsas` 并说明原因，有了修复版就去掉；文档站经 `overrides` 用 Vite 6（`^6.4.5`，VitePress 1.6 自带的 Vite 5 没有修复版）。
-- Go：`go.mod` 只写最低版本（1.26），CI 和发布用最新稳定版。GitHub Actions 一律钉到 commit SHA 并在注释里写版本号，由 Dependabot 每周更新（包括 `.github/actions/` 下的组合动作；Node 大版本除外，镜像和 CI 一起手动升到下一个长期支持版）。
+- 依赖的安全：Dependabot 的安全告警和安全更新已打开（2026-10-22），版本更新每周一次（`.github/dependabot.yml`）；`.github/workflows/audit.yml` 每周跑 govulncheck 和 web、文档站的 `pnpm audit`，还没有修复版本的公告写进该目录 `pnpm-workspace.yaml` 的 `auditConfig.ignoreGhsas` 并说明原因，有了修复版就去掉；文档站经 `overrides` 用 Vite 6（`^6.4.5`，VitePress 1.6 自带的 Vite 5 没有修复版）。web 经 `web/pnpm-workspace.yaml` 的 `overrides` 用 glob 14、minimatch 11（GHSA-3g3m-2fjr-6pw4、GHSA-g3hv-75wg-m249 只有新的大版本修复，用到它们的 ESLint 插件和 js-beautify 还没跟上，2026-11-07）。
+- Go：`go.mod` 只写最低版本（1.26），CI 和发布用最新稳定版（2026-11 是 1.27.3）。`go.mod` 的 `godebug multipathtcp=0` 关掉 MPTCP（2026-11-07 用户要求）：Go 1.24 起监听默认开 MPTCP，1.27 也没改；GODEBUG 的默认值按 `go.mod` 的 `go` 版本、不按编译用的工具链，所以换新版 Go 编译不会改变它，`go version -m` 的 `DefaultGODEBUG` 可以核对。GitHub Actions 一律钉到 commit SHA 并在注释里写版本号，由 Dependabot 每周更新（包括 `.github/actions/` 下的组合动作；Node 大版本除外，镜像和 CI 一起手动升到下一个长期支持版）。
 - CI 和发布里的 Go 一律用 `.github/actions/setup-go` 安装：每个任务有自己的编译缓存，只有 main 上的运行写缓存，发布和发布演练共用一份（`PLAN.md` 9.1）。新加的任务照此办理，不要用 setup-go 自带的缓存。
 - 容器默认以 65532:65532 运行，不在启动时切换用户；挂载的数据目录要先 `chown`，启动检查会给出明确报错。
 - ghcr.io 上的镜像包从 v0.0.1 起就是公开的（发布后实测匿名能拉取），不需要手动改可见性。
