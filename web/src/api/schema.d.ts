@@ -669,6 +669,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/certs/issuances/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop an issuance under way, or waiting to go on
+         * @description The attempt under way ends at once, and none follows; nobody is told of it as of a failure. Renewals start again a day later, as after a failure. A source's order stays for the next issuance to take over.
+         */
+        post: operations["certs-issuance-cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/certs/public-keys": {
         parameters: {
             query?: never;
@@ -2594,10 +2614,10 @@ export interface components {
              */
             startedAt?: string;
             /**
-             * @description pending: the next attempt starts at nextAt, a retry when error is set; waiting: the source is not done, as when a CA reviews the order, and is asked again at nextAt; failed: no attempt follows unless someone starts one
+             * @description pending: the next attempt starts at nextAt, a retry when error is set; waiting: the source is not done, as when a CA reviews the order, and is asked again at nextAt; failed: no attempt follows unless someone starts one; canceled: someone stopped it, and no attempt follows
              * @enum {string}
              */
-            state: "pending" | "running" | "waiting" | "done" | "failed";
+            state: "pending" | "running" | "waiting" | "done" | "failed" | "canceled";
             /**
              * Format: int64
              * @description The version issued
@@ -3330,7 +3350,7 @@ export interface components {
              */
             at?: string;
             /** @enum {string} */
-            state: "pending" | "running" | "done" | "failed";
+            state: "pending" | "running" | "done" | "failed" | "canceled";
             /** @enum {string} */
             step: "key" | "order" | "challenge" | "validate" | "cleanup" | "download";
         };
@@ -5139,6 +5159,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IssuanceDetailOutputBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    "certs-issuance-cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssuanceBody"];
                 };
             };
             /** @description Error */

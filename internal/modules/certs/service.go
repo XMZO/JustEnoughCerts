@@ -226,6 +226,8 @@ func (c *Certificate) state(now time.Time) string {
 			return stateIssuing
 		case is.State == issuancePending, is.State == issuanceFailed && (c.Current == nil || is.CreatedAt.After(c.Current.CreatedAt)):
 			return stateFailed
+		case is.State == issuanceCanceled && c.Current == nil:
+			return stateFailed // stopped before there was any version
 		}
 	}
 	deploying := false
@@ -692,7 +694,7 @@ func (s *service) changeSource(ctx context.Context, tx *sql.Tx, c *Certificate, 
 		sourceProvider, source, solver, keyType, s.now().UnixMilli(), c.ID); err != nil {
 		return err
 	}
-	_, err := tx.ExecContext(ctx, "UPDATE certs_issuances SET sealed_key = NULL, sealed_state = NULL WHERE certificate_id = ? AND state = 'failed'", c.ID)
+	_, err := tx.ExecContext(ctx, "UPDATE certs_issuances SET sealed_key = NULL, sealed_state = NULL WHERE certificate_id = ? AND state IN ('failed', 'canceled')", c.ID)
 	return err
 }
 

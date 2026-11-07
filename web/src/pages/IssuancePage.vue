@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { CircleCheck, CircleX, Hourglass, RefreshCw, RotateCw, TriangleAlert } from '@lucide/vue'
-import { computed } from 'vue'
+import { CircleCheck, CircleSlash, CircleStop, CircleX, Hourglass, RefreshCw, RotateCw, TriangleAlert } from '@lucide/vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useIssuance, useIssueNow } from '../api/certs'
 import { useApiError } from '../api/errors'
 import { useProviders } from '../api/providers'
-import { deploySteps, stepText } from '../certs/issuance'
+import { deploySteps, isOpen, stepText } from '../certs/issuance'
 import { certLife } from '../certs/life'
 import IssuanceSteps from '../components/IssuanceSteps.vue'
 import JecAlert from '../components/JecAlert.vue'
@@ -14,6 +14,7 @@ import JecButton from '../components/JecButton.vue'
 import LifeBar from '../components/LifeBar.vue'
 import LogView from '../components/LogView.vue'
 import PageHeader from '../components/PageHeader.vue'
+import StopIssuanceDialog, { type StopAsk } from '../components/StopIssuanceDialog.vue'
 import { useT, type MessageKey, type Params } from '../i18n'
 import { useIntl } from '../i18n/intl'
 
@@ -40,6 +41,14 @@ const life = computed(() => (cert.value ? certLife(cert.value) : null))
 
 const running = computed(() => is.value?.state === 'running' || is.value?.state === 'waiting' || (is.value?.state === 'pending' && !is.value.error))
 const retrying = computed(() => is.value?.state === 'pending' && !!is.value.error)
+// It can be tried again once over without a certificate.
+const again = computed(() => is.value?.state === 'failed' || is.value?.state === 'canceled' || retrying.value)
+// Stopping it, once confirmed: under way or waiting, it ends for good.
+const stopping = ref<StopAsk>()
+const stoppable = computed(() => !!is.value && isOpen(is.value))
+function stop() {
+  if (is.value && cert.value) stopping.value = { issuance: is.value, certificate: cert.value }
+}
 
 const source = computed(() => sources.data.value?.find((p) => p.id === cert.value?.sourceProvider)?.name ?? '')
 // The source with its backup, if any, which the attempts take turns with.
@@ -89,8 +98,9 @@ async function retry() {
     :back="{ to: `/certificates/${id}`, label: 'certs.detail.title' }"
   >
     <template v-if="is" #actions>
+      <JecButton v-if="stoppable" @click="stop"><CircleStop class="size-4" aria-hidden="true" />{{ t('certs.action.stop_issuance') }}</JecButton>
       <JecButton v-if="running" to="/certificates">{{ t('certs.issuance.background') }}</JecButton>
-      <JecButton v-if="is.state === 'failed' || retrying" variant="primary" :busy="issueNow.isPending.value" @click="retry">
+      <JecButton v-if="again" variant="primary" :busy="issueNow.isPending.value" @click="retry">
         <RotateCw class="size-4" aria-hidden="true" />{{ t('certs.action.retry') }}
       </JecButton>
       <JecButton v-if="!running" :to="`/certificates/${id}`">{{ t('certs.action.details') }}</JecButton>
@@ -151,14 +161,22 @@ async function retry() {
           <span class="text-small text-ink-muted">{{ t('certs.issuance.failed_hint') }}</span>
         </div>
       </section>
+      <section v-else-if="is.state === 'canceled'" role="status" class="flex gap-3 rounded-lg border border-line bg-surface-sunken p-4">
+        <CircleSlash class="size-6 flex-none text-ink-muted" aria-hidden="true" />
+        <div class="flex min-w-0 flex-col gap-0.5">
+          <strong class="text-heading">{{ t('certs.issuance.canceled') }}</strong>
+          <span class="text-small text-ink-muted">{{ t(cert.paused ? 'certs.issuance.canceled_hint_paused' : 'certs.issuance.canceled_hint') }}</span>
+        </div>
+      </section>
 
       <!-- Phones: the header's buttons. -->
       <div class="flex flex-col gap-2 sm:hidden">
-        <JecButton v-if="is.state === 'failed' || retrying" variant="primary" :busy="issueNow.isPending.value" @click="retry">
+        <JecButton v-if="again" variant="primary" :busy="issueNow.isPending.value" @click="retry">
           <RotateCw class="size-4" aria-hidden="true" />{{ t('certs.action.retry') }}
         </JecButton>
         <JecButton v-if="!running" :to="`/certificates/${id}`">{{ t('certs.action.details') }}</JecButton>
         <JecButton v-else to="/certificates">{{ t('certs.issuance.background') }}</JecButton>
+        <JecButton v-if="stoppable" @click="stop"><CircleStop class="size-4" aria-hidden="true" />{{ t('certs.action.stop_issuance') }}</JecButton>
       </div>
 
       <div class="flex flex-wrap items-start gap-3 sm:gap-4">
@@ -172,4 +190,6 @@ async function retry() {
       </div>
     </template>
   </div>
+
+  <StopIssuanceDialog v-model:ask="stopping" @stopped="detail.refetch()" />
 </template>

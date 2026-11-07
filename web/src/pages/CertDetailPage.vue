@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import {
+  CircleSlash,
+  CircleStop,
   CircleX,
   Download,
   FileClock,
@@ -46,10 +48,11 @@ import { useApiError } from '../api/errors'
 import { useProviders, useProviderTypes, useProviderTypesOf } from '../api/providers'
 import { domainNeedsLook, useDomains, useWatching } from '../api/watch'
 import { deploymentState, failingDeployment, scheduledAt } from '../certs/deployment'
-import { deploySteps, issuanceState, reasonText } from '../certs/issuance'
+import { deploySteps, isOpen, issuanceState, reasonText } from '../certs/issuance'
 import { caReasonText, certLife, colonHex, keyText, windowStart } from '../certs/life'
 import { useDurationText } from '../certs/runs'
 import CertActionDialog, { type CertAsk } from '../components/CertActionDialog.vue'
+import StopIssuanceDialog, { type StopAsk } from '../components/StopIssuanceDialog.vue'
 import CertSlot from '../components/CertSlot.vue'
 import CopyButton from '../components/CopyButton.vue'
 import DomainInput from '../components/DomainInput.vue'
@@ -201,6 +204,11 @@ const issuances = useIssuances(() => props.id, issued)
 
 const latest = computed(() => cert.value?.issuance)
 const latestLink = computed(() => (latest.value ? `/certificates/${props.id}/issuances/${latest.value.id}` : ''))
+// Stopping the issuance under way or waiting, once confirmed.
+const stopping = ref<StopAsk>()
+function stopLatest() {
+  if (latest.value && cert.value && isOpen(latest.value)) stopping.value = { issuance: latest.value, certificate: cert.value }
+}
 
 // The last run (docs/design/boards/CertDetail): the latest issuance, its
 // steps and the deployments of what it brought, and how it went.
@@ -222,6 +230,7 @@ const runSummary = computed(() => {
   }
   // A retry has no end yet; nor has an attempt under way.
   if (is.state === 'failed') return t('certs.detail.run_failed', { start, duration })
+  if (is.state === 'canceled') return t('certs.detail.run_canceled', { start })
   if (is.state === 'pending' && is.error) return t('certs.detail.run_retrying', { start })
   return t('certs.detail.run_running', { start })
 })
@@ -730,17 +739,24 @@ async function confirmDelete() {
             {{ t('certs.issuance.next_check') }} <time :datetime="latest.nextAt">{{ intl.dateTime(latest.nextAt) }}</time>
           </span>
         </span>
+        <JecButton size="sm" variant="ghost" class="flex-none" @click="stopLatest">
+          <CircleStop class="size-4" aria-hidden="true" />{{ t('certs.action.stop_issuance') }}
+        </JecButton>
         <RouterLink :to="latestLink" class="font-semibold">{{ t('certs.detail.show_progress') }}</RouterLink>
       </section>
       <section v-else-if="latest && cert.state === 'failed'" role="status" class="flex flex-wrap gap-x-3 gap-y-2 rounded-lg border border-line bg-danger-soft px-4 py-3">
-        <CircleX class="mt-0.5 size-5 flex-none text-danger-ink" aria-hidden="true" />
+        <CircleSlash v-if="latest.state === 'canceled'" class="mt-0.5 size-5 flex-none text-danger-ink" aria-hidden="true" />
+        <CircleX v-else class="mt-0.5 size-5 flex-none text-danger-ink" aria-hidden="true" />
         <div class="flex min-w-0 flex-[1_1_240px] flex-col gap-0.5">
-          <strong class="text-danger-ink">{{ t(latest.state === 'failed' ? 'certs.detail.failed' : 'certs.detail.retrying') }}</strong>
+          <strong class="text-danger-ink">{{ t(latest.state === 'canceled' ? 'certs.detail.canceled' : latest.state === 'failed' ? 'certs.detail.failed' : 'certs.detail.retrying') }}</strong>
           <span class="text-small [overflow-wrap:anywhere]">{{ errorText(latest.error) }}</span>
           <span v-if="latest.state === 'pending' && latest.nextAt" class="text-small text-ink-muted">
             {{ t('certs.issuance.next_try') }} <time :datetime="latest.nextAt">{{ intl.dateTime(latest.nextAt) }}</time>
           </span>
         </div>
+        <JecButton v-if="isOpen(latest)" size="sm" variant="ghost" class="flex-none self-center" @click="stopLatest">
+          <CircleStop class="size-4" aria-hidden="true" />{{ t('certs.action.stop_issuance') }}
+        </JecButton>
         <RouterLink :to="latestLink" class="self-center font-semibold text-danger-ink underline underline-offset-2">{{ t('certs.detail.show_log') }}</RouterLink>
       </section>
       <section v-else-if="failing" role="status" class="flex flex-wrap gap-x-3 gap-y-2 rounded-lg border border-line bg-danger-soft px-4 py-3">
@@ -945,7 +961,7 @@ async function confirmDelete() {
               >
                 <time :datetime="is.createdAt" class="flex-none text-ink-muted tabular-nums">{{ intl.dateTime(is.createdAt) }}</time>
                 <span class="min-w-[6rem] flex-1 [overflow-wrap:anywhere]">{{ t(reasonText[is.reason]) }}</span>
-                <span :class="['flex-none font-semibold', is.state === 'done' ? 'text-ok-ink' : is.state === 'running' || is.state === 'waiting' || (is.state === 'pending' && !is.error) ? 'text-info-ink' : 'text-danger-ink']">
+                <span :class="['flex-none font-semibold', is.state === 'done' ? 'text-ok-ink' : is.state === 'canceled' ? 'text-ink-muted' : is.state === 'running' || is.state === 'waiting' || (is.state === 'pending' && !is.error) ? 'text-info-ink' : 'text-danger-ink']">
                   {{ t(issuanceState(is)) }}
                 </span>
               </RouterLink>
@@ -1237,6 +1253,7 @@ async function confirmDelete() {
   </div>
 
   <CertActionDialog v-model:ask="asking" />
+  <StopIssuanceDialog v-model:ask="stopping" />
 
   <JecDialog v-if="cert" v-model:open="editing" :title="t('certs.settings.title')" small>
     <form id="settings-form" class="flex flex-col gap-3" novalidate @submit.prevent="saveSettings">

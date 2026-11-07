@@ -2036,13 +2036,14 @@
             "type": "string"
           },
           "state": {
-            "description": "pending: the next attempt starts at nextAt, a retry when error is set; waiting: the source is not done, as when a CA reviews the order, and is asked again at nextAt; failed: no attempt follows unless someone starts one",
+            "description": "pending: the next attempt starts at nextAt, a retry when error is set; waiting: the source is not done, as when a CA reviews the order, and is asked again at nextAt; failed: no attempt follows unless someone starts one; canceled: someone stopped it, and no attempt follows",
             "enum": [
               "pending",
               "running",
               "waiting",
               "done",
-              "failed"
+              "failed",
+              "canceled"
             ],
             "type": "string"
           },
@@ -4042,7 +4043,8 @@
               "pending",
               "running",
               "done",
-              "failed"
+              "failed",
+              "canceled"
             ],
             "type": "string"
           },
@@ -7077,6 +7079,49 @@
           }
         },
         "summary": "Get an issuance with its steps and log",
+        "tags": [
+          "certs"
+        ]
+      }
+    },
+    "/certs/issuances/{id}/cancel": {
+      "post": {
+        "description": "The attempt under way ends at once, and none follows; nobody is told of it as of a failure. Renewals start again a day later, as after a failure. A source's order stays for the next issuance to take over.",
+        "operationId": "certs-issuance-cancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuanceBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Stop an issuance under way, or waiting to go on",
         "tags": [
           "certs"
         ]

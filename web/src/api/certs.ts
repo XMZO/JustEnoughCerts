@@ -218,6 +218,11 @@ export function useIssueNow(id: MaybeRefOrGetter<number>) {
   return useCertsMutation(() => unwrap(api.POST('/certs/certificates/{id}/issue', { params: { path: { id: toValue(id) } } })))
 }
 
+/** Stops an issuance under way, or waiting to go on, for good: no attempt follows, and renewals hold off for a day. */
+export function useCancelIssuance() {
+  return useCertsMutation((id: number) => unwrap(api.POST('/certs/issuances/{id}/cancel', { params: { path: { id } } })))
+}
+
 /** Starts an issuance of the certificate it is given now, as useIssueNow does, for pages of many. */
 export function useIssueOf() {
   return useCertsMutation((id: number) => unwrap(api.POST('/certs/certificates/{id}/issue', { params: { path: { id } } })))

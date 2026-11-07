@@ -147,6 +147,7 @@ many targets or earlier versions scroll within their card.
 | Action | Description |
 |---|---|
 | Issue now / Renew now | Starts an issuance at once, without waiting for the renewal time |
+| Stop issuing | While an issuance is under way, waits on its source or waits to retry, Stop issuing on the certificate's page or the issuance's: the attempt under way ends at once, and no more follow. It is no failure, and nobody is notified. Automatic renewal starts again 24 hours later (not for a certificate whose renewal is paused); you can renew by hand at any time. An order at the source, as at Namecheap, stays with its private key, for the next issuance to finish |
 | Change the domains | The pencil beside Domains in the certificate's information: changes the domains of a certificate with a source, which is issued again at once; not while an issuance is under way. An uploaded certificate takes its domains from its file |
 | Upload new certificate | Adds a new version. The new certificate must include the primary domain and expire later than the current version |
 | Choose targets | Adds or removes deploy targets. A new target receives the current version at once |

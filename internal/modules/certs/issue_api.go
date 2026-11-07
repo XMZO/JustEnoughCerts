@@ -14,6 +14,7 @@ import (
 
 	"github.com/XMZO/JustEnoughCerts/i18n"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/api"
+	"github.com/XMZO/JustEnoughCerts/internal/kernel/auth"
 	"github.com/XMZO/JustEnoughCerts/internal/kernel/providers"
 	"github.com/XMZO/JustEnoughCerts/internal/lib/cryptox"
 )
@@ -27,7 +28,7 @@ type IssuanceBody struct {
 	ID            int64        `json:"id"`
 	CertificateID int64        `json:"certificateId"`
 	Reason        string       `json:"reason" enum:"first,renewal,manual" doc:"first: the certificate was added, or has no version yet; renewal; manual: someone asked"`
-	State         string       `json:"state" enum:"pending,running,waiting,done,failed" doc:"pending: the next attempt starts at nextAt, a retry when error is set; waiting: the source is not done, as when a CA reviews the order, and is asked again at nextAt; failed: no attempt follows unless someone starts one"`
+	State         string       `json:"state" enum:"pending,running,waiting,done,failed,canceled" doc:"pending: the next attempt starts at nextAt, a retry when error is set; waiting: the source is not done, as when a CA reviews the order, and is asked again at nextAt; failed: no attempt follows unless someone starts one; canceled: someone stopped it, and no attempt follows"`
 	Attempts      int          `json:"attempts" doc:"Attempts started so far; waiting for the source goes on with an attempt"`
 	NextAt        *time.Time   `json:"nextAt,omitempty" doc:"When the next attempt starts, for a pending issuance, or when the source is asked again, for a waiting one"`
 	VersionID     int64        `json:"versionId,omitempty" doc:"The version issued"`
@@ -59,7 +60,7 @@ type LogLineBody struct {
 // StepBody tells how far a step of the last attempt got.
 type StepBody struct {
 	Step  string     `json:"step" enum:"key,order,challenge,validate,cleanup,download"`
-	State string     `json:"state" enum:"pending,running,done,failed"`
+	State string     `json:"state" enum:"pending,running,done,failed,canceled"`
 	At    *time.Time `json:"at,omitempty" doc:"The time of the step's last line"`
 }
 
@@ -193,6 +194,26 @@ func registerIssueAPI(a huma.API, s *service) {
 			out.Body.Issuances = append(out.Body.Issuances, issuanceBody(is))
 		}
 		return out, nil
+	})
+
+	huma.Register(a, huma.Operation{
+		OperationID: "certs-issuance-cancel", Method: http.MethodPost, Path: "/issuances/{id}/cancel",
+		Summary:     "Stop an issuance under way, or waiting to go on",
+		Description: "The attempt under way ends at once, and none follows; nobody is told of it as of a failure. Renewals start again a day later, as after a failure. A source's order stays for the next issuance to take over.",
+	}, func(ctx context.Context, in *idInput) (*issuanceOutput, error) {
+		is, err := s.issuance(ctx, in.ID)
+		if err != nil {
+			return nil, serviceError(err)
+		}
+		s.named(ctx, is.CertificateID)
+		user, _ := auth.UserFrom(ctx)
+		if err := s.cancelIssuance(ctx, in.ID, user.Username); err != nil {
+			return nil, serviceError(err)
+		}
+		if is, err = s.issuance(ctx, in.ID); err != nil {
+			return nil, err
+		}
+		return &issuanceOutput{Body: issuanceBody(is)}, nil
 	})
 
 	huma.Register(a, huma.Operation{

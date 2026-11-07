@@ -317,6 +317,7 @@
       "certs_download": "下载私钥",
       "certs_drop_csr": "放弃 CSR",
       "certs_export": "下载全部证书和私钥",
+      "certs_issuance_cancel": "停止签发",
       "certs_issue": "立即签发证书",
       "certs_issue_new": "添加要签发的证书",
       "certs_pull_file": "服务器拉取证书文件",
@@ -671,6 +672,7 @@
       "revoke_all": "吊销",
       "revoke_version": "吊销有效期为 {range} 的版本",
       "save": "保存证书",
+      "stop_issuance": "停止签发",
       "upload": "上传新证书",
       "upload_short": "上传",
       "use_version": "改用 {range} 的版本"
@@ -924,6 +926,7 @@
     "detail": {
       "also": "另含 {names}",
       "also_more": "另含 {name} 等 {count, plural, other {# 个}}域名",
+      "canceled": "签发已停止，还没有证书",
       "deploy_failed": "部署到 {target} 失败，不再自动重试",
       "deploy_retrying": "部署到 {target} 失败，稍后自动重试",
       "deploys": "部署",
@@ -939,6 +942,7 @@
       "revoked_paused": "自动续期已暂停：要继续使用，请签发新版本。",
       "revoked_renewing": "JEC 正在重新签发，新证书会照常部署。",
       "revoked_upload": "这张证书没有来源，JEC 不会重新签发：请尽快上传新证书，或在续期设置中选择证书来源。",
+      "run_canceled": "{start} 开始，已停止。",
       "run_deploy_failed": "{start} 开始，用时 {duration}，签好了，但有部署失败。",
       "run_deploying": "{start} 开始，用时 {duration}，签好了，正在部署。",
       "run_done": "{start} 开始，用时 {duration}，全部成功。",
@@ -993,6 +997,7 @@
       "encrypted_key": "私钥设置了密码。请先去掉密码，例如运行 openssl pkey -in key.pem -out plain.pem，再重新粘贴。",
       "import_failed": "添加这张证书时出错，详见运行日志。",
       "ip_dns": "IP 地址只能通过网站目录类的验证方式（HTTP 文件验证）证明，不能用 DNS 验证。",
+      "issuance_over": "这次签发已经结束了。",
       "issue_failed": "签发失败。完整日志里有原因。",
       "issuing_now": "这张证书正在签发，等签发结束后再改。",
       "key_mismatch": "私钥和证书不匹配。请确认两者来自同一个订单或同一份 CSR。",
@@ -1089,6 +1094,9 @@
     },
     "issuance": {
       "background": "在后台继续",
+      "canceled": "签发已停止",
+      "canceled_hint": "停止 24 小时后自动续期会再开始。要现在重新签发，点“重试”。",
+      "canceled_hint_paused": "这张证书已暂停自动续期。要重新签发，点“重试”。",
       "check_now": "立即查看",
       "copy_log": "复制整段日志（含 JEC 版本）",
       "copy_name": "复制记录名",
@@ -1112,6 +1120,7 @@
       "retrying": "第 {attempt} 次尝试失败",
       "show_detail": "显示原始信息",
       "state": {
+        "canceled": "已停止",
         "done": "成功",
         "failed": "失败",
         "pending": "等待中",
@@ -1152,6 +1161,7 @@
     "log": {
       "attempt": "第 {attempt} 次尝试",
       "backup_source": "这次改用备用来源“{name}”",
+      "canceled": "{username} 停止了这次签发",
       "deploy": "部署到 {target}",
       "deployed": "部署完成，用时 {seconds, plural, other {# 秒}}",
       "done": "全部完成，用时 {seconds, plural, other {# 秒}}",
@@ -1423,10 +1433,18 @@
       "validate": "等待验证"
     },
     "step_state": {
+      "canceled": "已停止",
       "done": "已完成",
       "failed": "失败",
       "pending": "未开始",
       "running": "进行中"
+    },
+    "stop": {
+      "body": "正在进行的尝试会立即中止，之后也不再重试。这不算失败，不会发通知。自动续期 24 小时后会再开始，也可以随时手动续期。",
+      "body_paused": "正在进行的尝试会立即中止，之后也不再重试。这不算失败，不会发通知。这张证书已暂停自动续期，不会自动再开始。",
+      "confirm": "停止",
+      "order": "{source} 那边的订单会保留，下次签发接着做。",
+      "title": "停止这次签发？"
     },
     "targets": {
       "intro": "每个新版本都会自动部署到选中的目标。新加的目标会马上部署当前版本。",

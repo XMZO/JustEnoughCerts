@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Circle, CircleCheck, LoaderCircle, OctagonX } from '@lucide/vue'
+import { Circle, CircleCheck, CircleSlash, LoaderCircle, OctagonX } from '@lucide/vue'
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 
@@ -19,8 +19,8 @@ const { t } = useT()
 const intl = useIntl()
 const targets = useProviders('target')
 
-const icons = { pending: Circle, running: LoaderCircle, done: CircleCheck, failed: OctagonX } as const
-const inks = { pending: 'text-ink-muted', running: 'text-info-ink', done: 'text-ok-ink', failed: 'text-danger-ink' } as const
+const icons = { pending: Circle, running: LoaderCircle, done: CircleCheck, failed: OctagonX, canceled: CircleSlash } as const
+const inks = { pending: 'text-ink-muted', running: 'text-info-ink', done: 'text-ok-ink', failed: 'text-danger-ink', canceled: 'text-ink-muted' } as const
 const deploys = computed(() =>
   deploySteps(props.detail).map((d) => ({ ...d, name: targets.data.value?.find((p) => p.id === d.target)?.name ?? '' })),
 )

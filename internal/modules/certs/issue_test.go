@@ -1541,3 +1541,108 @@ func TestIssuedWeek(t *testing.T) {
 		t.Errorf("uploaded: %d", up.IssuedWeek)
 	}
 }
+
+// A person stops an issuance waiting on its source: no attempt follows,
+// nobody is told of a failure, and the order stays for the next issuance,
+// which renewal starts once a failure's pause is over.
+func TestIssueCancel(t *testing.T) {
+	f := newFixture(t)
+	calls := f.vendor(time.Hour, time.Hour, time.Hour)
+	c := f.issueNew("example.com")
+	f.run()
+	is := f.certificate(c.ID).Issuance
+	if is.State != "waiting" {
+		t.Fatalf("before: %+v", is)
+	}
+	var out IssuanceBody
+	f.call(f.api.Post("/issuances/"+strconv.FormatInt(is.ID, 10)+"/cancel"), http.StatusOK, &out)
+	if out.State != "canceled" || out.FinishedAt == nil {
+		t.Fatalf("after the stop: %+v", out)
+	}
+	if key, state := f.sealed(is.ID); !key || !state {
+		t.Errorf("the order went: key %v, state %v", key, state)
+	}
+	keys := logKeys(f.issuanceDetail(is.ID))
+	if keys[len(keys)-1] != i18n.CertsLogCanceled {
+		t.Errorf("log %v", keys)
+	}
+	if got := stepStates(f.issuanceDetail(is.ID)); !strings.Contains(got, "order canceled") {
+		t.Errorf("steps %s", got)
+	}
+	// Stopped before any version: someone has to see to it.
+	if st := f.certificate(c.ID).State; st != "failed" {
+		t.Errorf("certificate state %s", st)
+	}
+	for _, e := range f.events() {
+		if e.typ == contracts.CertificateIssueFailed {
+			t.Errorf("told of a failure: %+v", e)
+		}
+	}
+	// Once over, it cannot be stopped again.
+	if e := f.apiError(f.api.Post("/issuances/"+strconv.FormatInt(is.ID, 10)+"/cancel"), http.StatusConflict); e.Code != string(i18n.CertsErrorIssuanceOver) {
+		t.Errorf("stopped twice: %+v", e)
+	}
+	f.apiError(f.api.Post("/issuances/999/cancel"), http.StatusNotFound)
+
+	// Nothing more, not even when due; renewal holds off for a day.
+	f.now = f.now.Add(2 * time.Hour)
+	f.run()
+	if err := f.svc.renew(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(*calls); n != 1 || f.certificate(c.ID).Issuance.ID != is.ID {
+		t.Fatalf("went on after the stop: %d calls", n)
+	}
+	f.now = f.now.Add(failedPause)
+	if err := f.svc.renew(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	f.run()
+	next := f.certificate(c.ID).Issuance
+	if next.ID == is.ID || len(*calls) != 2 || string((*calls)[1].State) != "w" {
+		t.Fatalf("the next issuance: %+v, %d calls", next, len(*calls))
+	}
+	if keys := logKeys(f.issuanceDetail(next.ID)); keys[0] != i18n.CertsLogTakeOver {
+		t.Errorf("the next issuance did not take the order over: %v", keys)
+	}
+}
+
+// Stopping an attempt under way ends it at once, with no failure logged.
+func TestIssueCancelRunning(t *testing.T) {
+	f := newFixture(t)
+	started := make(chan struct{})
+	f.fake.mu.Lock()
+	f.fake.issue = func(ctx context.Context, _ contracts.IssueRequest) ([]*x509.Certificate, error) {
+		close(started)
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
+	f.fake.mu.Unlock()
+	c := f.issueNew("example.com")
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = f.svc.runIssuances(t.Context())
+	}()
+	select {
+	case <-started:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the attempt did not start")
+	}
+	is := f.certificate(c.ID).Issuance
+	f.call(f.api.Post("/issuances/"+strconv.FormatInt(is.ID, 10)+"/cancel"), http.StatusOK, nil)
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the attempt went on after the stop")
+	}
+	d := f.issuanceDetail(is.ID)
+	if d.Issuance.State != "canceled" || slices.Contains(logKeys(d), i18n.CertsErrorIssueFailed) {
+		t.Fatalf("after the stop: %s, log %v", d.Issuance.State, logKeys(d))
+	}
+	for _, e := range f.events() {
+		if e.typ == contracts.CertificateIssueFailed {
+			t.Errorf("told of a failure: %+v", e)
+		}
+	}
+}

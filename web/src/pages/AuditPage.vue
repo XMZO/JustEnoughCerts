@@ -87,6 +87,7 @@ const operations: Partial<Record<string, MessageKey>> = {
   'certs-pull-off': 'audit.op.certs_pull_off',
   'certs-pull-file': 'audit.op.certs_pull_file',
   'certs-issue': 'audit.op.certs_issue',
+  'certs-issuance-cancel': 'audit.op.certs_issuance_cancel',
   'certs-deploy': 'audit.op.certs_deploy',
   'certs-save-settings': 'audit.op.certs_save_settings',
   'monitor-check': 'audit.op.monitor_check',

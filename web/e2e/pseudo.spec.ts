@@ -890,6 +890,25 @@ test('every page is translated and fits', async ({ page }, info) => {
   expect.soft(await problems(page), 'an issuance that failed').toEqual([])
   // No line of its log has raw details, so the log offers none.
   await expect(page.getByRole('checkbox', { name: label('certs.issuance.show_detail') })).toHaveCount(0)
+  // Stopping it: what the dialog says, left without stopping, as the steps
+  // after need it to retry; and a stopped one, made up.
+  await page.getByRole('button', { name: label('certs.action.stop_issuance') }).filter({ visible: true }).first().click()
+  await expect(page.locator('dialog[open]')).toBeVisible()
+  expect.soft(await problems(page), 'stop an issuance').toEqual([])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  await page.route('**/api/v1/certs/issuances/*', async (route) => {
+    const response = await route.fetch()
+    const body = await response.json()
+    body.issuance = { ...body.issuance, state: 'canceled', nextAt: undefined, finishedAt: new Date().toISOString() }
+    await route.fulfill({ response, json: body })
+  })
+  await page.reload()
+  await expect(page.getByText(label('certs.issuance.canceled'))).toBeVisible()
+  expect.soft(await problems(page), 'a stopped issuance').toEqual([])
+  await page.unroute('**/api/v1/certs/issuances/*')
+  await page.reload()
+  await expect(page.getByText(label('certs.issuance.next_try')).first()).toBeVisible()
   await page.getByRole('link', { name: label('certs.action.details') }).filter({ visible: true }).first().click()
   await expect(page).toHaveURL(/\/certificates\/\d+$/)
   await expect(page.getByRole('heading', { name: label('certs.detail.last_issuance') })).toBeVisible()

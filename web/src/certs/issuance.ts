@@ -20,6 +20,7 @@ export const stepStateText: Record<Step['state'], MessageKey> = {
   running: 'certs.step_state.running',
   done: 'certs.step_state.done',
   failed: 'certs.step_state.failed',
+  canceled: 'certs.step_state.canceled',
 }
 
 /** Why an issuance started. */
@@ -37,8 +38,12 @@ export function issuanceState(is: Issuance): MessageKey {
     waiting: 'certs.issuance.state.waiting',
     done: 'certs.issuance.state.done',
     failed: 'certs.issuance.state.failed',
+    canceled: 'certs.issuance.state.canceled',
   }[is.state] as MessageKey
 }
+
+/** isOpen tells an issuance someone can still stop: under way, waiting on its source, or waiting to start or retry. */
+export const isOpen = (is: Pick<Issuance, 'state'>) => is.state === 'pending' || is.state === 'running' || is.state === 'waiting'
 
 /** A deployment of the version an issuance brings, as a step after its own. */
 export interface DeployStep {

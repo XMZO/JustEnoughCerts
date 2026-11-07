@@ -123,6 +123,15 @@ func (s *service) stopAttempts(id int64) {
 	}
 }
 
+// stopIssuing cancels the issuance attempt under way for certificate id.
+func (s *service) stopIssuing(id int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if cancel, ok := s.running[runKey{certificate: id, part: "issue"}]; ok {
+		cancel()
+	}
+}
+
 // logTable is where the log of a kind of task is kept: the statements
 // that add a line and read the lines of a task.
 type logTable struct{ insert, lines string }

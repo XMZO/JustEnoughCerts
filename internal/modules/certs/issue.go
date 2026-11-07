@@ -27,6 +27,9 @@ const (
 	issuanceWaiting = "waiting" // on its source, asked again at NextAt in the same attempt
 	issuanceDone    = "done"
 	issuanceFailed  = "failed" // no attempt follows unless a person starts one
+	// issuanceCanceled: someone stopped it; no attempt follows. Renewals
+	// hold off as after a failure.
+	issuanceCanceled = "canceled"
 )
 
 // Reasons for an issuance.
@@ -75,6 +78,44 @@ var errNoSource = errors.New("the certificate has no source to issue it")
 // errIssuing: an issuance of the certificate is under way.
 var errIssuing = errors.New("an issuance of the certificate is under way")
 
+// errIssuanceOver: the issuance is done, failed or stopped already.
+var errIssuanceOver = errors.New("the issuance is over")
+
+// cancelIssuance stops issuance id for good, as username asked: an attempt
+// under way ends at once, and none follows. It is no failure: nobody is
+// told of it, and the certificate stands by its current version. Renewals
+// start again after failedPause, as after a failure. The key and what the
+// source kept stay when the source has an order, which the next issuance
+// takes over, as a vendor may yet issue for that key.
+func (s *service) cancelIssuance(ctx context.Context, id int64, username string) error {
+	var attempts int
+	var certificate int64
+	err := s.db.QueryRowContext(ctx,
+		`UPDATE certs_issuances SET state = 'canceled', finished_at = ?,
+		 sealed_key = CASE WHEN sealed_state IS NULL THEN NULL ELSE sealed_key END
+		 WHERE id = ? AND state IN ('pending', 'running', 'waiting') RETURNING certificate_id, attempts`,
+		s.now().UnixMilli(), id).Scan(&certificate, &attempts)
+	if errors.Is(err, sql.ErrNoRows) {
+		if _, err := s.issuance(ctx, id); err != nil {
+			return err
+		}
+		return errIssuanceOver
+	}
+	if err != nil {
+		return err
+	}
+	s.stopIssuing(certificate)
+	s.taskLogger(issuanceLogTable, id, attempts).add(contracts.LogLine{Level: contracts.Warn, Key: i18n.CertsLogCanceled, Params: map[string]any{"username": username}})
+	return nil
+}
+
+// canceled reports whether someone stopped issuance id.
+func (s *service) canceled(ctx context.Context, id int64) bool {
+	var state string
+	err := s.db.QueryRowContext(ctx, "SELECT state FROM certs_issuances WHERE id = ?", id).Scan(&state)
+	return err == nil && state == issuanceCanceled
+}
+
 // setDomains replaces the domains of certificate id, which has a source,
 // and issues it at once for them; it does nothing when they are the same.
 // An order kept from an issuance that failed is for the old domains: it
@@ -106,7 +147,7 @@ func (s *service) setDomains(ctx context.Context, id int64, domains []string) er
 		return err
 	}
 	if _, err := tx.ExecContext(ctx,
-		"UPDATE certs_issuances SET sealed_key = NULL, sealed_state = NULL WHERE certificate_id = ? AND state = 'failed'", id); err != nil {
+		"UPDATE certs_issuances SET sealed_key = NULL, sealed_state = NULL WHERE certificate_id = ? AND state IN ('failed', 'canceled')", id); err != nil {
 		return err
 	}
 	if _, err := s.startIssuance(ctx, tx, id, reasonManual); err != nil {
@@ -250,7 +291,7 @@ func (s *service) startIssuance(ctx context.Context, tx *sql.Tx, certificateID i
 	var took bool
 	err = tx.QueryRowContext(ctx,
 		`UPDATE certs_issuances SET (sealed_key, sealed_state) = (SELECT sealed_key, sealed_state FROM certs_issuances
-		   WHERE certificate_id = ? AND state = 'failed' AND sealed_state IS NOT NULL ORDER BY id DESC LIMIT 1)
+		   WHERE certificate_id = ? AND state IN ('failed', 'canceled') AND sealed_state IS NOT NULL ORDER BY id DESC LIMIT 1)
 		 WHERE id = ? RETURNING sealed_state IS NOT NULL`, certificateID, id).Scan(&took)
 	if err != nil {
 		return 0, err
@@ -431,8 +472,8 @@ func (s *service) attempt(ctx, attemptCtx context.Context, c *claimed) {
 		}
 		return
 	}
-	if ctx.Err() != nil || errors.Is(err, errNotFound) {
-		return // stopping, or the certificate was deleted
+	if ctx.Err() != nil || errors.Is(err, errNotFound) || s.canceled(storeCtx, c.id) {
+		return // stopping, the certificate was deleted, or someone stopped the issuance
 	}
 	s.fail(context.WithoutCancel(ctx), c, err, log)
 }
@@ -868,7 +909,7 @@ func (s *service) renew(ctx context.Context) error {
 			switch {
 			case is.State == issuancePending, is.State == issuanceRunning, is.State == issuanceWaiting:
 				continue
-			case is.State == issuanceFailed && now.Sub(is.FinishedAt) < failedPause:
+			case (is.State == issuanceFailed || is.State == issuanceCanceled) && now.Sub(is.FinishedAt) < failedPause:
 				continue
 			}
 		}
@@ -902,7 +943,7 @@ func (s *service) startRenewal(ctx context.Context, id int64, reason string) err
 // StepState is how far a step of an issuance got.
 type StepState struct {
 	Step  contracts.Step
-	State string    // pending, running, done or failed
+	State string    // pending, running, done, failed or canceled
 	At    time.Time // of its last line; zero for a pending step
 }
 
@@ -946,6 +987,8 @@ func steps(is *Issuance, lines []LogEntry, withSolver bool) []StepState {
 			out[i].State = issuanceRunning
 		case is.State == issuanceFailed, is.State == issuancePending && is.Error.Key != "":
 			out[i].State = issuanceFailed
+		case is.State == issuanceCanceled:
+			out[i].State = issuanceCanceled
 		}
 	}
 	if is.State == issuanceDone {

@@ -477,6 +477,8 @@ func (p *dnsProvider) settle(ctx context.Context, domain, value string) {
 // issuance's log here.
 func (p *dnsProvider) CleanUp(ctx context.Context, domain, token, keyAuth string) error {
 	p.log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepCleanup, Key: i18n.AcmeLogCleanup, Params: map[string]any{"domain": domain}})
+	ctx, cancel := cleanupContext(ctx)
+	defer cancel()
 	err := p.solver.CleanUp(ctx, contracts.Challenge{Domain: domain, Token: token, KeyAuth: keyAuth})
 	if err != nil {
 		p.log(contracts.LogLine{Level: contracts.Warn, Step: contracts.StepCleanup, Key: i18n.AcmeLogCleanupFailed, Params: map[string]any{"domain": domain}, Detail: err.Error()})
@@ -557,11 +559,20 @@ func (p *fileProvider) Present(ctx context.Context, domain, token, keyAuth strin
 // issuance's log here.
 func (p *fileProvider) CleanUp(ctx context.Context, domain, token, keyAuth string) error {
 	p.log(contracts.LogLine{Level: contracts.Info, Step: contracts.StepCleanup, Key: i18n.AcmeLogRemoveFile, Params: map[string]any{"domain": domain}})
+	ctx, cancel := cleanupContext(ctx)
+	defer cancel()
 	err := p.files.RemoveFile(ctx, challengeFile(domain, token, keyAuth))
 	if err != nil {
 		p.log(contracts.LogLine{Level: contracts.Warn, Step: contracts.StepCleanup, Key: i18n.AcmeLogRemoveFileFailed, Params: map[string]any{"domain": domain}, Detail: err.Error()})
 	}
 	return err
+}
+
+// cleanupContext is for removing an answer, which goes on for a while
+// though the attempt ended, as when someone stopped the issuance or deleted
+// the certificate: the record or file would stay otherwise.
+func cleanupContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
 }
 
 // unseen returns the domains whose answers never showed, in order.

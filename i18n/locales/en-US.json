@@ -317,6 +317,7 @@
       "certs_download": "Download a private key",
       "certs_drop_csr": "Give up a CSR",
       "certs_export": "Downloaded every certificate and key",
+      "certs_issuance_cancel": "Stop an issuance",
       "certs_issue": "Issue a certificate now",
       "certs_issue_new": "Add a certificate to issue",
       "certs_pull_file": "A server fetched a certificate file",
@@ -671,6 +672,7 @@
       "revoke_all": "Revoke",
       "revoke_version": "Revoke the version valid {range}",
       "save": "Save certificate",
+      "stop_issuance": "Stop issuing",
       "upload": "Upload new certificate",
       "upload_short": "Upload",
       "use_version": "Go back to the version of {range}"
@@ -924,6 +926,7 @@
     "detail": {
       "also": "Also covers {names}",
       "also_more": "Also covers {name} and others, {count, plural, one {# name} other {# names}} in all",
+      "canceled": "The issuance was stopped, and there is no certificate yet",
       "deploy_failed": "Deploying to {target} failed; no more automatic attempts",
       "deploy_retrying": "Deploying to {target} failed; trying again later",
       "deploys": "Deployments",
@@ -939,6 +942,7 @@
       "revoked_paused": "Its renewal is paused: issue a new version to use it again.",
       "revoked_renewing": "JEC is issuing a new one, which it deploys as usual.",
       "revoked_upload": "It has no source for JEC to issue a new one from: upload a new one soon, or choose a source in its renewal settings.",
+      "run_canceled": "Started {start}. It was stopped.",
       "run_deploy_failed": "Started {start}. Time taken: {duration}. Issued, but a deployment failed.",
       "run_deploying": "Started {start}. Time taken: {duration}. Issued; deploying now.",
       "run_done": "Started {start}. Time taken: {duration}. All went through.",
@@ -993,6 +997,7 @@
       "encrypted_key": "The private key is protected by a passphrase. Remove it first, for example with openssl pkey -in key.pem -out plain.pem, then paste the key again.",
       "import_failed": "Adding this certificate failed; the log tells why.",
       "ip_dns": "An IP address can be proved only through files on the web server (HTTP validation), never through DNS.",
+      "issuance_over": "This issuance is over already.",
       "issue_failed": "The issuance failed. The full log says why.",
       "issuing_now": "The certificate is being issued; change it once the issuance ends.",
       "key_mismatch": "The private key does not belong to this certificate. Check that both come from the same order or CSR.",
@@ -1089,6 +1094,9 @@
     },
     "issuance": {
       "background": "Continue in the background",
+      "canceled": "The issuance was stopped",
+      "canceled_hint": "Automatic renewal starts again 24 hours after it was stopped. To issue again now, choose Try again.",
+      "canceled_hint_paused": "Automatic renewal of this certificate is paused. To issue again, choose Try again.",
       "check_now": "Check now",
       "copy_log": "Copy the whole log, with the version of JEC",
       "copy_name": "Copy the name",
@@ -1112,6 +1120,7 @@
       "retrying": "Attempt {attempt} failed",
       "show_detail": "Show raw details",
       "state": {
+        "canceled": "Stopped",
         "done": "Done",
         "failed": "Failed",
         "pending": "Waiting",
@@ -1152,6 +1161,7 @@
     "log": {
       "attempt": "Attempt {attempt}",
       "backup_source": "This attempt goes to the backup source “{name}”",
+      "canceled": "{username} stopped this issuance",
       "deploy": "Deploying to {target}",
       "deployed": "Deployed in {seconds, plural, one {# second} other {# seconds}}",
       "done": "Done in {seconds, plural, one {# second} other {# seconds}}",
@@ -1423,10 +1433,18 @@
       "validate": "Wait for the validation"
     },
     "step_state": {
+      "canceled": "stopped",
       "done": "done",
       "failed": "failed",
       "pending": "not started",
       "running": "in progress"
+    },
+    "stop": {
+      "body": "The attempt under way ends at once, and no more are made. This is not a failure, and nobody is notified. Automatic renewal starts again in 24 hours; you can renew by hand at any time.",
+      "body_paused": "The attempt under way ends at once, and no more are made. This is not a failure, and nobody is notified. Automatic renewal of this certificate is paused, so nothing starts again by itself.",
+      "confirm": "Stop",
+      "order": "The order at {source} is kept, and the next issuance carries on with it.",
+      "title": "Stop this issuance?"
     },
     "targets": {
       "intro": "Every new version goes to the targets chosen. A target added gets the current version at once.",

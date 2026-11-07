@@ -735,6 +735,8 @@ func serviceError(err error) error {
 		return api.NewError(http.StatusConflict, i18n.CertsErrorNoSource, nil)
 	case errors.Is(err, errIssuing):
 		return api.NewError(http.StatusConflict, i18n.CertsErrorIssuingNow, nil)
+	case errors.Is(err, errIssuanceOver):
+		return api.NewError(http.StatusConflict, i18n.CertsErrorIssuanceOver, nil)
 	case errors.Is(err, errNoVersion):
 		return api.NewError(http.StatusConflict, i18n.CertsErrorNoVersion, nil)
 	}
